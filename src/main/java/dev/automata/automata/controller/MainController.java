@@ -1,6 +1,5 @@
 package dev.automata.automata.controller;
 
-import dev.automata.automata.dto.Reading;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.service.MainService;
@@ -8,8 +7,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -48,6 +45,7 @@ public class MainController {
         System.err.println("got message: " + payload);
         long deviceId = Long.parseLong(payload.get("deviceId").toString());
         mainService.saveData(deviceId, payload);
+
 //        headerAccessor.getSessionAttributes().put("username", chatMessage.getSenderId());
         return payload;
     }
