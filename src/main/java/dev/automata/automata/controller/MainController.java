@@ -3,6 +3,7 @@ package dev.automata.automata.controller;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.service.MainService;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -20,6 +21,11 @@ public class MainController {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final MainService mainService;
+
+    @GetMapping("/status")
+    public ResponseEntity<String> status(){
+        return ResponseEntity.ok("Hello World");
+    }
 
     @PostMapping("/save/{deviceId}")
     public ResponseEntity<String> save(
