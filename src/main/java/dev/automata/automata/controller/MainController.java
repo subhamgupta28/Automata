@@ -20,7 +20,7 @@ public class MainController {
     private final SimpMessagingTemplate messagingTemplate;
     private final MainService mainService;
 
-    @GetMapping
+    @GetMapping("/")
     public ResponseEntity<String> status(){
         return ResponseEntity.ok("Hello World");
     }
