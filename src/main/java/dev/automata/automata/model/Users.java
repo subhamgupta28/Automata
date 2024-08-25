@@ -1,12 +1,12 @@
 package dev.automata.automata.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import lombok.*;
-
+import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.annotation.Id;
 import java.util.Date;
 
-@Entity
+@Document(collection = "users")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -15,7 +15,7 @@ import java.util.Date;
 public class Users {
 
     @Id
-    private int id;
+    private String id;
     private String username;
     private String password;
     private String email;

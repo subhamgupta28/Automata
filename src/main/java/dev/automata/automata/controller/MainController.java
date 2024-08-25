@@ -12,7 +12,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
-//@RequestMapping("/api/v1/main")
+@RequestMapping("/api/v1/main")
 @Controller
 @RequiredArgsConstructor
 public class MainController {
@@ -27,13 +27,13 @@ public class MainController {
 
     @PostMapping("/save/{deviceId}")
     public ResponseEntity<String> save(
-            @PathVariable Long deviceId,
+            @PathVariable String deviceId,
             @RequestBody Map<String, Object> payload
     ) {
         return ResponseEntity.ok(mainService.saveData(deviceId, payload));
     }
 
-    @GetMapping("/register")
+    @PostMapping("/register")
     public ResponseEntity<Device> registerDevice(
             @RequestBody RegisterDevice registerDevice
     ) {
@@ -47,7 +47,7 @@ public class MainController {
             @Payload Map<String, Object> payload
     ){
         System.err.println("got message: " + payload);
-        long deviceId = Long.parseLong(payload.get("deviceId").toString());
+        String deviceId = payload.get("device_id").toString();
         mainService.saveData(deviceId, payload);
 
 //        headerAccessor.getSessionAttributes().put("username", chatMessage.getSenderId());

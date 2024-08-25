@@ -1,11 +1,12 @@
 package dev.automata.automata.repository;
 
 import dev.automata.automata.model.Attribute;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
 
-public interface AttributeRepository extends JpaRepository<Attribute, Long> {
+public interface AttributeRepository extends MongoRepository<Attribute, String> {
 
     List<Attribute> findAllByDeviceId(Long deviceId);
 }

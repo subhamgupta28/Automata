@@ -1,7 +1,11 @@
 package dev.automata.automata.repository;
 
 import dev.automata.automata.model.Device;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface DeviceRepository extends JpaRepository<Device, Long> {
+import java.util.Optional;
+
+public interface DeviceRepository extends MongoRepository<Device, String> {
+    Optional<Device> findByIdIgnoreCase(String id);
 }

@@ -10,7 +10,6 @@ import dev.automata.automata.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -47,6 +46,10 @@ public class MainService {
 
     public Device registerDevice(RegisterDevice registerDevice){
         var timestamp = System.currentTimeMillis();
+
+        System.err.println(registerDevice);
+
+
         var device = Device.builder()
                 .name(registerDevice.getName())
                 .updateInterval(registerDevice.getUpdateInterval())
@@ -54,17 +57,14 @@ public class MainService {
                 .type(registerDevice.getType())
                 .accessUrl(registerDevice.getAccessUrl())
                 .reboot(registerDevice.getReboot())
+                .attributes(registerDevice.getAttributes())
                 .status(registerDevice.getStatus()).build();
-
-        var savedDevice = deviceRepository.save(device);
-        var attributeList = registerDevice.getAttributes();
-
-        for(var attribute : attributeList){
-            attribute.setDeviceId(savedDevice.getId());
-            attribute.setTimestamp(timestamp);
+        var isAlreadyRegistered = deviceRepository.findByIdIgnoreCase(registerDevice.getDeviceId()).orElse(null);
+        if (isAlreadyRegistered!=null){
+            return isAlreadyRegistered;
         }
 
-        saveAttributes(registerDevice.getAttributes());
+        var savedDevice = deviceRepository.save(device);
         return savedDevice;
     }
 
@@ -73,19 +73,14 @@ public class MainService {
     }
 
 
-    public String saveData(Long deviceId, Map<String, Object> payload) {
+    public String saveData(String deviceId, Map<String, Object> payload) {
 //        var attributes = attributeRepository.findAllByDeviceId(deviceId);
-        var dataList = new ArrayList<Data>();
-        for (Map.Entry<String, Object> attribute : payload.entrySet()) {
-            var data = Data.builder()
-                    .deviceId(deviceId)
-                    .value(String.valueOf(attribute.getValue()))
-                    .key(attribute.getKey())
-                    .timestamp(System.currentTimeMillis())
-                    .build();
-            dataList.add(data);
-        }
-        dataRepository.saveAll(dataList);
+        var data = Data.builder()
+                .deviceId(deviceId)
+                .data(payload)
+                .timestamp(System.currentTimeMillis())
+                .build();
+        dataRepository.save(data);
 
 //        System.out.println(attributes);
         return "Saved";

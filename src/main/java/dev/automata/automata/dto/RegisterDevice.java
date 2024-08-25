@@ -14,6 +14,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class RegisterDevice {
+    private String deviceId;
     private String name;
     private String type;
     private Long updateInterval;

@@ -1,12 +1,14 @@
 package dev.automata.automata.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import lombok.*;
 
-@Entity
+import lombok.*;
+import org.bson.types.ObjectId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.util.List;
+
+@Document(collection = "device")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -14,8 +16,7 @@ import lombok.*;
 @Builder
 public class Device {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
     private String name;
     private String type;
     private Long updateInterval;
@@ -23,6 +24,7 @@ public class Device {
     private Boolean reboot;
     private Boolean sleep;
     private String accessUrl;
+    private List<Attribute> attributes;
 }
 
 /*

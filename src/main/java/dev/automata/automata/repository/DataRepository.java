@@ -1,7 +1,8 @@
 package dev.automata.automata.repository;
 
 import dev.automata.automata.model.Data;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface DataRepository extends JpaRepository<Data, Integer> {
+public interface DataRepository extends MongoRepository<Data, String> {
 }

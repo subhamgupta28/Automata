@@ -1,9 +1,14 @@
 package dev.automata.automata.model;
 
-import jakarta.persistence.*;
-import lombok.*;
 
-@Entity
+import lombok.*;
+import org.bson.types.ObjectId;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.util.Map;
+
+@Document(collection = "data")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -11,10 +16,8 @@ import lombok.*;
 @Builder
 public class Data {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
-    private Long deviceId;
-    private String value;
-    private String key;
+    private String id;
+    private String deviceId;
+    private Map<String, Object> data;
     private Long timestamp;
 }
