@@ -8,4 +8,7 @@ import java.util.Optional;
 
 public interface DeviceRepository extends MongoRepository<Device, String> {
     Optional<Device> findByIdIgnoreCase(String id);
+
+    @Override
+    Optional<Device> findById(String s);
 }

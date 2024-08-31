@@ -85,4 +85,14 @@ public class MainService {
 //        System.out.println(attributes);
         return "Saved";
     }
+
+    public Device getDevice(String deviceId) {
+        return deviceRepository.findById(deviceId).orElse(new Device());
+    }
+
+    public List<Data> getData() {
+
+            return dataRepository.findAll();
+
+    }
 }

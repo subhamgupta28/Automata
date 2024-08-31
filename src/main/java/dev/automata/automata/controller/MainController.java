@@ -1,15 +1,19 @@
 package dev.automata.automata.controller;
 
 import dev.automata.automata.dto.RegisterDevice;
+import dev.automata.automata.model.Data;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 import java.util.Map;
 
 @RequestMapping("/api/v1/main")
@@ -20,7 +24,7 @@ public class MainController {
     private final SimpMessagingTemplate messagingTemplate;
     private final MainService mainService;
 
-    @GetMapping("/")
+    @GetMapping
     public ResponseEntity<String> status(){
         return ResponseEntity.ok("Hello World");
     }
@@ -33,12 +37,30 @@ public class MainController {
         return ResponseEntity.ok(mainService.saveData(deviceId, payload));
     }
 
+    @GetMapping("/data")
+    public ResponseEntity<List<Data>> getData(){
+        return ResponseEntity.ok(mainService.getData());
+    }
+
     @PostMapping("/register")
     public ResponseEntity<Device> registerDevice(
             @RequestBody RegisterDevice registerDevice
     ) {
         return ResponseEntity.ok(mainService.registerDevice(registerDevice));
     }
+
+
+    @GetMapping("/update/{deviceId}")
+    @SendTo("/topic/update")
+    public ResponseEntity<String> updateDevice(@PathVariable String deviceId) {
+        System.err.println(deviceId);
+        Device deviceData = mainService.getDevice(deviceId);
+        System.err.println(deviceData);
+//        messagingTemplate.convertAndSend("/topic/update", deviceData);
+        return ResponseEntity.ok("Success");
+    }
+
+
 
 
     @MessageMapping("/sendData")

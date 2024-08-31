@@ -14,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@ToString
 public class Device {
     @Id
     private String id;
@@ -24,6 +25,7 @@ public class Device {
     private Boolean reboot;
     private Boolean sleep;
     private String accessUrl;
+    private String serverHost;
     private List<Attribute> attributes;
 }
 
