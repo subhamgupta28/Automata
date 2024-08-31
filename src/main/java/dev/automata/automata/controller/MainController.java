@@ -1,10 +1,12 @@
 package dev.automata.automata.controller;
 
+import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.Data;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -37,9 +39,14 @@ public class MainController {
         return ResponseEntity.ok(mainService.saveData(deviceId, payload));
     }
 
-    @GetMapping("/data")
-    public ResponseEntity<List<Data>> getData(){
-        return ResponseEntity.ok(mainService.getData());
+    @GetMapping(value = "/device/{deviceId}")
+    public ResponseEntity<Device> getConfig(@PathVariable String deviceId){
+        return ResponseEntity.ok(mainService.getDevice(deviceId));
+    }
+
+    @GetMapping(value = "/data/{deviceId}")
+    public ResponseEntity<DataDto> getData(@PathVariable String deviceId){
+        return ResponseEntity.ok(mainService.getData(deviceId));
     }
 
     @PostMapping("/register")

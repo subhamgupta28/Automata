@@ -6,6 +6,7 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Document(collection = "device")
@@ -26,7 +27,7 @@ public class Device {
     private Boolean sleep;
     private String accessUrl;
     private String serverHost;
-    private List<Attribute> attributes;
+    private List<Attribute> attributes = new ArrayList<>();
 }
 
 /*

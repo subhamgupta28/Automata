@@ -8,5 +8,5 @@ import java.util.List;
 
 public interface AttributeRepository extends MongoRepository<Attribute, String> {
 
-    List<Attribute> findAllByDeviceId(Long deviceId);
+    List<Attribute> findAllByDeviceId(String deviceId);
 }

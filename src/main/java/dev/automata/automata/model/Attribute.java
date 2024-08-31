@@ -17,17 +17,10 @@ import java.util.UUID;
 public class Attribute {
     @Id
     private String id;
-    private String deviceId;
-    private String value;
+    private String displayName;
     private String key;
     private String units;
-    private String valueDataType;
-    private Type type;
+    private String deviceId;
     private Long timestamp;
-
-
 }
 
-enum Type {
-    INFO, CONTROL
-}
