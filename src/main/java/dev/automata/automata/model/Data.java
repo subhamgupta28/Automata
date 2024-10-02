@@ -15,6 +15,7 @@ import java.util.Map;
 @NoArgsConstructor
 @Builder
 @ToString
+
 public class Data {
     @Id
     private String id;
