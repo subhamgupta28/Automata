@@ -13,7 +13,12 @@ import dev.automata.automata.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -135,11 +140,19 @@ public class MainService {
                 }
 
             });
+            Instant instant = Instant.ofEpochMilli(d.getTimestamp());
+
+            // Define a formatter for the date
+            DateTimeFormatter formatter = DateTimeFormatter
+                    .ofPattern("yyyy-MMM-dd HH:mm:ss") // Specify your desired format
+                    .withZone(ZoneId.systemDefault());
             rootDto.add(RootDto.builder()
                     .values(values)
+                    .date(formatter.format(instant))
                     .timestamp(d.getTimestamp())
                     .build());
         });
+//        System.err.println(rootDto);
 
         return DataDto.builder()
                 .pageSize(rootDto.size())
@@ -148,5 +161,9 @@ public class MainService {
                 .pageNo(1)
                 .build();
 
+    }
+
+    public List<Device> getAllDevice() {
+        return deviceRepository.findAll();
     }
 }

@@ -13,4 +13,5 @@ import java.util.List;
 public class RootDto {
     public List<ValueDto> values;
     public Long timestamp;
+    public String date;
 }

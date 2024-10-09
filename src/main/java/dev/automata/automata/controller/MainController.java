@@ -28,6 +28,7 @@ public class MainController {
 
     @GetMapping
     public ResponseEntity<String> status(){
+        messagingTemplate.convertAndSend("/topic/update", "hello");
         return ResponseEntity.ok("Hello World");
     }
 
@@ -38,14 +39,18 @@ public class MainController {
     ) {
         return ResponseEntity.ok(mainService.saveData(deviceId, payload));
     }
+    @GetMapping(value = "/devices")
+    public ResponseEntity<List<Device>> getAllDevices(){
+        return ResponseEntity.ok(mainService.getAllDevice());
+    }
 
     @GetMapping(value = "/device/{deviceId}")
-    public ResponseEntity<Device> getConfig(@PathVariable String deviceId){
+    public ResponseEntity<Device> getDeviceById(@PathVariable String deviceId){
         return ResponseEntity.ok(mainService.getDevice(deviceId));
     }
 
     @GetMapping(value = "/data/{deviceId}")
-    public ResponseEntity<DataDto> getData(@PathVariable String deviceId){
+    public ResponseEntity<DataDto> getDataByDeviceId(@PathVariable String deviceId){
         return ResponseEntity.ok(mainService.getData(deviceId));
     }
 
@@ -68,7 +73,13 @@ public class MainController {
     }
 
 
+    @MessageMapping("/send")
+    @SendTo("/topic/update")
+    public String send(@Payload String text) {
 
+        System.err.println(text);
+        return text;
+    }
 
     @MessageMapping("/sendData")
 //    @SendTo("/topic/register")

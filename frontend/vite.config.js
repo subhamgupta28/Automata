@@ -4,12 +4,18 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
-  // resolve: {
-  //   alias: {
-  //     '~bootstrap': path.resolve(__dirname, 'node_modules/bootstrap'),
-  //   }
-  // },
+  proxy: {
+    '/api': {
+      target: 'http://localhost:8080',
+      changeOrigin: true,
+      secure: false,
+      rewrite: (path) => path.replace(/^\/api/, '')
+    }
+  },
+  define: {
+    global: 'window',
+  },
   build: {
-    outDir: '..\\src\\main\\resources\\static', // Change this to your desired folder
+    outDir: '../src/main/resources/static', // Change this to your desired folder
   },
 })

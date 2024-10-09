@@ -5,15 +5,6 @@
     <option name="SPRING_BOOT_MAIN_CLASS" value="dev.automata.automata.AutomataApplication" />
     <method v="2">
       <option name="Make" enabled="true" />
-      <option name="NpmBeforeRunTask" enabled="true">
-        <package-json value="$PROJECT_DIR$/frontend/package.json" />
-        <command value="run" />
-        <scripts>
-          <script value="build" />
-        </scripts>
-        <node-interpreter value="project" />
-        <envs />
-      </option>
     </method>
   </configuration>
 </component>
