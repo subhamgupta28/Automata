@@ -6,6 +6,7 @@ import Data from "./components/Data.jsx";
 import Devices from "./components/Devices.jsx";
 import TreeNode from "./components/TreeNode.jsx";
 import FlowDemo from "./components/FlowDemo.jsx";
+import DeviceNodes from "./components/DeviceNodes.jsx";
 
 function App() {
     const { messages, sendMessage } = useWebSocket();
@@ -25,7 +26,7 @@ function App() {
                 <section className={"content"}>
                     {/*<Devices/>*/}
                     {/*<TreeNode/>*/}
-                    <FlowDemo/>
+                    <DeviceNodes/>
                     {/*<div>*/}
                     {/*    <input*/}
                     {/*        type="text"*/}

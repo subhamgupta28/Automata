@@ -26,52 +26,68 @@ const initialNodes = [
     },
     {
         id: 'node-2',
-        type: 'output',
-        targetPosition: 'left',
-        position: {x: 400, y: 200},
+        type: 'input',
+        sourcePosition: 'left',
+        position: {x: 400, y: 80},
         data: {label: 'node 2'},
     },
     {
         id: 'node-3',
-        type: 'output',
-        targetPosition: 'left',
-        position: {x: 400, y: 250},
+        type: 'input',
+        sourcePosition: 'left',
+        position: {x: 400, y: 180},
         data: {label: 'node 3'},
     },
     {
         id: 'node-4',
         type: 'output',
         targetPosition: 'left',
-        position: {x: 400, y: 300},
+        position: {x: 400, y: 280},
         data: {label: 'node 4'},
     },
     {
         id: 'node-5',
         type: 'output',
         targetPosition: 'left',
-        position: {x: 400, y: 350},
+        position: {x: 400, y: 380},
         data: {label: 'node 5'},
     },
 ];
 
 const initialEdges = [
-    {id: 'edge-1', source: 'node-1', target: 'node-2', sourceHandle: 'a', animated: true, style: {color: 'red'}},
     {
-        id: 'edge-2', source: 'node-1', target: 'node-3', sourceHandle: 'a', animated: true,
-        markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 20,
-            height: 20,
-            color: '#FF0072',
-        },
-        label: 'marker size and color',
+        id: 'edge-1',
+        source: 'node-2',
+        target: 'node-1',
+        targetHandle: 'a', animated: true,
+        label: 'online',
+        style: {
+            strokeWidth: 2,
+            stroke: '#FF0072',
+        }
+    },
+    {
+        id: 'edge-2', source: 'node-3', target: 'node-1', targetHandle: 'a', animated: true,
+        label: 'online',
         style: {
             strokeWidth: 2,
             stroke: '#FF0072',
         },
     },
-    {id: 'edge-3', source: 'node-1', target: 'node-4', sourceHandle: 'b', animated: true,},
-    {id: 'edge-4', source: 'node-1', target: 'node-5', sourceHandle: 'b', animated: true,},
+    {
+        id: 'edge-3', source: 'node-1', target: 'node-4', sourceHandle: 'b', animated: true,
+        style: {
+            strokeWidth: 2,
+            stroke: '#006fff',
+        }
+    },
+    {
+        id: 'edge-4', source: 'node-1', target: 'node-5', sourceHandle: 'b', animated: true,
+        style: {
+            strokeWidth: 2,
+            stroke: '#006fff',
+        }
+    },
 ];
 
 
