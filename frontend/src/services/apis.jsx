@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:8010/api/v1/main/';
+
+const BROWSER_URL = window.location.href;
+const BASE_URL = BROWSER_URL+'api/v1/main/';
 
 
 export const getDevices = async () => {
