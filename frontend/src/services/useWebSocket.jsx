@@ -2,7 +2,7 @@ import {useEffect, useState} from 'react';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
 
-const url = "http://localhost:8080/ws";
+const url = "http://localhost:8010/ws";
 const topic = '/topic/update';
 
 const useWebSocket = () => {
