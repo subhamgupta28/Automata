@@ -3,11 +3,11 @@ import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
 
 const url = window.location.href + "ws";
-const topic = '/topic/update';
+// const url = "http://localhost:8080/ws";
 
-const useWebSocket = () => {
+const useWebSocket = (topic) => {
     const [stompClient, setStompClient] = useState(null);
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState({device_id: ""});
 
     useEffect(() => {
         const socket = new SockJS(url);
@@ -16,7 +16,8 @@ const useWebSocket = () => {
         client.connect({}, (frame) => {
             console.log('Connected: ' + frame);
             client.subscribe(topic, (message) => {
-                setMessages((prev) => [...prev, message.body]);
+                // setMessages((prev) => [...prev, message.body]);
+                setMessages(JSON.parse(message.body));
             });
         });
 

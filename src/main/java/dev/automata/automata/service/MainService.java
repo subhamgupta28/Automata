@@ -7,6 +7,7 @@ import dev.automata.automata.dto.ValueDto;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Data;
 import dev.automata.automata.model.Device;
+import dev.automata.automata.model.Status;
 import dev.automata.automata.repository.AttributeRepository;
 import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceRepository;
@@ -17,10 +18,7 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -98,15 +96,12 @@ public class MainService {
 
 
     public String saveData(String deviceId, Map<String, Object> payload) {
-//        var attributes = attributeRepository.findAllByDeviceId(deviceId);
         var data = Data.builder()
                 .deviceId(deviceId)
                 .data(payload)
                 .timestamp(System.currentTimeMillis())
                 .build();
         dataRepository.save(data);
-
-//        System.out.println(attributes);
         return "Saved";
     }
 
@@ -165,5 +160,18 @@ public class MainService {
 
     public List<Device> getAllDevice() {
         return deviceRepository.findAll();
+    }
+
+    public Map<String, Object> setStatus(String deviceId, Status status) {
+        var device = deviceRepository.findById(deviceId).orElseThrow();
+        device.setStatus(status);
+        System.err.println("Set status to " + status + " for device " + deviceId);
+        var lastData = dataRepository.getFirstByDeviceIdOrderByTimestampDesc(deviceId);
+        device = deviceRepository.save(device);
+        var map = new HashMap<String, Object>();
+        map.put("deviceId", device.getId());
+        map.put("deviceConfig", device);
+        map.put("data", lastData);
+        return map;
     }
 }

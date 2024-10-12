@@ -26,7 +26,7 @@ public class Device {
     private Boolean reboot;
     private Boolean sleep;
     private String accessUrl;
-    private String serverHost;
+//    private String serverHost;
     private List<Attribute> attributes = new ArrayList<>();
 }
 

@@ -2,19 +2,19 @@ package dev.automata.automata.controller;
 
 import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.RegisterDevice;
-import dev.automata.automata.model.Data;
 import dev.automata.automata.model.Device;
+import dev.automata.automata.model.Status;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,7 +27,7 @@ public class MainController {
     private final MainService mainService;
 
     @GetMapping
-    public ResponseEntity<String> status(){
+    public ResponseEntity<String> status() {
         messagingTemplate.convertAndSend("/topic/update", "hello");
         return ResponseEntity.ok("Hello World");
     }
@@ -39,18 +39,19 @@ public class MainController {
     ) {
         return ResponseEntity.ok(mainService.saveData(deviceId, payload));
     }
+
     @GetMapping(value = "/devices")
-    public ResponseEntity<List<Device>> getAllDevices(){
+    public ResponseEntity<List<Device>> getAllDevices() {
         return ResponseEntity.ok(mainService.getAllDevice());
     }
 
     @GetMapping(value = "/device/{deviceId}")
-    public ResponseEntity<Device> getDeviceById(@PathVariable String deviceId){
+    public ResponseEntity<Device> getDeviceById(@PathVariable String deviceId) {
         return ResponseEntity.ok(mainService.getDevice(deviceId));
     }
 
     @GetMapping(value = "/data/{deviceId}")
-    public ResponseEntity<DataDto> getDataByDeviceId(@PathVariable String deviceId){
+    public ResponseEntity<DataDto> getDataByDeviceId(@PathVariable String deviceId) {
         return ResponseEntity.ok(mainService.getData(deviceId));
     }
 
@@ -58,39 +59,45 @@ public class MainController {
     public ResponseEntity<Device> registerDevice(
             @RequestBody RegisterDevice registerDevice
     ) {
+        var device = mainService.setStatus(registerDevice.getDeviceId(), Status.ONLINE);
+        messagingTemplate.convertAndSend("/topic/data", device);
         return ResponseEntity.ok(mainService.registerDevice(registerDevice));
     }
 
 
     @GetMapping("/update/{deviceId}")
-    @SendTo("/topic/update")
     public ResponseEntity<String> updateDevice(@PathVariable String deviceId) {
         System.err.println(deviceId);
         Device deviceData = mainService.getDevice(deviceId);
         System.err.println(deviceData);
-//        messagingTemplate.convertAndSend("/topic/update", deviceData);
+        messagingTemplate.convertAndSend("/topic/update/" + deviceId, deviceData);
         return ResponseEntity.ok("Success");
     }
 
 
-    @MessageMapping("/send")
-    @SendTo("/topic/update")
-    public String send(@Payload String text) {
 
-        System.err.println(text);
-        return text;
+    @GetMapping("/updateDevice/{deviceId}")
+    public ResponseEntity<String> devicesWs(@PathVariable String deviceId) {
+        var device = mainService.setStatus(deviceId, Status.ONLINE);
+        messagingTemplate.convertAndSend("/topic/data", device);
+        return ResponseEntity.ok("Success");
     }
 
     @MessageMapping("/sendData")
-//    @SendTo("/topic/register")
     public Map<String, Object> addUser(
-            @Payload Map<String, Object> payload
-    ){
+            @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
+    ) {
         System.err.println("got message: " + payload);
         String deviceId = payload.get("device_id").toString();
+        if (deviceId.isEmpty() || deviceId.equals("null")) {
+            return payload;
+        }
         mainService.saveData(deviceId, payload);
-
-//        headerAccessor.getSessionAttributes().put("username", chatMessage.getSenderId());
+        var map = new HashMap<String, Object>();
+        map.put("deviceId", deviceId);
+        map.put("data", payload);
+        messagingTemplate.convertAndSend("/topic/data", map);
+        headerAccessor.getSessionAttributes().put("deviceId", deviceId);
         return payload;
     }
 }

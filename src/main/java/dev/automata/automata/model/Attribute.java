@@ -21,6 +21,5 @@ public class Attribute {
     private String key;
     private String units;
     private String deviceId;
-    private Long timestamp;
 }
 
