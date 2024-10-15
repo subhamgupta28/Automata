@@ -28,8 +28,22 @@ public class MainController {
 
     @GetMapping
     public ResponseEntity<String> status() {
-        messagingTemplate.convertAndSend("/topic/update", "hello");
+        var map = new HashMap<String, Object>();
+        map.put("key", 1234);
+        map.put("value", 1234);
+        messagingTemplate.convertAndSend("/topic/action", map);
         return ResponseEntity.ok("Hello World");
+    }
+
+    @GetMapping("sendAction/{action}/{value}")
+    public ResponseEntity<String> sendActionToDevice(
+            @PathVariable String action, @PathVariable String value
+    ) {
+        var map = new HashMap<String, Object>();
+        map.put("key", action);
+        map.put("value", value);
+        messagingTemplate.convertAndSend("/topic/action", map);
+        return ResponseEntity.ok("sent");
     }
 
     @PostMapping("/save/{deviceId}")
@@ -75,7 +89,6 @@ public class MainController {
     }
 
 
-
     @GetMapping("/updateDevice/{deviceId}")
     public ResponseEntity<String> devicesWs(@PathVariable String deviceId) {
         var device = mainService.setStatus(deviceId, Status.ONLINE);
@@ -83,6 +96,8 @@ public class MainController {
         return ResponseEntity.ok("Success");
     }
 
+
+    // for saving data from devices
     @MessageMapping("/sendData")
     public Map<String, Object> addUser(
             @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
@@ -93,6 +108,36 @@ public class MainController {
             return payload;
         }
         mainService.saveData(deviceId, payload);
+        return getStringObjectMap(payload, headerAccessor, deviceId);
+    }
+
+    // for getting live data from devices
+    @MessageMapping("/sendLiveData")
+    public Map<String, Object> sendLiveData(
+            @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
+    ) {
+//        System.err.println("got live message: " + payload);
+        String deviceId = payload.get("device_id").toString();
+        if (deviceId.isEmpty() || deviceId.equals("null")) {
+            return payload;
+        }
+        return getStringObjectMap(payload, headerAccessor, deviceId);
+    }
+
+    // for getting action data from devices
+    @MessageMapping("/action")
+    public Map<String, Object> sendAction(
+            @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
+    ) {
+        System.err.println("got action message: " + payload);
+        String deviceId = payload.get("device_id").toString();
+        if (deviceId.isEmpty() || deviceId.equals("null")) {
+            return payload;
+        }
+        return payload;
+    }
+
+    private Map<String, Object> getStringObjectMap(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor, String deviceId) {
         var map = new HashMap<String, Object>();
         map.put("deviceId", deviceId);
         map.put("data", payload);

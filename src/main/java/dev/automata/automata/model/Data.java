@@ -20,6 +20,7 @@ public class Data {
     @Id
     private String id;
     private String deviceId;
+    private String dateTime;
     private Map<String, Object> data;
     private Long timestamp;
 }

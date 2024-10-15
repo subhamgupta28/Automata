@@ -63,6 +63,7 @@ public class MainService {
                 .updateInterval(registerDevice.getUpdateInterval())
                 .sleep(registerDevice.getSleep())
                 .type(registerDevice.getType())
+                .macAddr(registerDevice.getMacAddr())
                 .accessUrl(registerDevice.getAccessUrl())
                 .reboot(registerDevice.getReboot())
                 .attributes(registerDevice.getAttributes())
@@ -70,9 +71,11 @@ public class MainService {
 
 
         var isAlreadyRegistered = deviceRepository.findById(registerDevice.getDeviceId()).orElse(null);
-        if (isAlreadyRegistered != null) {
+        var isMacAddrPresent = deviceRepository.findByMacAddr(registerDevice.getMacAddr());
+        System.err.println(isMacAddrPresent);
+        if (!isMacAddrPresent.isEmpty()) {
             System.err.println("Already registered device: " + registerDevice.getDeviceId());
-            return isAlreadyRegistered;
+            return isMacAddrPresent.get(0);
         }
 
 
@@ -96,10 +99,17 @@ public class MainService {
 
 
     public String saveData(String deviceId, Map<String, Object> payload) {
+        var timestamp = System.currentTimeMillis();
+        Date date = new Date(timestamp);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+        String formattedDate = sdf.format(date);
         var data = Data.builder()
                 .deviceId(deviceId)
+                .dateTime(formattedDate)
                 .data(payload)
-                .timestamp(System.currentTimeMillis())
+                .timestamp(timestamp)
                 .build();
         dataRepository.save(data);
         return "Saved";
@@ -163,7 +173,11 @@ public class MainService {
     }
 
     public Map<String, Object> setStatus(String deviceId, Status status) {
-        var device = deviceRepository.findById(deviceId).orElseThrow();
+        var device = deviceRepository.findById(deviceId).orElse(null);
+        if (device == null) {
+            System.err.println("Device not found");
+            return new HashMap<>();
+        }
         device.setStatus(status);
         System.err.println("Set status to " + status + " for device " + deviceId);
         var lastData = dataRepository.getFirstByDeviceIdOrderByTimestampDesc(deviceId);

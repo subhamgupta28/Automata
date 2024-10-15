@@ -23,5 +23,6 @@ public class RegisterDevice {
     private Boolean reboot;
     private Boolean sleep;
     private String accessUrl;
+    private String macAddr;
     private List<Attribute> attributes;
 }
