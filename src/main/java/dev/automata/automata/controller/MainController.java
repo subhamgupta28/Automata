@@ -108,6 +108,9 @@ public class MainController {
             return payload;
         }
         mainService.saveData(deviceId, payload);
+        var device = mainService.setStatus(deviceId, Status.ONLINE);
+//        messagingTemplate.convertAndSend("/topic/data", device);
+        payload.put("deviceConfig", device.get("deviceConfig"));
         return getStringObjectMap(payload, headerAccessor, deviceId);
     }
 
@@ -141,8 +144,7 @@ public class MainController {
         var map = new HashMap<String, Object>();
         map.put("deviceId", deviceId);
         map.put("data", payload);
-        var device = mainService.setStatus(deviceId, Status.ONLINE);
-        messagingTemplate.convertAndSend("/topic/data", device);
+
         messagingTemplate.convertAndSend("/topic/data", map);
         headerAccessor.getSessionAttributes().put("deviceId", deviceId);
         return payload;
