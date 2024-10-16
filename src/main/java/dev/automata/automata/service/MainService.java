@@ -70,7 +70,7 @@ public class MainService {
                 .status(registerDevice.getStatus()).build();
 
 
-        var isAlreadyRegistered = deviceRepository.findById(registerDevice.getDeviceId()).orElse(null);
+//        var isAlreadyRegistered = deviceRepository.findById(registerDevice.getDeviceId()).orElse(null);
         var isMacAddrPresent = deviceRepository.findByMacAddr(registerDevice.getMacAddr());
         System.err.println(isMacAddrPresent);
         if (!isMacAddrPresent.isEmpty()) {

@@ -14,6 +14,7 @@ import {getDevices, refreshDeviceById} from "../services/apis.jsx";
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import useWebSocket from "../services/useWebSocket.jsx";
+import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 
 const CustomModal = ({isOpen, onClose, device}) => {
     const fetchData = async () => {
@@ -81,16 +82,16 @@ function Device({data, isConnectable}) {
     let icon;
     let state;
     if (data.value["status"])
-    if (data.value.status === 'ONLINE') {
-        icon = 'bi bi-emoji-laughing-fill'; // Icon for connected
-        state = 'alert alert-success'; // Icon for connected
-    } else if (data.value.status === 'OFFLINE') {
-        icon = 'bi bi-emoji-frown-fill'; // Icon for disconnected
-        state = 'alert alert-danger'; // Icon for disconnected
-    } else {
-        icon = 'bi bi-emoji-neutral-fill'; // Default icon
-        state = 'alert alert-warning'; // Default icon
-    }
+        if (data.value.status === 'ONLINE') {
+            icon = 'bi bi-emoji-laughing-fill'; // Icon for connected
+            state = 'alert alert-success'; // Icon for connected
+        } else if (data.value.status === 'OFFLINE') {
+            icon = 'bi bi-emoji-frown-fill'; // Icon for disconnected
+            state = 'alert alert-danger'; // Icon for disconnected
+        } else {
+            icon = 'bi bi-emoji-neutral-fill'; // Default icon
+            state = 'alert alert-warning'; // Default icon
+        }
 
 
     return (
@@ -193,17 +194,17 @@ const createEdges = (devices) => {
     return devices.map(device => ({
         id: `edge-${device.id}`, // Unique edge ID
         source: `${device.id}`,     // The ID of the main node
-        target: 'main-node-1',       // The ID of the device node
+        target: 'main-node-1',
+        type: 'animatedSvg',// The ID of the device node
         targetHandle: 'main-node',       // Source handle ID if applicable
         animated: true,
         style: {strokeWidth: 2, stroke: '#006fff'}
     }));
 };
-
+const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {deviceNode: Device, mainNode: MainNode};
 
 export default function DeviceNodes() {
-    const [loading, setLoading] = useState(true);
     const {messages, sendMessage} = useWebSocket('/topic/data');
     const {messages: data, sendMessage: sendData} = useWebSocket('/topic/devices');
     const [nodes, setNodes] = useNodesState([]);
@@ -266,6 +267,7 @@ export default function DeviceNodes() {
                 colorMode="dark"
                 nodes={nodes}
                 edges={edges}
+                edgeTypes={edgeTypes}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
