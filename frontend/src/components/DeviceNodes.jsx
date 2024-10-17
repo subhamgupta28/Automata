@@ -144,29 +144,43 @@ function Device({data, isConnectable}) {
 }
 
 function MainNode({data, isConnectable}) {
+    let nodeIds = []
+    for (let i = 0; i < data.value.numOfDevices; i++) {
+        nodeIds.push("main-node-" + i)
+    }
+    console.log("ids", data)
 
 
     return (
         <div className="text-updater-node">
-            <div className={'card'} style={{
-                padding: '12px',
+            <div className={'card alert alert-warning'} style={{
+                padding: '0px',
+                width: '300px',
                 borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
             }}>
-                <label>
-                    <i className={'bi bi-motherboard-fill'} style={{marginRight: '8px'}}></i>
-                    Automata
-                </label>
-
+                <div className={'card-header'}>
+                    <div className="spinner-grow spinner-grow-sm" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <label>
+                        <i className={'bi bi-motherboard-fill'} style={{marginLeft: '8px', marginRight: '12px'}}></i>
+                        Automata
+                    </label>
+                </div>
+                <div className={'card-body'}>
+                    All systems working properly
+                </div>
+                {nodeIds.map((id, index) => (
+                    <Handle
+                        type="target"
+                        position={Position.Bottom}
+                        id={id}
+                        style={{left: 10 + index * 30}}
+                        isConnectable={isConnectable}
+                    />
+                ))}
             </div>
-            <Handle
-                type="target"
-                position={Position.Bottom}
-                id="main-node"
-                isConnectable={isConnectable}
-            />
+
         </div>
     );
 }
@@ -175,8 +189,8 @@ const createNodes = (devices) => {
     const mainNode = {
         id: 'main-node-1',
         type: 'mainNode',
-        position: {x: 300, y: 30}, // Adjust position as needed
-        data: {value: {name: 'Main Node'}},
+        position: {x: 200, y: 30}, // Adjust position as needed
+        data: {value: {numOfDevices: devices.length}},
     };
 
     let index = 0;
@@ -191,15 +205,22 @@ const createNodes = (devices) => {
 };
 
 const createEdges = (devices) => {
-    return devices.map(device => ({
-        id: `edge-${device.id}`, // Unique edge ID
-        source: `${device.id}`,     // The ID of the main node
-        target: 'main-node-1',
-        type: 'animatedSvg',// The ID of the device node
-        targetHandle: 'main-node',       // Source handle ID if applicable
-        animated: true,
-        style: {strokeWidth: 2, stroke: '#006fff'}
-    }));
+    let edges = [];
+    let index = 0;
+
+    devices.map(device => {
+        edges.push({
+            id: `edge-${device.id}`, // Unique edge ID
+            source: `${device.id}`,     // The ID of the main node
+            target: 'main-node-1',
+            type: 'animatedSvg',// The ID of the device node
+            targetHandle: 'main-node-' + index,       // Source handle ID if applicable
+            animated: true,
+            style: {strokeWidth: 2, stroke: '#006fff'}
+        })
+        index++;
+    });
+    return edges
 };
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {deviceNode: Device, mainNode: MainNode};
