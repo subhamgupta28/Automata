@@ -12,6 +12,7 @@ import dev.automata.automata.repository.AttributeRepository;
 import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -70,17 +71,35 @@ public class MainService {
                 .status(registerDevice.getStatus()).build();
 
 
+
 //        var isAlreadyRegistered = deviceRepository.findById(registerDevice.getDeviceId()).orElse(null);
+        var attributes = new ArrayList<Attribute>();
         var isMacAddrPresent = deviceRepository.findByMacAddr(registerDevice.getMacAddr());
-        System.err.println(isMacAddrPresent);
+
         if (!isMacAddrPresent.isEmpty()) {
-            System.err.println("Already registered device: " + registerDevice.getDeviceId());
-            return isMacAddrPresent.get(0);
+            var dev = isMacAddrPresent.get(0);
+            device.setId(dev.getId());
+            var attr = attributeRepository.findByDeviceId(dev.getId());
+            if (!attr.isEmpty()){
+                System.err.print("Attributes: ");
+                System.err.println(attr);
+                attributeRepository.deleteByDeviceId(dev.getId());
+            }
+
+            registerDevice.getAttributes().forEach(a -> {
+                a.setDeviceId(device.getId());
+                attributes.add(a);
+            });
+            var atr = attributeRepository.saveAll(attributes);
+            device.setAttributes(atr);
+            dev = deviceRepository.save(device);
+            System.err.println("Already registered device: " + device);
+            return dev;
         }
 
 
         var savedDevice = deviceRepository.save(device);
-        var attributes = new ArrayList<Attribute>();
+
         registerDevice.getAttributes().forEach(a -> {
             a.setDeviceId(savedDevice.getId());
             attributes.add(a);

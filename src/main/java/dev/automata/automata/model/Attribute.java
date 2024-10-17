@@ -5,6 +5,7 @@ import org.springframework.data.annotation.Id;
 import lombok.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Document(collection = "attribute")
@@ -20,6 +21,8 @@ public class Attribute {
     private String displayName;
     private String key;
     private String units;
+    private String type;
+    private Map<String, Object> extras;
     private String deviceId;
 }
 

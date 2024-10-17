@@ -235,7 +235,7 @@ export default function DeviceNodes() {
             nds.map((node) => {
                 if (node.id === messages.deviceId) {
                     let dt = node.data.value;
-                    if (messages.deviceConfig !== undefined) {
+                    if (messages.deviceConfig) {
                         dt = messages.deviceConfig;
                     }
                     return {

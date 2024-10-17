@@ -29,9 +29,10 @@ public class MainController {
     @GetMapping
     public ResponseEntity<String> status() {
         var map = new HashMap<String, Object>();
-        map.put("key", 1234);
-        map.put("value", 1234);
-        messagingTemplate.convertAndSend("/topic/action", map);
+        map.put("buz", true);
+        map.put("buzTone", 4300);
+        map.put("buzTime", 10000);
+        messagingTemplate.convertAndSend("/topic/action/670ec3bc166ab22722fbf4ea", map);
         return ResponseEntity.ok("Hello World");
     }
 
@@ -73,9 +74,13 @@ public class MainController {
     public ResponseEntity<Device> registerDevice(
             @RequestBody RegisterDevice registerDevice
     ) {
-        var device = mainService.setStatus(registerDevice.getDeviceId(), Status.ONLINE);
-        messagingTemplate.convertAndSend("/topic/data", device);
-        return ResponseEntity.ok(mainService.registerDevice(registerDevice));
+        var device = mainService.registerDevice(registerDevice);
+        var map = new HashMap<String, Object>();
+        map.put("deviceId", device.getId());
+        map.put("deviceConfig", device);
+        map.put("data", new HashMap<>());
+        messagingTemplate.convertAndSend("/topic/data", map);
+        return ResponseEntity.ok(device);
     }
 
 

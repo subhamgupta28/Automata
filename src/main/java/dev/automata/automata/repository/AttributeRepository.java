@@ -11,4 +11,8 @@ public interface AttributeRepository extends MongoRepository<Attribute, String> 
     List<Attribute> findAllByDeviceId(String deviceId);
 
     List<Attribute> findAllByDeviceIdIn(List<String> deviceIds);
+
+    List<Attribute> findByDeviceId(String deviceId);
+
+    long deleteByDeviceId(String deviceId);
 }
