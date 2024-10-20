@@ -1,20 +1,8 @@
-import React, {useCallback, useEffect, useState} from 'react';
-import {
-    addEdge,
-    applyEdgeChanges,
-    applyNodeChanges,
-    Background, Controls,
-    ReactFlow,
-    useEdgesState,
-    useNodesState
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import {Handle, Position} from '@xyflow/react';
-import {getDevices, refreshDeviceById} from "../services/apis.jsx";
-import Button from 'react-bootstrap/Button';
-import Modal from 'react-bootstrap/Modal';
-import useWebSocket from "../services/useWebSocket.jsx";
-import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
+import React, {useState} from "react";
+import {Handle, Position} from "@xyflow/react";
+import {refreshDeviceById} from "../../services/apis.jsx";
+import Modal from "react-bootstrap/Modal";
+import Button from "react-bootstrap/Button";
 
 const CustomModal = ({isOpen, onClose, device}) => {
     const fetchData = async () => {
@@ -75,7 +63,7 @@ const CustomModal = ({isOpen, onClose, device}) => {
     );
 };
 
-function Device({data, isConnectable}) {
+export function Device({data, isConnectable}) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
@@ -98,38 +86,37 @@ function Device({data, isConnectable}) {
         <div className="text-updater-node">
             <div className={'card ' + state} style={{padding: '0px'}}>
                 <div className="card-header" style={{display: 'flex', alignItems: 'center'}}>
-                    <h6>
+                    <h6 style={{display: 'contents'}}>
                         {data.value.name}
                         <i className={icon} style={{marginLeft: '8px'}}></i>
+                        <button onClick={handleOpenModal} className={'btn-sm btn'} style={{ marginLeft: '8px'}}>
+                            <i className={'bi bi-gear-fill'}></i>
+                        </button>
                     </h6>
+
                 </div>
                 <div className={'card-body'}>
-                    <button onClick={handleOpenModal} className={'btn-sm btn'} style={{width: 'fit-content'}}>
-                        <i className={'bi bi-gear-fill'}></i>
-                    </button>
-                    <div>
 
+                    {data.live && (
 
-                    </div>
-                </div>
-
-                {data.live && (
-                    <div className={'card-footer'}>
                         <table>
-                            <tbody>
+                        <tbody>
                             {
                                 data.value.attributes.map(attribute => (
                                     <tr key={attribute.id}>
                                         <th>{attribute["displayName"]}</th>
                                         <td>{data.live[attribute["key"]]}</td>
+                                        <td>{attribute["units"]}</td>
                                     </tr>
                                 ))
                             }
                             </tbody>
                         </table>
-                    </div>
-                )}
 
+                    )}
+                </div>
+                <div className={'card-footer'}>
+                </div>
 
                 <CustomModal isOpen={isModalOpen} onClose={handleCloseModal} device={data.value}/>
             </div>
@@ -143,7 +130,7 @@ function Device({data, isConnectable}) {
     );
 }
 
-function MainNode({data, isConnectable}) {
+export function MainNode({data, isConnectable}) {
     let nodeIds = []
     for (let i = 0; i < data.value.numOfDevices; i++) {
         nodeIds.push("main-node-" + i)
@@ -181,124 +168,6 @@ function MainNode({data, isConnectable}) {
                 ))}
             </div>
 
-        </div>
-    );
-}
-
-const createNodes = (devices) => {
-    const mainNode = {
-        id: 'main-node-1',
-        type: 'mainNode',
-        position: {x: 200, y: 30}, // Adjust position as needed
-        data: {value: {numOfDevices: devices.length}},
-    };
-
-    let index = 0;
-    const deviceNodes = devices.map((device) => ({
-        id: device.id,
-        type: 'deviceNode',
-        position: {x: index += 190, y: 260},
-        data: {value: device},
-    }));
-
-    return [mainNode, ...deviceNodes]; // Include main node with device nodes
-};
-
-const createEdges = (devices) => {
-    let edges = [];
-    let index = 0;
-
-    devices.map(device => {
-        edges.push({
-            id: `edge-${device.id}`, // Unique edge ID
-            source: `${device.id}`,     // The ID of the main node
-            target: 'main-node-1',
-            type: 'animatedSvg',// The ID of the device node
-            targetHandle: 'main-node-' + index,       // Source handle ID if applicable
-            animated: true,
-            style: {strokeWidth: 2, stroke: '#006fff'}
-        })
-        index++;
-    });
-    return edges
-};
-const edgeTypes = {animatedSvg: AnimatedSVGEdge};
-const nodeTypes = {deviceNode: Device, mainNode: MainNode};
-
-export default function DeviceNodes() {
-    const {messages, sendMessage} = useWebSocket('/topic/data');
-    const {messages: data, sendMessage: sendData} = useWebSocket('/topic/devices');
-    const [nodes, setNodes] = useNodesState([]);
-    const [edges, setEdges] = useEdgesState([]);
-    useEffect(() => {
-        setNodes((nds) =>
-            nds.map((node) => {
-                if (node.id === messages.deviceId) {
-                    let dt = node.data.value;
-                    if (messages.deviceConfig) {
-                        dt = messages.deviceConfig;
-                    }
-                    return {
-                        ...node,
-                        style: {
-                            ...node.style,
-                        },
-                        data: {value: dt, live: messages.data}
-                    };
-                }
-                return node;
-            }),
-        );
-    }, [messages, setNodes]);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const data = await getDevices();
-                // setDevices(data);
-                setNodes(createNodes(data)); // Create nodes including the main node
-                setEdges(createEdges(data)); // Create edges connecting devices to the main node
-            } catch (err) {
-                console.error("Failed to fetch devices:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [data]);
-
-
-    const onNodesChange = useCallback(
-        (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-        [setNodes],
-    );
-    const onEdgesChange = useCallback(
-        (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-        [setEdges],
-    );
-    const onConnect = useCallback(
-        (connection) => setEdges((eds) => addEdge(connection, eds)),
-        [setEdges],
-    );
-
-    return (
-        <div className={'card'} style={{height: '80vh', borderRadius: '12px'}}>
-            <ReactFlow
-                colorMode="dark"
-                nodes={nodes}
-                edges={edges}
-                edgeTypes={edgeTypes}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                nodeTypes={nodeTypes}
-
-                style={{width: '100%', height: '100%', borderRadius: '12px'}}
-            >
-                {/*<Background style={{width: '80%', height: '80%'}}/>*/}
-                <Controls/>
-            </ReactFlow>
         </div>
     );
 }

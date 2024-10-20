@@ -2,7 +2,7 @@ import {useState} from 'react'
 import './App.css'
 import Nav from "./components/Nav.jsx";
 import useWebSocket from './services/useWebSocket';
-import DeviceNodes from "./components/DeviceNodes.jsx";
+import DeviceNodes from "./components/dashboard/DeviceNodes.jsx";
 
 
 function App() {

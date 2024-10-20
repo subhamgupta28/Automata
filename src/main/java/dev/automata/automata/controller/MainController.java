@@ -115,8 +115,13 @@ public class MainController {
         mainService.saveData(deviceId, payload);
         var device = mainService.setStatus(deviceId, Status.ONLINE);
 //        messagingTemplate.convertAndSend("/topic/data", device);
-        payload.put("deviceConfig", device.get("deviceConfig"));
-        return getStringObjectMap(payload, headerAccessor, deviceId);
+
+        var map = new HashMap<String, Object>();
+        map.put("deviceId", deviceId);
+        map.put("data", payload);
+        map.put("deviceConfig", device.get("deviceConfig"));
+        messagingTemplate.convertAndSend("/topic/data", map);
+        return map;
     }
 
     // for getting live data from devices
