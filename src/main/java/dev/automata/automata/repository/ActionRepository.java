@@ -9,4 +9,6 @@ public interface ActionRepository extends MongoRepository<Actions, String> {
     List<Actions> findByProducerDeviceIdOrConsumerDeviceId(String producerDeviceId, String consumerDeviceId);
 
     Actions findByProducerDeviceId(String producerDeviceId);
+
+    Actions findByProducerDeviceIdAndProducerKey(String producerDeviceId, String producerKey);
 }

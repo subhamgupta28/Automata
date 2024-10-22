@@ -1,16 +1,15 @@
 package dev.automata.automata.service;
 
 import dev.automata.automata.model.Actions;
-import dev.automata.automata.model.Device;
 import dev.automata.automata.repository.ActionRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -28,32 +27,34 @@ public class ActionService {
         return actionRepository.findByProducerDeviceIdOrConsumerDeviceId(deviceId, deviceId);
     }
 
-    public String create(Actions action) {
-        actionRepository.save(action);
-        return action.getId();
+    public Actions create(Actions action) {
+        return actionRepository.save(action);
     }
 
-    public String handleAction(String deviceId) {
-        Actions action = actionRepository.findByProducerDeviceId(deviceId);
+    public String handleAction(String deviceId, Map<String, Object> payload) {
+        Actions action = actionRepository.findByProducerDeviceIdAndProducerKey(deviceId, payload.get("key").toString());
         if (action == null) {
             return "No action found!";
         }
+        System.err.println(action);
+        String value = payload.get(action.getProducerKey()).toString();
         var map = new HashMap<String, Object>();
-        if (evaluateCondition(action)){
+        if (evaluateCondition(action, value)){
             map.put(action.getConsumerKey(), action.getValueNegativeC());
         }else{
             map.put(action.getConsumerKey(), action.getValueNegativeC());
         }
         messagingTemplate.convertAndSend("/topic/action/"+action.getConsumerDeviceId(), map);
+        System.err.println("Action sent!"+map);
         return "Action successfully sent!";
     }
 
-    public Boolean evaluateCondition(Actions action) {
+    public Boolean evaluateCondition(Actions action, String value) {
         // Return value based on condition evaluation
         return switch (action.getProducerValueDataType().toLowerCase()) {
-            case "int" -> compareInts(action.getDefaultValue(), action.getProducerValue(), action.getCondition());
-            case "float" -> compareFloats(action.getDefaultValue(), action.getProducerValue(), action.getCondition());
-            case "string" -> compareStrings(action.getDefaultValue(), action.getProducerValue(), action.getCondition());
+            case "int" -> compareInts(action.getDefaultValue(), value, action.getCondition());
+            case "float" -> compareFloats(action.getDefaultValue(), value, action.getCondition());
+            case "string" -> compareStrings(action.getDefaultValue(), value, action.getCondition());
             default -> throw new IllegalArgumentException("Invalid data type: " + action.getProducerValueDataType());
         };
     }

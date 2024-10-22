@@ -137,18 +137,7 @@ public class MainController {
         return getStringObjectMap(payload, headerAccessor, deviceId);
     }
 
-    // for getting action data from devices
-    @MessageMapping("/action")
-    public Map<String, Object> sendAction(
-            @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
-    ) {
-        System.err.println("got action message: " + payload);
-        String deviceId = payload.get("device_id").toString();
-        if (deviceId.isEmpty() || deviceId.equals("null")) {
-            return payload;
-        }
-        return payload;
-    }
+
 
     private Map<String, Object> getStringObjectMap(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor, String deviceId) {
         var map = new HashMap<String, Object>();

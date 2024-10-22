@@ -24,7 +24,7 @@ public class Actions {
 
     private String defaultValue; // 1st arg for condition e.g. 400
 
-    private String producerValue; // 300
+//    private String producerValue; // 300
     private String producerValueDataType; // int
 
     private String valuePositiveC;// 100

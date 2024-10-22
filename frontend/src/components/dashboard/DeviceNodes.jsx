@@ -20,15 +20,15 @@ const createNodes = (devices) => {
     const mainNode = {
         id: 'main-node-1',
         type: 'mainNode',
-        position: {x: 200, y: 30}, // Adjust position as needed
+        position: {x: 20, y: 20}, // Adjust position as needed
         data: {value: {numOfDevices: devices.length}},
     };
 
-    let index = 0;
+    let index = 1;
     const deviceNodes = devices.map((device) => ({
         id: device.id,
         type: 'deviceNode',
-        position: {x: index += 190, y: 260},
+        position: {x: index += 200, y: 220},
         data: {value: device},
     }));
 
@@ -47,7 +47,7 @@ const createEdges = (devices) => {
             type: 'animatedSvg',// The ID of the device node
             targetHandle: 'main-node-' + index,       // Source handle ID if applicable
             animated: true,
-            style: {strokeWidth: 2, stroke: '#006fff'}
+            style: { stroke: '#006fff'}
         })
         index++;
     });
@@ -119,7 +119,7 @@ export default function DeviceNodes() {
                 colorMode="dark"
                 nodes={nodes}
                 edges={edges}
-                edgeTypes={edgeTypes}
+                // edgeTypes={edgeTypes}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}

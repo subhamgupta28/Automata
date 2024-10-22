@@ -27,6 +27,8 @@ public class Device {
     private Boolean sleep;
     private String accessUrl;
     private String macAddr;
+    private int x;
+    private int y;
     private List<Attribute> attributes = new ArrayList<>();
 }
 

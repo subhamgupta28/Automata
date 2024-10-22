@@ -142,7 +142,7 @@ export function MainNode({data, isConnectable}) {
         <div className="text-updater-node">
             <div className={'card alert alert-warning'} style={{
                 padding: '0px',
-                width: '300px',
+                width: '500px',
                 borderRadius: '8px',
             }}>
                 <div className={'card-header'}>
@@ -154,15 +154,12 @@ export function MainNode({data, isConnectable}) {
                         Automata
                     </label>
                 </div>
-                <div className={'card-body'}>
-                    All systems working properly
-                </div>
                 {nodeIds.map((id, index) => (
                     <Handle
                         type="target"
                         position={Position.Bottom}
                         id={id}
-                        style={{left: 10 + index * 30}}
+                        style={{left: 10 + index * 50}}
                         isConnectable={isConnectable}
                     />
                 ))}
