@@ -128,6 +128,7 @@ public class MainService {
                 .deviceId(deviceId)
                 .dateTime(formattedDate)
                 .data(payload)
+                .updateDate(date)
                 .timestamp(timestamp)
                 .build();
         dataRepository.save(data);

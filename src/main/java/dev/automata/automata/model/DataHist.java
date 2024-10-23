@@ -1,28 +1,23 @@
 package dev.automata.automata.model;
 
-
 import lombok.*;
-import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
 import java.util.Map;
 
-@Document(collection = "data")
+@Document(collection = "data_hist")
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @ToString
-
-public class Data {
+public class DataHist {
     @Id
     private String id;
     private String deviceId;
-    private String dateTime;
     private Map<String, Object> data;
-    private Long timestamp;
-    private Date updateDate;
+    private Date lastUpdated;
 }

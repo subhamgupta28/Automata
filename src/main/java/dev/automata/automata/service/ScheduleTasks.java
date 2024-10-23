@@ -1,6 +1,11 @@
 package dev.automata.automata.service;
 
 
+import dev.automata.automata.model.Parameter;
+import dev.automata.automata.repository.DataHistRepository;
+import dev.automata.automata.repository.DataRepository;
+import dev.automata.automata.repository.DeviceRepository;
+import dev.automata.automata.repository.ParameterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -10,19 +15,70 @@ import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
 import oshi.hardware.HardwareAbstractionLayer;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Date;
 
 @Service
 @RequiredArgsConstructor
 public class ScheduleTasks {
 
     private final MainService mainService;
+    private final DataRepository dataRepository;
+    private final DataHistRepository dataHistRepository;
+    private final ParameterRepository parameterRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    @Scheduled(fixedRate = 20000)
+    //1 hour interval
+    @Scheduled(fixedRate = 10000)
     public void refreshDevices() {
-        System.err.println("Refreshing devices...");
-//        messagingTemplate.convertAndSend("/topic/update", "{}");
+        var startTime = new Date();
+        System.err.println("Starting consolidation...");
+        System.err.println("start time: " + startTime);
+        var devices = mainService.getAllDevice();
+
+
+        for (var device : devices) {
+            var lastParameter = parameterRepository.findByDeviceId(device.getId());
+            LocalDateTime now = LocalDateTime.now();
+            // Start of the current hour
+            LocalDateTime startOfHour = now.truncatedTo(ChronoUnit.HOURS);
+            var startTimestamp = startOfHour.atZone(ZoneId.systemDefault()).toInstant();
+            // End of the current hour
+            LocalDateTime endOfHour = startOfHour.plusHours(1).minusSeconds(1);
+            var endTimestamp = endOfHour.atZone(ZoneId.systemDefault()).toInstant();
+
+            System.out.println("Start of hour timestamp: " + startTimestamp);
+            System.out.println("End of hour timestamp: " + endTimestamp);
+            if (lastParameter != null) {
+                lastParameter.setTransactionFrom(startTimestamp.getEpochSecond());
+                lastParameter.setTransactionTo(endTimestamp.getEpochSecond());
+                parameterRepository.save(lastParameter);
+                System.err.println("Last parameter updated: " + lastParameter);
+
+                var data = dataRepository.findByUpdateDateBetween(Date.from(startTimestamp), Date.from(endTimestamp));
+                if (data != null) {
+                    System.err.println(data);
+                }
+
+            }else {
+                System.err.println("Parameter not found: " + device.getId());
+                var para = Parameter.builder()
+                        .deviceId(device.getId())
+                        .transactionFrom(startTimestamp.getEpochSecond())
+                        .transactionTo(endTimestamp.getEpochSecond()).build();
+                parameterRepository.save(para);
+                System.err.println("New parameter added: ");
+
+            }
+
+
+
+        }
+
+
     }
 
 

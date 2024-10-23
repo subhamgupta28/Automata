@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 
+import java.util.List;
 import java.util.Map;
 
 @RequestMapping("/api/v1/action")
@@ -40,6 +41,11 @@ public class ActionController {
                 .build();
 
         return ResponseEntity.ok(actionService.create(action));
+    }
+
+    @GetMapping("/getAction")
+    public ResponseEntity<List<Actions>> getActions() {
+        return ResponseEntity.ok(actionService.getActions());
     }
 
     // for getting action data from devices

@@ -85,6 +85,10 @@ public class ActionService {
         };
     }
 
+    public List<Actions> getActions() {
+        return actionRepository.findAll();
+    }
+
 
 //    @Scheduled(fixedRate = 20000)
 //    public void refreshDevices() {

@@ -3,6 +3,7 @@ import './App.css'
 import Nav from "./components/Nav.jsx";
 import useWebSocket from './services/useWebSocket';
 import DeviceNodes from "./components/dashboard/DeviceNodes.jsx";
+import ActionBoard from "./components/action/ActionBoard.jsx";
 
 
 function App() {
@@ -22,7 +23,7 @@ function App() {
 
                 <section className={"content"}>
                     {/*<Devices/>*/}
-                    {/*<TreeNode/>*/}
+                    {/*<ActionBoard/>*/}
                     <DeviceNodes/>
 
 
