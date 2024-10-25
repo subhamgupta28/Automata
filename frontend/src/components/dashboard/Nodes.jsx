@@ -23,6 +23,7 @@ import Line from "../charts/Line.jsx";
 import {GaugeChart} from "../charts/GaugeChart.jsx";
 import AdsClickIcon from '@mui/icons-material/AdsClick';
 import {createEdges, createNodes} from "../../utils/Util.jsx";
+import {CustomSlider} from "../charts/CustomSlider.jsx";
 
 
 const CustomModal = ({isOpen, onClose, device}) => {
@@ -30,7 +31,7 @@ const CustomModal = ({isOpen, onClose, device}) => {
         try {
             const data = await refreshDeviceById(device.id);
         } catch (err) {
-            console.error("Failed to fetch devices:", err);
+            // console.error("Failed to fetch devices:", err);
         }
     };
     const handleReboot = () => {
@@ -89,10 +90,12 @@ export function Device({data, isConnectable}) {
     let state;
 
     const [gaugeData, setGaugeData] = useState([{key: ""}]);
+    const [sliderData, setSliderData] = useState([{key: ""}]);
 
     useEffect(() => {
         setGaugeData(data.value.attributes.filter((t) => t.type === "DATA|GAUGE"));
-        console.log(gaugeData)
+        setSliderData(data.value.attributes.filter((t) => t.type === "DATA|SLIDER"));
+        // console.log(sliderData)
     }, [data.live]);
 
 
@@ -103,7 +106,7 @@ export function Device({data, isConnectable}) {
                 await sendAction(data.value.id, {"key": attribute.key, [act]: 200, "device_id": data.value.id});
 
             } catch (err) {
-                console.error("Action send failed", err);
+                // console.error("Action send failed", err);
             }
         };
         send();
@@ -125,10 +128,10 @@ export function Device({data, isConnectable}) {
     return (
         <div className="text-updater-node">
             <Alert icon={false} variant="filled" severity={state}
-                   style={{borderRadius: '16px', padding: '1px'}}>
+                   style={{borderRadius: '16px', padding: '1px' }}>
 
-                <Card style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px'}}>
-                    <CardContent>
+                <Card style={{display: 'flex', borderRadius: '12px', marginLeft: '3px', marginRight: '3px'}}>
+                    <CardContent style={{minWidth: '200px', alignItems: 'center'}}>
                         <Typography style={{display: 'flex', alignItems: 'center'}}>
                             {data.value.name}
                             <SvgIcon component={icon} inheritViewBox style={{marginLeft: '8px',}}/>
@@ -141,6 +144,10 @@ export function Device({data, isConnectable}) {
 
                         {gaugeData && data.live && gaugeData.map((gauge)=> (
                             <GaugeChart value={data.live[gauge.key]} maxValue={gauge.extras.max} displayName={gauge.displayName}/>
+                        ))}
+
+                        {sliderData && data.live && sliderData.map((slide)=> (
+                            <CustomSlider value={data.live[slide.key]} deviceId={data.value.id} data={slide} displayName={slide.displayName}/>
                         ))}
 
 
@@ -195,7 +202,7 @@ export function MainNode({data, isConnectable}) {
     for (let i = 0; i < data.value.numOfDevices; i++) {
         nodeIds.push("main-node-" + i)
     }
-    console.log("ids", data.value)
+    // console.log("ids", data.value)
 
 
     return (

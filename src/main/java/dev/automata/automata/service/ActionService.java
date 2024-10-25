@@ -32,20 +32,28 @@ public class ActionService {
     }
 
     public String handleAction(String deviceId, Map<String, Object> payload) {
+        var map = new HashMap<String, Object>();
         Actions action = actionRepository.findByProducerDeviceIdAndProducerKey(deviceId, payload.get("key").toString());
+        if (payload.get("direct") != null) {
+
+            map.put(payload.get("key").toString(), payload.get(payload.get("key").toString()).toString());
+            System.err.println("direct = " + map);
+
+            messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
+        }
         if (action == null) {
             return "No action found!";
         }
         System.err.println(action);
         String value = payload.get(action.getProducerKey()).toString();
-        var map = new HashMap<String, Object>();
-        if (evaluateCondition(action, value)){
+
+        if (evaluateCondition(action, value)) {
             map.put(action.getConsumerKey(), action.getValueNegativeC());
-        }else{
+        } else {
             map.put(action.getConsumerKey(), action.getValueNegativeC());
         }
-        messagingTemplate.convertAndSend("/topic/action/"+action.getConsumerDeviceId(), map);
-        System.err.println("Action sent!"+map);
+        messagingTemplate.convertAndSend("/topic/action/" + action.getConsumerDeviceId(), map);
+        System.err.println("Action sent!" + map);
         return "Action successfully sent!";
     }
 
