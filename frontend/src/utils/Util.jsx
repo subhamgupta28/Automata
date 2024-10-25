@@ -23,11 +23,11 @@ export const createNodes = (devices) => {
     const mainNode = {
         id: 'main-node-1',
         type: 'mainNode',
-        position: {x: 30, y: 20}, // Adjust position as needed
+        position: {x: 120, y: 20}, // Adjust position as needed
         data: {value: {numOfDevices: devices.length}},
     };
 
-    let index = 30;
+    let index = 120;
     let deviceNodes = [];
     devices.map((device) => {
         deviceNodes.push({
@@ -36,7 +36,7 @@ export const createNodes = (devices) => {
             position: {x: index, y: 220},
             data: {value: device},
         });
-        index += 260
+        index += 320
     });
 
     return [mainNode, ...deviceNodes]; // Include main node with device nodes

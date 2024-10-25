@@ -21,6 +21,7 @@ public class Attribute {
     private String displayName;
     private String key;
     private String units;
+    private Boolean visible = true;
     private String type;
     private Map<String, Object> extras;
     private String deviceId;

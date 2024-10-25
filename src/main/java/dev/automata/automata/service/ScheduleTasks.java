@@ -47,7 +47,7 @@ public class ScheduleTasks {
             LocalDateTime startOfHour = now.truncatedTo(ChronoUnit.HOURS);
             var startTimestamp = startOfHour.atZone(ZoneId.systemDefault()).toInstant();
             // End of the current hour
-            LocalDateTime endOfHour = startOfHour.plusHours(1).minusSeconds(1);
+            LocalDateTime endOfHour = startOfHour.plusMinutes(30).minusSeconds(1);
             var endTimestamp = endOfHour.atZone(ZoneId.systemDefault()).toInstant();
 
             System.out.println("Start of hour timestamp: " + startTimestamp);
@@ -55,12 +55,13 @@ public class ScheduleTasks {
             if (lastParameter != null) {
                 lastParameter.setTransactionFrom(startTimestamp.getEpochSecond());
                 lastParameter.setTransactionTo(endTimestamp.getEpochSecond());
-                parameterRepository.save(lastParameter);
-                System.err.println("Last parameter updated: " + lastParameter);
+//                parameterRepository.save(lastParameter);
+//                System.err.println("Last parameter updated: " + lastParameter);
 
-                var data = dataRepository.findByUpdateDateBetween(Date.from(startTimestamp), Date.from(endTimestamp));
+                var data = dataRepository.findByDeviceIdAndUpdateDateBetween(device.getId(), Date.from(startTimestamp), Date.from(endTimestamp));
                 if (data != null) {
-                    System.err.println(data);
+                    System.err.println(device.getName());
+                    System.err.println(data.size());
                 }
 
             }else {
@@ -69,7 +70,7 @@ public class ScheduleTasks {
                         .deviceId(device.getId())
                         .transactionFrom(startTimestamp.getEpochSecond())
                         .transactionTo(endTimestamp.getEpochSecond()).build();
-                parameterRepository.save(para);
+//                parameterRepository.save(para);
                 System.err.println("New parameter added: ");
 
             }

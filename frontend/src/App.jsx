@@ -4,6 +4,8 @@ import Nav from "./components/Nav.jsx";
 import useWebSocket from './services/useWebSocket';
 import DeviceNodes from "./components/dashboard/DeviceNodes.jsx";
 import ActionBoard from "./components/action/ActionBoard.jsx";
+import {ThemeProvider} from "@mui/material/styles";
+import {darkTheme} from "./Theme.jsx";
 
 
 function App() {
@@ -16,7 +18,8 @@ function App() {
     };
     return (
         <>
-            <main data-bs-theme="dark" >
+            <ThemeProvider theme={darkTheme}>
+            <main>
                 <header>
                     <Nav/>
                 </header>
@@ -30,7 +33,7 @@ function App() {
                 </section>
 
             </main>
-
+            </ThemeProvider>
         </>
     )
 }

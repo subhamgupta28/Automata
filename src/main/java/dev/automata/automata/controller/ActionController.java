@@ -10,8 +10,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 
 import java.util.List;
@@ -49,6 +48,7 @@ public class ActionController {
     }
 
     // for getting action data from devices
+
     @MessageMapping("/action")
     public String sendAction(
             @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
@@ -59,5 +59,13 @@ public class ActionController {
             return "Device Id not found";
         }
         return actionService.handleAction(deviceId, payload);
+    }
+    @PostMapping("/sendAction/{deviceId}")
+    public ResponseEntity<String> handleAction(
+            @RequestBody Map<String, Object> payload,
+            @PathVariable String deviceId
+    ) {
+        System.err.println("got action message: " + payload);
+        return ResponseEntity.ok(actionService.handleAction(deviceId, payload));
     }
 }

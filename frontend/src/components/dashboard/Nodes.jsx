@@ -1,8 +1,29 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import {Handle, Position} from "@xyflow/react";
-import {refreshDeviceById} from "../../services/apis.jsx";
-import Modal from "react-bootstrap/Modal";
-import Button from "react-bootstrap/Button";
+import {getDevices, refreshDeviceById, sendAction} from "../../services/apis.jsx";
+import {
+    Alert,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    Dialog, DialogActions,
+    DialogContent,
+    DialogTitle,
+    Modal,
+    SvgIcon
+} from "@mui/material";
+import Typography from "@mui/material/Typography";
+import SettingsIcon from '@mui/icons-material/Settings';
+import MoodIcon from '@mui/icons-material/Mood';
+import MoodBadIcon from '@mui/icons-material/MoodBad';
+import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
+import IconButton from "@mui/material/IconButton";
+import Line from "../charts/Line.jsx";
+import {GaugeChart} from "../charts/GaugeChart.jsx";
+import AdsClickIcon from '@mui/icons-material/AdsClick';
+import {createEdges, createNodes} from "../../utils/Util.jsx";
+
 
 const CustomModal = ({isOpen, onClose, device}) => {
     const fetchData = async () => {
@@ -26,40 +47,37 @@ const CustomModal = ({isOpen, onClose, device}) => {
     }
 
     return (
-        <>
-            <Modal show={isOpen} onHide={onClose} centered>
-                <Modal.Header>
-                    <h5>Setting</h5>
-                </Modal.Header>
-                <Modal.Body>
-                    <button className={'btn-sm btn btn-secondary'} onClick={handleReboot}>
+        <React.Fragment>
+            <Dialog onClose={onClose} open={isOpen}>
+                <DialogTitle>
+                    <Button className={'btn-sm btn btn-secondary'} onClick={handleReboot}>
                         Reboot
-                    </button>
-                    <button style={{marginLeft: '12px'}} className={'btn-sm btn btn-secondary'} onClick={handleSleep}>
+                    </Button>
+                    <Button style={{marginLeft: '12px'}} className={'btn-sm btn btn-secondary'} onClick={handleSleep}>
                         Sleep
-                    </button>
-                    <button style={{marginLeft: '12px'}} className={'btn-sm btn btn-secondary'} onClick={handleUpdate}>
+                    </Button>
+                    <Button style={{marginLeft: '12px'}} className={'btn-sm btn btn-secondary'} onClick={handleUpdate}>
                         Update
-                    </button>
-
+                    </Button>
+                </DialogTitle>
+                <DialogContent style={{width: '400px', overflow: 'auto'}}>
                     <p>Attributes</p>
                     {device && device.attributes.map(attribute => (
                         <div key={attribute.id} className="mb-2">
                             <p>{attribute.displayName}: {attribute.units}</p>
                         </div>
                     ))}
-
-                </Modal.Body>
-                <Modal.Footer>
+                </DialogContent>
+                <DialogActions>
                     <Button variant="secondary" onClick={onClose}>
                         Close
                     </Button>
                     <Button variant="primary" onClick={onClose}>
                         Save Changes
                     </Button>
-                </Modal.Footer>
-            </Modal>
-        </>
+                </DialogActions>
+            </Dialog>
+        </React.Fragment>
     );
 };
 
@@ -69,57 +87,99 @@ export function Device({data, isConnectable}) {
     const handleCloseModal = () => setIsModalOpen(false);
     let icon;
     let state;
+
+    const [gaugeData, setGaugeData] = useState([{key: ""}]);
+
+    useEffect(() => {
+        setGaugeData(data.value.attributes.filter((t) => t.type === "DATA|GAUGE"));
+        console.log(gaugeData)
+    }, [data.live]);
+
+
+    const handleAction = (attribute) => {
+        const send = async () => {
+            try {
+                let act = attribute.key;
+                await sendAction(data.value.id, {"key": attribute.key, [act]: 200, "device_id": data.value.id});
+
+            } catch (err) {
+                console.error("Action send failed", err);
+            }
+        };
+        send();
+
+    }
     if (data.value["status"])
         if (data.value.status === 'ONLINE') {
-            icon = 'bi bi-emoji-laughing-fill'; // Icon for connected
-            state = 'alert alert-success'; // Icon for connected
+            icon = MoodIcon; // Icon for connected
+            state = 'success'; // Icon for connected
         } else if (data.value.status === 'OFFLINE') {
-            icon = 'bi bi-emoji-frown-fill'; // Icon for disconnected
-            state = 'alert alert-danger'; // Icon for disconnected
+            icon = MoodBadIcon; // Icon for disconnected
+            state = 'error'; // Icon for disconnected
         } else {
-            icon = 'bi bi-emoji-neutral-fill'; // Default icon
-            state = 'alert alert-warning'; // Default icon
+            icon = SentimentDissatisfiedIcon; // Default icon
+            state = 'warning'; // Default icon
         }
 
 
     return (
         <div className="text-updater-node">
-            <div className={'card ' + state} style={{padding: '0px'}}>
-                <div className="card-header" style={{display: 'flex', alignItems: 'center'}}>
-                    <h6 style={{display: 'contents'}}>
-                        {data.value.name}
-                        <i className={icon} style={{marginLeft: '8px'}}></i>
-                        <button onClick={handleOpenModal} className={'btn-sm btn'} style={{ marginLeft: '8px'}}>
-                            <i className={'bi bi-gear-fill'}></i>
-                        </button>
-                    </h6>
+            <Alert icon={false} variant="filled" severity={state}
+                   style={{borderRadius: '16px', padding: '1px'}}>
 
-                </div>
-                <div className={'card-body'}>
+                <Card style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px'}}>
+                    <CardContent>
+                        <Typography style={{display: 'flex', alignItems: 'center'}}>
+                            {data.value.name}
+                            <SvgIcon component={icon} inheritViewBox style={{marginLeft: '8px',}}/>
+                            <IconButton onClick={handleOpenModal} variant='text' style={{marginLeft: '8px'}}>
+                                <SettingsIcon/>
+                            </IconButton>
+                        </Typography>
 
-                    {data.live && (
+                        {/*<Line/>*/}
 
-                        <table>
-                        <tbody>
-                            {
-                                data.value.attributes.map(attribute => (
-                                    <tr key={attribute.id}>
-                                        <th>{attribute["displayName"]}</th>
-                                        <td>{data.live[attribute["key"]]}</td>
-                                        <td>{attribute["units"]}</td>
-                                    </tr>
-                                ))
-                            }
-                            </tbody>
-                        </table>
+                        {gaugeData && data.live && gaugeData.map((gauge)=> (
+                            <GaugeChart value={data.live[gauge.key]} maxValue={gauge.extras.max} displayName={gauge.displayName}/>
+                        ))}
 
-                    )}
-                </div>
-                <div className={'card-footer'}>
-                </div>
+
+                        {data.live && (
+                            <table style={{width: '100%', marginTop: '12px'}}>
+                                <tbody style={{padding: '0'}}>
+                                {
+                                    data.value.attributes.map(attribute => (
+                                        (attribute.type === "DATA|MAIN") && (
+                                            <tr key={attribute.id}>
+                                                <td>{attribute["displayName"]}</td>
+                                                <td>{data.live[attribute["key"]]}</td>
+                                                <td>{attribute["units"]}</td>
+                                            </tr>
+                                        )
+                                    ))
+                                }
+                                {
+                                    data.value.attributes.map(attribute => (
+                                        (attribute.type === "ACTION|OUT") && (
+                                            <tr style={{width: '100%'}} >
+                                                <th colSpan="3">
+                                                    <Button aria-label="delete" style={{width: '100%'}}
+                                                            onClick={() => handleAction(attribute)}>
+                                                        {attribute["displayName"]}
+                                                    </Button>
+                                                </th>
+                                            </tr>
+                                        )
+                                    ))
+                                }
+                                </tbody>
+                            </table>
+                        )}
+                    </CardContent>
+                </Card>
 
                 <CustomModal isOpen={isModalOpen} onClose={handleCloseModal} device={data.value}/>
-            </div>
+            </Alert>
             <Handle
                 type="source"
                 position={Position.Top}
@@ -135,25 +195,22 @@ export function MainNode({data, isConnectable}) {
     for (let i = 0; i < data.value.numOfDevices; i++) {
         nodeIds.push("main-node-" + i)
     }
-    console.log("ids", data)
+    console.log("ids", data.value)
 
 
     return (
         <div className="text-updater-node">
-            <div className={'card alert alert-warning'} style={{
+            <Card elevation={12} style={{
                 padding: '0px',
                 width: '500px',
                 borderRadius: '8px',
             }}>
-                <div className={'card-header'}>
-                    <div className="spinner-grow spinner-grow-sm" role="status">
-                        <span className="visually-hidden">Loading...</span>
-                    </div>
-                    <label>
-                        <i className={'bi bi-motherboard-fill'} style={{marginLeft: '8px', marginRight: '12px'}}></i>
+                <CardContent>
+                    <Typography variant="body2">
+                        <i style={{marginLeft: '8px', marginRight: '12px'}}></i>
                         Automata
-                    </label>
-                </div>
+                    </Typography>
+                </CardContent>
                 {nodeIds.map((id, index) => (
                     <Handle
                         type="target"
@@ -163,7 +220,7 @@ export function MainNode({data, isConnectable}) {
                         isConnectable={isConnectable}
                     />
                 ))}
-            </div>
+            </Card>
 
         </div>
     );

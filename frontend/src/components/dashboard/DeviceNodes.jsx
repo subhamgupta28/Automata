@@ -14,6 +14,7 @@ import useWebSocket from "../../services/useWebSocket.jsx";
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "../../utils/Util.jsx";
+import {Card} from "@mui/material";
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {deviceNode: Device, mainNode: MainNode};
@@ -74,7 +75,7 @@ export default function DeviceNodes() {
     );
 
     return (
-        <div className={'card'} style={{height: '80vh', borderRadius: '12px'}}>
+        <Card style={{height: '80vh', borderRadius: '12px'}}>
             <ReactFlow
                 colorMode="dark"
                 nodes={nodes}
@@ -83,7 +84,7 @@ export default function DeviceNodes() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+                defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
                 nodeTypes={nodeTypes}
 
                 style={{width: '100%', height: '100%', borderRadius: '12px'}}
@@ -91,6 +92,6 @@ export default function DeviceNodes() {
                 {/*<Background style={{width: '80%', height: '80%'}}/>*/}
                 <Controls/>
             </ReactFlow>
-        </div>
+        </Card>
     );
 }
