@@ -25,7 +25,7 @@ function App() {
                 </header>
 
                 <section className={"content"}>
-                    {/*<Devices/>*/}
+                    {/*<DndTest/>*/}
                     {/*<ActionBoard/>*/}
                     <DeviceNodes/>
 

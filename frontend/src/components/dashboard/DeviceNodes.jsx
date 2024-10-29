@@ -15,9 +15,14 @@ import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
 import {Card} from "@mui/material";
+import ChartNode from "../charts/ChartNode.jsx";
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
-const nodeTypes = {deviceNode: Device, mainNode: MainNode};
+const nodeTypes = {
+    deviceNode: Device,
+    mainNode: MainNode,
+    lineChartNode: ChartNode
+};
 
 export default function DeviceNodes() {
     const {messages, sendMessage} = useWebSocket('/topic/data');
@@ -49,8 +54,11 @@ export default function DeviceNodes() {
         const fetchData = async () => {
             try {
                 const devices = await getDevices();
-                setNodes(createNodes(devices)); // Create nodes including the main node
-                setEdges(createEdges(devices)); // Create edges connecting devices to the main node
+                const charts = devices.filter(device =>
+                    device.attributes.some(attr => attr.type === "DATA|CHART")
+                );
+                setNodes(createNodes(devices, charts)); // Create nodes including the main node
+                setEdges(createEdges(devices, charts)); // Create edges connecting devices to the main node
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
             }
@@ -74,7 +82,7 @@ export default function DeviceNodes() {
     );
 
     return (
-        <Card style={{height: '80vh', borderRadius: '12px'}}>
+        <Card style={{height: '85vh', borderRadius: '12px'}}>
             <ReactFlow
                 colorMode="dark"
                 nodes={nodes}
@@ -83,7 +91,7 @@ export default function DeviceNodes() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
+                defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
                 nodeTypes={nodeTypes}
 
                 style={{width: '100%', height: '100%', borderRadius: '12px'}}

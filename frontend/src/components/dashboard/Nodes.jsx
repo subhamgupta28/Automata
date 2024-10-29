@@ -19,10 +19,7 @@ import MoodIcon from '@mui/icons-material/Mood';
 import MoodBadIcon from '@mui/icons-material/MoodBad';
 import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
 import IconButton from "@mui/material/IconButton";
-import Line from "../charts/Line.jsx";
 import {GaugeChart} from "../charts/GaugeChart.jsx";
-import AdsClickIcon from '@mui/icons-material/AdsClick';
-import {createEdges, createNodes} from "./EdgeNode.jsx";
 import {CustomSlider} from "../charts/CustomSlider.jsx";
 
 
@@ -92,11 +89,10 @@ export function Device({data, isConnectable}) {
     const [gaugeData, setGaugeData] = useState([{key: "", extras: {max:0, min:0}}]);
     const [sliderData, setSliderData] = useState([{key: "", extras: {max:0, min:0}}]);
 
+
     useEffect(() => {
         setGaugeData(data.value.attributes.filter((t) => t.type === "DATA|GAUGE"));
         setSliderData(data.value.attributes.filter((t) => t.type === "DATA|SLIDER"));
-        console.log(sliderData)
-        console.log(gaugeData)
     }, [data.live]);
 
 
@@ -141,7 +137,7 @@ export function Device({data, isConnectable}) {
                             </IconButton>
                         </Typography>
 
-                        {/*<Line/>*/}
+                        {/*<ChartNode/>*/}
 
                         {gaugeData && data.live && gaugeData.map((gauge) => (
                             <GaugeChart value={data.live[gauge.key]} maxValue={gauge.extras.max}
@@ -192,8 +188,9 @@ export function Device({data, isConnectable}) {
             </Alert>
             <Handle
                 type="source"
-                position={Position.Top}
+                position={Position.Right}
                 id="b"
+                style={{top: 30}}
                 isConnectable={isConnectable}
             />
         </div>
@@ -202,10 +199,14 @@ export function Device({data, isConnectable}) {
 
 export function MainNode({data, isConnectable}) {
     let nodeIds = []
+    let chartIds = []
     for (let i = 0; i < data.value.numOfDevices; i++) {
         nodeIds.push("main-node-" + i)
     }
-    // console.log("ids", data.value)
+    for (let i = 0; i < data.value.chartNodes; i++) {
+        chartIds.push("chart-node-" + i)
+    }
+    // console.log("ids", chartIds, nodeIds)
 
 
     return (
@@ -215,21 +216,29 @@ export function MainNode({data, isConnectable}) {
 
                 <Card elevation={12} style={{
                     padding: '0px',
-                    width: '500px',
+                    height: '400px',
                     borderRadius: '8px',
                 }}>
-                    <CardContent>
-                        <Typography variant="body2">
-                            <i style={{marginLeft: '8px', marginRight: '12px'}}></i>
+                    {chartIds && chartIds.map((id, index) => (
+                        <Handle
+                            type="target"
+                            position={Position.Right}
+                            id={id}
+                            style={{top: 10 + index * 50}}
+                            isConnectable={isConnectable}
+                        />
+                    ))}
+                    <CardContent style={{margin: '20px'}}>
+                        <Typography>
                             Automata
                         </Typography>
                     </CardContent>
                     {nodeIds && nodeIds.map((id, index) => (
                         <Handle
                             type="target"
-                            position={Position.Bottom}
+                            position={Position.Left}
                             id={id}
-                            style={{left: 10 + index * 50}}
+                            style={{top: 10 + index * 50}}
                             isConnectable={isConnectable}
                         />
                     ))}

@@ -2,8 +2,8 @@ import {useEffect, useState} from 'react';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
 
-const url = window.location.href + "ws";
-// const url = "http://localhost:8080/ws";
+// const url = window.location.href + "ws";
+const url = "http://localhost:8080/ws";
 
 const useWebSocket = (topic) => {
     const [stompClient, setStompClient] = useState(null);
