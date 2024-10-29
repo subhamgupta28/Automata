@@ -70,6 +70,11 @@ public class MainController {
         return ResponseEntity.ok(mainService.getData(deviceId));
     }
 
+    @GetMapping(value = "/lastData/{deviceId}")
+    public ResponseEntity<Map<String, Object>> getLastDataByDeviceId(@PathVariable String deviceId) {
+        return ResponseEntity.ok(mainService.getLastData(deviceId));
+    }
+
     @PostMapping("/register")
     public ResponseEntity<Device> registerDevice(
             @RequestBody RegisterDevice registerDevice
@@ -112,7 +117,8 @@ public class MainController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             return payload;
         }
-        mainService.saveData(deviceId, payload);
+        if (payload.size() > 1)
+            mainService.saveData(deviceId, payload);
         var device = mainService.setStatus(deviceId, Status.ONLINE);
 //        messagingTemplate.convertAndSend("/topic/data", device);
 
@@ -136,7 +142,6 @@ public class MainController {
         }
         return getStringObjectMap(payload, headerAccessor, deviceId);
     }
-
 
 
     private Map<String, Object> getStringObjectMap(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor, String deviceId) {

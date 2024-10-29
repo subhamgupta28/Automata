@@ -71,7 +71,6 @@ public class MainService {
                 .status(registerDevice.getStatus()).build();
 
 
-
 //        var isAlreadyRegistered = deviceRepository.findById(registerDevice.getDeviceId()).orElse(null);
         var attributes = new ArrayList<Attribute>();
         var isMacAddrPresent = deviceRepository.findByMacAddr(registerDevice.getMacAddr());
@@ -80,7 +79,7 @@ public class MainService {
             var dev = isMacAddrPresent.get(0);
             device.setId(dev.getId());
             var attr = attributeRepository.findByDeviceId(dev.getId());
-            if (!attr.isEmpty()){
+            if (!attr.isEmpty()) {
                 System.err.print("Attributes: ");
                 System.err.println(attr);
                 attributeRepository.deleteByDeviceId(dev.getId());
@@ -189,7 +188,14 @@ public class MainService {
     }
 
     public List<Device> getAllDevice() {
-        return deviceRepository.findAll();
+        var devices = deviceRepository.findAll();
+        var deviceList = new ArrayList<Device>();
+        devices.forEach(device -> {
+            var lastData = getLastData(device.getId());
+            device.setLastData(lastData);
+            deviceList.add(device);
+        });
+        return deviceList;
     }
 
     public Map<String, Object> setStatus(String deviceId, Status status) {
@@ -207,5 +213,10 @@ public class MainService {
         map.put("deviceConfig", device);
         map.put("data", lastData);
         return map;
+    }
+
+    public Map<String, Object> getLastData(String deviceId) {
+        var data = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId);
+        return data.getData();
     }
 }

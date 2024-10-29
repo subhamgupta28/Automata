@@ -11,8 +11,6 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-
-
 import java.util.List;
 import java.util.Map;
 
@@ -60,6 +58,8 @@ public class ActionController {
         }
         return actionService.handleAction(deviceId, payload);
     }
+
+
     @PostMapping("/sendAction/{deviceId}")
     public ResponseEntity<String> handleAction(
             @RequestBody Map<String, Object> payload,

@@ -15,6 +15,9 @@ public interface DataRepository extends MongoRepository<Data, String> {
     @Nullable
     Data getFirstByDeviceIdOrderByTimestampDesc(String deviceId);
 
-    List<Data> findByTimestampBetween(Long timestampStart, Long timestampEnd);
     List<Data> findByDeviceIdAndUpdateDateBetween(String deviceId, Date updateDate, Date updateDate2);
+
+    Data findByDeviceId(String deviceId);
+
+    Data getFirstDataByDeviceIdOrderByTimestampDesc(String deviceId);
 }

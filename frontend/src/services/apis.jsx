@@ -14,6 +14,9 @@ export const getActions = async () => {
     });
     return response.data;
 }
+
+
+
 export const getDevices = async () => {
     const response = await axios.get(BASE_URL + "main/devices", {
         headers: {
@@ -52,3 +55,12 @@ export const getDataByDeviceId = async (deviceId) => {
     return response.data;
 }
 
+export const getLastDataByDeviceId = async (deviceId) => {
+    const response = await axios.get(BASE_URL + 'main/lastData/' + deviceId, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}

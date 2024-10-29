@@ -32,7 +32,7 @@ public class ScheduleTasks {
     private final SimpMessagingTemplate messagingTemplate;
 
     //1 hour interval
-    @Scheduled(fixedRate = 10000)
+//    @Scheduled(fixedRate = 10000)
     public void refreshDevices() {
         var startTime = new Date();
         System.err.println("Starting consolidation...");

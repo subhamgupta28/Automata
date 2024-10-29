@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Document(collection = "device")
 @Getter
@@ -27,6 +28,7 @@ public class Device {
     private Boolean sleep;
     private String accessUrl;
     private String macAddr;
+    private Map<String, Object> lastData;
     private int x;
     private int y;
     private List<Attribute> attributes = new ArrayList<>();

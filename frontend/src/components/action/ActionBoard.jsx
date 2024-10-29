@@ -10,7 +10,7 @@ import {
 } from "@xyflow/react";
 import React, {useCallback, useEffect, useState} from "react";
 import {getActions} from "../../services/apis.jsx";
-import {createEdges, createNodes} from "../../utils/Util.jsx";
+import {createEdges, createNodes} from "../dashboard/EdgeNode.jsx";
 
 export function ProducerNode({data, isConnectable}) {
 

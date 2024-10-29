@@ -34,7 +34,10 @@ public class WebsocketEventListener {
         if (deviceId != null) {
             System.err.println("Websocket disconnected from " + deviceId);
             var device = mainService.setStatus(deviceId, Status.OFFLINE);
-            messagingTemplate.convertAndSend("/topic/data", device);
+            var map = new HashMap<String, Object>();
+            map.put("deviceId", deviceId);
+            map.put("deviceConfig", device.get("deviceConfig"));
+            messagingTemplate.convertAndSend("/topic/data", map);
         }
 
     }

@@ -1,3 +1,5 @@
+import {getDevices, getLastDataByDeviceId} from "../../services/apis.jsx";
+import {useEffect, useState} from "react";
 
 
 export const createEdges = (devices) => {
@@ -20,6 +22,7 @@ export const createEdges = (devices) => {
 };
 
 export const createNodes = (devices) => {
+
     const mainNode = {
         id: 'main-node-1',
         type: 'mainNode',
@@ -27,14 +30,16 @@ export const createNodes = (devices) => {
         data: {value: {numOfDevices: devices.length}},
     };
 
+
+
     let index = 120;
     let deviceNodes = [];
-    devices.map((device) => {
+    devices.map(async (device) => {
         deviceNodes.push({
             id: device.id,
             type: 'deviceNode',
             position: {x: index, y: 220},
-            data: {value: device},
+            data: {value: device, live: {...device.lastData}},
         });
         index += 320
     });

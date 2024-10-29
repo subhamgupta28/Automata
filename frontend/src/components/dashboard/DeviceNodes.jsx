@@ -9,11 +9,11 @@ import {
     useNodesState
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import {getDevices} from "../../services/apis.jsx";
+import {getDevices, getLastDataByDeviceId} from "../../services/apis.jsx";
 import useWebSocket from "../../services/useWebSocket.jsx";
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {Device, MainNode} from "./Nodes.jsx";
-import {createEdges, createNodes} from "../../utils/Util.jsx";
+import {createEdges, createNodes} from "./EdgeNode.jsx";
 import {Card} from "@mui/material";
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
@@ -48,10 +48,9 @@ export default function DeviceNodes() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const data = await getDevices();
-                // setDevices(data);
-                setNodes(createNodes(data)); // Create nodes including the main node
-                setEdges(createEdges(data)); // Create edges connecting devices to the main node
+                const devices = await getDevices();
+                setNodes(createNodes(devices)); // Create nodes including the main node
+                setEdges(createEdges(devices)); // Create edges connecting devices to the main node
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
             }

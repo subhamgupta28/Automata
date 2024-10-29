@@ -22,7 +22,7 @@ import IconButton from "@mui/material/IconButton";
 import Line from "../charts/Line.jsx";
 import {GaugeChart} from "../charts/GaugeChart.jsx";
 import AdsClickIcon from '@mui/icons-material/AdsClick';
-import {createEdges, createNodes} from "../../utils/Util.jsx";
+import {createEdges, createNodes} from "./EdgeNode.jsx";
 import {CustomSlider} from "../charts/CustomSlider.jsx";
 
 
@@ -89,13 +89,14 @@ export function Device({data, isConnectable}) {
     let icon;
     let state;
 
-    const [gaugeData, setGaugeData] = useState([{key: ""}]);
-    const [sliderData, setSliderData] = useState([{key: ""}]);
+    const [gaugeData, setGaugeData] = useState([{key: "", extras: {max:0, min:0}}]);
+    const [sliderData, setSliderData] = useState([{key: "", extras: {max:0, min:0}}]);
 
     useEffect(() => {
         setGaugeData(data.value.attributes.filter((t) => t.type === "DATA|GAUGE"));
         setSliderData(data.value.attributes.filter((t) => t.type === "DATA|SLIDER"));
-        // console.log(sliderData)
+        console.log(sliderData)
+        console.log(gaugeData)
     }, [data.live]);
 
 
@@ -128,7 +129,7 @@ export function Device({data, isConnectable}) {
     return (
         <div className="text-updater-node">
             <Alert icon={false} variant="filled" severity={state}
-                   style={{borderRadius: '16px', padding: '1px' }}>
+                   style={{borderRadius: '16px', padding: '1px'}}>
 
                 <Card style={{display: 'flex', borderRadius: '12px', marginLeft: '3px', marginRight: '3px'}}>
                     <CardContent style={{minWidth: '200px', alignItems: 'center'}}>
@@ -142,12 +143,14 @@ export function Device({data, isConnectable}) {
 
                         {/*<Line/>*/}
 
-                        {gaugeData && data.live && gaugeData.map((gauge)=> (
-                            <GaugeChart value={data.live[gauge.key]} maxValue={gauge.extras.max} displayName={gauge.displayName}/>
+                        {gaugeData && data.live && gaugeData.map((gauge) => (
+                            <GaugeChart value={data.live[gauge.key]} maxValue={gauge.extras.max}
+                                        displayName={gauge.displayName}/>
                         ))}
 
-                        {sliderData && data.live && sliderData.map((slide)=> (
-                            <CustomSlider value={data.live[slide.key]} deviceId={data.value.id} data={slide} displayName={slide.displayName}/>
+                        {sliderData && data.live && sliderData.map((slide) => (
+                            <CustomSlider value={data.live[slide.key]} deviceId={data.value.id} data={slide}
+                                          displayName={slide.displayName}/>
                         ))}
 
 
@@ -168,7 +171,7 @@ export function Device({data, isConnectable}) {
                                 {
                                     data.value.attributes.map(attribute => (
                                         (attribute.type === "ACTION|OUT") && (
-                                            <tr style={{width: '100%'}} >
+                                            <tr style={{width: '100%'}}>
                                                 <th colSpan="3">
                                                     <Button aria-label="delete" style={{width: '100%'}}
                                                             onClick={() => handleAction(attribute)}>
@@ -207,28 +210,31 @@ export function MainNode({data, isConnectable}) {
 
     return (
         <div className="text-updater-node">
-            <Card elevation={12} style={{
-                padding: '0px',
-                width: '500px',
-                borderRadius: '8px',
-            }}>
-                <CardContent>
-                    <Typography variant="body2">
-                        <i style={{marginLeft: '8px', marginRight: '12px'}}></i>
-                        Automata
-                    </Typography>
-                </CardContent>
-                {nodeIds.map((id, index) => (
-                    <Handle
-                        type="target"
-                        position={Position.Bottom}
-                        id={id}
-                        style={{left: 10 + index * 50}}
-                        isConnectable={isConnectable}
-                    />
-                ))}
-            </Card>
+            <div style={{borderRadius: '16px'}}>
 
+
+                <Card elevation={12} style={{
+                    padding: '0px',
+                    width: '500px',
+                    borderRadius: '8px',
+                }}>
+                    <CardContent>
+                        <Typography variant="body2">
+                            <i style={{marginLeft: '8px', marginRight: '12px'}}></i>
+                            Automata
+                        </Typography>
+                    </CardContent>
+                    {nodeIds && nodeIds.map((id, index) => (
+                        <Handle
+                            type="target"
+                            position={Position.Bottom}
+                            id={id}
+                            style={{left: 10 + index * 50}}
+                            isConnectable={isConnectable}
+                        />
+                    ))}
+                </Card>
+            </div>
         </div>
     );
 }
