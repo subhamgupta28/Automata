@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {Handle, Position} from "@xyflow/react";
-import {getDevices, refreshDeviceById, sendAction} from "../../services/apis.jsx";
+import {getChartData, getDevices, refreshDeviceById, sendAction} from "../../services/apis.jsx";
 import {
     Alert,
     Button,
@@ -10,7 +10,7 @@ import {
     Dialog, DialogActions,
     DialogContent,
     DialogTitle,
-    Modal,
+    Modal, Slider,
     SvgIcon
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
@@ -21,6 +21,10 @@ import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied
 import IconButton from "@mui/material/IconButton";
 import {GaugeChart} from "../charts/GaugeChart.jsx";
 import {CustomSlider} from "../charts/CustomSlider.jsx";
+import ChartNode from "../charts/ChartNode.jsx";
+import {axisClasses} from "@mui/x-charts/ChartsAxis";
+import {BarChart} from "@mui/x-charts";
+import {createEdges, createNodes} from "./EdgeNode.jsx";
 
 
 const CustomModal = ({isOpen, onClose, device}) => {
@@ -200,6 +204,7 @@ export function Device({data, isConnectable}) {
 export function MainNode({data, isConnectable}) {
     let nodeIds = []
     let chartIds = []
+    // const [chartData, setChartData] = useState({dataKey:"", data: [], label:""})
     for (let i = 0; i < data.value.numOfDevices; i++) {
         nodeIds.push("main-node-" + i)
     }
@@ -207,6 +212,19 @@ export function MainNode({data, isConnectable}) {
         chartIds.push("chart-node-" + i)
     }
     // console.log("ids", chartIds, nodeIds)
+
+    // useEffect(() => {
+    //     const fetch = async () => {
+    //         try {
+    //             const res = await getChartData("6713fd6118af335020f90f73");
+    //             setChartData(res);
+    //         } catch (err) {
+    //             console.error("Failed to fetch devices:", err);
+    //         }
+    //     };
+    //
+    //     fetch();
+    // }, []);
 
 
     return (
@@ -216,8 +234,9 @@ export function MainNode({data, isConnectable}) {
 
                 <Card elevation={12} style={{
                     padding: '0px',
-                    height: '400px',
-                    borderRadius: '8px',
+                    height: '800px',
+                    width:'1550px',
+                    borderRadius: '18px',
                 }}>
                     {chartIds && chartIds.map((id, index) => (
                         <Handle
@@ -229,16 +248,14 @@ export function MainNode({data, isConnectable}) {
                         />
                     ))}
                     <CardContent style={{margin: '20px'}}>
-                        <Typography>
-                            Automata
-                        </Typography>
+                        <BarChartComp chartData={data.value.chart}/>
                     </CardContent>
                     {nodeIds && nodeIds.map((id, index) => (
                         <Handle
                             type="target"
                             position={Position.Left}
                             id={id}
-                            style={{top: 10 + index * 50}}
+                            style={{top: 140 + index * 50}}
                             isConnectable={isConnectable}
                         />
                     ))}
@@ -246,4 +263,39 @@ export function MainNode({data, isConnectable}) {
             </div>
         </div>
     );
+}
+
+
+function valueFormatter(value) {
+    return `${value}mm`;
+}
+function BarChartComp({chartData}) {
+    const chartSetting = {
+        yAxis: [
+            {
+                label: chartData.label,
+            },
+        ],
+        series: [{ dataKey: chartData.dataKey, valueFormatter }],
+        height: 500,
+        width: 800,
+        sx: {
+            [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
+                transform: 'translateX(-10px)',
+            },
+        },
+    };
+    return(
+        <div>
+            <BarChart
+                dataset={chartData.data}
+                xAxis={[
+                    { scaleType: 'band', dataKey: chartData.dataKey },
+                ]}
+                borderRadius={10}
+                {...chartSetting}
+            />
+
+        </div>
+    )
 }

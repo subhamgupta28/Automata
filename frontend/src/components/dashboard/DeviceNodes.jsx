@@ -9,7 +9,7 @@ import {
     useNodesState
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import {getDevices, getLastDataByDeviceId} from "../../services/apis.jsx";
+import {getChartData, getDevices, getLastDataByDeviceId} from "../../services/apis.jsx";
 import useWebSocket from "../../services/useWebSocket.jsx";
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {Device, MainNode} from "./Nodes.jsx";
@@ -57,8 +57,9 @@ export default function DeviceNodes() {
                 const charts = devices.filter(device =>
                     device.attributes.some(attr => attr.type === "DATA|CHART")
                 );
-                setNodes(createNodes(devices, charts)); // Create nodes including the main node
-                setEdges(createEdges(devices, charts)); // Create edges connecting devices to the main node
+                const chart = await getChartData("6713fd6118af335020f90f73");
+                setNodes(createNodes(devices, [], chart)); // Create nodes including the main node
+                setEdges(createEdges(devices, [])); // Create edges connecting devices to the main node
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
             }
@@ -82,7 +83,7 @@ export default function DeviceNodes() {
     );
 
     return (
-        <Card style={{height: '85vh', borderRadius: '12px'}}>
+        <div style={{height: '90vh'}}>
             <ReactFlow
                 colorMode="dark"
                 nodes={nodes}
@@ -91,14 +92,18 @@ export default function DeviceNodes() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
+                defaultViewport={{x: 0, y: 0, zoom: 0.6}}
                 nodeTypes={nodeTypes}
 
-                style={{width: '100%', height: '100%', borderRadius: '12px'}}
+                // style={{
+                //     width: '100%', height: '100%', borderRadius: '12px',
+                //     backgroundColor: 'rgba(255, 255, 255, 0.01)',
+                //     backdropFilter: 'blur(7px)',
+                // }}
             >
                 {/*<Background style={{width: '80%', height: '80%'}}/>*/}
-                <Controls/>
+                {/*<Controls/>*/}
             </ReactFlow>
-        </Card>
+        </div>
     );
 }

@@ -1,9 +1,11 @@
 package dev.automata.automata.controller;
 
+import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
+import dev.automata.automata.service.AnalyticsService;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +27,13 @@ public class MainController {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final MainService mainService;
+    private final AnalyticsService analyticsService;
+
+    @GetMapping("chart/{deviceId}")
+    public ResponseEntity<ChartDataDto> getChartData(@PathVariable String deviceId){
+
+        return ResponseEntity.ok(analyticsService.getChartData2(deviceId,""));
+    }
 
     @GetMapping
     public ResponseEntity<String> status() {
