@@ -6,6 +6,8 @@ import DeviceNodes from "./components/dashboard/DeviceNodes.jsx";
 import ActionBoard from "./components/action/ActionBoard.jsx";
 import {ThemeProvider} from "@mui/material/styles";
 import {darkTheme} from "./Theme.jsx";
+import SignIn from "./components/auth/SignIn.jsx";
+import SignUp from "./components/auth/SignUp.jsx";
 
 
 function App() {
@@ -28,6 +30,8 @@ function App() {
                     {/*<DndTest/>*/}
                     {/*<ActionBoard/>*/}
                     <DeviceNodes/>
+                    {/*<SignIn/>*/}
+                    {/*<SignUp/>*/}
 
 
                 </section>
