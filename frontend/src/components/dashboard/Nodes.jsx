@@ -25,6 +25,7 @@ import ChartNode from "../charts/ChartNode.jsx";
 import {axisClasses} from "@mui/x-charts/ChartsAxis";
 import {BarChart} from "@mui/x-charts";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
+import MapView from "../charts/MapView.jsx";
 
 
 const CustomModal = ({isOpen, onClose, device}) => {
@@ -90,14 +91,9 @@ export function Device({data, isConnectable}) {
     let icon;
     let state;
 
-    const [gaugeData, setGaugeData] = useState([{key: "", extras: {max:0, min:0}}]);
-    const [sliderData, setSliderData] = useState([{key: "", extras: {max:0, min:0}}]);
-
-
-    useEffect(() => {
-        setGaugeData(data.value.attributes.filter((t) => t.type === "DATA|GAUGE"));
-        setSliderData(data.value.attributes.filter((t) => t.type === "DATA|SLIDER"));
-    }, [data.live]);
+    const gaugeData = data.value.attributes.filter((t) => t.type === "DATA|GAUGE");
+    const sliderData = data.value.attributes.filter((t) => t.type === "DATA|SLIDER");
+    const map = data.value.attributes.filter((t) => t.type.startsWith("DATA|MAIN,MAP"));
 
 
     const handleAction = (attribute) => {
@@ -142,6 +138,10 @@ export function Device({data, isConnectable}) {
                         </Typography>
 
                         {/*<ChartNode/>*/}
+
+                        {map.length > 0 && data.live && (
+                            <MapView lat={data.live.LAT} lng={data.live.LONG}/>
+                        )}
 
                         {gaugeData && data.live && gaugeData.map((gauge) => (
                             <GaugeChart value={data.live[gauge.key]} maxValue={gauge.extras.max}
@@ -235,7 +235,7 @@ export function MainNode({data, isConnectable}) {
                 <Card elevation={12} style={{
                     padding: '0px',
                     height: '800px',
-                    width:'1550px',
+                    width: '1550px',
                     borderRadius: '18px',
                 }}>
                     {chartIds && chartIds.map((id, index) => (
@@ -269,6 +269,7 @@ export function MainNode({data, isConnectable}) {
 function valueFormatter(value) {
     return `${value}mm`;
 }
+
 function BarChartComp({chartData}) {
     const chartSetting = {
         yAxis: [
@@ -276,7 +277,7 @@ function BarChartComp({chartData}) {
                 label: chartData.label,
             },
         ],
-        series: [{ dataKey: chartData.dataKey, valueFormatter }],
+        series: [{dataKey: chartData.dataKey, valueFormatter}],
         height: 500,
         width: 800,
         sx: {
@@ -285,12 +286,12 @@ function BarChartComp({chartData}) {
             },
         },
     };
-    return(
+    return (
         <div>
             <BarChart
                 dataset={chartData.data}
                 xAxis={[
-                    { scaleType: 'band', dataKey: chartData.dataKey },
+                    {scaleType: 'band', dataKey: chartData.dataKey},
                 ]}
                 borderRadius={10}
                 {...chartSetting}

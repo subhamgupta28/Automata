@@ -31,6 +31,8 @@ public class SecurityConfiguration {
 
 
     private static final String[] WHITE_LIST_URL = {"/api/v1/auth/**",
+            "/api/v1/**",
+            "/ws/**",
             "/v2/api-docs",
             "/v3/api-docs",
             "/v3/api-docs/**",
@@ -55,6 +57,7 @@ public class SecurityConfiguration {
                                 .anyRequest()
                                 .authenticated()
                 )
+
                 .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

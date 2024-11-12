@@ -45,12 +45,13 @@ export const createNodes = (devices, charts, chart) => {
 
     const startX = 120;
     const startY = 100;
-    const step = 350; // Increment value
+    const stepX = 320; // Increment value
+    const stepY = 400; // Increment value
     const n = devices.length;
 
     for (let i = 0; i < n; i++) {
-        const x = startX + (i % 2) * step; // Alternates between 120 and 320
-        const y = startY + Math.floor(i / 2) * step; // Increments y every two points
+        const x = startX + (i % 2) * stepX; // Alternates between 120 and 320
+        const y = startY + Math.floor(i / 2) * stepY; // Increments y every two points
         deviceNodes.push({
             id: devices[i].id,
             type: 'deviceNode',

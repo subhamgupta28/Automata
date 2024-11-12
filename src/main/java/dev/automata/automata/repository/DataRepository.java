@@ -9,6 +9,7 @@ import org.springframework.lang.Nullable;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 public interface DataRepository extends MongoRepository<Data, String> {
 
@@ -21,7 +22,7 @@ public interface DataRepository extends MongoRepository<Data, String> {
 
     Data findByDeviceId(String deviceId);
 
-    Data getFirstDataByDeviceIdOrderByTimestampDesc(String deviceId);
+    Optional<Data> getFirstDataByDeviceIdOrderByTimestampDesc(String deviceId);
 
     @Aggregation(pipeline = {
             "{ $match: { " +

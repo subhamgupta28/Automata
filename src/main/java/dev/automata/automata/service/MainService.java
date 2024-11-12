@@ -216,7 +216,7 @@ public class MainService {
     }
 
     public Map<String, Object> getLastData(String deviceId) {
-        var data = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId);
+        var data = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId).orElse(new Data());
         return data.getData();
     }
 }

@@ -98,12 +98,12 @@ public class AnalyticsService {
 
         // Fetch attribute keys dynamically based on the device and type
         var attributes = attributeRepository.findByDeviceIdAndType(deviceId, "DATA|CHART");
-        System.err.println(attributes);
+//        System.err.println(attributes);
 
-        // Determine the date range (start of week to end of week)
-        LocalDate now = LocalDate.now();
-        LocalDate startOfWeek = now.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
-        LocalDate endOfWeek = now.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+
+
+        LocalDate endOfWeek = LocalDate.now();
+        LocalDate startOfWeek = endOfWeek.minusDays(7);
 
         Date startDate = Date.from(startOfWeek.atStartOfDay(ZoneId.systemDefault()).toInstant());
         Date endDate = Date.from(endOfWeek.atTime(23, 59, 59, 999999999).atZone(ZoneId.systemDefault()).toInstant());
