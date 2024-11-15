@@ -14,14 +14,12 @@ export default function MapView({lat, lng})  {
 
     return (
 
-        <MapContainer className="nodrag" center={position} zoom={zoom} layers={googleSat} style={{ height: '50vh', width: '72vh', borderRadius:'12px' }}>
+        <MapContainer className="nodrag" center={position} zoom={zoom} layers={googleSat} style={{ height: '40vh', width: '62vh', borderRadius:'12px' }}>
             <TileLayer
                 url="http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" // TileLayer URL (OSM)
             />
             <Marker position={position}>
-                <Popup>
-                    A simple popup. <br /> More details can go here.
-                </Popup>
+
             </Marker>
         </MapContainer>
     );

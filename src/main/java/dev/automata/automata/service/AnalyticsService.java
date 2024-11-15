@@ -9,6 +9,7 @@ import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
@@ -40,70 +41,14 @@ public class AnalyticsService {
     private final MongoTemplate mongoTemplate;
 
 
-    public ChartDataDto getChartData(String deviceId, String attributeKey) {
-
-        ChartDataDto chartDataDto = new ChartDataDto();
-        chartDataDto.setDeviceId(deviceId);
-
-        var attributes = attributeRepository.findByDeviceIdAndType(deviceId, "DATA|CHART");
-        System.err.println(attributes);
-        LocalDate now = LocalDate.now();
-        LocalDate startOfWeek = now.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
-        LocalDate endOfWeek = now.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
-
-        Date startDate = Date.from(startOfWeek.atStartOfDay(ZoneId.systemDefault()).toInstant());
-        Date endDate = Date.from(endOfWeek.atTime(23, 59, 59, 999999999).atZone(ZoneId.systemDefault()).toInstant());
-
-        var key1 = attributes.get(0).getKey();
-        var key2 = attributes.get(1).getKey();
-        var key3 = attributes.get(2).getKey();
-        var key4 = attributes.get(3).getKey();
-
-
-        Aggregation aggregation = Aggregation.newAggregation(
-                Aggregation.match(Criteria.where("deviceId").is(deviceId).and("updateDate").gte(startDate).lte(endDate)),
-                Aggregation.project("deviceId", "data", "updateDate")
-                        .andExpression("toDouble(data." + key1 + ")").as("t" + key1)
-                        .andExpression("toDouble(data." + key2 + ")").as("t" + key2)
-                        .andExpression("dateToString('%Y-%m-%d', updateDate)").as("day"),
-                Aggregation.group("day")
-                        .count().as("count")
-                        .max("updateDate").as("endOfDay")
-                        .min("updateDate").as("startOfDay")
-                        .sum("t" + key1).as("net" + key1)
-                        .sum("t" + key2).as("net" + key2)
-        );
-
-
-        // Execute the aggregation query
-        AggregationResults<Object> results = mongoTemplate.aggregate(aggregation, Data.class, Object.class);
-
-
-//        List<ChartDataAggregate> result = results.getMappedResults();
-
-        System.err.println(results.getMappedResults());
-//        System.err.println(results.getMappedResults());
-
-        chartDataDto.setDataKey("net" + key1);
-        chartDataDto.setData(results.getMappedResults());
-        chartDataDto.setPeriod(startOfWeek + " to " + endOfWeek);
-
-
-        return chartDataDto;
-    }
-
     public ChartDataDto getChartData2(String deviceId, String attributeKey) {
         ChartDataDto chartDataDto = new ChartDataDto();
         chartDataDto.setDeviceId(deviceId);
 
-        // Fetch attribute keys dynamically based on the device and type
         var attributes = attributeRepository.findByDeviceIdAndType(deviceId, "DATA|CHART");
-//        System.err.println(attributes);
-
-
 
         LocalDate endOfWeek = LocalDate.now();
-        LocalDate startOfWeek = endOfWeek.minusDays(7);
+        LocalDate startOfWeek = endOfWeek.minusDays(6);
 
         Date startDate = Date.from(startOfWeek.atStartOfDay(ZoneId.systemDefault()).toInstant());
         Date endDate = Date.from(endOfWeek.atTime(23, 59, 59, 999999999).atZone(ZoneId.systemDefault()).toInstant());
@@ -130,18 +75,19 @@ public class AnalyticsService {
         // Step 3: Group by day and apply sum and other operations for each dynamic key
         var groupBuilder = Aggregation.group("day")
                 .count().as("count")
-
                 .max("updateDate").as("endOfDay")
                 .min("updateDate").as("startOfDay");
+
 
         // Dynamically sum up values for each key
         for (String key : keys) {
             attributeKey = "net" + key;
-            groupBuilder = groupBuilder.sum("t" + key).as("net" + key).push("t" + key).as("n" + key);
+            groupBuilder = groupBuilder.sum("t" + key).as("net" + key);
+//                    .push("t" + key).as("n" + key);
         }
-
+        var sort = Aggregation.sort(Sort.by(Sort.Order.asc("startOfDay")));
         // Create the Aggregation object
-        Aggregation aggregation = Aggregation.newAggregation(match, projectBuilder, groupBuilder);
+        Aggregation aggregation = Aggregation.newAggregation(match, projectBuilder, groupBuilder, sort);
 
         // Execute the aggregation query
         AggregationResults<Object> results = mongoTemplate.aggregate(aggregation, Data.class, Object.class);
@@ -152,7 +98,7 @@ public class AnalyticsService {
         // Map the results to the DTO
         List<Object> resultList = results.getMappedResults();
 
-
+        List<Object> finalResultList = new ArrayList<>();
         for (Object object : resultList) {
             try {
                 var map = (Map<String, Object>) object;
@@ -161,18 +107,18 @@ public class AnalyticsService {
                         System.err.println("keys: " + entry.getKey());
                         var res = calculateEnergyForDay((Date) map.get("startOfDay"), (Date) map.get("endOfDay"), (List<Double>) map.get(entry.getKey()));
                         System.err.println("po" + res);
-
+//                        map.remove(entry.getKey());
+//                        map.put("energy_"+entry.getKey(), res);
                     }
-
-
                 }
+                finalResultList.add(map);
             } catch (Exception e) {
                 e.printStackTrace();
             }
 
         }
 
-        chartDataDto.setData(resultList);
+        chartDataDto.setData(finalResultList);
 
         // Set dynamic data key (e.g., netCurrent, netPower, etc.)
         chartDataDto.setDataKey(attributeKey);

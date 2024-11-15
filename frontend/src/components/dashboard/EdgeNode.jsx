@@ -10,7 +10,7 @@ export const createEdges = (devices, charts) => {
             //type: 'animatedSvg',// The ID of the device node
             targetHandle: 'main-node-' + index,       // Source handle ID if applicable
             animated: true,
-            style: {stroke: '#006fff', strokeWidth: '4px'}
+            style: {stroke: '#ffffff', strokeWidth: '3px'}
         })
         index++;
     });
@@ -36,22 +36,22 @@ export const createEdges = (devices, charts) => {
 
 export const createNodes = (devices, charts, chart) => {
 
-    const initX = 900;
+    const initX = 950;
     const initY = 120;
     let index = 120;
     let deviceNodes = [];
     let chartNodes = [];
 
 
-    const startX = 120;
-    const startY = 100;
-    const stepX = 320; // Increment value
+    const startX = 40;
+    const startY = 40;
+    const stepX = 280; // Increment value
     const stepY = 400; // Increment value
     const n = devices.length;
 
     for (let i = 0; i < n; i++) {
-        const x = startX + (i % 2) * stepX; // Alternates between 120 and 320
-        const y = startY + Math.floor(i / 2) * stepY; // Increments y every two points
+        const x = startX + (i % 3) * stepX; // Alternates between 120 and 320
+        const y = startY + Math.floor(i / 3) * stepY; // Increments y every two points
         deviceNodes.push({
             id: devices[i].id,
             type: 'deviceNode',
