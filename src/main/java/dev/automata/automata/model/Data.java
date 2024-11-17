@@ -26,5 +26,5 @@ public class Data {
     private Map<String, Object> data;
     private Long timestamp;
     private Date updateDate;
-    private ZonedDateTime zonedDateTime;
+
 }

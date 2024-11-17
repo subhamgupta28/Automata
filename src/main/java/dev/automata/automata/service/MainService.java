@@ -131,8 +131,7 @@ public class MainService {
                 .dateTime(formattedDate)
                 .data(payload)
                 .updateDate(date)
-                .zonedDateTime(dateTime)
-                .timestamp(date.toInstant().getEpochSecond())
+                .timestamp(dateTime.toInstant().getEpochSecond())
                 .build();
         dataRepository.save(data);
         return "Saved";
