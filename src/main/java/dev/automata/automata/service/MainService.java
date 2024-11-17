@@ -121,7 +121,7 @@ public class MainService {
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-        String formattedDate = sdf.format(localDateTime);
+        String formattedDate = sdf.format(date);
         var data = Data.builder()
                 .deviceId(deviceId)
                 .dateTime(formattedDate)

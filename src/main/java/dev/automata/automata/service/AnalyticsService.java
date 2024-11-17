@@ -34,7 +34,7 @@ public class AnalyticsService {
         LocalDate endOfWeek = LocalDate.now();
         LocalDate startOfWeek = endOfWeek.minusDays(6);
 
-        Date startDate = Date.from(startOfWeek.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Date startDate = Date.from(startOfWeek.atStartOfDay(ZoneId.of("UTC")).toInstant());
         Date endDate = Date.from(endOfWeek.atTime(23, 59, 59, 999999999).atZone(ZoneId.systemDefault()).toInstant());
 
         System.err.println(startDate);
