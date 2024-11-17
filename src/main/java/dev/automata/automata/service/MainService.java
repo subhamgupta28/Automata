@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -117,8 +119,7 @@ public class MainService {
 
 
     public String saveData(String deviceId, Map<String, Object> payload) {
-        var timestamp = System.currentTimeMillis();
-        Date date = new Date(timestamp);
+        Date date = new Date();
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
@@ -128,7 +129,7 @@ public class MainService {
                 .dateTime(formattedDate)
                 .data(payload)
                 .updateDate(date)
-                .timestamp(timestamp)
+                .timestamp(date.toInstant().getEpochSecond())
                 .build();
         dataRepository.save(data);
         return "Saved";
