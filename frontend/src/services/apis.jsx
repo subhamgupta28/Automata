@@ -1,8 +1,12 @@
 import axios from 'axios';
 
 
-const BROWSER_URL = window.location.href;
-const BASE_URL = BROWSER_URL+'api/v1/';
+const BASE_URL = __API_MODE__ === 'serve'
+    ? 'http://localhost:8080/api/v1/' // Local API server for development
+    : window.location.href + "api/v1/";
+
+// const BROWSER_URL = window.location.href;
+// const BASE_URL = apiUrl+'api/v1/';
 // const BASE_URL = 'http://localhost:8080/api/v1/';
 
 export const getActions = async () => {
@@ -66,6 +70,17 @@ export const getDataByDeviceId = async (deviceId) => {
     });
     return response.data;
 }
+
+export const getServerTime = async () => {
+    const response = await axios.get(BASE_URL + 'main/time', {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
+
 
 export const getLastDataByDeviceId = async (deviceId) => {
     const response = await axios.get(BASE_URL + 'main/lastData/' + deviceId, {

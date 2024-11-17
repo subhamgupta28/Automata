@@ -16,6 +16,11 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +72,12 @@ public class MainController {
     @GetMapping(value = "/devices")
     public ResponseEntity<List<Device>> getAllDevices() {
         return ResponseEntity.ok(mainService.getAllDevice());
+    }
+
+    @GetMapping(value = "/time")
+    public ResponseEntity<String> getServerTime() {
+        LocalDateTime localDate = LocalDateTime.now();
+        return ResponseEntity.ok(localDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss a")));
     }
 
     @GetMapping(value = "/device/{deviceId}")

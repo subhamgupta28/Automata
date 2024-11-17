@@ -3,7 +3,6 @@ import {
     addEdge,
     applyEdgeChanges,
     applyNodeChanges,
-    Background, Controls,
     ReactFlow,
     useEdgesState,
     useNodesState

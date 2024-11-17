@@ -2,8 +2,14 @@ import {useEffect, useState} from 'react';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
 
-const url = window.location.href + "ws";
+// const url = window.location.href + "ws";
 // const url = "http://localhost:8080/ws";
+
+const url = __API_MODE__ === 'serve'
+    ? 'http://localhost:8080' // Local API server for development
+    : window.location.href + "ws"; // Production API server
+
+
 
 const useWebSocket = (topic) => {
     const [stompClient, setStompClient] = useState(null);
