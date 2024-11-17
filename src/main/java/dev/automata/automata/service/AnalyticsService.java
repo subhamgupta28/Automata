@@ -13,6 +13,7 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
+
 import java.time.*;
 import java.util.*;
 
@@ -33,7 +34,6 @@ public class AnalyticsService {
 
         LocalDate endOfWeek = LocalDate.now().plusDays(1);
         LocalDate startOfWeek = endOfWeek.minusDays(6);
-        TimeZone.setDefault(TimeZone.getTimeZone("GMT+5:30"));
 
         Date startDate = Date.from(startOfWeek.atStartOfDay(ZoneId.of("UTC")).toInstant());
         Date endDate = Date.from(endOfWeek.atTime(23, 59, 59, 999999999).atZone(ZoneId.of("UTC")).toInstant());
@@ -52,8 +52,10 @@ public class AnalyticsService {
                 .and("updateDate").gte(startDate));
 
         // Step 2: Project the fields dynamically based on the keys
-        var projectBuilder = Aggregation.project("deviceId", "data", "updateDate")
+        var projectBuilder = Aggregation.project("deviceId", "data", "updateDate", "dateTime")
                 .andExpression("dateToString('%Y-%m-%d', updateDate)").as("day");
+//                .andExpression("dateFromString(dateTime)").as("dayS");
+
         for (String key : keys) {
             projectBuilder = projectBuilder.andExpression("toDouble(data." + key + ")").as("t" + key);
         }
@@ -84,12 +86,12 @@ public class AnalyticsService {
             try {
                 var map = (Map<String, Object>) object;
                 for (Map.Entry<String, Object> entry : map.entrySet()) {
-                    if (entry.getKey().startsWith("nC")){
+                    if (entry.getKey().startsWith("nC")) {
                         var list = (List<Object>) entry.getValue();
-                        var val = list.stream().mapToDouble(d->Math.abs(Double.parseDouble(d.toString())));
+                        var val = list.stream().mapToDouble(d -> Math.abs(Double.parseDouble(d.toString())));
                         map.put(entry.getKey(), val);
                     }
-                    if (entry.getKey().startsWith("net")){
+                    if (entry.getKey().startsWith("net")) {
                         var d = Double.parseDouble(entry.getValue().toString());
                         map.put(entry.getKey(), Math.ceil(Math.abs(d)));
                     }

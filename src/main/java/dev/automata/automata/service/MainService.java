@@ -171,7 +171,7 @@ public class MainService {
 
             // Define a formatter for the date
             DateTimeFormatter formatter = DateTimeFormatter
-                    .ofPattern("yyyy-MMM-dd HH:mm:ss") // Specify your desired format
+                    .ofPattern("yyyy-MMM-dd") // Specify your desired format
                     .withZone(ZoneId.systemDefault());
             rootDto.add(RootDto.builder()
                     .values(values)
