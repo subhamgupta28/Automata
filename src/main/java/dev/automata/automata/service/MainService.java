@@ -116,6 +116,7 @@ public class MainService {
 
 
     public String saveData(String deviceId, Map<String, Object> payload) {
+        TimeZone.setDefault(TimeZone.getTimeZone("GMT+5:30"));
         Date date = new Date();
         LocalDateTime localDateTime = LocalDateTime.now(ZoneId.systemDefault());
 
@@ -126,7 +127,7 @@ public class MainService {
                 .deviceId(deviceId)
                 .dateTime(formattedDate)
                 .data(payload)
-                .updateDate(localDateTime)
+                .updateDate(date)
                 .timestamp(date.toInstant().getEpochSecond())
                 .build();
         dataRepository.save(data);

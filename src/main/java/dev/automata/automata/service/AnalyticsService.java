@@ -31,26 +31,24 @@ public class AnalyticsService {
 
         var attributes = attributeRepository.findByDeviceIdAndType(deviceId, "DATA|CHART");
 
-        LocalDate endOfWeek = LocalDate.now();
+        LocalDate endOfWeek = LocalDate.now().plusDays(1);
         LocalDate startOfWeek = endOfWeek.minusDays(6);
+        TimeZone.setDefault(TimeZone.getTimeZone("GMT+5:30"));
 
         Date startDate = Date.from(startOfWeek.atStartOfDay(ZoneId.of("UTC")).toInstant());
-        Date endDate = Date.from(endOfWeek.atTime(23, 59, 59, 999999999).atZone(ZoneId.systemDefault()).toInstant());
+        Date endDate = Date.from(endOfWeek.atTime(23, 59, 59, 999999999).atZone(ZoneId.of("UTC")).toInstant());
 
-        System.err.println(startDate);
-        System.err.println(endDate);
+        System.err.println(startOfWeek);
+        System.err.println(endOfWeek);
 
         // Collect keys dynamically from the attributes
         List<String> keys = attributes.stream()
                 .map(Attribute::getKey)
                 .toList();
 
-//        System.err.println(keys);
-
-
         // Step 1: Match stage (filter by deviceId and date range)
         var match = Aggregation.match(Criteria.where("deviceId").is(deviceId)
-                .and("updateDate").gte(startDate).lte(endDate));
+                .and("updateDate").gte(startDate));
 
         // Step 2: Project the fields dynamically based on the keys
         var projectBuilder = Aggregation.project("deviceId", "data", "updateDate")

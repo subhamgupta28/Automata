@@ -24,5 +24,5 @@ public class Data {
     private String dateTime;
     private Map<String, Object> data;
     private Long timestamp;
-    private LocalDateTime updateDate;
+    private Date updateDate;
 }
