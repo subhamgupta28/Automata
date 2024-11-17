@@ -2,10 +2,10 @@ package dev.automata.automata.model;
 
 
 import lombok.*;
-import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Map;
 
@@ -24,5 +24,5 @@ public class Data {
     private String dateTime;
     private Map<String, Object> data;
     private Long timestamp;
-    private Date updateDate;
+    private LocalDateTime updateDate;
 }
