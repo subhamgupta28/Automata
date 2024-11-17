@@ -38,7 +38,8 @@ public class AnalyticsService {
         Date startDate = Date.from(startOfWeek.atStartOfDay(ZoneId.of("UTC")).toInstant());
         Date endDate = Date.from(endOfWeek.atTime(23, 59, 59, 999999999).atZone(ZoneId.of("UTC")).toInstant());
 
-        System.err.println(startOfWeek);
+        ZonedDateTime dateTime = ZonedDateTime.now();
+        System.err.println(dateTime);
         System.err.println(endOfWeek);
 
         // Collect keys dynamically from the attributes

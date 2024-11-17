@@ -6,6 +6,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.Map;
 
@@ -25,4 +26,5 @@ public class Data {
     private Map<String, Object> data;
     private Long timestamp;
     private Date updateDate;
+    private ZonedDateTime zonedDateTime;
 }
