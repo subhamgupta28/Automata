@@ -53,8 +53,8 @@ public class AnalyticsService {
 
         // Step 2: Project the fields dynamically based on the keys
         var projectBuilder = Aggregation.project("deviceId", "data", "updateDate", "dateTime")
-                .andExpression("dateToString('%Y-%m-%d', updateDate)").as("day");
-//                .andExpression("dateFromString(dateTime)").as("dayS");
+//                .andExpression("dateToString('%Y-%m-%d', updateDate)").as("day");
+                .andExpression("dateFromString(dateTime)").as("day");
 
         for (String key : keys) {
             projectBuilder = projectBuilder.andExpression("toDouble(data." + key + ")").as("t" + key);

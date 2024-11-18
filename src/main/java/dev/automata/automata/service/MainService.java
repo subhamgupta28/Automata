@@ -123,7 +123,7 @@ public class MainService {
         Date date = new Date();
         LocalDateTime localDateTime = LocalDateTime.now(ZoneId.systemDefault());
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 
         String formattedDate = sdf.format(date);
         var data = Data.builder()
