@@ -33,14 +33,13 @@ public class ActionService {
 
     public String handleAction(String deviceId, Map<String, Object> payload) {
         var map = new HashMap<String, Object>();
-        Actions action = actionRepository.findByProducerDeviceIdAndProducerKey(deviceId, payload.get("key").toString());
         if (payload.get("direct") != null) {
-
             map.put(payload.get("key").toString(), payload.get(payload.get("key").toString()).toString());
             System.err.println("direct = " + map);
-
             messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
+            return "Action successfully sent!";
         }
+        Actions action = actionRepository.findByProducerDeviceIdAndProducerKey(deviceId, payload.get("key").toString());
         if (action == null) {
             return "No action found!";
         }
