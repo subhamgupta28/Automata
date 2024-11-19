@@ -4,8 +4,8 @@ import {
     applyEdgeChanges,
     applyNodeChanges,
     ReactFlow,
-    useEdgesState,
-    useNodesState
+    useEdgesState, useNodes,
+    useNodesState, useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {getChartData, getDevices, getLastDataByDeviceId} from "../../services/apis.jsx";
@@ -15,6 +15,8 @@ import {Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
 import {Card} from "@mui/material";
 import ChartNode from "../charts/ChartNode.jsx";
+import NodeInspector from "./NodeInspector.jsx";
+import Button from "@mui/material/Button";
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {
@@ -23,11 +25,13 @@ const nodeTypes = {
     lineChartNode: ChartNode
 };
 
-export default function DeviceNodes() {
+export default function DeviceNodes({editUi}) {
     const {messages, sendMessage} = useWebSocket('/topic/data');
     const {messages: data, sendMessage: sendData} = useWebSocket('/topic/devices');
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
+    // const [editUi, setEditUi] = useState(false);
+
     useEffect(() => {
         setNodes((nds) =>
             nds.map((node) => {
@@ -81,6 +85,10 @@ export default function DeviceNodes() {
         [setEdges],
     );
 
+    // const handleEdit = () => {
+    //   setEditUi(a=>!a)
+    // }
+
     return (
         <div style={{height: '90vh'}}>
             <ReactFlow
@@ -93,15 +101,10 @@ export default function DeviceNodes() {
                 onConnect={onConnect}
                 defaultViewport={{x: 0, y: 0, zoom: 0.6}}
                 nodeTypes={nodeTypes}
-
-                // style={{
-                //     width: '100%', height: '100%', borderRadius: '12px',
-                //     backgroundColor: 'rgba(255, 255, 255, 0.01)',
-                //     backdropFilter: 'blur(7px)',
-                // }}
             >
                 {/*<Background style={{width: '80%', height: '80%'}}/>*/}
                 {/*<Controls/>*/}
+                {editUi && <NodeInspector/>}
             </ReactFlow>
         </div>
     );

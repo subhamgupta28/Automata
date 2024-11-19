@@ -29,8 +29,8 @@ public class Device {
     private String accessUrl;
     private String macAddr;
     private Map<String, Object> lastData;
-    private int x;
-    private int y;
+    private double x;
+    private double y;
     private List<Attribute> attributes = new ArrayList<>();
 }
 

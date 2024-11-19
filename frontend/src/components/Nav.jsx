@@ -18,7 +18,7 @@ import {getDevices, getServerTime} from "../services/apis.jsx";
 const pages = ['Home', 'Actions'];
 const settings = ['Profile', 'Account', 'Dashboard', 'Logout'];
 
-function Nav() {
+function Nav({setEditUi}) {
     const [anchorElNav, setAnchorElNav] = React.useState(null);
     const [anchorElUser, setAnchorElUser] = React.useState(null);
     const [time, setTime] = React.useState(Date());
@@ -59,6 +59,10 @@ function Nav() {
     const handleCloseUserMenu = () => {
         setAnchorElUser(null);
     };
+
+    const handleEdit = () => {
+        setEditUi(a=>!a)
+    }
 
     return (
         <AppBar position="static">
@@ -146,6 +150,12 @@ function Nav() {
                                 {page}
                             </Button>
                         ))}
+                        <Button
+                            onClick={handleEdit}
+                            sx={{my: 2, display: 'block'}}
+                        >
+                            Edit Dashboard
+                        </Button>
                     </Box>
                     <Box>
                         <Typography style={{marginRight: "10px"}}
@@ -154,6 +164,7 @@ function Nav() {
                         </Typography>
 
                     </Box>
+
                     <Box sx={{flexGrow: 0}}>
                         <Tooltip title="Open settings">
                             <IconButton onClick={handleOpenUserMenu} sx={{p: 0}}>

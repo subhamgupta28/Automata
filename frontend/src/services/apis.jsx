@@ -19,7 +19,15 @@ export const getActions = async () => {
     return response.data;
 }
 
-
+export const updatePosition = async (deviceId, x, y) => {
+    const response = await axios.get(BASE_URL + "main/updatePosition/" + deviceId + "/" + x + "/" + y, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
 
 export const getDevices = async () => {
     const response = await axios.get(BASE_URL + "main/devices", {
@@ -52,7 +60,7 @@ export const refreshDeviceById = async (deviceId) => {
     return response.data;
 }
 export const sendAction = async (deviceId, payload) => {
-    const response = await axios.post(BASE_URL + "action/sendAction/" + deviceId, payload,{
+    const response = await axios.post(BASE_URL + "action/sendAction/" + deviceId, payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization

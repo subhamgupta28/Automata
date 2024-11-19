@@ -11,25 +11,26 @@ import SignUp from "./components/auth/SignUp.jsx";
 
 
 function App() {
-    const { messages, sendMessage } = useWebSocket('/topic/update');
+    // const { messages, sendMessage } = useWebSocket('/topic/update');
     const [input, setInput] = useState('');
+    const [editUi, setEditUi] = useState(false);
 
-    const handleSend = () => {
-        sendMessage('/app/send', input);
-        setInput('');
-    };
+    // const handleSend = () => {
+    //     sendMessage('/app/send', input);
+    //     setInput('');
+    // };
     return (
         <>
             <ThemeProvider theme={darkTheme}>
             <main>
                 <header>
-                    <Nav/>
+                    <Nav setEditUi={setEditUi}/>
                 </header>
 
                 <section className={"content"}>
                     {/*<DndTest/>*/}
                     {/*<ActionBoard/>*/}
-                    <DeviceNodes/>
+                    <DeviceNodes editUi={editUi}/>
                     {/*<SignIn/>*/}
                     {/*<SignUp/>*/}
 

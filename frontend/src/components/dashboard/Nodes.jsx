@@ -101,13 +101,11 @@ export function Device({data, isConnectable}) {
             try {
                 let act = attribute.key;
                 await sendAction(data.value.id, {"key": attribute.key, [act]: 200, "device_id": data.value.id});
-
             } catch (err) {
                 // console.error("Action send failed", err);
             }
         };
         send();
-
     }
     if (data.value["status"])
         if (data.value.status === 'ONLINE') {
@@ -123,12 +121,12 @@ export function Device({data, isConnectable}) {
 
 
     return (
-        <div className="text-updater-node">
+        <div className="text-updater-node" key={data.value.id}>
             <Alert icon={false} variant="filled" severity={state}
                    style={{borderRadius: '16px', padding: '1px'}}>
 
                 <Card style={{display: 'flex', borderRadius: '12px', marginLeft: '3px', marginRight: '3px'}}>
-                    <CardContent style={{minWidth: '200px', alignItems: 'center'}}>
+                    <CardContent style={{minWidth: '200px', alignItems: 'center', }}>
                         <Typography style={{display: 'flex', alignItems: 'center'}}>
                             {data.value.name}
                             <SvgIcon component={icon} inheritViewBox style={{marginLeft: '8px',}}/>
@@ -171,7 +169,7 @@ export function Device({data, isConnectable}) {
                                 {
                                     data.value.attributes.map(attribute => (
                                         (attribute.type === "ACTION|OUT") && (
-                                            <tr style={{width: '100%'}}>
+                                            <tr style={{width: '100%'}} key={attribute.id}>
                                                 <th colSpan="3">
                                                     <Button aria-label="delete" style={{width: '100%'}}
                                                             onClick={() => handleAction(attribute)}>
@@ -234,8 +232,10 @@ export function MainNode({data, isConnectable}) {
 
                 <Card elevation={12} style={{
                     padding: '0px',
-                    height: '800px',
-                    width: '1550px',
+                    minHeight: '100px',
+                    minWidth: '100px',
+                    // height: '800px',
+                    // width: '1550px',
                     borderRadius: '18px',
                 }}>
                     {chartIds && chartIds.map((id, index) => (
@@ -266,8 +266,8 @@ export function MainNode({data, isConnectable}) {
 }
 
 
-function valueFormatter(value) {
-    return `${value}mm`;
+function valueFormatter(value, unit) {
+    return `${value} ${unit}`;
 }
 
 function BarChartComp({chartData}) {
@@ -288,7 +288,7 @@ function BarChartComp({chartData}) {
     };
     return (
         <div>
-            <BarChart
+            <BarChart className="nodrag"
                 dataset={chartData.data}
                 xAxis={[
                     {scaleType: 'band', dataKey: chartData.dataKey},

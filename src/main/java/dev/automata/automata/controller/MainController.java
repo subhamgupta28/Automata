@@ -36,8 +36,7 @@ public class MainController {
 
     @GetMapping("chart/{deviceId}")
     public ResponseEntity<ChartDataDto> getChartData(@PathVariable String deviceId){
-
-        return ResponseEntity.ok(analyticsService.getChartData2(deviceId,""));
+        return ResponseEntity.ok(analyticsService.getChartData2(deviceId,"C2_POWER"));
     }
 
     @GetMapping
@@ -48,6 +47,12 @@ public class MainController {
         map.put("buzTime", 10000);
         messagingTemplate.convertAndSend("/topic/action/670ec3bc166ab22722fbf4ea", map);
         return ResponseEntity.ok("Hello World");
+    }
+
+    @GetMapping("/updatePosition/{deviceId}/{x}/{y}")
+    public ResponseEntity<String> updatePosition(@PathVariable String deviceId, @PathVariable String x, @PathVariable String y){
+
+        return ResponseEntity.ok(mainService.updateDevicePosition(deviceId, x, y));
     }
 
     @GetMapping("sendAction/{action}/{value}")

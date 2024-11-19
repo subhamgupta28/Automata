@@ -222,4 +222,19 @@ public class MainService {
         var data = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId).orElse(new Data());
         return data.getData();
     }
+
+    public String updateDevicePosition(String deviceId, String x, String y) {
+        var device = deviceRepository.findById(deviceId).orElse(null);
+        if (device == null) {
+            System.err.println("Device not found");
+            return "Device not found";
+        }
+
+        device.setX(Double.parseDouble(x));
+        device.setY(Double.parseDouble(y));
+
+        deviceRepository.save(device);
+
+        return "success";
+    }
 }

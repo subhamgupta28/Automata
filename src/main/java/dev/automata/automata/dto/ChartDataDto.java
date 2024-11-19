@@ -14,6 +14,7 @@ import java.util.Map;
 @ToString
 public class ChartDataDto {
     public String label;
+    public String unit;
     public String dataKey;
     public List<Object> data;
     public String deviceId;
