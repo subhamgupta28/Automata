@@ -4,11 +4,9 @@ import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.dto.RootDto;
 import dev.automata.automata.dto.ValueDto;
-import dev.automata.automata.model.Attribute;
-import dev.automata.automata.model.Data;
-import dev.automata.automata.model.Device;
-import dev.automata.automata.model.Status;
+import dev.automata.automata.model.*;
 import dev.automata.automata.repository.AttributeRepository;
+import dev.automata.automata.repository.DashboardRepository;
 import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +27,7 @@ public class MainService {
     private final DataRepository dataRepository;
     private final AttributeRepository attributeRepository;
     private final DeviceRepository deviceRepository;
+    private final DashboardRepository deviceDashboardRepository;
 
     /*
      * Device: name = battery
@@ -192,8 +191,14 @@ public class MainService {
 
     public List<Device> getAllDevice() {
         var devices = deviceRepository.findAll();
+
         var deviceList = new ArrayList<Device>();
         devices.forEach(device -> {
+            var dashboard = deviceDashboardRepository.findByDeviceId(device.getId()).orElse(null);
+            if (dashboard != null) {
+                device.setX(dashboard.getX());
+                device.setY(dashboard.getY());
+            }
             var lastData = getLastData(device.getId());
             device.setLastData(lastData);
             deviceList.add(device);
@@ -224,16 +229,16 @@ public class MainService {
     }
 
     public String updateDevicePosition(String deviceId, String x, String y) {
-        var device = deviceRepository.findById(deviceId).orElse(null);
+        var device = deviceDashboardRepository.findByDeviceId(deviceId).orElse(null);
         if (device == null) {
             System.err.println("Device not found");
-            return "Device not found";
+            device = new Dashboard();
         }
-
+        device.setDeviceId(deviceId);
         device.setX(Double.parseDouble(x));
         device.setY(Double.parseDouble(y));
 
-        deviceRepository.save(device);
+        deviceDashboardRepository.save(device);
 
         return "success";
     }

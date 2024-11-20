@@ -43,7 +43,7 @@ export const createNodes = (devices, charts, chart) => {
     let chartNodes = [];
 
 
-    const startX = 120;
+    const startX = 40;
     const startY = 40;
     const stepX = 280; // Increment value
     const stepY = 400; // Increment value
@@ -86,7 +86,7 @@ export const createNodes = (devices, charts, chart) => {
         deviceNodes.push({
             id: device.id,
             type: 'deviceNode',
-            position: {x: startX + device.x, y:  device.y},
+            position: {x: device.x, y:  device.y},
             data: {value: device, live: {...device.lastData}},
         });
     })
