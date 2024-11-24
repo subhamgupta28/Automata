@@ -20,7 +20,7 @@ export function CustomSlider({value, deviceId, displayName, data}){
 
     return(
         <>
-            <Slider className="nodrag" onSubmit={handleChange} value={value} aria-label="Default" min={data.extras.min} max={data.extras.max} valueLabelDisplay="auto" />
+            <Slider className="nodrag" onChange={handleChange} value={value} aria-label="Default" min={data.extras.min} max={data.extras.max} valueLabelDisplay="auto" />
             <Typography textAlign='center'>
                 {displayName}
             </Typography>
