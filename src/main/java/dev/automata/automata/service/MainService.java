@@ -235,8 +235,8 @@ public class MainService {
             device = new Dashboard();
         }
         device.setDeviceId(deviceId);
-        device.setX(Double.parseDouble(x));
-        device.setY(Double.parseDouble(y));
+        device.setX(Math.floor(Double.parseDouble(x)));
+        device.setY(Math.floor(Double.parseDouble(y)));
 
         deviceDashboardRepository.save(device);
 

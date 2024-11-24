@@ -10,7 +10,7 @@ import {
     Dialog, DialogActions,
     DialogContent,
     DialogTitle,
-    Modal, Slider,
+    Modal, Paper, Slider,
     SvgIcon
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
@@ -27,6 +27,8 @@ import {BarChart, ChartContainer, lineElementClasses, LinePlot, markElementClass
 import {createEdges, createNodes} from "./EdgeNode.jsx";
 import MapView from "../charts/MapView.jsx";
 import {LineChart} from "@mui/x-charts/LineChart";
+import Stack from "@mui/material/Stack";
+import {styled} from "@mui/material/styles";
 
 
 const CustomModal = ({isOpen, onClose, device}) => {
@@ -199,14 +201,13 @@ export function Device({data, isConnectable}) {
         </div>
     );
 }
-
 export function MainNode({data, isConnectable}) {
-    let nodeIds = []
-    let chartIds = []
+    let nodeIds = [];
+    let chartIds = [];
     const charts = data.value.devices.filter(device =>
         device.attributes.some(attr => attr.type === "DATA|CHART")
     );
-    console.log("main", charts[0].attributes[0].key)
+
     const [chartData, setChartData] = useState({
         dataKey: "p",
         data: [0],
@@ -214,29 +215,45 @@ export function MainNode({data, isConnectable}) {
         attributes: [],
         timestamps: [""]
     });
-    const [selectedAttribute, setAttribute] = useState(charts[0].attributes[0].key)
+    const [deviceId, setDeviceId] = useState(0);
+    const [selectedAttribute, setAttribute] = useState(charts[deviceId].attributes[0]?.key || "");
+    const [chartDevice, setChartDevice] = useState(charts[deviceId].id);
+    const [deviceName, setDeviceName] = useState(charts[deviceId].name)
+
+    // Prepare node and chart IDs
     for (let i = 0; i < data.value.numOfDevices; i++) {
-        nodeIds.push("main-node-" + i)
+        nodeIds.push("main-node-" + i);
     }
     for (let i = 0; i < data.value.chartNodes; i++) {
-        chartIds.push("chart-node-" + i)
+        chartIds.push("chart-node-" + i);
     }
 
+    // Fetch chart data when device or attribute is selected
     useEffect(() => {
-        const fetch = async () => {
-            const data = await getChartData("6713fd6118af335020f90f73", selectedAttribute);
-            console.log("chart", data)
+        const fetchChartData = async () => {
+            if (!chartDevice) return;
+            const data = await getChartData(chartDevice, selectedAttribute);
+            console.log("chart data for device:", chartDevice, "attribute:", selectedAttribute, data);
             setChartData(data);
-        }
+        };
 
-        fetch();
-    }, [selectedAttribute]);
+        fetchChartData();
+    }, [selectedAttribute, chartDevice]);
 
+    // Handle selecting a device
+    const handleChartDevice = (deviceId) => {
+        setDeviceId(deviceId);
+        const selectedDevice = charts[deviceId];
+        setChartDevice(selectedDevice.id);
+        setDeviceName(selectedDevice.name)
+        setAttribute(selectedDevice.attributes[0]?.key || ""); // Set first attribute for new device
+    };
+
+    // Handle selecting an attribute
     const handleAttribute = (key) => {
         setAttribute(key);
-        console.log(key)
-    }
-
+        console.log("Selected attribute:", key);
+    };
 
     return (
         <div className="text-updater-node">
@@ -245,8 +262,6 @@ export function MainNode({data, isConnectable}) {
                     padding: '0px',
                     minHeight: '500px',
                     minWidth: '400px',
-                    // height: '800px',
-                    // width: '1550px',
                     borderRadius: '18px',
                 }}>
                     {chartIds && chartIds.map((id, index) => (
@@ -258,21 +273,54 @@ export function MainNode({data, isConnectable}) {
                             isConnectable={isConnectable}
                         />
                     ))}
-                    <CardContent style={{margin: '12px'}}>
-                        <BarChartComp data={data.value.devices} chartData={chartData}/>
+                    <Typography style={{marginTop: '20px', marginLeft: '20px'}} variant="h5">
+                        {deviceName}
+                    </Typography>
 
+                    <CardContent style={{padding: '12px', marginLeft: '15px'}}>
+                        <BarChartComp data={data.value.devices} chartData={chartData} />
                     </CardContent>
-                    <CardActions style={{display: 'flex', justifyContent: 'center'}}>
-                        <Typography>
-                            Attributes
-                        </Typography>
-                        <div style={{margin: '14px'}}>
-                            {chartData && chartData.attributes.map((name) => (
-                                <Chip className='nodrag' clickable onClick={() => handleAttribute(name)}
-                                      style={{margin: '4px'}} label={name} color="warning"/>
-                            ))}
+
+                    <Stack style={{display: 'flex', alignItems: 'center'}}>
+                        <div style={{display: 'flex', alignItems: 'center'}}>
+                            <Typography>
+                                Devices
+                            </Typography>
+                            <div style={{margin: '14px'}}>
+                                {charts && charts.map((device, index) => (
+                                    <Chip
+                                        key={device.id}
+                                        className="nodrag"
+                                        clickable
+                                        onClick={() => handleChartDevice(index)} // Pass index to handleChartDevice
+                                        style={{margin: '4px'}}
+                                        label={device.name}
+                                        color="success"
+                                    />
+                                ))}
+                            </div>
                         </div>
-                    </CardActions>
+
+                        <div style={{display: 'flex', alignItems: 'center'}}>
+                            <Typography>
+                                Attributes
+                            </Typography>
+                            <div style={{margin: '14px'}}>
+                                {chartData.attributes && chartData.attributes.map((name) => (
+                                    <Chip
+                                        key={name}
+                                        className="nodrag"
+                                        clickable
+                                        onClick={() => handleAttribute(name)}
+                                        style={{margin: '4px'}}
+                                        label={name}
+                                        color="info"
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </Stack>
+
                     {nodeIds && nodeIds.map((id, index) => (
                         <Handle
                             type="target"
@@ -287,8 +335,6 @@ export function MainNode({data, isConnectable}) {
         </div>
     );
 }
-
-
 function BarChartComp({chartData}) {
 
     const valueFormatter = (value) => {
@@ -303,7 +349,7 @@ function BarChartComp({chartData}) {
         ],
         series: [{dataKey: chartData.dataKey, valueFormatter}],
         height: 500,
-        width: 1300,
+        width: 1100,
         sx: {
             [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
                 transform: 'translateX(-10px)',

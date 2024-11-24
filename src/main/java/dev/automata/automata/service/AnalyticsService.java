@@ -126,8 +126,8 @@ public class AnalyticsService {
 
         // Dynamically sum up values for each key
 
-        groupBuilder = groupBuilder.avg("t" + attributeKey).as("net" + attributeKey)
-                .push("t" + attributeKey).as("nC" + attributeKey);
+        groupBuilder = groupBuilder.avg("t" + attributeKey).as("net" + attributeKey);
+//                .push("t" + attributeKey).as("nC" + attributeKey);
         var sort = Aggregation.sort(Sort.by(Sort.Order.asc("startOfDay")));
 
 
@@ -149,7 +149,7 @@ public class AnalyticsService {
                     }
                     if (entry.getKey().startsWith("net")) {
                         var d = Double.parseDouble(entry.getValue().toString());
-                        map.put(entry.getKey(), Math.abs(d));
+                        map.put(entry.getKey(), Double.parseDouble(String.format("%.2f", Math.abs(d))));
                     }
                     if (entry.getKey().startsWith("startOfDay")) {
                         labels.add(entry.getValue().toString());
