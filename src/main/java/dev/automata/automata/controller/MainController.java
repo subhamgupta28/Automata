@@ -34,9 +34,9 @@ public class MainController {
     private final MainService mainService;
     private final AnalyticsService analyticsService;
 
-    @GetMapping("chart/{deviceId}")
-    public ResponseEntity<ChartDataDto> getChartData(@PathVariable String deviceId){
-        return ResponseEntity.ok(analyticsService.getChartData2(deviceId,"C2_POWER"));
+    @GetMapping("chart/{deviceId}/{attribute}")
+    public ResponseEntity<ChartDataDto> getChartData(@PathVariable String deviceId, @PathVariable String attribute) {
+        return ResponseEntity.ok(analyticsService.getChartData2(deviceId, attribute, "day"));
     }
 
     @GetMapping
@@ -50,7 +50,7 @@ public class MainController {
     }
 
     @GetMapping("/updatePosition/{deviceId}/{x}/{y}")
-    public ResponseEntity<String> updatePosition(@PathVariable String deviceId, @PathVariable String x, @PathVariable String y){
+    public ResponseEntity<String> updatePosition(@PathVariable String deviceId, @PathVariable String x, @PathVariable String y) {
 
         return ResponseEntity.ok(mainService.updateDevicePosition(deviceId, x, y));
     }

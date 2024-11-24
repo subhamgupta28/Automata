@@ -19,4 +19,7 @@ public class ChartDataDto {
     public List<Object> data;
     public String deviceId;
     public String period; // weekly, monthly, yearly
+    public String message;
+    public List<String> timestamps;
+    public List<String> attributes;
 }

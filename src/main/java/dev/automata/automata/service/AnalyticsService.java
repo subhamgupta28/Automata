@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 import static org.springframework.data.mongodb.core.aggregation.DateOperators.Timezone.fromOffset;
@@ -33,40 +34,62 @@ public class AnalyticsService {
     private final MongoTemplate mongoTemplate;
 
 
-    public ChartDataDto getChartData2(String deviceId, String attributeKey) {
+//    public ChartDataDto getChartData(String deviceId, String attributeKey) {
+//        ChartDataDto chartDataDto = new ChartDataDto();
+//        chartDataDto.setDeviceId(deviceId);
+//        var attributes = attributeRepository.findByDeviceIdAndType(deviceId, "%");
+//        LocalDate today = LocalDate.now();
+//
+//        if (!attributes.isEmpty()) {
+//            var attr = attributes.stream().filter(s -> s.getKey().equals(attributeKey)).toList();
+//            System.err.println(attr);
+//            chartDataDto.setUnit(attr.getFirst().getUnits());
+//        }
+//    }
+
+
+    public ChartDataDto getChartData2(String deviceId, String attributeKey, String period) {
         ChartDataDto chartDataDto = new ChartDataDto();
         chartDataDto.setDeviceId(deviceId);
 
-        var attributes = attributeRepository.findByDeviceIdAndType(deviceId, "DATA|CHART");
+        int week = 6;
+        if (period.equals("day")) {
+            week = 0;
+        }
+        chartDataDto.setPeriod(period);
 
-        LocalDate endOfWeek = LocalDate.now().plusDays(1);
-        LocalDate startOfWeek = endOfWeek.minusDays(6);
+        var attributes = attributeRepository.findByDeviceIdAndTypeNot(deviceId, "DATA|AUX");
 
-        Date startDate = Date.from(startOfWeek.atStartOfDay(ZoneId.of("UTC")).toInstant());
-        Date endDate = Date.from(endOfWeek.atTime(23, 59, 59, 999999999).atZone(ZoneId.of("UTC")).toInstant());
+        LocalDateTime now = LocalDateTime.now();
 
-//        ZonedDateTime dateTime = ZonedDateTime.now();
-//        System.err.println(dateTime);
-//        System.err.println(endOfWeek);
+        // Calculate the start of the last 24 hours (24 hours ago)
+        LocalDateTime startOfLast24Hours = now.minusHours(11);
 
-        // Collect keys dynamically from the attributes
-//        List<String> keys = attributes.stream()
-//                .map(Attribute::getKey)
-//                .toList();
+        // Convert to Date
+        Date startDate = Date.from(startOfLast24Hours.atZone(ZoneId.systemDefault()).toInstant());
+        Date endDate = Date.from(now.atZone(ZoneId.systemDefault()).toInstant());
+
 
         if (!attributes.isEmpty()) {
             String finalAttributeKey = attributeKey;
             var attr = attributes.stream().filter(s -> s.getKey().equals(finalAttributeKey)).toList();
+            chartDataDto.setAttributes(attributes.stream().map(Attribute::getKey).collect(Collectors.toList()));
+            if (attr.isEmpty()){
+                chartDataDto.setMessage("No attribute found for key: " + attributeKey+". Use one of these to fetch charts.");
+                chartDataDto.setData(new ArrayList<>());
+                chartDataDto.setDataKey("");
+                chartDataDto.setUnit("");
+                chartDataDto.setLabel("");
+                return chartDataDto;
+            }
             System.err.println(attr);
             chartDataDto.setUnit(attr.getFirst().getUnits());
         }
 
-        List<String> keys = new ArrayList<>();
-        keys.add(attributeKey);
 
         // Step 1: Match stage (filter by deviceId and date range)
         var match = match(where("deviceId").is(deviceId)
-                .and("updateDate").gte(startDate));
+                .and("updateDate").gte(startDate).lte(endDate));
 
 
         var projectBuilder = project(
@@ -78,27 +101,33 @@ public class AnalyticsService {
                 ))
                 .and(
                         DateOperators.dateOf("updateDate")
-                                .toString("%Y-%m-%d")
-                                .withTimezone(DateOperators.Timezone.valueOf("Asia/Kolkata"))
-                ).as("dateDay");
+                                .toString("%m-%d %H")
+                                .withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))
+                ).as("dateDay")
+                .and(
+                        DateOperators.dateOf("updateDate")
+                                .toString("%m-%d %H:%M")
+                                .withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))
+                ).as("dateShow");
+        /*
+        "%Y-%m-%dT%H:%M:%S.%LZ"
+        * */
 
-        for (String key : keys) {
-            projectBuilder = projectBuilder.andExpression("toDouble(data." + key + ")").as("t" + key);
-        }
+
+        projectBuilder = projectBuilder.andExpression("toDouble(data." + attributeKey + ")").as("t" + attributeKey);
+
 
         // Step 3: Group by day and apply sum and other operations for each dynamic key
         var groupBuilder = Aggregation.group("dateDay")
                 .count().as("count")
-                .max("dateDay").as("endOfDay")
-                .min("dateDay").as("startOfDay");
+                .max("dateShow").as("endOfDay")
+                .min("dateShow").as("startOfDay");
 
 
         // Dynamically sum up values for each key
-        for (String key : keys) {
-            attributeKey = "net" + key;
-            groupBuilder = groupBuilder.sum("t" + key).as("net" + key)
-                    .push("t" + key).as("n" + key);
-        }
+
+        groupBuilder = groupBuilder.avg("t" + attributeKey).as("net" + attributeKey)
+                .push("t" + attributeKey).as("nC" + attributeKey);
         var sort = Aggregation.sort(Sort.by(Sort.Order.asc("startOfDay")));
 
 
@@ -108,18 +137,22 @@ public class AnalyticsService {
 
         List<Object> resultList = results.getMappedResults();
         List<Object> finalResultList = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
         for (Object object : resultList) {
             try {
                 var map = (Map<String, Object>) object;
                 for (Map.Entry<String, Object> entry : map.entrySet()) {
                     if (entry.getKey().startsWith("nC")) {
                         var list = (List<Object>) entry.getValue();
-                        var val = list.stream().mapToDouble(d -> Math.abs(Double.parseDouble(d.toString())));
+                        var val = list.stream().map(d->Math.abs(Double.parseDouble(d.toString()))).toList();
                         map.put(entry.getKey(), val);
                     }
                     if (entry.getKey().startsWith("net")) {
                         var d = Double.parseDouble(entry.getValue().toString());
-                        map.put(entry.getKey(), Math.ceil(Math.abs(d)));
+                        map.put(entry.getKey(), Math.abs(d));
+                    }
+                    if (entry.getKey().startsWith("startOfDay")) {
+                        labels.add(entry.getValue().toString());
                     }
                 }
                 finalResultList.add(map);
@@ -127,9 +160,13 @@ public class AnalyticsService {
                 e.printStackTrace(System.err);
             }
         }
+
+        chartDataDto.setTimestamps(labels);
+        chartDataDto.setLabel(attributeKey);
+        attributeKey = "net" + attributeKey;
         chartDataDto.setData(finalResultList);
         chartDataDto.setDataKey(attributeKey);
-        chartDataDto.setPeriod(startOfWeek + " to " + endOfWeek);
+//        chartDataDto.setPeriod(startOfWeek + " to " + endOfWeek);
         return chartDataDto;
     }
 

@@ -34,7 +34,7 @@ export const createEdges = (devices, charts) => {
     return [...edges]
 };
 
-export const createNodes = (devices, charts, chart) => {
+export const createNodes = (devices, charts) => {
 
     const initX = 1150;
     const initY = 120;
@@ -107,7 +107,7 @@ export const createNodes = (devices, charts, chart) => {
         id: 'main-node-1',
         type: 'mainNode',
         position: {x: initX, y: 40}, // Adjust position as needed
-        data: {value: {numOfDevices: devices.length, chartNodes: chartNodes.length, chart}},
+        data: {value: {numOfDevices: devices.length, chartNodes: chartNodes.length, devices}},
     };
 
     return [mainNode, ...deviceNodes, ...chartNodes]; // Include main node with device nodes

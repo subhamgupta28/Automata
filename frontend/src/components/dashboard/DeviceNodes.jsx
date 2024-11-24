@@ -57,11 +57,9 @@ export default function DeviceNodes({editUi}) {
         const fetchData = async () => {
             try {
                 const devices = await getDevices();
-                const charts = devices.filter(device =>
-                    device.attributes.some(attr => attr.type === "DATA|CHART")
-                );
-                const chart = await getChartData("6713fd6118af335020f90f73");
-                setNodes(createNodes(devices, [], chart)); // Create nodes including the main node
+
+                // const chart = await getChartData("6713fd6118af335020f90f73");
+                setNodes(createNodes(devices, [])); // Create nodes including the main node
                 setEdges(createEdges(devices, [])); // Create edges connecting devices to the main node
             } catch (err) {
                 console.error("Failed to fetch devices:", err);

@@ -4,9 +4,9 @@ import {getChartData, getDevices, refreshDeviceById, sendAction} from "../../ser
 import {
     Alert,
     Button,
-    Card,
+    Card, CardActions,
     CardContent,
-    CardHeader,
+    CardHeader, Chip,
     Dialog, DialogActions,
     DialogContent,
     DialogTitle,
@@ -23,9 +23,10 @@ import {GaugeChart} from "../charts/GaugeChart.jsx";
 import {CustomSlider} from "../charts/CustomSlider.jsx";
 import ChartNode from "../charts/ChartNode.jsx";
 import {axisClasses} from "@mui/x-charts/ChartsAxis";
-import {BarChart} from "@mui/x-charts";
+import {BarChart, ChartContainer, lineElementClasses, LinePlot, markElementClasses, MarkPlot} from "@mui/x-charts";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
 import MapView from "../charts/MapView.jsx";
+import {LineChart} from "@mui/x-charts/LineChart";
 
 
 const CustomModal = ({isOpen, onClose, device}) => {
@@ -53,22 +54,21 @@ const CustomModal = ({isOpen, onClose, device}) => {
         <React.Fragment>
             <Dialog onClose={onClose} open={isOpen}>
                 <DialogTitle>
-                    <Button className={'btn-sm btn btn-secondary'} onClick={handleReboot}>
+                    <Button onClick={handleReboot}>
                         Reboot
                     </Button>
-                    <Button style={{marginLeft: '12px'}} className={'btn-sm btn btn-secondary'} onClick={handleSleep}>
+                    <Button style={{marginLeft: '12px'}} onClick={handleSleep}>
                         Sleep
                     </Button>
-                    <Button style={{marginLeft: '12px'}} className={'btn-sm btn btn-secondary'} onClick={handleUpdate}>
+                    <Button style={{marginLeft: '12px'}} onClick={handleUpdate}>
                         Update
                     </Button>
                 </DialogTitle>
                 <DialogContent style={{width: '400px', overflow: 'auto'}}>
                     <p>Attributes</p>
                     {device && device.attributes.map(attribute => (
-                        <div key={attribute.id} className="mb-2">
-                            <p>{attribute.displayName}: {attribute.units}</p>
-                        </div>
+                        <Chip className='nodrag' clickable
+                              style={{margin: '4px'}} label={attribute.displayName} color="info"/>
                     ))}
                 </DialogContent>
                 <DialogActions>
@@ -125,11 +125,12 @@ export function Device({data, isConnectable}) {
             <Alert icon={false} variant="filled" severity={state}
                    style={{borderRadius: '16px', padding: '1px'}}>
 
-                <Card style={{display: 'flex', borderRadius: '12px', marginLeft: '3px', marginRight: '3px'}}>
-                    <CardContent style={{minWidth: '200px', alignItems: 'center', }}>
-                        <Typography style={{display: 'flex', alignItems: 'center'}}>
+                <Card style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px'}}>
+                    <CardContent
+                        style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px'}}>
+                        <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                             {data.value.name}
-                            <SvgIcon component={icon} inheritViewBox style={{marginLeft: '8px',}}/>
+                            {/*<SvgIcon component={icon} inheritViewBox style={{marginLeft: '8px',}}/>*/}
                             <IconButton onClick={handleOpenModal} variant='text' style={{marginLeft: '8px'}}>
                                 <SettingsIcon/>
                             </IconButton>
@@ -202,38 +203,48 @@ export function Device({data, isConnectable}) {
 export function MainNode({data, isConnectable}) {
     let nodeIds = []
     let chartIds = []
-    // const [chartData, setChartData] = useState({dataKey:"", data: [], label:""})
+    const charts = data.value.devices.filter(device =>
+        device.attributes.some(attr => attr.type === "DATA|CHART")
+    );
+    console.log("main", charts[0].attributes[0].key)
+    const [chartData, setChartData] = useState({
+        dataKey: "p",
+        data: [0],
+        label: "p",
+        attributes: [],
+        timestamps: [""]
+    });
+    const [selectedAttribute, setAttribute] = useState(charts[0].attributes[0].key)
     for (let i = 0; i < data.value.numOfDevices; i++) {
         nodeIds.push("main-node-" + i)
     }
     for (let i = 0; i < data.value.chartNodes; i++) {
         chartIds.push("chart-node-" + i)
     }
-    // console.log("ids", chartIds, nodeIds)
 
-    // useEffect(() => {
-    //     const fetch = async () => {
-    //         try {
-    //             const res = await getChartData("6713fd6118af335020f90f73");
-    //             setChartData(res);
-    //         } catch (err) {
-    //             console.error("Failed to fetch devices:", err);
-    //         }
-    //     };
-    //
-    //     fetch();
-    // }, []);
+    useEffect(() => {
+        const fetch = async () => {
+            const data = await getChartData("6713fd6118af335020f90f73", selectedAttribute);
+            console.log("chart", data)
+            setChartData(data);
+        }
+
+        fetch();
+    }, [selectedAttribute]);
+
+    const handleAttribute = (key) => {
+        setAttribute(key);
+        console.log(key)
+    }
 
 
     return (
         <div className="text-updater-node">
             <div style={{borderRadius: '16px'}}>
-
-
                 <Card elevation={12} style={{
                     padding: '0px',
-                    minHeight: '100px',
-                    minWidth: '100px',
+                    minHeight: '500px',
+                    minWidth: '400px',
                     // height: '800px',
                     // width: '1550px',
                     borderRadius: '18px',
@@ -247,9 +258,21 @@ export function MainNode({data, isConnectable}) {
                             isConnectable={isConnectable}
                         />
                     ))}
-                    <CardContent style={{margin: '20px'}}>
-                        <BarChartComp chartData={data.value.chart}/>
+                    <CardContent style={{margin: '12px'}}>
+                        <BarChartComp data={data.value.devices} chartData={chartData}/>
+
                     </CardContent>
+                    <CardActions style={{display: 'flex', justifyContent: 'center'}}>
+                        <Typography>
+                            Attributes
+                        </Typography>
+                        <div style={{margin: '14px'}}>
+                            {chartData && chartData.attributes.map((name) => (
+                                <Chip className='nodrag' clickable onClick={() => handleAttribute(name)}
+                                      style={{margin: '4px'}} label={name} color="warning"/>
+                            ))}
+                        </div>
+                    </CardActions>
                     {nodeIds && nodeIds.map((id, index) => (
                         <Handle
                             type="target"
@@ -266,11 +289,12 @@ export function MainNode({data, isConnectable}) {
 }
 
 
-function valueFormatter(value, unit) {
-    return `${value} ${unit}`;
-}
-
 function BarChartComp({chartData}) {
+
+    const valueFormatter = (value) => {
+        return `${value} ${chartData.unit}`;
+    }
+
     const chartSetting = {
         yAxis: [
             {
@@ -279,24 +303,25 @@ function BarChartComp({chartData}) {
         ],
         series: [{dataKey: chartData.dataKey, valueFormatter}],
         height: 500,
-        width: 800,
+        width: 1300,
         sx: {
             [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
                 transform: 'translateX(-10px)',
             },
         },
     };
+
+
     return (
         <div>
             <BarChart className="nodrag"
-                dataset={chartData.data}
-                xAxis={[
-                    {scaleType: 'band', dataKey: chartData.dataKey},
-                ]}
-                borderRadius={10}
-                {...chartSetting}
+                      dataset={chartData.data}
+                      xAxis={[
+                          {scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps},
+                      ]}
+                      borderRadius={10}
+                      {...chartSetting}
             />
-
         </div>
     )
 }
