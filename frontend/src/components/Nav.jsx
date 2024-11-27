@@ -67,13 +67,13 @@ function Nav({setEditUi}) {
     return (
         <AppBar position="static">
             <Container maxWidth="xl">
-                <Toolbar disableGutters>
+                <Toolbar disableGutters variant="dense">
                     <AdbIcon sx={{display: {xs: 'none', md: 'flex'}, mr: 1}}/>
                     <Typography
                         variant="h6"
                         noWrap
                         component="a"
-                        href="#app-bar-with-responsive-menu"
+                        href="/"
                         sx={{
                             mr: 2,
                             display: {xs: 'none', md: 'flex'},
@@ -87,40 +87,40 @@ function Nav({setEditUi}) {
                         Automata
                     </Typography>
 
-                    <Box sx={{flexGrow: 1, display: {xs: 'flex', md: 'none'}}}>
-                        <IconButton
-                            size="large"
-                            aria-label="account of current user"
-                            aria-controls="menu-appbar"
-                            aria-haspopup="true"
-                            onClick={handleOpenNavMenu}
-                            color="inherit"
-                        >
-                            <MenuIcon/>
-                        </IconButton>
-                        <Menu
-                            id="menu-appbar"
-                            anchorEl={anchorElNav}
-                            anchorOrigin={{
-                                vertical: 'bottom',
-                                horizontal: 'left',
-                            }}
-                            keepMounted
-                            transformOrigin={{
-                                vertical: 'top',
-                                horizontal: 'left',
-                            }}
-                            open={Boolean(anchorElNav)}
-                            onClose={handleCloseNavMenu}
-                            sx={{display: {xs: 'block', md: 'none'}}}
-                        >
-                            {pages.map((page) => (
-                                <MenuItem key={page} onClick={handleCloseNavMenu}>
-                                    <Typography sx={{textAlign: 'center'}}>{page}</Typography>
-                                </MenuItem>
-                            ))}
-                        </Menu>
-                    </Box>
+                    {/*<Box sx={{flexGrow: 1, display: {xs: 'flex', md: 'none'}}}>*/}
+                    {/*    <IconButton*/}
+                    {/*        size="large"*/}
+                    {/*        aria-label="account of current user"*/}
+                    {/*        aria-controls="menu-appbar"*/}
+                    {/*        aria-haspopup="true"*/}
+                    {/*        onClick={handleOpenNavMenu}*/}
+                    {/*        color="inherit"*/}
+                    {/*    >*/}
+                    {/*        <MenuIcon/>*/}
+                    {/*    </IconButton>*/}
+                    {/*    <Menu*/}
+                    {/*        id="menu-appbar"*/}
+                    {/*        anchorEl={anchorElNav}*/}
+                    {/*        anchorOrigin={{*/}
+                    {/*            vertical: 'bottom',*/}
+                    {/*            horizontal: 'left',*/}
+                    {/*        }}*/}
+                    {/*        keepMounted*/}
+                    {/*        transformOrigin={{*/}
+                    {/*            vertical: 'top',*/}
+                    {/*            horizontal: 'left',*/}
+                    {/*        }}*/}
+                    {/*        open={Boolean(anchorElNav)}*/}
+                    {/*        onClose={handleCloseNavMenu}*/}
+                    {/*        sx={{display: {xs: 'block', md: 'none'}}}*/}
+                    {/*    >*/}
+                    {/*        {pages.map((page) => (*/}
+                    {/*            <MenuItem key={page} onClick={handleCloseNavMenu}>*/}
+                    {/*                <Typography sx={{textAlign: 'center'}}>{page}</Typography>*/}
+                    {/*            </MenuItem>*/}
+                    {/*        ))}*/}
+                    {/*    </Menu>*/}
+                    {/*</Box>*/}
                     <AdbIcon sx={{display: {xs: 'flex', md: 'none'}, mr: 1}}/>
                     <Typography
                         variant="h5"
@@ -145,14 +145,14 @@ function Nav({setEditUi}) {
                             <Button
                                 key={page}
                                 onClick={handleCloseNavMenu}
-                                sx={{my: 2, color: 'white', display: 'block'}}
+                                sx={{ color: 'white', display: 'block'}}
                             >
                                 {page}
                             </Button>
                         ))}
                         <Button
                             onClick={handleEdit}
-                            sx={{my: 2, display: 'block'}}
+                            sx={{ display: 'block'}}
                         >
                             Edit Dashboard
                         </Button>
@@ -166,33 +166,12 @@ function Nav({setEditUi}) {
                     </Box>
 
                     <Box sx={{flexGrow: 0}}>
-                        <Tooltip title="Open settings">
-                            <IconButton onClick={handleOpenUserMenu} sx={{p: 0}}>
-                                <Avatar alt="Automata" src="/static/images/avatar/2.jpg"/>
-                            </IconButton>
-                        </Tooltip>
-                        <Menu
-                            sx={{mt: '45px'}}
-                            id="menu-appbar"
-                            anchorEl={anchorElUser}
-                            anchorOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                            }}
-                            keepMounted
-                            transformOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                            }}
-                            open={Boolean(anchorElUser)}
-                            onClose={handleCloseUserMenu}
-                        >
-                            {settings.map((setting) => (
-                                <MenuItem key={setting} onClick={handleCloseUserMenu}>
-                                    <Typography sx={{textAlign: 'center'}}>{setting}</Typography>
-                                </MenuItem>
-                            ))}
-                        </Menu>
+                        {/*<Tooltip title="Open settings">*/}
+                        {/*    <IconButton onClick={handleOpenUserMenu} sx={{p: 0}}>*/}
+                        {/*        <Avatar alt="Automata" src="/static/images/avatar/2.jpg"/>*/}
+                        {/*    </IconButton>*/}
+                        {/*</Tooltip>*/}
+
                     </Box>
                 </Toolbar>
             </Container>

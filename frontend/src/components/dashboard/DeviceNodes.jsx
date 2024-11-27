@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges,
+    applyNodeChanges, Background,
     ReactFlow,
     useEdgesState, useNodes,
     useNodesState, useReactFlow
@@ -53,6 +53,7 @@ export default function DeviceNodes({editUi}) {
         );
     }, [messages, setNodes]);
 
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -88,7 +89,7 @@ export default function DeviceNodes({editUi}) {
     // }
 
     return (
-        <div style={{height: '90vh'}}>
+        <div style={{height: '92dvh'}}>
             <ReactFlow
                 colorMode="dark"
                 nodes={nodes}

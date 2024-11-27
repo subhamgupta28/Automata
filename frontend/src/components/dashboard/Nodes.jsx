@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {Handle, Position} from "@xyflow/react";
 import {getChartData, getDevices, refreshDeviceById, sendAction} from "../../services/apis.jsx";
 import {
@@ -201,13 +201,18 @@ export function Device({data, isConnectable}) {
         </div>
     );
 }
-export function MainNode({data, isConnectable}) {
-    let nodeIds = [];
-    let chartIds = [];
-    const charts = data.value.devices.filter(device =>
-        device.attributes.some(attr => attr.type === "DATA|CHART")
-    );
 
+
+export function MainNode({data, isConnectable}) {
+    const { devices, numOfDevices, chartNodes } = data.value;
+
+    // Filter charts from the devices
+    const charts = useMemo(() =>
+        devices.filter(device =>
+            device.attributes.some(attr => attr.type === "DATA|CHART")
+        ), [devices]);
+
+    // Initialize state for the chart data and the selected device/attribute
     const [chartData, setChartData] = useState({
         dataKey: "p",
         data: [0],
@@ -216,84 +221,90 @@ export function MainNode({data, isConnectable}) {
         timestamps: [""]
     });
     const [deviceId, setDeviceId] = useState(0);
-    const [selectedAttribute, setAttribute] = useState(charts[deviceId].attributes[0]?.key || "");
-    const [chartDevice, setChartDevice] = useState(charts[deviceId].id);
-    const [deviceName, setDeviceName] = useState(charts[deviceId].name)
+    const [selectedAttribute, setAttribute] = useState(charts[deviceId]?.attributes[0]?.key || "");
+    const [chartDevice, setChartDevice] = useState(charts[deviceId]?.id || "");
+    const [deviceName, setDeviceName] = useState(charts[deviceId]?.name || "");
 
-    // Prepare node and chart IDs
-    for (let i = 0; i < data.value.numOfDevices; i++) {
-        nodeIds.push("main-node-" + i);
-    }
-    for (let i = 0; i < data.value.chartNodes; i++) {
-        chartIds.push("chart-node-" + i);
-    }
+    // Memoize the node and chart IDs since they don't change during render
+    const nodeIds = useMemo(() =>
+        Array.from({ length: numOfDevices }, (_, i) => `main-node-${i}`), [numOfDevices]);
+
+    const chartIds = useMemo(() =>
+        Array.from({ length: chartNodes }, (_, i) => `chart-node-${i}`), [chartNodes]);
 
     // Fetch chart data when device or attribute is selected
     useEffect(() => {
+        if (!chartDevice || !selectedAttribute) return;
+
         const fetchChartData = async () => {
-            if (!chartDevice) return;
-            const data = await getChartData(chartDevice, selectedAttribute);
-            console.log("chart data for device:", chartDevice, "attribute:", selectedAttribute, data);
-            setChartData(data);
+            try {
+                const data = await getChartData(chartDevice, selectedAttribute);
+                console.log("chart data for device:", chartDevice, "attribute:", selectedAttribute, data);
+                setChartData(data);
+            } catch (err) {
+                console.error("Failed to fetch chart data", err);
+            }
         };
 
         fetchChartData();
     }, [selectedAttribute, chartDevice]);
 
     // Handle selecting a device
-    const handleChartDevice = (deviceId) => {
-        setDeviceId(deviceId);
+    const handleChartDevice = useCallback((deviceId) => {
         const selectedDevice = charts[deviceId];
+        setDeviceId(deviceId);
         setChartDevice(selectedDevice.id);
-        setDeviceName(selectedDevice.name)
-        setAttribute(selectedDevice.attributes[0]?.key || ""); // Set first attribute for new device
-    };
+        setDeviceName(selectedDevice.name);
+        setAttribute(selectedDevice.attributes[0]?.key || "");
+    }, [charts]);
 
     // Handle selecting an attribute
-    const handleAttribute = (key) => {
+    const handleAttribute = useCallback((key) => {
         setAttribute(key);
         console.log("Selected attribute:", key);
-    };
+    }, []);
 
     return (
         <div className="text-updater-node">
-            <div style={{borderRadius: '16px'}}>
+            <div style={{ borderRadius: '16px' }}>
                 <Card elevation={12} style={{
                     padding: '0px',
                     minHeight: '500px',
                     minWidth: '400px',
                     borderRadius: '18px',
                 }}>
-                    {chartIds && chartIds.map((id, index) => (
+                    {/* Render Handles for Chart Nodes */}
+                    {chartIds.map((id, index) => (
                         <Handle
+                            key={id}
                             type="target"
                             position={Position.Right}
                             id={id}
-                            style={{top: 10 + index * 50}}
+                            style={{ top: 10 + index * 50 }}
                             isConnectable={isConnectable}
                         />
                     ))}
-                    <Typography style={{marginTop: '20px', marginLeft: '20px'}} variant="h5">
-                        {deviceName}
-                    </Typography>
+                    <Alert style={{color:'white'}} icon={false} variant="filled" severity="success">
+                        Device {deviceName}
+                    </Alert>
 
-                    <CardContent style={{padding: '12px', marginLeft: '15px'}}>
+
+                    <CardContent style={{ padding: '12px', marginLeft: '15px' }}>
                         <BarChartComp data={data.value.devices} chartData={chartData} />
                     </CardContent>
 
-                    <Stack style={{display: 'flex', alignItems: 'center'}}>
-                        <div style={{display: 'flex', alignItems: 'center'}}>
-                            <Typography>
-                                Devices
-                            </Typography>
-                            <div style={{margin: '14px'}}>
-                                {charts && charts.map((device, index) => (
+                    <Stack style={{ display: 'flex', alignItems: 'center', marginLeft: '20px', marginRight: '20px' }}>
+                        {/* Device Selection */}
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Typography>Devices</Typography>
+                            <div style={{ margin: '14px' }}>
+                                {charts.map((device, index) => (
                                     <Chip
                                         key={device.id}
                                         className="nodrag"
                                         clickable
-                                        onClick={() => handleChartDevice(index)} // Pass index to handleChartDevice
-                                        style={{margin: '4px'}}
+                                        onClick={() => handleChartDevice(index)}
+                                        style={{ margin: '4px' }}
                                         label={device.name}
                                         color="success"
                                     />
@@ -301,18 +312,17 @@ export function MainNode({data, isConnectable}) {
                             </div>
                         </div>
 
-                        <div style={{display: 'flex', alignItems: 'center'}}>
-                            <Typography>
-                                Attributes
-                            </Typography>
-                            <div style={{margin: '14px'}}>
-                                {chartData.attributes && chartData.attributes.map((name) => (
+                        {/* Attribute Selection */}
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Typography>Attributes</Typography>
+                            <div style={{ margin: '14px' }}>
+                                {chartData.attributes.map((name) => (
                                     <Chip
                                         key={name}
                                         className="nodrag"
                                         clickable
                                         onClick={() => handleAttribute(name)}
-                                        style={{margin: '4px'}}
+                                        style={{ margin: '4px' }}
                                         label={name}
                                         color="info"
                                     />
@@ -321,12 +331,14 @@ export function MainNode({data, isConnectable}) {
                         </div>
                     </Stack>
 
-                    {nodeIds && nodeIds.map((id, index) => (
+                    {/* Render Handles for Main Nodes */}
+                    {nodeIds.map((id, index) => (
                         <Handle
+                            key={id}
                             type="target"
                             position={Position.Left}
                             id={id}
-                            style={{top: 140 + index * 50}}
+                            style={{ top: 140 + index * 50 }}
                             isConnectable={isConnectable}
                         />
                     ))}
@@ -335,39 +347,38 @@ export function MainNode({data, isConnectable}) {
         </div>
     );
 }
-function BarChartComp({chartData}) {
 
+function BarChartComp({chartData}) {
     const valueFormatter = (value) => {
         return `${value} ${chartData.unit}`;
-    }
+    };
 
-    const chartSetting = {
+    const chartSetting = useMemo(() => ({
         yAxis: [
             {
                 label: chartData.label,
             },
         ],
-        series: [{dataKey: chartData.dataKey, valueFormatter}],
-        height: 500,
-        width: 1100,
+        series: [{ dataKey: chartData.dataKey,label: 'Showing last 12 Hours data', valueFormatter }],
+        height: 300,
+        width: 600,
         sx: {
             [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
                 transform: 'translateX(-10px)',
             },
         },
-    };
-
+    }), [chartData]);
 
     return (
         <div>
             <BarChart className="nodrag"
                       dataset={chartData.data}
-                      xAxis={[
-                          {scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps},
-                      ]}
+
+                      xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps }]}
                       borderRadius={10}
                       {...chartSetting}
             />
+
         </div>
-    )
+    );
 }
