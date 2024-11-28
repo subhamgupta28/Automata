@@ -111,17 +111,17 @@ export function Device({data, isConnectable}) {
     }
     if (data.value["status"])
         if (data.value.status === 'ONLINE') {
-            color = "#a6a6a6"; // Icon for connected
+            color = "#eeeeee"; // Icon for connected
 
         } else
-            color = "#8d8d8d"; // Default icon
+            color = "#616161"; // Default icon
 
 
 
     return (
         <div className="text-updater-node" key={data.value.id}>
-            <div style={{borderRadius: '16px', padding: '1px', backgroundColor: 'transparent'}}>
-                <Card style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px', padding: '4px'}}>
+            <Alert icon={false} style={{borderRadius: '12px', padding: '1px', backgroundColor: color}}>
+                <Card style={{display: 'flex', borderRadius: '8px', marginLeft: '2px', marginRight: '2px', padding: '4px'}}>
                     <CardContent
                         style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px'}}>
                         <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
@@ -184,7 +184,7 @@ export function Device({data, isConnectable}) {
                 </Card>
 
                 <CustomModal isOpen={isModalOpen} onClose={handleCloseModal} device={data.value}/>
-            </div>
+            </Alert>
             <Handle
                 type="source"
                 position={Position.Right}
@@ -212,7 +212,8 @@ export function MainNode({data, isConnectable}) {
         data: [0],
         label: "p",
         attributes: [],
-        timestamps: [""]
+        timestamps: [""],
+        unit: ""
     });
     const [deviceId, setDeviceId] = useState(0);
     const [selectedAttribute, setAttribute] = useState(charts[deviceId]?.attributes[0]?.key || "");
@@ -284,9 +285,7 @@ export function MainNode({data, isConnectable}) {
 
 
                     <CardContent style={{ padding: '12px', marginLeft: '15px' }}>
-                        <BarChartComp data={data.value.devices} chartData={chartData} />
-                        {/*<BarChartComp data={data.value.devices} chartData={chartData} />*/}
-                        {/*<BarChartComp data={data.value.devices} chartData={chartData} />*/}
+                        <BarChartComp chartData={chartData} />
                     </CardContent>
 
                     <Stack style={{ display: 'flex', alignItems: 'center', marginLeft: '20px', marginRight: '20px' }}>
@@ -370,9 +369,9 @@ function BarChartComp({chartData}) {
             <BarChart className="nodrag"
                       dataset={chartData.data}
                       barLabel={(item, context) => {
-                          return item.value?.toString();
+                          return item.value?.toString()+" "+chartData.unit;
                       }}
-                      colors={['white']}
+                      colors={['#757575']}
                       xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps }]}
                       borderRadius={10}
                       {...chartSetting}
