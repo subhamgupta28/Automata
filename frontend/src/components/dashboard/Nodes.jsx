@@ -90,8 +90,8 @@ export function Device({data, isConnectable}) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
-    let icon;
-    let state;
+    let color;
+
 
     const gaugeData = data.value.attributes.filter((t) => t.type === "DATA|GAUGE");
     const sliderData = data.value.attributes.filter((t) => t.type === "DATA|SLIDER");
@@ -111,23 +111,17 @@ export function Device({data, isConnectable}) {
     }
     if (data.value["status"])
         if (data.value.status === 'ONLINE') {
-            icon = MoodIcon; // Icon for connected
-            state = 'success'; // Icon for connected
-        } else if (data.value.status === 'OFFLINE') {
-            icon = MoodBadIcon; // Icon for disconnected
-            state = 'error'; // Icon for disconnected
-        } else {
-            icon = SentimentDissatisfiedIcon; // Default icon
-            state = 'warning'; // Default icon
-        }
+            color = "#a6a6a6"; // Icon for connected
+
+        } else
+            color = "#8d8d8d"; // Default icon
+
 
 
     return (
         <div className="text-updater-node" key={data.value.id}>
-            <Alert icon={false} variant="filled" severity={state}
-                   style={{borderRadius: '16px', padding: '1px'}}>
-
-                <Card style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px'}}>
+            <div style={{borderRadius: '16px', padding: '1px', backgroundColor: 'transparent'}}>
+                <Card style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px', padding: '4px'}}>
                     <CardContent
                         style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px'}}>
                         <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
@@ -190,7 +184,7 @@ export function Device({data, isConnectable}) {
                 </Card>
 
                 <CustomModal isOpen={isModalOpen} onClose={handleCloseModal} device={data.value}/>
-            </Alert>
+            </div>
             <Handle
                 type="source"
                 position={Position.Right}
@@ -284,13 +278,15 @@ export function MainNode({data, isConnectable}) {
                             isConnectable={isConnectable}
                         />
                     ))}
-                    <Alert style={{color:'white'}} icon={false} variant="filled" severity="success">
+                    <Typography style={{color:'white', margin: '10px'}} >
                         Device {deviceName}
-                    </Alert>
+                    </Typography>
 
 
                     <CardContent style={{ padding: '12px', marginLeft: '15px' }}>
                         <BarChartComp data={data.value.devices} chartData={chartData} />
+                        {/*<BarChartComp data={data.value.devices} chartData={chartData} />*/}
+                        {/*<BarChartComp data={data.value.devices} chartData={chartData} />*/}
                     </CardContent>
 
                     <Stack style={{ display: 'flex', alignItems: 'center', marginLeft: '20px', marginRight: '20px' }}>
@@ -332,7 +328,7 @@ export function MainNode({data, isConnectable}) {
                     </Stack>
 
                     {/* Render Handles for Main Nodes */}
-                    {nodeIds.map((id, index) => (
+                    {nodeIds && nodeIds.map((id, index) => (
                         <Handle
                             key={id}
                             type="target"
@@ -360,8 +356,8 @@ function BarChartComp({chartData}) {
             },
         ],
         series: [{ dataKey: chartData.dataKey,label: 'Showing last 12 Hours data', valueFormatter }],
-        height: 300,
-        width: 600,
+        height: 400,
+        width: 1100,
         sx: {
             [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
                 transform: 'translateX(-10px)',
@@ -373,7 +369,10 @@ function BarChartComp({chartData}) {
         <div>
             <BarChart className="nodrag"
                       dataset={chartData.data}
-
+                      barLabel={(item, context) => {
+                          return item.value?.toString();
+                      }}
+                      colors={['white']}
                       xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps }]}
                       borderRadius={10}
                       {...chartSetting}

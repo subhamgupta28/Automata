@@ -1,9 +1,8 @@
 import {debounce, Slider} from "@mui/material";
-import Typography from "@mui/material/Typography";
 import {useState} from "react";
 import {sendAction} from "../../services/apis.jsx";
 
-export function CustomSlider({value, deviceId, displayName, data}){
+export function CustomSlider({value, deviceId, displayName, data}) {
     const [num, setNum] = useState(value)
     const handleChange = debounce((e) => {
         // console.log("handleChange", e.target.value);
@@ -11,7 +10,12 @@ export function CustomSlider({value, deviceId, displayName, data}){
             try {
                 let act = data.key;
                 setNum(e.target.value);
-                await sendAction(deviceId, {"key": data.key, [act]: e.target.value, "device_id": deviceId, direct: true});
+                await sendAction(deviceId, {
+                    "key": data.key,
+                    [act]: e.target.value,
+                    "device_id": deviceId,
+                    direct: true
+                });
             } catch (err) {
                 console.error("Action send failed", err);
             }
@@ -19,12 +23,33 @@ export function CustomSlider({value, deviceId, displayName, data}){
         send();
     }, 300);
 
-    return(
+    return (
         <>
-            <Slider className="nodrag" onChange={handleChange} value={num} aria-label="Default" min={data.extras.min} max={data.extras.max} valueLabelDisplay="auto" />
-            <Typography textAlign='center'>
-                {displayName}
-            </Typography>
+            <Slider
+                className="nodrag"
+                onChange={handleChange}
+                value={num}
+                aria-label="Default"
+                min={data.extras.min}
+                max={data.extras.max}
+                valueLabelDisplay="auto"
+                marks={[{
+                        value: data.extras.min,
+                        label: `${data.extras.min}`,
+                    },
+                    {
+                        value: data.extras.max/2,
+                        label: displayName,
+                    },
+                    {
+                        value: data.extras.max,
+                        label: `${data.extras.max}`,
+                    }
+                    ]}
+            />
+            {/*<Typography textAlign='center'>*/}
+            {/*    {displayName}*/}
+            {/*</Typography>*/}
         </>
     )
 }

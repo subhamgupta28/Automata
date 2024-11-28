@@ -98,7 +98,7 @@ export default function DeviceNodes({editUi}) {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                defaultViewport={{x: 0, y: 0, zoom: 0.6}}
+                defaultViewport={{x: 0, y: 0, zoom: 0.65}}
                 nodeTypes={nodeTypes}
             >
                 {/*<Background style={{width: '80%', height: '80%'}}/>*/}
