@@ -59,6 +59,7 @@ public class AnalyticsService {
         chartDataDto.setPeriod(period);
 
         var attributes = attributeRepository.findByDeviceIdAndTypeNot(deviceId, "DATA|AUX");
+        System.err.println(attributes);
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -82,7 +83,7 @@ public class AnalyticsService {
                 chartDataDto.setLabel("");
                 return chartDataDto;
             }
-            System.err.println(attr);
+//            System.err.println(attr);
             chartDataDto.setUnit(attr.getFirst().getUnits());
         }
 

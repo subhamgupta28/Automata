@@ -74,7 +74,7 @@ public class MainService {
         var isMacAddrPresent = deviceRepository.findByMacAddr(registerDevice.getMacAddr());
 
         if (!isMacAddrPresent.isEmpty()) {
-            var dev = isMacAddrPresent.get(0);
+            var dev = isMacAddrPresent.getFirst();
             device.setId(dev.getId());
             var attr = attributeRepository.findByDeviceId(dev.getId());
             if (!attr.isEmpty()) {

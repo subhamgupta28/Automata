@@ -111,22 +111,23 @@ export function Device({data, isConnectable}) {
     }
     if (data.value["status"])
         if (data.value.status === 'ONLINE') {
-            color = "#eeeeee"; // Icon for connected
+            color = "#84fd49"; // Icon for connected
 
         } else
-            color = "#616161"; // Default icon
+            color = "#ff0000"; // Default icon
 
 
 
     return (
         <div className="text-updater-node" key={data.value.id}>
-            <Alert icon={false} style={{borderRadius: '12px', padding: '1px', backgroundColor: color}}>
-                <Card style={{display: 'flex', borderRadius: '8px', marginLeft: '2px', marginRight: '2px', padding: '4px'}}>
+            <div style={{borderRadius: '12px', padding: '1px'}}>
+                <Card elevation={20} style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px', padding: '4px'}}>
                     <CardContent
                         style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px'}}>
                         <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                             {data.value.name}
                             {/*<SvgIcon component={icon} inheritViewBox style={{marginLeft: '8px',}}/>*/}
+                            <span style={{fontSize:'x-small', color: color}} >{data.value["status"]}</span>
                             <IconButton onClick={handleOpenModal} variant='text' style={{marginLeft: '8px'}}>
                                 <SettingsIcon/>
                             </IconButton>
@@ -184,7 +185,7 @@ export function Device({data, isConnectable}) {
                 </Card>
 
                 <CustomModal isOpen={isModalOpen} onClose={handleCloseModal} device={data.value}/>
-            </Alert>
+            </div>
             <Handle
                 type="source"
                 position={Position.Right}
@@ -206,19 +207,7 @@ export function MainNode({data, isConnectable}) {
             device.attributes.some(attr => attr.type === "DATA|CHART")
         ), [devices]);
 
-    // Initialize state for the chart data and the selected device/attribute
-    const [chartData, setChartData] = useState({
-        dataKey: "p",
-        data: [0],
-        label: "p",
-        attributes: [],
-        timestamps: [""],
-        unit: ""
-    });
-    const [deviceId, setDeviceId] = useState(0);
-    const [selectedAttribute, setAttribute] = useState(charts[deviceId]?.attributes[0]?.key || "");
-    const [chartDevice, setChartDevice] = useState(charts[deviceId]?.id || "");
-    const [deviceName, setDeviceName] = useState(charts[deviceId]?.name || "");
+
 
     // Memoize the node and chart IDs since they don't change during render
     const nodeIds = useMemo(() =>
@@ -228,36 +217,7 @@ export function MainNode({data, isConnectable}) {
         Array.from({ length: chartNodes }, (_, i) => `chart-node-${i}`), [chartNodes]);
 
     // Fetch chart data when device or attribute is selected
-    useEffect(() => {
-        if (!chartDevice || !selectedAttribute) return;
 
-        const fetchChartData = async () => {
-            try {
-                const data = await getChartData(chartDevice, selectedAttribute);
-                console.log("chart data for device:", chartDevice, "attribute:", selectedAttribute, data);
-                setChartData(data);
-            } catch (err) {
-                console.error("Failed to fetch chart data", err);
-            }
-        };
-
-        fetchChartData();
-    }, [selectedAttribute, chartDevice]);
-
-    // Handle selecting a device
-    const handleChartDevice = useCallback((deviceId) => {
-        const selectedDevice = charts[deviceId];
-        setDeviceId(deviceId);
-        setChartDevice(selectedDevice.id);
-        setDeviceName(selectedDevice.name);
-        setAttribute(selectedDevice.attributes[0]?.key || "");
-    }, [charts]);
-
-    // Handle selecting an attribute
-    const handleAttribute = useCallback((key) => {
-        setAttribute(key);
-        console.log("Selected attribute:", key);
-    }, []);
 
     return (
         <div className="text-updater-node">
@@ -280,50 +240,52 @@ export function MainNode({data, isConnectable}) {
                         />
                     ))}
                     <Typography style={{color:'white', margin: '10px'}} >
-                        Device {deviceName}
+                        Device
                     </Typography>
 
 
                     <CardContent style={{ padding: '12px', marginLeft: '15px' }}>
-                        <BarChartComp chartData={chartData} />
+                        {charts.map((device, index) => (
+                            <BarChartComp chartDevice={device} />
+                        ))}
                     </CardContent>
 
                     <Stack style={{ display: 'flex', alignItems: 'center', marginLeft: '20px', marginRight: '20px' }}>
                         {/* Device Selection */}
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <Typography>Devices</Typography>
-                            <div style={{ margin: '14px' }}>
-                                {charts.map((device, index) => (
-                                    <Chip
-                                        key={device.id}
-                                        className="nodrag"
-                                        clickable
-                                        onClick={() => handleChartDevice(index)}
-                                        style={{ margin: '4px' }}
-                                        label={device.name}
-                                        color="success"
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                        {/*<div style={{ display: 'flex', alignItems: 'center' }}>*/}
+                        {/*    <Typography>Devices</Typography>*/}
+                        {/*    <div style={{ margin: '14px' }}>*/}
+                        {/*        {charts.map((device, index) => (*/}
+                        {/*            <Chip*/}
+                        {/*                key={device.id}*/}
+                        {/*                className="nodrag"*/}
+                        {/*                clickable*/}
+                        {/*                onClick={() => handleChartDevice(index)}*/}
+                        {/*                style={{ margin: '4px' }}*/}
+                        {/*                label={device.name}*/}
+                        {/*                color="success"*/}
+                        {/*            />*/}
+                        {/*        ))}*/}
+                        {/*    </div>*/}
+                        {/*</div>*/}
 
                         {/* Attribute Selection */}
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <Typography>Attributes</Typography>
-                            <div style={{ margin: '14px' }}>
-                                {chartData.attributes.map((name) => (
-                                    <Chip
-                                        key={name}
-                                        className="nodrag"
-                                        clickable
-                                        onClick={() => handleAttribute(name)}
-                                        style={{ margin: '4px' }}
-                                        label={name}
-                                        color="info"
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                        {/*<div style={{ display: 'flex', alignItems: 'center' }}>*/}
+                        {/*    <Typography>Attributes</Typography>*/}
+                        {/*    <div style={{ margin: '14px' }}>*/}
+                        {/*        {chartData.attributes.map((name) => (*/}
+                        {/*            <Chip*/}
+                        {/*                key={name}*/}
+                        {/*                className="nodrag"*/}
+                        {/*                clickable*/}
+                        {/*                onClick={() => handleAttribute(name)}*/}
+                        {/*                style={{ margin: '4px' }}*/}
+                        {/*                label={name}*/}
+                        {/*                color="info"*/}
+                        {/*            />*/}
+                        {/*        ))}*/}
+                        {/*    </div>*/}
+                        {/*</div>*/}
                     </Stack>
 
                     {/* Render Handles for Main Nodes */}
@@ -343,7 +305,50 @@ export function MainNode({data, isConnectable}) {
     );
 }
 
-function BarChartComp({chartData}) {
+function BarChartComp({chartDevice}) {
+    // Initialize state for the chart data and the selected device/attribute
+    const [chartData, setChartData] = useState({
+        dataKey: "p",
+        data: [0],
+        label: "p",
+        attributes: [],
+        timestamps: [""],
+        unit: ""
+    });
+    // const [deviceId, setDeviceId] = useState(0);
+    const [selectedAttribute, setAttribute] = useState(chartDevice?.attributes[0]?.key || "");
+    // const [chartDevice, setChartDevice] = useState(chartDevice?.id || "");
+    // const [deviceName, setDeviceName] = useState(chartDevice?.name || "");
+
+    useEffect(() => {
+        const fetchChartData = async () => {
+            try {
+                const data = await getChartData(chartDevice.id, selectedAttribute);
+                console.log("chart data for device:", chartDevice, "attribute:", selectedAttribute, data);
+                setChartData(data);
+            } catch (err) {
+                console.error("Failed to fetch chart data", err);
+            }
+        };
+
+        fetchChartData();
+    }, [selectedAttribute]);
+
+    // Handle selecting a device
+    // const handleChartDevice = useCallback((deviceId) => {
+    //     const selectedDevice = charts[deviceId];
+    //     setDeviceId(deviceId);
+    //     setChartDevice(selectedDevice.id);
+    //     setDeviceName(selectedDevice.name);
+    //     setAttribute(selectedDevice.attributes[0]?.key || "");
+    // }, [chartDevice]);
+
+    // Handle selecting an attribute
+    const handleAttribute = useCallback((key) => {
+        setAttribute(key);
+        console.log("Selected attribute:", key);
+    }, []);
+
     const valueFormatter = (value) => {
         return `${value} ${chartData.unit}`;
     };
@@ -355,8 +360,8 @@ function BarChartComp({chartData}) {
             },
         ],
         series: [{ dataKey: chartData.dataKey,label: 'Showing last 12 Hours data', valueFormatter }],
-        height: 400,
-        width: 1100,
+        height: 360,
+        width: 1000,
         sx: {
             [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
                 transform: 'translateX(-10px)',
@@ -369,14 +374,29 @@ function BarChartComp({chartData}) {
             <BarChart className="nodrag"
                       dataset={chartData.data}
                       barLabel={(item, context) => {
-                          return item.value?.toString()+" "+chartData.unit;
+                          return item.value?.toString();
                       }}
                       colors={['#757575']}
                       xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps }]}
                       borderRadius={10}
                       {...chartSetting}
             />
-
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+                <Typography>Attributes</Typography>
+                <div style={{ margin: '14px' }}>
+                    {chartData.attributes.map((name) => (
+                        <Chip
+                            key={name}
+                            className="nodrag"
+                            clickable
+                            onClick={() => handleAttribute(name)}
+                            style={{ margin: '4px' }}
+                            label={name}
+                            color="info"
+                        />
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }

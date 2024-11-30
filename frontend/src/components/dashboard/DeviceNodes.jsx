@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Background,
+    applyNodeChanges, Background, Panel,
     ReactFlow,
     useEdgesState, useNodes,
     useNodesState, useReactFlow
@@ -17,6 +17,8 @@ import {Card} from "@mui/material";
 import ChartNode from "../charts/ChartNode.jsx";
 import NodeInspector from "./NodeInspector.jsx";
 import Button from "@mui/material/Button";
+import {Fab} from "@mui/material";
+import EditIcon from '@mui/icons-material/Edit';
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {
@@ -25,13 +27,16 @@ const nodeTypes = {
     lineChartNode: ChartNode
 };
 
-export default function DeviceNodes({editUi}) {
+export default function DeviceNodes() {
     const {messages, sendMessage} = useWebSocket('/topic/data');
     const {messages: data, sendMessage: sendData} = useWebSocket('/topic/devices');
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
+    const [editUi, setEditUi] = useState(false);
     // const [editUi, setEditUi] = useState(false);
-
+    const handleEdit = () => {
+        setEditUi(a=>!a)
+    }
     useEffect(() => {
         setNodes((nds) =>
             nds.map((node) => {
@@ -101,6 +106,11 @@ export default function DeviceNodes({editUi}) {
                 defaultViewport={{x: 0, y: 0, zoom: 0.65}}
                 nodeTypes={nodeTypes}
             >
+                <Panel position="bottom-right" style={{marginBottom: '50px'}}>
+                    <Fab color="primary" aria-label="add" onClick={handleEdit}>
+                        <EditIcon />
+                    </Fab>
+                </Panel>
                 {/*<Background style={{width: '80%', height: '80%'}}/>*/}
                 {/*<Controls/>*/}
                 {editUi && <NodeInspector/>}

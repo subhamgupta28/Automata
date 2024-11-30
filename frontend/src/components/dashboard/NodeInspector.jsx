@@ -5,7 +5,9 @@ import {
 } from '@xyflow/react';
 import Button from "@mui/material/Button";
 import {updatePosition} from "../../services/apis.jsx";
-import {Card} from "@mui/material";
+import {Card, Fab} from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
+import React from "react";
 
 export default function NodeInspector() {
     const {getInternalNode} = useReactFlow();
@@ -23,8 +25,11 @@ export default function NodeInspector() {
 
     return (
         <div className="react-flow__devtools">
-            <Panel position="top-left">
-                <Button className="nodrag" onClick={handleUpdate}>Save</Button>
+            <Panel position="bottom-right" style={{marginBottom: '120px'}}>
+                <Fab color="primary" aria-label="add" onClick={handleUpdate}>
+                    <SaveIcon/>
+                </Fab>
+                {/*<Button className="nodrag" onClick={handleUpdate}>Save</Button>*/}
             </Panel>
             <ViewportPortal>
                 <div className="react-flow__devtools-nodeinspector">
