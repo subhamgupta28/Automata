@@ -5,6 +5,7 @@ import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Data;
 import dev.automata.automata.repository.AttributeRepository;
 import dev.automata.automata.repository.DataRepository;
+import dev.automata.automata.repository.DeviceChartsRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -32,6 +33,7 @@ public class AnalyticsService {
     private final AttributeRepository attributeRepository;
     private final DeviceRepository deviceRepository;
     private final MongoTemplate mongoTemplate;
+    private final DeviceChartsRepository deviceChartsRepository;
 
 
 //    public ChartDataDto getChartData(String deviceId, String attributeKey) {
@@ -58,8 +60,16 @@ public class AnalyticsService {
         }
         chartDataDto.setPeriod(period);
 
+        var attrs = deviceChartsRepository.findByDeviceId(deviceId);
         var attributes = attributeRepository.findByDeviceIdAndTypeNot(deviceId, "DATA|AUX");
-        System.err.println(attributes);
+
+        List<Attribute> filteredAttributes = attributes.stream()
+                .filter(attribute -> attrs.stream().anyMatch(attr -> attr.getAttributeKey().equals(attribute.getKey()) && attr.isShowChart()))
+                .toList();
+
+        System.err.println(attrs.size());
+        System.err.println(attributes.size());
+        System.err.println(filteredAttributes.stream().map(Attribute::getKey).collect(Collectors.joining(", ")));
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -71,10 +81,10 @@ public class AnalyticsService {
         Date endDate = Date.from(now.atZone(ZoneId.systemDefault()).toInstant());
 
 
-        if (!attributes.isEmpty()) {
+        if (!filteredAttributes.isEmpty()) {
             String finalAttributeKey = attributeKey;
-            var attr = attributes.stream().filter(s -> s.getKey().equals(finalAttributeKey)).toList();
-            chartDataDto.setAttributes(attributes.stream().map(Attribute::getKey).collect(Collectors.toList()));
+            var attr = filteredAttributes.stream().filter(s -> s.getKey().equals(finalAttributeKey)).toList();
+            chartDataDto.setAttributes(filteredAttributes.stream().map(Attribute::getKey).collect(Collectors.toList()));
             if (attr.isEmpty()){
                 chartDataDto.setMessage("No attribute found for key: " + attributeKey+". Use one of these to fetch charts.");
                 chartDataDto.setData(new ArrayList<>());

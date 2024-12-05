@@ -18,5 +18,10 @@ public interface AttributeRepository extends MongoRepository<Attribute, String> 
 
     List<Attribute> findByDeviceIdAndType(String deviceId, String type);
 
+    List<Attribute> findByDeviceIdAndTypeNotAndVisibleIsTrue(String deviceId, String type);
     List<Attribute> findByDeviceIdAndTypeNot(String deviceId, String type);
+
+    Attribute findByKeyAndDeviceId(String key, String deviceId);
+
+    Attribute findByDeviceIdAndKey(String deviceId, String key);
 }

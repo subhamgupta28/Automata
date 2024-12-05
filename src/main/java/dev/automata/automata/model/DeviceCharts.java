@@ -19,5 +19,5 @@ public class DeviceCharts {
     private String id;
     private String deviceId;
     private boolean showChart;
-    private List<String> attributes;
+    private String attributeKey;
 }

@@ -112,7 +112,17 @@ public class MainController {
         messagingTemplate.convertAndSend("/topic/data", map);
         return ResponseEntity.ok(device);
     }
+    @GetMapping("/attrCharts/{deviceId}/{attribute}/{isVisible}")
+    public ResponseEntity<String> updateAttrCharts(@PathVariable String deviceId, @PathVariable String attribute, @PathVariable String isVisible) {
 
+        return ResponseEntity.ok(mainService.updateAttrCharts(deviceId, attribute, isVisible));
+    }
+
+//    @GetMapping("/attrCharts/{deviceId}")
+//    public ResponseEntity<String> getVisibleAttrCharts(@PathVariable String deviceId) {
+//
+//        return ResponseEntity.ok(mainService.getVisibleAttrCharts(deviceId));
+//    }
 
     @GetMapping("/update/{deviceId}")
     public ResponseEntity<String> updateDevice(@PathVariable String deviceId) {

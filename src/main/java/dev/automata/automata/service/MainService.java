@@ -5,10 +5,7 @@ import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.dto.RootDto;
 import dev.automata.automata.dto.ValueDto;
 import dev.automata.automata.model.*;
-import dev.automata.automata.repository.AttributeRepository;
-import dev.automata.automata.repository.DashboardRepository;
-import dev.automata.automata.repository.DataRepository;
-import dev.automata.automata.repository.DeviceRepository;
+import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
@@ -28,6 +25,7 @@ public class MainService {
     private final AttributeRepository attributeRepository;
     private final DeviceRepository deviceRepository;
     private final DashboardRepository deviceDashboardRepository;
+    private final DeviceChartsRepository dashboardChartsRepository;
 
     /*
      * Device: name = battery
@@ -193,12 +191,22 @@ public class MainService {
         var devices = deviceRepository.findAll();
 
         var deviceList = new ArrayList<Device>();
+        var chartAttr = dashboardChartsRepository.findByShowChartTrue();
+
         devices.forEach(device -> {
             var dashboard = deviceDashboardRepository.findByDeviceId(device.getId()).orElse(null);
             if (dashboard != null) {
                 device.setX(dashboard.getX());
                 device.setY(dashboard.getY());
             }
+            var newAttrs = new ArrayList<Attribute>();
+            var attributes = device.getAttributes();
+            attributes.forEach(a -> {
+                var at = chartAttr.stream().filter(c -> c.getAttributeKey().equals(a.getKey())).findFirst();
+                a.setVisible(at.isPresent());
+                newAttrs.add(a);
+            });
+            device.setAttributes(newAttrs);
             var lastData = getLastData(device.getId());
             device.setLastData(lastData);
             deviceList.add(device);
@@ -239,6 +247,33 @@ public class MainService {
         device.setY(Math.floor(Double.parseDouble(y)));
 
         deviceDashboardRepository.save(device);
+
+        return "success";
+    }
+
+    public String updateAttrCharts(String deviceId, String attribute, String isVisible) {
+        var isShow = Boolean.parseBoolean(isVisible);
+        var attr = attributeRepository.findByKeyAndDeviceId(attribute, deviceId);
+        var deviceChart = dashboardChartsRepository.findByDeviceIdAndAttributeKey(deviceId, attribute);
+        if (attr != null && deviceChart == null) {
+            System.err.println("Device chart not found");
+            var dc = DeviceCharts.builder()
+                    .attributeKey(attribute)
+                    .showChart(isShow)
+                    .deviceId(deviceId).build();
+            dashboardChartsRepository.save(dc);
+        } else {
+            deviceChart.setShowChart(isShow);
+            dashboardChartsRepository.save(deviceChart);
+        }
+
+//        if (attr == null) {
+//            System.err.println("Attribute not found");
+//            return "Attribute not found";
+//        }
+//        System.err.println(attr);
+//        attr.setVisible(!Boolean.parseBoolean(isVisible));
+//        attributeRepository.save(attr);
 
         return "success";
     }

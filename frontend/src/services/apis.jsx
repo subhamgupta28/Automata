@@ -48,7 +48,15 @@ export const getChartData = async (deviceId, attribute) => {
     });
     return response.data;
 }
-
+export const updateAttrCharts = async (deviceId, attribute, isVisible) => {
+    const response = await axios.get(BASE_URL + "main/attrCharts/" + deviceId + "/" + attribute + "/" + isVisible, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
 
 export const refreshDeviceById = async (deviceId) => {
     const response = await axios.get(BASE_URL + "main/update/" + deviceId, {

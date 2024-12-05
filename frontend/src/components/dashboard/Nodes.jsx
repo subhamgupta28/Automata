@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {Handle, Position} from "@xyflow/react";
-import {getChartData, getDevices, refreshDeviceById, sendAction} from "../../services/apis.jsx";
+import {getChartData, getDevices, refreshDeviceById, sendAction, updateAttrCharts} from "../../services/apis.jsx";
 import {
     Alert,
     Button,
@@ -11,7 +11,7 @@ import {
     DialogContent,
     DialogTitle,
     Modal, Paper, Slider,
-    SvgIcon
+    SvgIcon, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -29,62 +29,89 @@ import MapView from "../charts/MapView.jsx";
 import {LineChart} from "@mui/x-charts/LineChart";
 import Stack from "@mui/material/Stack";
 import {styled} from "@mui/material/styles";
+import Checkbox from "@mui/material/Checkbox";
+import Divider from "@mui/material/Divider";
 
 
-const CustomModal = ({isOpen, onClose, device}) => {
+const CustomModal = ({ isOpen, onClose, device }) => {
+    const [attrs, setAttrs] = useState(device.attributes);
     const fetchData = async () => {
         try {
-            const data = await refreshDeviceById(device.id);
+            await refreshDeviceById(device.id);
         } catch (err) {
-            // console.error("Failed to fetch devices:", err);
+            // Handle error gracefully
         }
     };
-    const handleReboot = () => {
 
-    }
-    const handleUpdate = () => {
+    const handleAction = async (action) => {
+        try {
+            await sendAction(device.id, { key: action, [action]: true, device_id: device.id, direct: true });
+        } catch (err) {
+            // Handle action error
+        }
+    };
 
+    const handleReboot = () => handleAction("reboot");
 
-        fetchData();
-    }
+    const handleUpdate = () => fetchData();
 
-    const handleSleep = () => {
-
-    }
+    const handleAttrUpdate = async (attribute) => {
+        try {
+            const updatedAttribute = { ...attribute, visible: !attribute.visible }; // Toggle the 'visible' property
+            await updateAttrCharts(device.id, attribute.key, updatedAttribute.visible);
+            device.attributes = device.attributes.map(attr =>
+               attr.id === updatedAttribute.id ? updatedAttribute : attr
+            );
+            setAttrs(device.attributes);
+        } catch (err) {
+            // Handle error gracefully
+        }
+    };
 
     return (
-        <React.Fragment>
-            <Dialog onClose={onClose} open={isOpen}>
-                <DialogTitle>
-                    <Button onClick={handleReboot}>
-                        Reboot
-                    </Button>
-                    <Button style={{marginLeft: '12px'}} onClick={handleSleep}>
-                        Sleep
-                    </Button>
-                    <Button style={{marginLeft: '12px'}} onClick={handleUpdate}>
-                        Update
-                    </Button>
-                </DialogTitle>
-                <DialogContent style={{width: '400px', overflow: 'auto'}}>
-                    <p>Attributes</p>
-                    {device && device.attributes.map(attribute => (
-                        <Chip className='nodrag' clickable
-                              style={{margin: '4px'}} label={attribute.displayName} color="info"/>
-                    ))}
-                </DialogContent>
-                <DialogActions>
-                    <Button variant="secondary" onClick={onClose}>
-                        Close
-                    </Button>
-                    <Button variant="primary" onClick={onClose}>
-                        Save Changes
-                    </Button>
-                </DialogActions>
-            </Dialog>
-        </React.Fragment>
+        <Dialog fullWidth maxWidth="md" onClose={onClose} open={isOpen}>
+            <DialogTitle>Device Settings</DialogTitle>
+            <DialogContent style={{ overflow: 'auto' }}>
+                <Stack direction="row" divider={<Divider orientation="vertical" flexItem />} spacing={2}>
+                    <div style={{ width: '70%' }}>
+                        Item 1
+                    </div>
+                    <div>
+                        <table style={{ marginTop: '12px' }}>
+                            <thead>
+                            <tr>
+                                <td>Attribute</td>
+                                <td>Show in charts</td>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {attrs.map((attribute) => (
+                                <tr key={attribute.id}>
+                                    <td>{attribute.displayName}</td>
+                                    <td>
+                                        <Checkbox
+                                            checked={attribute.visible}
+                                            onChange={() => handleAttrUpdate(attribute)}
+                                        />
+                                    </td>
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Stack>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={handleReboot}>Reboot</Button>
+                <Button style={{ marginLeft: '12px' }} onClick={handleUpdate}>Update</Button>
+                <div style={{ flexGrow: 1 }} />
+                <Button variant="secondary" onClick={onClose}>Close</Button>
+                <Button variant="primary" onClick={onClose}>Save Changes</Button>
+            </DialogActions>
+        </Dialog>
     );
 };
+
 
 export function Device({data, isConnectable}) {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -209,6 +236,8 @@ export function MainNode({data, isConnectable}) {
 
 
 
+
+
     // Memoize the node and chart IDs since they don't change during render
     const nodeIds = useMemo(() =>
         Array.from({ length: numOfDevices }, (_, i) => `main-node-${i}`), [numOfDevices]);
@@ -315,8 +344,12 @@ function BarChartComp({chartDevice}) {
         timestamps: [""],
         unit: ""
     });
+
+    const visibleAttr = chartDevice?.attributes.filter(attr => attr.visible === true);
+
+    console.log("visibleAttr", visibleAttr)
     // const [deviceId, setDeviceId] = useState(0);
-    const [selectedAttribute, setAttribute] = useState(chartDevice?.attributes[0]?.key || "");
+    const [selectedAttribute, setAttribute] = useState(visibleAttr[0]?.key || "");
     // const [chartDevice, setChartDevice] = useState(chartDevice?.id || "");
     // const [deviceName, setDeviceName] = useState(chartDevice?.name || "");
 
@@ -326,6 +359,7 @@ function BarChartComp({chartDevice}) {
                 const data = await getChartData(chartDevice.id, selectedAttribute);
                 console.log("chart data for device:", chartDevice, "attribute:", selectedAttribute, data);
                 setChartData(data);
+
             } catch (err) {
                 console.error("Failed to fetch chart data", err);
             }
