@@ -231,7 +231,7 @@ export function MainNode({data, isConnectable}) {
     // Filter charts from the devices
     const charts = useMemo(() =>
         devices.filter(device =>
-            device.attributes.some(attr => attr.type === "DATA|CHART")
+            device.showCharts === true
         ), [devices]);
 
 
@@ -273,49 +273,18 @@ export function MainNode({data, isConnectable}) {
                     </Typography>
 
 
-                    <CardContent style={{ padding: '12px', marginLeft: '15px' }}>
+                    <CardContent style={{ padding: '12px', marginLeft: '15px', display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)', /* 4 columns */
+                        gap: '10px', /* Space between items */
+                         }}>
                         {charts.map((device, index) => (
                             <BarChartComp chartDevice={device} />
                         ))}
                     </CardContent>
 
-                    <Stack style={{ display: 'flex', alignItems: 'center', marginLeft: '20px', marginRight: '20px' }}>
-                        {/* Device Selection */}
-                        {/*<div style={{ display: 'flex', alignItems: 'center' }}>*/}
-                        {/*    <Typography>Devices</Typography>*/}
-                        {/*    <div style={{ margin: '14px' }}>*/}
-                        {/*        {charts.map((device, index) => (*/}
-                        {/*            <Chip*/}
-                        {/*                key={device.id}*/}
-                        {/*                className="nodrag"*/}
-                        {/*                clickable*/}
-                        {/*                onClick={() => handleChartDevice(index)}*/}
-                        {/*                style={{ margin: '4px' }}*/}
-                        {/*                label={device.name}*/}
-                        {/*                color="success"*/}
-                        {/*            />*/}
-                        {/*        ))}*/}
-                        {/*    </div>*/}
-                        {/*</div>*/}
-
-                        {/* Attribute Selection */}
-                        {/*<div style={{ display: 'flex', alignItems: 'center' }}>*/}
-                        {/*    <Typography>Attributes</Typography>*/}
-                        {/*    <div style={{ margin: '14px' }}>*/}
-                        {/*        {chartData.attributes.map((name) => (*/}
-                        {/*            <Chip*/}
-                        {/*                key={name}*/}
-                        {/*                className="nodrag"*/}
-                        {/*                clickable*/}
-                        {/*                onClick={() => handleAttribute(name)}*/}
-                        {/*                style={{ margin: '4px' }}*/}
-                        {/*                label={name}*/}
-                        {/*                color="info"*/}
-                        {/*            />*/}
-                        {/*        ))}*/}
-                        {/*    </div>*/}
-                        {/*</div>*/}
-                    </Stack>
+                    {/*<Stack style={{ display: 'flex', alignItems: 'center', marginLeft: '20px', marginRight: '20px' }}>*/}
+                    {/*   */}
+                    {/*</Stack>*/}
 
                     {/* Render Handles for Main Nodes */}
                     {nodeIds && nodeIds.map((id, index) => (
@@ -394,8 +363,8 @@ function BarChartComp({chartDevice}) {
             },
         ],
         series: [{ dataKey: chartData.dataKey,label: 'Showing last 12 Hours data', valueFormatter }],
-        height: 360,
-        width: 1000,
+        height: 250,
+        width: 600,
         sx: {
             [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
                 transform: 'translateX(-10px)',

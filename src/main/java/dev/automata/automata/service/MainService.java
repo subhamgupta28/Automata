@@ -198,7 +198,9 @@ public class MainService {
             if (dashboard != null) {
                 device.setX(dashboard.getX());
                 device.setY(dashboard.getY());
+                device.setShowCharts(dashboard.isShowCharts());
             }
+
             var newAttrs = new ArrayList<Attribute>();
             var attributes = device.getAttributes();
             attributes.forEach(a -> {
@@ -245,6 +247,7 @@ public class MainService {
         device.setDeviceId(deviceId);
         device.setX(Math.floor(Double.parseDouble(x)));
         device.setY(Math.floor(Double.parseDouble(y)));
+//        device.setShowCharts(false);
 
         deviceDashboardRepository.save(device);
 
@@ -254,6 +257,7 @@ public class MainService {
     public String updateAttrCharts(String deviceId, String attribute, String isVisible) {
         var isShow = Boolean.parseBoolean(isVisible);
         var attr = attributeRepository.findByKeyAndDeviceId(attribute, deviceId);
+        System.err.println(attr);
         var deviceChart = dashboardChartsRepository.findByDeviceIdAndAttributeKey(deviceId, attribute);
         if (attr != null && deviceChart == null) {
             System.err.println("Device chart not found");

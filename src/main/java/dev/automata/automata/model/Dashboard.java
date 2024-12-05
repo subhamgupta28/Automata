@@ -20,4 +20,5 @@ public class Dashboard {
     private String deviceId;
     private double x;
     private double y;
+    private boolean showCharts;
 }
