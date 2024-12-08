@@ -11,7 +11,7 @@ import {
     DialogContent,
     DialogTitle,
     Modal, Paper, Slider,
-    SvgIcon, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
+    SvgIcon, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -31,6 +31,7 @@ import Stack from "@mui/material/Stack";
 import {styled} from "@mui/material/styles";
 import Checkbox from "@mui/material/Checkbox";
 import Divider from "@mui/material/Divider";
+import SwitchButton from "../charts/SwitchButton.jsx";
 
 
 const CustomModal = ({ isOpen, onClose, device }) => {
@@ -123,6 +124,7 @@ export function Device({data, isConnectable}) {
     const gaugeData = data.value.attributes.filter((t) => t.type === "DATA|GAUGE");
     const sliderData = data.value.attributes.filter((t) => t.type === "DATA|SLIDER");
     const map = data.value.attributes.filter((t) => t.type.startsWith("DATA|MAIN,MAP"));
+    const switchBtn = data.value.attributes.filter((t) => t.type.startsWith("DATA|SWITCH"));
 
 
     const handleAction = (attribute) => {
@@ -150,7 +152,7 @@ export function Device({data, isConnectable}) {
             <div style={{borderRadius: '12px', padding: '1px'}}>
                 <Card elevation={20} style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px', padding: '4px'}}>
                     <CardContent
-                        style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px'}}>
+                        style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px', justifyContent: 'center'}}>
                         <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                             {data.value.name}
                             {/*<SvgIcon component={icon} inheritViewBox style={{marginLeft: '8px',}}/>*/}
@@ -176,6 +178,14 @@ export function Device({data, isConnectable}) {
                                           displayName={slide.displayName}/>
                         ))}
 
+                        <div style={{display:'flex', justifyContent: 'space-around'}}>
+                            {switchBtn && data.live && switchBtn.map((slide) => (
+                                <SwitchButton value={data.live[slide.key]} deviceId={data.value.id} data={slide}
+                                              displayName={slide.displayName}/>
+                            ))}
+                        </div>
+
+
 
                         {data.live && (
                             <table style={{width: '100%', marginTop: '12px'}}>
@@ -183,7 +193,7 @@ export function Device({data, isConnectable}) {
                                 {
                                     data.value.attributes.map(attribute => (
                                         (attribute.type === "DATA|MAIN") && (
-                                            <tr key={attribute.id}>
+                                            <tr key={attribute.id} >
                                                 <td>{attribute["displayName"]}</td>
                                                 <td>{data.live[attribute["key"]]}</td>
                                                 <td>{attribute["units"]}</td>
@@ -376,9 +386,9 @@ function BarChartComp({chartDevice}) {
         <div>
             <BarChart className="nodrag"
                       dataset={chartData.data}
-                      barLabel={(item, context) => {
-                          return item.value?.toString();
-                      }}
+                      // barLabel={(item, context) => {
+                      //     return item.value?.toString();
+                      // }}
                       colors={['#757575']}
                       xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps }]}
                       borderRadius={10}

@@ -67,9 +67,9 @@ public class AnalyticsService {
                 .filter(attribute -> attrs.stream().anyMatch(attr -> attr.getAttributeKey().equals(attribute.getKey()) && attr.isShowChart()))
                 .toList();
 
-        System.err.println(attrs.size());
-        System.err.println(attributes.size());
-        System.err.println(filteredAttributes.stream().map(Attribute::getKey).collect(Collectors.joining(", ")));
+//        System.err.println(attrs.size());
+//        System.err.println(attributes.size());
+//        System.err.println(filteredAttributes.stream().map(Attribute::getKey).collect(Collectors.joining(", ")));
 
         LocalDateTime now = LocalDateTime.now();
 
