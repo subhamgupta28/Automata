@@ -8,6 +8,7 @@ import {ThemeProvider} from "@mui/material/styles";
 import {darkTheme} from "./Theme.jsx";
 import SignIn from "./components/auth/SignIn.jsx";
 import SignUp from "./components/auth/SignUp.jsx";
+import {BrowserRouter, Route, Routes} from "react-router-dom";
 
 
 function App() {
@@ -22,22 +23,29 @@ function App() {
     return (
         <>
             <ThemeProvider theme={darkTheme}>
-            <main>
-                <header>
-                    <Nav/>
-                </header>
+                <BrowserRouter>
+                    <main>
+                        <header>
+                            <Nav/>
+                        </header>
 
-                <section className={"content"}>
-                    {/*<DndTest/>*/}
-                    {/*<ActionBoard/>*/}
-                    <DeviceNodes/>
-                    {/*<SignIn/>*/}
-                    {/*<SignUp/>*/}
+                        <section className={"content"}>
+                            {/*<DndTest/>*/}
+                            {/*<ActionBoard/>*/}
+
+                            {/*<SignIn/>*/}
+                            {/*<SignUp/>*/}
+
+                            <Routes>
+                                <Route path="/" element={<DeviceNodes/>}/>
+                                <Route path="actions" element={<ActionBoard/>}/>
+                            </Routes>
 
 
-                </section>
+                        </section>
 
-            </main>
+                    </main>
+                </BrowserRouter>
             </ThemeProvider>
         </>
     )

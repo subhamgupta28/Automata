@@ -14,7 +14,7 @@ export const createEdges = (devices, charts) => {
         })
         index++;
     });
-    console.log("edges", edges);
+    // console.log("edges", edges);
 
     index = 0
     charts.map((device) => {
@@ -30,7 +30,7 @@ export const createEdges = (devices, charts) => {
         index++;
     })
 
-    console.log(edges)
+    // console.log(edges)
 
     return [...edges]
 };

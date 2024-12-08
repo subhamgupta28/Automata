@@ -10,7 +10,6 @@ import {
 } from "@xyflow/react";
 import React, {useCallback, useEffect, useState} from "react";
 import {getActions} from "../../services/apis.jsx";
-import {createEdges, createNodes} from "../dashboard/EdgeNode.jsx";
 
 export function ProducerNode({data, isConnectable}) {
 
@@ -41,11 +40,7 @@ export function ProducerNode({data, isConnectable}) {
 }
 
 export function ConsumerNode({data, isConnectable}) {
-    let nodeIds = []
-    for (let i = 0; i < data.value.numOfDevices; i++) {
-        nodeIds.push("main-node-" + i)
-    }
-    console.log("ids", data)
+
 
 
     return (
@@ -69,7 +64,7 @@ export function ConsumerNode({data, isConnectable}) {
                     type="target"
                     position={Position.Bottom}
                     id="consumer"
-                    style={{left: 10 + index * 50}}
+                    style={{left: 50}}
                     isConnectable={isConnectable}
                 />
 
@@ -77,6 +72,41 @@ export function ConsumerNode({data, isConnectable}) {
 
         </div>
     );
+}
+const createNodes = (data) => {
+    let deviceNodes = [];
+    let x = 20;
+    let y = 20;
+    data.map(action => {
+        deviceNodes.push({
+            id: action.id,
+            type: 'consumerNode',
+            position: {x: x, y:  y*5},
+            data: {value: action},
+        });
+    })
+
+    return [...deviceNodes];
+}
+
+const createEdges = (data) => {
+    let edges = [];
+    let index = 0;
+
+    data.map(device => {
+        edges.push({
+            id: `edge-${device.id}`, // Unique edge ID
+            source: `${device.id}`,     // The ID of the main node
+            target: 'main-node-1',
+            // type: 'animatedSvg',// The ID of the device node
+            targetHandle: 'main-node-' + index,       // Source handle ID if applicable
+            animated: true,
+            style: {stroke: '#ffffff', strokeWidth: '3px'}
+        })
+        index++;
+    });
+
+    return [...edges]
 }
 
 
@@ -116,7 +146,7 @@ export default function ActionBoard(action) {
     );
 
     return (
-        <div className={'card'} style={{height: '80vh', borderRadius: '12px'}}>
+        <div style={{height: '92dvh'}}>
             <ReactFlow
                 colorMode="dark"
                 nodes={nodes}
@@ -125,11 +155,9 @@ export default function ActionBoard(action) {
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 nodeTypes={nodeTypes}
-
-                style={{width: '100%', height: '100%', borderRadius: '12px'}}
             >
                 {/*<Background style={{width: '80%', height: '80%'}}/>*/}
-                <Controls/>
+                {/*<Controls/>*/}
             </ReactFlow>
         </div>
     );

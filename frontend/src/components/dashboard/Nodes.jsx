@@ -125,6 +125,7 @@ export function Device({data, isConnectable}) {
     const sliderData = data.value.attributes.filter((t) => t.type === "DATA|SLIDER");
     const map = data.value.attributes.filter((t) => t.type.startsWith("DATA|MAIN,MAP"));
     const switchBtn = data.value.attributes.filter((t) => t.type.startsWith("DATA|SWITCH"));
+    console.log("switchBtn", switchBtn)
 
 
     const handleAction = (attribute) => {
