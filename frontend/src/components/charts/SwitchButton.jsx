@@ -6,13 +6,15 @@ import React from "react";
 
 
 export default function SwitchButton({value, deviceId, displayName, data}) {
-
+    const [on, setOn] = React.useState(value === true);
     const send = async (e) => {
         try {
             let act = data.key;
+            console.log("send", e.target.checked);
+            setOn(e.target.checked);
             await sendAction(deviceId, {
                 "key": data.key,
-                [act]: e.target.value,
+                [act]: e.target.checked,
                 "device_id": deviceId,
                 direct: true
             });
@@ -23,7 +25,7 @@ export default function SwitchButton({value, deviceId, displayName, data}) {
 
     return(
         <div>
-            <Switch color="warning" onChange={send}/>
+            <Switch color="warning" onChange={send} checked={on}/>
             <span style={{fontSize:'small'}} >{displayName}</span>
         </div>
     )
