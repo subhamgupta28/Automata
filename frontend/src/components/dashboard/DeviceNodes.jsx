@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Background, Panel,
+    applyNodeChanges, Background, Controls, Panel,
     ReactFlow,
     useEdgesState, useNodes,
     useNodesState, useReactFlow
@@ -100,6 +100,8 @@ export default function DeviceNodes() {
                 nodes={nodes}
                 edges={edges}
                 // edgeTypes={edgeTypes}
+                // snapToGrid={editUi}
+                // nodesFocusable={true}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
@@ -112,7 +114,7 @@ export default function DeviceNodes() {
                     </Fab>
                 </Panel>
                 {/*<Background style={{width: '80%', height: '80%'}}/>*/}
-                {/*<Controls/>*/}
+                {/*<Controls />*/}
                 {editUi && <NodeInspector/>}
             </ReactFlow>
         </div>

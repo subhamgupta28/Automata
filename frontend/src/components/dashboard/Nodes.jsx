@@ -148,9 +148,9 @@ export function Device({data, isConnectable}) {
 
 
     return (
-        <div className="text-updater-node" key={data.value.id}>
+        <div className="text-updater-node" key={data.value.id} >
             <div style={{borderRadius: '12px', padding: '1px'}}>
-                <Card elevation={20} style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px', padding: '4px'}}>
+                <Card elevation={0} style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px', padding: '4px', boxShadow: '0 0 50px 15px #1c1c1c'}}>
                     <CardContent
                         style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px', justifyContent: 'center'}}>
                         <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
@@ -261,11 +261,12 @@ export function MainNode({data, isConnectable}) {
     return (
         <div className="text-updater-node">
             <div style={{ borderRadius: '16px' }}>
-                <Card elevation={12} style={{
+                <Card elevation={0} style={{
                     padding: '0px',
                     minHeight: '500px',
                     minWidth: '400px',
                     borderRadius: '18px',
+                    boxShadow: '0 0 50px 15px #1c1c1c'
                 }}>
                     {/* Render Handles for Chart Nodes */}
                     {chartIds.map((id, index) => (
@@ -278,9 +279,9 @@ export function MainNode({data, isConnectable}) {
                             isConnectable={isConnectable}
                         />
                     ))}
-                    <Typography style={{color:'white', margin: '10px'}} >
-                        Device
-                    </Typography>
+                    {/*<Typography style={{color:'white', margin: '20px'}} >*/}
+                    {/*    Device*/}
+                    {/*</Typography>*/}
 
 
                     <CardContent style={{ padding: '12px', marginLeft: '15px', display: 'grid',
