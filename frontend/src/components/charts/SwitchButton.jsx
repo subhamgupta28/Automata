@@ -5,7 +5,7 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import React from "react";
 
 
-export default function SwitchButton({value, deviceId, displayName, data}) {
+export default function SwitchButton({value, deviceId, displayName, data, type}) {
     const [on, setOn] = React.useState(value === true);
     const send = async (e) => {
         try {
@@ -17,7 +17,7 @@ export default function SwitchButton({value, deviceId, displayName, data}) {
                 [act]: e.target.checked,
                 "device_id": deviceId,
                 direct: true
-            });
+            }, type);
         } catch (err) {
             console.error("Action send failed", err);
         }

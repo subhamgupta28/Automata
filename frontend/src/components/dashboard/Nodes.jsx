@@ -32,6 +32,8 @@ import {styled} from "@mui/material/styles";
 import Checkbox from "@mui/material/Checkbox";
 import Divider from "@mui/material/Divider";
 import SwitchButton from "../charts/SwitchButton.jsx";
+import Avatar from "@mui/material/Avatar";
+import Presets from "../charts/Presets.jsx";
 
 
 const CustomModal = ({ isOpen, onClose, device }) => {
@@ -125,6 +127,7 @@ export function Device({data, isConnectable}) {
     const sliderData = data.value.attributes.filter((t) => t.type === "DATA|SLIDER");
     const map = data.value.attributes.filter((t) => t.type.startsWith("DATA|MAIN,MAP"));
     const switchBtn = data.value.attributes.filter((t) => t.type.startsWith("DATA|SWITCH"));
+    const presets = data.value.attributes.filter((t) => t.type.startsWith("DATA|PRESET"));
     console.log("switchBtn", switchBtn)
 
 
@@ -178,10 +181,14 @@ export function Device({data, isConnectable}) {
                             <CustomSlider value={data.live[slide.key]} deviceId={data.value.id} type={data.value.type} data={slide}
                                           displayName={slide.displayName}/>
                         ))}
+                        {presets && data.live && presets.map((slide) => (
+                            <Presets value={data.live[slide.key]} deviceId={data.value.id} type={data.value.type} data={slide}
+                                          displayName={slide.displayName}/>
+                        ))}
 
                         <div style={{display:'flex', justifyContent: 'space-around'}}>
                             {switchBtn && data.live && switchBtn.map((slide) => (
-                                <SwitchButton value={data.live[slide.key]} deviceId={data.value.id} data={slide}
+                                <SwitchButton value={data.live[slide.key]} deviceId={data.value.id} data={slide} type={data.value.type}
                                               displayName={slide.displayName}/>
                             ))}
                         </div>

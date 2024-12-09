@@ -36,8 +36,8 @@ public class ActionService {
         var map = new HashMap<String, Object>();
 
         if (deviceType.equals("WLED")) {
-            handleWLED(deviceId, payload);
-            return "Sent";
+
+            return handleWLED(deviceId, payload);
         }
 
         Actions action = actionRepository.findByProducerDeviceIdAndProducerKey(deviceId, payload.get("key").toString());
@@ -56,21 +56,22 @@ public class ActionService {
         return "Action successfully sent!";
     }
 
-    private void handleWLED(String deviceId, Map<String, Object> payload) {
+    private String handleWLED(String deviceId, Map<String, Object> payload) {
         var device = deviceRepository.findById(deviceId).orElse(null);
         if (device != null) {
             var wled = new Wled(device.getAccessUrl());
             var key = payload.get("key").toString();
             switch (key) {
                 case "bright":
-                    wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
-                    break;
+                    return wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
                 case "onOff":
-                    wled.powerOnOff(true);
-                    break;
+                    return wled.powerOnOff(true);
+                case "preset":
+                    return wled.setPresets(Integer.parseInt(payload.get(key).toString()));
+
             }
         }
-
+        return "Not found";
     }
 
     public Boolean evaluateCondition(Actions action, String value) {

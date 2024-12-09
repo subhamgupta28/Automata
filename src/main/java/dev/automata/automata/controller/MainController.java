@@ -39,33 +39,41 @@ public class MainController {
 
     @GetMapping
     public ResponseEntity<Device> status() {
-//        var attrs = new ArrayList<Attribute>();
-//        attrs.add(Attribute.builder()
-//                .key("onOff")
-//                .displayName("On Off")
-//                .units("")
-//                .visible(true)
-//                .type("ACTION|OUT")
-//                .build());
-//        attrs.add(Attribute.builder()
-//                .key("bright")
-//                .displayName("Brightness")
-//                .units("")
-//                .visible(true)
-//                .type("DATA|SLIDER")
-//                .extras(Map.of("min", 0, "max", 100))
-//                .build());
-//        var reg = RegisterDevice.builder()
-//                .name("WLED")
-//                .sleep(false)
-//                .status(Status.OFFLINE)
-//                .accessUrl("http://192.168.29.196")
-//                .type("WLED")
-//                .macAddr("8C:A3:99:CF:FB:AC")
-//                .updateInterval(30000L)
-//                .reboot(false)
-//                .attributes(attrs).build();
-//        mainService.registerDevice(reg);
+        var attrs = new ArrayList<Attribute>();
+        attrs.add(Attribute.builder()
+                .key("onOff")
+                .displayName("On Off")
+                .units("")
+                .visible(true)
+                .type("ACTION|OUT")
+                .build());
+        attrs.add(Attribute.builder()
+                .key("bright")
+                .displayName("Brightness")
+                .units("")
+                .visible(true)
+                .type("DATA|SLIDER")
+                .extras(Map.of("min", 0, "max", 255))
+                .build());
+        attrs.add(Attribute.builder()
+                .key("preset")
+                .displayName("Presets")
+                .units("")
+                .visible(true)
+                .type("DATA|PRESET")
+                .extras(Map.of("p1", 1, "p2", 2, "p3", 3, "p4", 4))
+                .build());
+        var reg = RegisterDevice.builder()
+                .name("WLED")
+                .sleep(false)
+                .status(Status.ONLINE)
+                .accessUrl("http://192.168.29.196")
+                .type("WLED")
+                .macAddr("8C:A3:99:CF:FB:AC")
+                .updateInterval(30000L)
+                .reboot(false)
+                .attributes(attrs).build();
+//        var res = mainService.registerDevice(reg);
         return ResponseEntity.ok(new Device());
     }
 

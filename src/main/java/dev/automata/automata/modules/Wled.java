@@ -22,8 +22,8 @@ public class Wled {
         return restTemplate.getForObject(ipAddress + "&A=" + brightness, String.class);
     }
 
-    public void setPresets(int presets) {
-        restTemplate.getForObject(ipAddress + "&PL=" + presets, String.class);
+    public String  setPresets(int presets) {
+       return restTemplate.getForObject(ipAddress + "&PL=" + presets, String.class);
     }
 
     public String setRGB(int red, int green, int blue) {
