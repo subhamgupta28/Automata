@@ -56,16 +56,17 @@ public class ActionController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             return "Device Id not found";
         }
-        return actionService.handleAction(deviceId, payload);
+        return actionService.handleAction(deviceId, payload, "");
     }
 
 
-    @PostMapping("/sendAction/{deviceId}")
+    @PostMapping("/sendAction/{deviceId}/{deviceType}")
     public ResponseEntity<String> handleAction(
             @RequestBody Map<String, Object> payload,
-            @PathVariable String deviceId
+            @PathVariable String deviceId,
+            @PathVariable String deviceType
     ) {
         System.err.println("got action message: " + payload);
-        return ResponseEntity.ok(actionService.handleAction(deviceId, payload));
+        return ResponseEntity.ok(actionService.handleAction(deviceId, payload, deviceType));
     }
 }

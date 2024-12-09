@@ -132,7 +132,7 @@ export function Device({data, isConnectable}) {
         const send = async () => {
             try {
                 let act = attribute.key;
-                await sendAction(data.value.id, {"key": attribute.key, [act]: 200, "device_id": data.value.id});
+                await sendAction(data.value.id, {"key": attribute.key, [act]: 200, "device_id": data.value.id}, data.value.type);
             } catch (err) {
                 // console.error("Action send failed", err);
             }
@@ -175,7 +175,7 @@ export function Device({data, isConnectable}) {
                         ))}
 
                         {sliderData && data.live && sliderData.map((slide) => (
-                            <CustomSlider value={data.live[slide.key]} deviceId={data.value.id} data={slide}
+                            <CustomSlider value={data.live[slide.key]} deviceId={data.value.id} type={data.value.type} data={slide}
                                           displayName={slide.displayName}/>
                         ))}
 

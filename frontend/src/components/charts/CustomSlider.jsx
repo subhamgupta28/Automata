@@ -2,7 +2,7 @@ import {debounce, Slider} from "@mui/material";
 import {useState} from "react";
 import {sendAction} from "../../services/apis.jsx";
 
-export function CustomSlider({value, deviceId, displayName, data}) {
+export function CustomSlider({value, deviceId, displayName, data, type}) {
     const [num, setNum] = useState(value)
     const handleChange = debounce((e) => {
         // console.log("handleChange", e.target.value);
@@ -15,7 +15,7 @@ export function CustomSlider({value, deviceId, displayName, data}) {
                     [act]: e.target.value,
                     "device_id": deviceId,
                     direct: true
-                });
+                }, type);
             } catch (err) {
                 console.error("Action send failed", err);
             }

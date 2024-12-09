@@ -1,6 +1,7 @@
 package dev.automata.automata.service;
 
 import dev.automata.automata.model.Actions;
+import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.ActionRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,8 +32,13 @@ public class ActionService {
         return actionRepository.save(action);
     }
 
-    public String handleAction(String deviceId, Map<String, Object> payload) {
+    public String handleAction(String deviceId, Map<String, Object> payload, String deviceType) {
         var map = new HashMap<String, Object>();
+
+        if (deviceType.equals("WLED")) {
+            handleWLED(deviceId, payload);
+            return "Sent";
+        }
 
         Actions action = actionRepository.findByProducerDeviceIdAndProducerKey(deviceId, payload.get("key").toString());
         if (action == null || payload.get("direct") != null) {
@@ -44,14 +50,27 @@ public class ActionService {
         System.err.println(action);
         String value = payload.get(action.getProducerKey()).toString();
 
-        if (evaluateCondition(action, value)) {
-            map.put(action.getConsumerKey(), action.getValueNegativeC());
-        } else {
-            map.put(action.getConsumerKey(), action.getValueNegativeC());
-        }
+        map.put(action.getConsumerKey(), action.getValueNegativeC());
         messagingTemplate.convertAndSend("/topic/action/" + action.getConsumerDeviceId(), map);
         System.err.println("Action sent!" + map);
         return "Action successfully sent!";
+    }
+
+    private void handleWLED(String deviceId, Map<String, Object> payload) {
+        var device = deviceRepository.findById(deviceId).orElse(null);
+        if (device != null) {
+            var wled = new Wled(device.getAccessUrl());
+            var key = payload.get("key").toString();
+            switch (key) {
+                case "bright":
+                    wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
+                    break;
+                case "onOff":
+                    wled.powerOnOff(true);
+                    break;
+            }
+        }
+
     }
 
     public Boolean evaluateCondition(Actions action, String value) {

@@ -3,6 +3,7 @@ package dev.automata.automata.controller;
 import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.RegisterDevice;
+import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.service.AnalyticsService;
@@ -20,10 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RequestMapping("/api/v1/main")
 @Controller
@@ -40,13 +38,35 @@ public class MainController {
     }
 
     @GetMapping
-    public ResponseEntity<String> status() {
-        var map = new HashMap<String, Object>();
-        map.put("buz", true);
-        map.put("buzTone", 4300);
-        map.put("buzTime", 10000);
-        messagingTemplate.convertAndSend("/topic/action/670ec3bc166ab22722fbf4ea", map);
-        return ResponseEntity.ok("Hello World");
+    public ResponseEntity<Device> status() {
+//        var attrs = new ArrayList<Attribute>();
+//        attrs.add(Attribute.builder()
+//                .key("onOff")
+//                .displayName("On Off")
+//                .units("")
+//                .visible(true)
+//                .type("ACTION|OUT")
+//                .build());
+//        attrs.add(Attribute.builder()
+//                .key("bright")
+//                .displayName("Brightness")
+//                .units("")
+//                .visible(true)
+//                .type("DATA|SLIDER")
+//                .extras(Map.of("min", 0, "max", 100))
+//                .build());
+//        var reg = RegisterDevice.builder()
+//                .name("WLED")
+//                .sleep(false)
+//                .status(Status.OFFLINE)
+//                .accessUrl("http://192.168.29.196")
+//                .type("WLED")
+//                .macAddr("8C:A3:99:CF:FB:AC")
+//                .updateInterval(30000L)
+//                .reboot(false)
+//                .attributes(attrs).build();
+//        mainService.registerDevice(reg);
+        return ResponseEntity.ok(new Device());
     }
 
     @GetMapping("/updatePosition/{deviceId}/{x}/{y}")
@@ -112,6 +132,7 @@ public class MainController {
         messagingTemplate.convertAndSend("/topic/data", map);
         return ResponseEntity.ok(device);
     }
+
     @GetMapping("/attrCharts/{deviceId}/{attribute}/{isVisible}")
     public ResponseEntity<String> updateAttrCharts(@PathVariable String deviceId, @PathVariable String attribute, @PathVariable String isVisible) {
 

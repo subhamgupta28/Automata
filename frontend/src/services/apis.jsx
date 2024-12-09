@@ -67,8 +67,8 @@ export const refreshDeviceById = async (deviceId) => {
     });
     return response.data;
 }
-export const sendAction = async (deviceId, payload) => {
-    const response = await axios.post(BASE_URL + "action/sendAction/" + deviceId, payload, {
+export const sendAction = async (deviceId, payload, deviceType) => {
+    const response = await axios.post(BASE_URL + "action/sendAction/" + deviceId + "/" + deviceType, payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization

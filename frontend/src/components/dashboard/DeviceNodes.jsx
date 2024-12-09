@@ -99,7 +99,7 @@ export default function DeviceNodes() {
                 colorMode="dark"
                 nodes={nodes}
                 edges={edges}
-                // edgeTypes={edgeTypes}
+                edgeTypes={edgeTypes}
                 // snapToGrid={editUi}
                 // nodesFocusable={true}
                 onNodesChange={onNodesChange}
