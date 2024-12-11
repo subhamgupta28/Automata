@@ -64,9 +64,10 @@ export default function DeviceNodes() {
             try {
                 const devices = await getDevices();
 
+                var dev = devices.filter((d)=> d.showInDashboard===true)
                 // const chart = await getChartData("6713fd6118af335020f90f73");
-                setNodes(createNodes(devices, [])); // Create nodes including the main node
-                setEdges(createEdges(devices, [])); // Create edges connecting devices to the main node
+                setNodes(createNodes(dev, [])); // Create nodes including the main node
+                setEdges(createEdges(dev, [])); // Create edges connecting devices to the main node
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
             }
@@ -96,7 +97,7 @@ export default function DeviceNodes() {
     return (
         <div style={{height: '92dvh'}}>
             <ReactFlow
-                colorMode="dark"
+                colorMode="light"
                 nodes={nodes}
                 edges={edges}
                 edgeTypes={edgeTypes}

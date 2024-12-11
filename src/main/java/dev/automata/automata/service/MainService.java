@@ -199,6 +199,7 @@ public class MainService {
                 device.setX(dashboard.getX());
                 device.setY(dashboard.getY());
                 device.setShowCharts(dashboard.isShowCharts());
+                device.setShowInDashboard(dashboard.isShowInDashboard());
             }
 
             var newAttrs = new ArrayList<Attribute>();

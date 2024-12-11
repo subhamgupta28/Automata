@@ -30,6 +30,7 @@ public class Device {
     private String macAddr;
     private Map<String, Object> lastData;
     private boolean showCharts;
+    private boolean showInDashboard;
     private double x;
     private double y;
     private List<Attribute> attributes = new ArrayList<>();

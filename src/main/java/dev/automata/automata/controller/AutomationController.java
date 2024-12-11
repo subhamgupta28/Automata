@@ -1,8 +1,8 @@
 package dev.automata.automata.controller;
 
 
-import dev.automata.automata.model.Actions;
-import dev.automata.automata.service.ActionService;
+import dev.automata.automata.model.Automation;
+import dev.automata.automata.service.AutomationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -17,31 +17,31 @@ import java.util.Map;
 @RequestMapping("/api/v1/action")
 @Controller
 @RequiredArgsConstructor
-public class ActionController {
+public class AutomationController {
 
-    private final ActionService actionService;
+    private final AutomationService actionService;
     private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping
-    public ResponseEntity<Actions> createAction() {
-        var action = Actions.builder()
-                .condition(">")
-                .producerValueDataType("int")
-                .consumerDeviceId("670edfe8166ab22722fbf728")
-                .producerDeviceId("670ec3bc166ab22722fbf4ea")
-                .consumerKey("pwm1")
-                .producerKey("button")
-                .defaultValue("0")
-                .valueNegativeC("0")
-                .valuePositiveC("255")
-                .displayName("Motion triggered buzzer")
+    public ResponseEntity<Automation> createAction() {
+        var action = Automation.builder()
+//                .condition(">")
+//                .producerValueDataType("int")
+//                .consumerDeviceId("670edfe8166ab22722fbf728")
+//                .producerDeviceId("670ec3bc166ab22722fbf4ea")
+//                .consumerKey("pwm1")
+//                .producerKey("button")
+//                .defaultValue("0")
+//                .valueNegativeC("0")
+//                .valuePositiveC("255")
+//                .displayName("Motion triggered buzzer")
                 .build();
 
         return ResponseEntity.ok(actionService.create(action));
     }
 
     @GetMapping("/getAction")
-    public ResponseEntity<List<Actions>> getActions() {
+    public ResponseEntity<List<Automation>> getActions() {
         return ResponseEntity.ok(actionService.getActions());
     }
 

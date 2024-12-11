@@ -21,4 +21,5 @@ public class Dashboard {
     private double x;
     private double y;
     private boolean showCharts;
+    private boolean showInDashboard;
 }
