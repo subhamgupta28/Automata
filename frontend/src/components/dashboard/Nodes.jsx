@@ -128,7 +128,7 @@ export function Device({data, isConnectable}) {
     const map = data.value.attributes.filter((t) => t.type.startsWith("DATA|MAIN,MAP"));
     const switchBtn = data.value.attributes.filter((t) => t.type.startsWith("DATA|SWITCH"));
     const presets = data.value.attributes.filter((t) => t.type.startsWith("DATA|PRESET"));
-    console.log("switchBtn", switchBtn)
+    // console.log("switchBtn", switchBtn)
 
 
     const handleAction = (attribute) => {

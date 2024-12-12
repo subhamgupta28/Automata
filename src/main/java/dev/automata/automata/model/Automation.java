@@ -6,7 +6,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.List;
 
-@Document(collection = "action")
+@Document(collection = "automations")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -23,9 +23,6 @@ public class Automation {
 
     @Getter
     @Setter
-    @Builder
-    @RequiredArgsConstructor
-    @NoArgsConstructor
     public static class Trigger {
 
         private String deviceId;
@@ -37,24 +34,21 @@ public class Automation {
 
     @Getter
     @Setter
-    @Builder
-    @RequiredArgsConstructor
-    @NoArgsConstructor
     public static class Action {
         private String key; //lights
         private String deviceId; //---
-        private String data; //
+        private String data; //255
 
         // Getters and setters
     }
 
     @Getter
     @Setter
-    @Builder
-    @RequiredArgsConstructor
-    @NoArgsConstructor
     public static class Condition {
-        private String type;
+        private String condition;// numeric
+        private String valueType;// int
+        private String above; // 200
+        private String below; // 300
         private String value;
 
         // Getters and setters

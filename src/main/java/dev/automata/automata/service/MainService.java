@@ -8,6 +8,7 @@ import dev.automata.automata.model.*;
 import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -187,9 +188,22 @@ public class MainService {
 
     }
 
+    @Async
+    public void triggerBackgroundTask() {
+        // Your logic for the background task
+        System.out.println("Background task started...");
+        try {
+            // Simulating some time-consuming task
+            Thread.sleep(15000); // 5 seconds delay
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.out.println("Background task completed!");
+    }
+
     public List<Device> getAllDevice() {
         var devices = deviceRepository.findAll();
-
+//        triggerBackgroundTask();
         var deviceList = new ArrayList<Device>();
         var chartAttr = dashboardChartsRepository.findByShowChartTrue();
 

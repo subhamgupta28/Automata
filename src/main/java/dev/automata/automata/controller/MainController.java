@@ -14,6 +14,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,6 +32,7 @@ public class MainController {
     private final SimpMessagingTemplate messagingTemplate;
     private final MainService mainService;
     private final AnalyticsService analyticsService;
+
 
     @GetMapping("chart/{deviceId}/{attribute}")
     public ResponseEntity<ChartDataDto> getChartData(@PathVariable String deviceId, @PathVariable String attribute) {
@@ -102,8 +104,11 @@ public class MainController {
         return ResponseEntity.ok(mainService.saveData(deviceId, payload));
     }
 
+
+
     @GetMapping(value = "/devices")
     public ResponseEntity<List<Device>> getAllDevices() {
+
         return ResponseEntity.ok(mainService.getAllDevice());
     }
 

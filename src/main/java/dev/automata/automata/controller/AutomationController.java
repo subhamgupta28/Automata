@@ -11,6 +11,8 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -24,17 +26,34 @@ public class AutomationController {
 
     @GetMapping
     public ResponseEntity<Automation> createAction() {
+        var trigger = new Automation.Trigger();
+        trigger.setType("state");
+        trigger.setKey("range");
+        trigger.setDeviceId("670e9f4d4f15cd01e98640cf");
+        trigger.setValue("240");
+
+        var action1 = new Automation.Action();
+        action1.setData("255");
+        action1.setKey("pwm");
+        action1.setDeviceId("6713fd6118af335020f90f73");
+
+        var action2 = new Automation.Action();
+        action2.setData("");
+        action2.setKey("onOff");
+        action2.setDeviceId("67571bf46f2d631aa77cc632");
+
+        var condition = new Automation.Condition();
+        condition.setCondition("numeric");
+        condition.setBelow("300");
+        condition.setAbove("200");
+        condition.setValueType("int");
+        condition.setValue("250");
+
         var action = Automation.builder()
-//                .condition(">")
-//                .producerValueDataType("int")
-//                .consumerDeviceId("670edfe8166ab22722fbf728")
-//                .producerDeviceId("670ec3bc166ab22722fbf4ea")
-//                .consumerKey("pwm1")
-//                .producerKey("button")
-//                .defaultValue("0")
-//                .valueNegativeC("0")
-//                .valuePositiveC("255")
-//                .displayName("Motion triggered buzzer")
+                .trigger(trigger)
+                .name("When motion is detected turn on the lights")
+                .actions(List.of(action1, action2))
+                .conditions(List.of(condition))
                 .build();
 
         return ResponseEntity.ok(actionService.create(action));

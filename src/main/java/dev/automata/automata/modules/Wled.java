@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Arrays;
+
 
 public class Wled {
     private final String ipAddress;
@@ -15,15 +17,31 @@ public class Wled {
     }
 
     public String powerOnOff(boolean on) {
-        return restTemplate.getForObject(ipAddress + "&T=2", String.class);
+        var res = restTemplate.getForObject(ipAddress + "&T=2", String.class);
+        if (res != null) {
+            var bht = res.split(">")[3].replace("</ac", "");
+            return Integer.parseInt(bht) > 0 ? "on" : "off";
+        } else
+            return "off";
     }
 
     public String setBrightness(int brightness) {
-        return restTemplate.getForObject(ipAddress + "&A=" + brightness, String.class);
+        var res = restTemplate.getForObject(ipAddress + "&A=" + brightness, String.class);
+        if (res != null) {
+            var bht = res.split(">")[3].replace("</ac", "");
+            return Integer.parseInt(bht) == brightness ? "success" : "error";
+        } else
+            return "error";
     }
 
-    public String  setPresets(int presets) {
-       return restTemplate.getForObject(ipAddress + "&PL=" + presets, String.class);
+    public String setPresets(int presets) {
+        var res = restTemplate.getForObject(ipAddress + "&PL=" + presets, String.class);
+        if (res != null) {
+            var bht = res.split(">")[41].replace("</ps", "");
+            return Integer.parseInt(bht) == presets ? "success" : "error";
+        } else
+            return "error";
+
     }
 
     public String setRGB(int red, int green, int blue) {
