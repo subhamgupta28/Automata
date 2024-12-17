@@ -2,6 +2,7 @@ package dev.automata.automata.controller;
 
 import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.dto.DataDto;
+import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Device;
@@ -9,18 +10,17 @@ import dev.automata.automata.model.Status;
 import dev.automata.automata.service.AnalyticsService;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -32,6 +32,8 @@ public class MainController {
     private final SimpMessagingTemplate messagingTemplate;
     private final MainService mainService;
     private final AnalyticsService analyticsService;
+    private final ApplicationEventPublisher publisher;
+//    private final KafkaTemplate<String, String> kafkaTemplate;
 
 
     @GetMapping("chart/{deviceId}/{attribute}")
@@ -209,8 +211,20 @@ public class MainController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             return payload;
         }
+        var event  = new LiveEvent();
+        event.setPayload(payload);
+        publisher.publishEvent(event);
         return getStringObjectMap(payload, headerAccessor, deviceId);
     }
+
+//    @Value("${kafka.topic}")
+//    private String topic;
+
+//    @PostMapping("/send")
+//    public String sendMessage(String message) {
+//        kafkaTemplate.send(topic, message);
+//        return "Message sent to Kafka: " + message;
+//    }
 
 
     private Map<String, Object> getStringObjectMap(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor, String deviceId) {

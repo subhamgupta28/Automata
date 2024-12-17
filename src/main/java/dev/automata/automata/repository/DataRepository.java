@@ -1,12 +1,10 @@
 package dev.automata.automata.repository;
 
-import dev.automata.automata.dto.ChartDataAggregate;
 import dev.automata.automata.model.Data;
 import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.lang.Nullable;
 
-import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;

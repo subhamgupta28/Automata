@@ -6,7 +6,7 @@ import Stomp from 'stompjs';
 // const url = "http://localhost:8080/ws";
 
 const url = __API_MODE__ === 'serve'
-    ? 'http://localhost:8080' // Local API server for development
+    ? 'http://localhost:8080/ws' // Local API server for development
     : window.location.href + "ws"; // Production API server
 
 

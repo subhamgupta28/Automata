@@ -188,6 +188,11 @@ public class MainService {
 
     }
 
+//    @KafkaListener(topics = "${kafka.topic}", groupId = "group_id")
+//    public void consume(String message) {
+//        System.out.println("Message consumed from Kafka: " + message);
+//    }
+
     @Async
     public void triggerBackgroundTask() {
         // Your logic for the background task

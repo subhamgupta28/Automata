@@ -1,5 +1,7 @@
 package dev.automata.automata.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -9,20 +11,28 @@ import java.util.List;
 @Document(collection = "automations")
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @ToString
 public class Automation {
     @Id
     private String id;
     private String name;
+
+    @JsonProperty("trigger")
     private Trigger trigger;
+    @JsonProperty("actions")
     private List<Action> actions;
+    @JsonProperty("conditions")
     private List<Condition> conditions;
+
 
     @Getter
     @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @ToString
     public static class Trigger {
 
         private String deviceId;
@@ -34,6 +44,9 @@ public class Automation {
 
     @Getter
     @Setter
+    @ToString
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class Action {
         private String key; //lights
         private String deviceId; //---
@@ -44,6 +57,9 @@ public class Automation {
 
     @Getter
     @Setter
+    @ToString
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class Condition {
         private String condition;// numeric
         private String valueType;// int
