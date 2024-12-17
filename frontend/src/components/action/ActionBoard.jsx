@@ -11,7 +11,7 @@ import {
 import React, {useCallback, useEffect, useState} from "react";
 import {getActions} from "../../services/apis.jsx";
 import CreateAction from "./CreateAction.jsx";
-import {Fab} from "@mui/material";
+import {Card, Fab} from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
 export function ProducerNode({data, isConnectable}) {
@@ -45,7 +45,6 @@ export function ProducerNode({data, isConnectable}) {
 export function ConsumerNode({data, isConnectable}) {
 
 
-
     return (
         <div className="text-updater-node">
             <div className={'card alert alert-warning'} style={{
@@ -76,6 +75,83 @@ export function ConsumerNode({data, isConnectable}) {
         </div>
     );
 }
+
+const triggerStyle = {
+    padding: '10px',
+    borderRadius: '5px',
+    width: '200px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    border: '2px solid #6DBF6D',
+};
+
+const actionStyle = {
+    padding: '10px',
+    borderRadius: '5px',
+    width: '200px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    border: '2px solid #0288D1',
+};
+
+const conditionStyle = {
+    padding: '10px',
+    borderRadius: '5px',
+    width: '200px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    border: '2px solid #FFEB3B',
+};
+
+// Custom Trigger Node
+const TriggerNode = ({data, isConnectable}) => {
+    return (
+        <Card style={triggerStyle}>
+            <strong>{data.label}</strong>
+            <Handle
+                type="source"
+                position={Position.Right}
+                id="b"
+                isConnectable={isConnectable}
+            />
+        </Card>
+    );
+};
+
+// Custom Action Node
+const ActionNode = ({data, isConnectable}) => {
+    return (
+        <Card style={actionStyle}>
+            <Handle
+                type="target"
+                position={Position.Left}
+                id="b"
+
+                isConnectable={isConnectable}
+            />
+            <strong>{data.label}</strong>
+        </Card>
+    );
+};
+
+// Custom Condition Node
+const ConditionNode = ({data, isConnectable}) => {
+    return (
+        <Card style={conditionStyle}>
+            <Handle
+                type="target"
+                position={Position.Left}
+                id="b"
+                isConnectable={isConnectable}
+            />
+            <strong>{data.label}</strong>
+            <Handle
+                type="source"
+                position={Position.Right}
+                id="b"
+                isConnectable={isConnectable}
+            />
+        </Card>
+    );
+};
+
 const createNodes = (data) => {
     let deviceNodes = [];
     let x = 20;
@@ -84,7 +160,7 @@ const createNodes = (data) => {
         deviceNodes.push({
             id: action.id,
             type: 'consumerNode',
-            position: {x: x, y:  y*5},
+            position: {x: x, y: y * 5},
             data: {value: action},
         });
     })
@@ -113,8 +189,66 @@ const createEdges = (data) => {
 }
 
 
-const nodeTypes = {producerNode: ProducerNode, consumerNode: ConsumerNode};
 
+const customNodes = [
+    {
+        id: '1',
+        type: 'trigger', // Custom type for trigger
+        data: {label: 'When motion is detected'},
+        position: {x: 50, y: 100},
+    },
+    {
+        id: '2',
+        type: 'action',
+        data: {label: 'Turn on lights (PWM 255)'},
+        position: {x: 650, y: 100},
+    },
+    {
+        id: '3',
+        type: 'action',
+        data: {label: 'Turn on lights (onOff 1)'},
+        position: {x: 650, y: 200},
+    },
+    {
+        id: '4',
+        type: 'condition',
+        data: {label: 'Condition: Value between 200 and 300'},
+        position: {x: 350, y: 100},
+    },
+    {
+        id: '5',
+        type: 'trigger', // Second trigger
+        data: {label: 'When motion is detected (range 240)'},
+        position: {x: 50, y: 300},
+    },
+    {
+        id: '6',
+        type: 'action',
+        data: {label: 'Turn on lights (PWM 255)'},
+        position: {x: 650, y: 300},
+    },
+    {
+        id: '7',
+        type: 'action',
+        data: {label: 'Turn off lights (onOff)'},
+        position: {x: 650, y: 400},
+    },
+    {
+        id: '8',
+        type: 'condition',
+        data: {label: 'Condition: Value between 200 and 300'},
+        position: {x: 350, y: 300},
+    },
+];
+
+const customEdge =[
+    {id: 'e1-2', source: '1', target: '2', animated: true},
+    {id: 'e2-3', source: '2', target: '3', animated: true},
+    {id: 'e3-4', source: '3', target: '4', animated: true},
+    {id: 'e5-6', source: '5', target: '6', animated: true},
+    {id: 'e6-7', source: '6', target: '7', animated: true},
+    {id: 'e7-8', source: '7', target: '8', animated: true},
+];
 export default function ActionBoard(action) {
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
@@ -127,8 +261,8 @@ export default function ActionBoard(action) {
             try {
                 const data = await getActions();
                 setAutomations(data)
-                setNodes(createNodes(data)); // Create nodes including the main node
-                setEdges(createEdges(data)); // Create edges connecting devices to the main node
+                setNodes(customNodes); // Create nodes including the main node
+                setEdges(customEdge); // Create edges connecting devices to the main node
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
             }
@@ -164,11 +298,15 @@ export default function ActionBoard(action) {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                nodeTypes={nodeTypes}
+                nodeTypes={{
+                    trigger: TriggerNode,
+                    action: ActionNode,
+                    condition: ConditionNode,
+                }}
             >
                 <Panel position="bottom-right" style={{marginBottom: '50px'}}>
                     <Fab color="primary" aria-label="add" onClick={handleCreateAction}>
-                        <EditIcon />
+                        <EditIcon/>
                     </Fab>
                 </Panel>
 

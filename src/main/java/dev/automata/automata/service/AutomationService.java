@@ -6,10 +6,13 @@ import dev.automata.automata.model.Automation;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.DeviceRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
@@ -28,6 +31,14 @@ public class AutomationService {
     private final SimpMessagingTemplate messagingTemplate;
     private final RedisService redisService;
     private final MainService mainService;
+
+    private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+
+    @PostConstruct
+    public void init() {
+        taskScheduler.setPoolSize(10);  // Set the pool size for concurrent tasks
+        taskScheduler.initialize();
+    }
 
 
     public List<Automation> findAll() {
@@ -102,10 +113,11 @@ public class AutomationService {
             }
         }
     }
+
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
         if (isTriggered(automation, payload)) {
             executeActions(automation);
-        }else {
+        } else {
             System.err.println("No state match for automation: " + automation);
         }
     }
@@ -146,13 +158,24 @@ public class AutomationService {
             var device = mainService.getDevice(action.getDeviceId());
             System.err.println(action);
 
+
             var payload = new HashMap<String, Object>();
-            payload.put(action.getKey(), action.getData());
+            var data = action.getData();
+            switch (data) {
+                case "true":
+                    payload.put(action.getKey(), true);
+                    break;
+                case "false":
+                    payload.put(action.getKey(), false);
+                default:
+                    payload.put(action.getKey(), action.getData());
+            }
+
             payload.put("key", action.getKey());
 
             if (device.getType().equals("WLED")) {
                 handleWLED(action.getDeviceId(), payload);
-            }else {
+            } else {
                 messagingTemplate.convertAndSend(
                         "/topic/action/" + action.getDeviceId(), payload
                 );
@@ -177,7 +200,20 @@ public class AutomationService {
 
     }
 
-    @Scheduled(fixedRate = 60000) // Every 60 seconds
+    private void registerTask(String taskName, String cronExpression) {
+        ScheduledTaskRegistrar registrar = new ScheduledTaskRegistrar();
+        registrar.setTaskScheduler(taskScheduler);
+        registrar.addCronTask(() -> runTask(taskName), cronExpression);
+        registrar.afterPropertiesSet();
+    }
+
+    // This is the method that gets called when the scheduled task is triggered
+    private void runTask(String taskName) {
+        System.out.println("Running task: " + taskName);
+        // Your logic for the task here
+    }
+
+    @Scheduled(cron = "0 30 7 * * ?") // Run at 7:30 AM every day
     private void triggerAutomations() {
 //        checkAndExecuteAutomations();
     }

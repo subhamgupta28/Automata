@@ -65,7 +65,6 @@ export default function CreateAction({ isOpen, onClose, automations }) {
         <Dialog fullWidth maxWidth="md" onClose={onClose} open={isOpen}>
             <DialogTitle>Create Action</DialogTitle>
             <DialogContent style={{overflow: 'auto'}}>
-                <ListAutomations automations={automations}/>
                 <div style={{padding: '10px'}}>
                     <Box sx={{padding: 2}} style={{display: 'flex', flexDirection: 'row'}}>
                         <div>
@@ -207,16 +206,4 @@ export default function CreateAction({ isOpen, onClose, automations }) {
             </DialogContent>
         </Dialog>
     );
-}
-
-function ListAutomations({automations}) {
-    return(
-        <div style={{display:'flex', flexDirection: 'column'}}>
-            {automations.map((a)=>(
-                <Button style={{marginTop:'10px', width:'200px'}} variant='contained'>
-                    {a.name}
-                </Button>
-            ))}
-        </div>
-    )
 }
