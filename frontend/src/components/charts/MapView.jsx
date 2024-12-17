@@ -18,7 +18,7 @@ export default function MapView({lat, lng})  {
 
     return (
 
-        <MapContainer className="nodrag" center={position} zoom={zoom} layers={googleSat} style={{ height: '280px', width: '480px', borderRadius:'8px' }}>
+        <MapContainer className="nodrag" center={position} zoom={zoom} layers={googleSat} style={{ height: '280px', width: '200px', borderRadius:'8px' }}>
             <TileLayer
                 url="https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" // TileLayer URL (OSM)
             />

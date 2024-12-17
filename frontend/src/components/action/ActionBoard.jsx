@@ -3,13 +3,16 @@ import {
     addEdge,
     applyEdgeChanges,
     applyNodeChanges,
-    Controls, Handle, Position,
+    Controls, Handle, Panel, Position,
     ReactFlow,
     useEdgesState,
     useNodesState
 } from "@xyflow/react";
 import React, {useCallback, useEffect, useState} from "react";
 import {getActions} from "../../services/apis.jsx";
+import CreateAction from "./CreateAction.jsx";
+import {Fab} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
 
 export function ProducerNode({data, isConnectable}) {
 
@@ -115,13 +118,15 @@ const nodeTypes = {producerNode: ProducerNode, consumerNode: ConsumerNode};
 export default function ActionBoard(action) {
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
-
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [automations, setAutomations] = useState([]);
+    const handleCloseModal = () => setIsModalOpen(false);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const data = await getActions();
-
+                setAutomations(data)
                 setNodes(createNodes(data)); // Create nodes including the main node
                 setEdges(createEdges(data)); // Create edges connecting devices to the main node
             } catch (err) {
@@ -145,8 +150,13 @@ export default function ActionBoard(action) {
         [setEdges],
     );
 
+    const handleCreateAction = () => {
+        setIsModalOpen(true)
+    }
+
     return (
         <div style={{height: '92dvh'}}>
+            <CreateAction isOpen={isModalOpen} onClose={handleCloseModal} automations={automations}/>
             <ReactFlow
                 colorMode="dark"
                 nodes={nodes}
@@ -156,8 +166,12 @@ export default function ActionBoard(action) {
                 onConnect={onConnect}
                 nodeTypes={nodeTypes}
             >
-                {/*<Background style={{width: '80%', height: '80%'}}/>*/}
-                {/*<Controls/>*/}
+                <Panel position="bottom-right" style={{marginBottom: '50px'}}>
+                    <Fab color="primary" aria-label="add" onClick={handleCreateAction}>
+                        <EditIcon />
+                    </Fab>
+                </Panel>
+
             </ReactFlow>
         </div>
     );

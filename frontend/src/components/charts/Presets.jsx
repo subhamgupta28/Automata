@@ -20,13 +20,15 @@ export default function Presets({data, type, value, deviceId, displayName}) {
         }
     };
     return (
-        <div>
+        <div style={{display:'flex', alignItems: 'center', flexDirection: 'column'}}>
             {displayName}
-            {Object.values(data.extras).map((ex) => (
-                <IconButton onClick={()=>send(ex)}>
-                    <Avatar  sx={{ width: 26, height: 26, bgcolor: "#4085ee" }}>{ex}</Avatar>
-                </IconButton>
-            ))}
+            <div>
+                {Object.values(data.extras).map((ex) => (
+                    <IconButton onClick={()=>send(ex)}>
+                        <Avatar  sx={{ width: 26, height: 26, bgcolor: "#4085ee" }}>{ex}</Avatar>
+                    </IconButton>
+                ))}
+            </div>
         </div>
     )
 }

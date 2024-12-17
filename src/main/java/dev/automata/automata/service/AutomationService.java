@@ -27,6 +27,7 @@ public class AutomationService {
     private final AutomationRepository automationRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final RedisService redisService;
+    private final MainService mainService;
 
 
     public List<Automation> findAll() {
@@ -45,7 +46,6 @@ public class AutomationService {
         var map = new HashMap<String, Object>();
 
         if (deviceType.equals("WLED")) {
-
             return handleWLED(deviceId, payload);
         }
 
@@ -56,6 +56,12 @@ public class AutomationService {
             messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
             return "No saved action found but sent directly";
         }
+        var automationCache = redisService.getAutomationCache(deviceId);
+        if (automationCache != null && !payload.isEmpty()) {
+//            System.err.println("Found Automation for " + deviceId);
+            checkAndExecuteSingleAutomation(automationCache.getAutomation(), payload);
+        }
+
 //        System.err.println(action);
 //        String value = payload.get(action.getProducerKey()).toString();
 //
@@ -90,7 +96,8 @@ public class AutomationService {
     public void checkAndExecuteAutomations() {
         List<Automation> automations = automationRepository.findAll();
         for (Automation automation : automations) {
-            if (isTriggered(automation, null)) {
+            var payload = mainService.getLastData(automation.getTrigger().getDeviceId());
+            if (isTriggered(automation, payload)) {
                 executeActions(automation);
             }
         }
@@ -121,13 +128,6 @@ public class AutomationService {
         return false;
     }
 
-    private boolean isStateMatched(String entityId, String expectedState) {
-        // Retrieve the current state of the entity
-        String currentState = "entityStateService.getEntityState(entityId)";
-
-        // Compare the current state with the expected state
-        return expectedState.equals(currentState);
-    }
 
     private boolean isCurrentTime(String triggerTime) {
         LocalTime currentTime = LocalTime.now();
@@ -143,9 +143,20 @@ public class AutomationService {
     private void executeActions(Automation automation) {
         for (Automation.Action action : automation.getActions()) {
             // Execute each action (e.g., call a service, turn on a device)
-            System.out.println("Executing action: " + action.getKey());
-            System.out.println("Entity: " + action.getDeviceId());
-            System.out.println("Data: " + action.getData());
+            var device = mainService.getDevice(action.getDeviceId());
+            System.err.println(action);
+
+            var payload = new HashMap<String, Object>();
+            payload.put(action.getKey(), action.getData());
+            payload.put("key", action.getKey());
+
+            if (device.getType().equals("WLED")) {
+                handleWLED(action.getDeviceId(), payload);
+            }else {
+                messagingTemplate.convertAndSend(
+                        "/topic/action/" + action.getDeviceId(), payload
+                );
+            }
             // You would call the actual services here, for example, turning on lights, sending notifications, etc.
         }
     }
@@ -158,7 +169,7 @@ public class AutomationService {
         String deviceId = payload.get("device_id").toString();
 
         var automationCache = redisService.getAutomationCache(deviceId);
-        if (automationCache != null) {
+        if (automationCache != null && !payload.isEmpty()) {
 //            System.err.println("Found Automation for " + deviceId);
             checkAndExecuteSingleAutomation(automationCache.getAutomation(), payload);
         }
@@ -168,7 +179,7 @@ public class AutomationService {
 
     @Scheduled(fixedRate = 60000) // Every 60 seconds
     private void triggerAutomations() {
-        checkAndExecuteAutomations();
+//        checkAndExecuteAutomations();
     }
 
     @Scheduled(fixedRate = 60000 * 5) // Every 5 min

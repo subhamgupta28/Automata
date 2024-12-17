@@ -211,9 +211,9 @@ public class MainController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             return payload;
         }
-        var event  = new LiveEvent();
-        event.setPayload(payload);
-        publisher.publishEvent(event);
+//        var event  = new LiveEvent();
+//        event.setPayload(payload);
+//        publisher.publishEvent(event);
         return getStringObjectMap(payload, headerAccessor, deviceId);
     }
 
