@@ -47,17 +47,28 @@ public class AutomationController {
         action3.setKey("speed");
         action3.setDeviceId("673b8250da1ad94ac1d28280");
 
+        var action4 = new Automation.Action();
+        action4.setData("0");
+        action4.setKey("pwm1");
+        action4.setDeviceId("67438bbee4015a53b43788cc");
+
+        var action5 = new Automation.Action();
+        action5.setData("10");
+        action5.setKey("bright");
+        action5.setDeviceId("67571bf46f2d631aa77cc632");
+
         var condition = new Automation.Condition();
         condition.setCondition("numeric");
-        condition.setBelow("15");
-        condition.setAbove("25");
+        condition.setBelow("60");
+        condition.setAbove("0");
         condition.setValueType("int");
         condition.setValue("1");
+        condition.setIsExact(false);
 
         var action = Automation.builder()
                 .trigger(trigger)
-                .name("When battery is below 25% turn off everything")
-                .actions(List.of(action1, action2, action3))
+                .name("When battery is below 25% turn off everything and alert")
+                .actions(List.of(action1, action2, action3, action4, action5))
                 .conditions(List.of(condition))
                 .build();
 
