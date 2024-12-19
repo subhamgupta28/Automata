@@ -66,6 +66,7 @@ public class Automation {
         private String above; // 200
         private String below; // 300
         private String value;
+        private Boolean isExact; // true
 
         // Getters and setters
     }

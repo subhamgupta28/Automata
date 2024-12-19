@@ -27,32 +27,37 @@ public class AutomationController {
     @GetMapping
     public ResponseEntity<Automation> createAction() {
         var trigger = new Automation.Trigger();
-        trigger.setType("state");
-        trigger.setKey("range");
-        trigger.setDeviceId("670e9f4d4f15cd01e98640cf");
-        trigger.setValue("240");
+        trigger.setType("periodic");
+        trigger.setKey("percent");
+        trigger.setDeviceId("6713fd6118af335020f90f73");
+        trigger.setValue("25");
 
         var action1 = new Automation.Action();
-        action1.setData("255");
+        action1.setData("0");
         action1.setKey("pwm");
         action1.setDeviceId("6713fd6118af335020f90f73");
 
         var action2 = new Automation.Action();
-        action2.setData("");
-        action2.setKey("onOff");
+        action2.setData("4");
+        action2.setKey("preset");
         action2.setDeviceId("67571bf46f2d631aa77cc632");
+
+        var action3 = new Automation.Action();
+        action3.setData("0");
+        action3.setKey("speed");
+        action3.setDeviceId("673b8250da1ad94ac1d28280");
 
         var condition = new Automation.Condition();
         condition.setCondition("numeric");
-        condition.setBelow("300");
-        condition.setAbove("200");
+        condition.setBelow("15");
+        condition.setAbove("25");
         condition.setValueType("int");
-        condition.setValue("250");
+        condition.setValue("1");
 
         var action = Automation.builder()
                 .trigger(trigger)
-                .name("When motion is detected turn on the lights")
-                .actions(List.of(action1, action2))
+                .name("When battery is below 25% turn off everything")
+                .actions(List.of(action1, action2, action3))
                 .conditions(List.of(condition))
                 .build();
 

@@ -115,27 +115,49 @@ public class AutomationService {
     }
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
+//        System.err.println(payload);
         if (isTriggered(automation, payload)) {
             executeActions(automation);
         } else {
-            System.err.println("No state match for automation: " + automation);
+            System.err.println("No state match for payload: " + payload);
         }
     }
 
     private boolean isTriggered(Automation automation, Map<String, Object> payload) {
         // Check trigger conditions (e.g., time-based, state change, etc.)
         // This is just an example for time-based triggers
+        String key = automation.getTrigger().getKey();
+        var condition = automation.getConditions().getFirst();
+        var value = payload.get(key).toString();
+        var parseValue = Double.parseDouble(value);//53
         if ("time".equals(automation.getTrigger().getType())) {
             String triggerTime = automation.getTrigger().getValue();
             return isCurrentTime(triggerTime);
         }
         if ("state".equals(automation.getTrigger().getType())) {
             String deviceId = automation.getTrigger().getDeviceId();
-            String key = automation.getTrigger().getKey();
-            String expectedState = automation.getTrigger().getValue();
-            String actualState = payload.get(key).toString();
-            System.err.println(expectedState + " " + actualState);
-            return expectedState.equals(actualState);
+
+
+            if (condition.getIsExact()) {
+                var expectedValue = condition.getValue();
+                return value.equals(expectedValue);
+            } else {
+                var above = Double.parseDouble(condition.getAbove());//0
+                var below = Double.parseDouble(condition.getBelow());//60
+                System.err.println(value + " " + above + " " + below);
+                return parseValue > above && parseValue < below;
+//            String expectedState = automation.getTrigger().getValue();
+//            String actualState = payload.get(key).toString();
+//            System.err.println(expectedState + " " + actualState);
+//            return expectedState.equals(actualState);
+            }
+        }
+        if ("periodic".equals(automation.getTrigger().getType())) {
+
+            var above = Double.parseDouble(condition.getAbove());//0
+            var below = Double.parseDouble(condition.getBelow());//60
+            System.err.println(value + " " + above + " " + below);
+            return parseValue > above && parseValue < below;
         }
         return false;
     }
@@ -216,6 +238,17 @@ public class AutomationService {
     @Scheduled(cron = "0 30 7 * * ?") // Run at 7:30 AM every day
     private void triggerAutomations() {
 //        checkAndExecuteAutomations();
+    }
+
+    @Scheduled(fixedRate = 30000)
+    private void triggerPeriodicAutomations() {
+        var automations = automationRepository.findAll();
+        automations.forEach(a -> {
+            if ("periodic".equals(a.getTrigger().getType())) {
+                var lastData = mainService.getLastData(a.getTrigger().getDeviceId());
+                checkAndExecuteSingleAutomation(a, lastData);
+            }
+        });
     }
 
     @Scheduled(fixedRate = 60000 * 5) // Every 5 min
