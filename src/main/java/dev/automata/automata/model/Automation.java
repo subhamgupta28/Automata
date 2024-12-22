@@ -39,7 +39,7 @@ public class Automation {
         private String type; // state, time
         private String value; // 300
         private String key; //range
-
+        private String name;
     }
 
     @Getter
@@ -51,7 +51,7 @@ public class Automation {
         private String key; //lights
         private String deviceId; //---
         private String data; //255
-
+        private String name;
         // Getters and setters
     }
 

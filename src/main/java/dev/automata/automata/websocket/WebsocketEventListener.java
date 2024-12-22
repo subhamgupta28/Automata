@@ -1,8 +1,10 @@
 package dev.automata.automata.websocket;
 
 import dev.automata.automata.model.Data;
+import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.service.MainService;
+import dev.automata.automata.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -22,7 +24,7 @@ public class WebsocketEventListener {
 
     private final SimpMessageSendingOperations messagingTemplate;
     private final MainService mainService;
-
+    private final NotificationService notificationService;
 
     @EventListener
     public void WebsocketDisconnectListener(
@@ -38,6 +40,8 @@ public class WebsocketEventListener {
             map.put("deviceId", deviceId);
             map.put("deviceConfig", device.get("deviceConfig"));
             messagingTemplate.convertAndSend("/topic/data", map);
+            var de = (Device) device.get("deviceConfig");
+            notificationService.sendNotification(de.getName()+" went offline", "medium");
         }
 
     }

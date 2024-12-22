@@ -104,7 +104,7 @@ const conditionStyle = {
 const TriggerNode = ({data, isConnectable}) => {
     return (
         <Card style={triggerStyle}>
-            <strong>{data.label}</strong>
+            <strong>{data.value.name}</strong>
             <Handle
                 type="source"
                 position={Position.Right}
@@ -126,7 +126,7 @@ const ActionNode = ({data, isConnectable}) => {
 
                 isConnectable={isConnectable}
             />
-            <strong>{data.label}</strong>
+            <strong>{data.value.key}</strong>
         </Card>
     );
 };
@@ -141,7 +141,7 @@ const ConditionNode = ({data, isConnectable}) => {
                 id="b"
                 isConnectable={isConnectable}
             />
-            <strong>{data.label}</strong>
+            <strong>{data.value.condition}</strong>
             <Handle
                 type="source"
                 position={Position.Right}
@@ -153,19 +153,63 @@ const ConditionNode = ({data, isConnectable}) => {
 };
 
 const createNodes = (data) => {
-    let deviceNodes = [];
-    let x = 20;
-    let y = 20;
+    let triggerNode = [];
+    let actionNode = [];
+    let conditionNode = [];
+    let x = 40;
+    let y = 40;
+
+
+    let sct = 0;
+    let ccd = 0;
+    let ax = x + 600;
+    let ay = y + 40;
+    let cy = y + 40;
+    let cx = x + 300;
     data.map(action => {
-        deviceNodes.push({
+        let trigger = action.trigger;
+        let actions = action.actions;
+        let condition = action.conditions;
+
+        triggerNode.push({
             id: action.id,
-            type: 'consumerNode',
-            position: {x: x, y: y * 5},
+            type: 'trigger',
+            position: {x: x, y: y * 2},
             data: {value: action},
         });
+        y += 80;
+
+
+        actions.map(((act, index) => {
+            actionNode.push({
+                id: "act-id-" + sct,
+                type: 'action',
+                position: {x: ax, y: ay},
+                data: {value: act},
+            });
+            ay += 60;
+            sct++;
+        }));
+
+
+        condition.map((cond, index) => {
+            conditionNode.push({
+                id: "cond-id-" + ccd,
+                type: 'condition',
+                position: {x: cx, y: cy},
+                data: {value: cond},
+            });
+            cy += 80;
+            ccd++;
+        });
+
+
     })
 
-    return [...deviceNodes];
+    console.log("trigger", triggerNode);
+    console.log("action", actionNode);
+    console.log("condition", conditionNode);
+    return [...triggerNode, ...actionNode, ...conditionNode];
 }
 
 const createEdges = (data) => {
@@ -188,67 +232,16 @@ const createEdges = (data) => {
     return [...edges]
 }
 
-
-
-const customNodes = [
-    {
-        id: '1',
-        type: 'trigger', // Custom type for trigger
-        data: {label: 'When motion is detected'},
-        position: {x: 50, y: 100},
-    },
-    {
-        id: '2',
-        type: 'action',
-        data: {label: 'Turn on lights (PWM 255)'},
-        position: {x: 650, y: 100},
-    },
-    {
-        id: '3',
-        type: 'action',
-        data: {label: 'Turn on lights (onOff 1)'},
-        position: {x: 650, y: 200},
-    },
-    {
-        id: '4',
-        type: 'condition',
-        data: {label: 'Condition: Value between 200 and 300'},
-        position: {x: 350, y: 100},
-    },
-    {
-        id: '5',
-        type: 'trigger', // Second trigger
-        data: {label: 'When motion is detected (range 240)'},
-        position: {x: 50, y: 300},
-    },
-    {
-        id: '6',
-        type: 'action',
-        data: {label: 'Turn on lights (PWM 255)'},
-        position: {x: 650, y: 300},
-    },
-    {
-        id: '7',
-        type: 'action',
-        data: {label: 'Turn off lights (onOff)'},
-        position: {x: 650, y: 400},
-    },
-    {
-        id: '8',
-        type: 'condition',
-        data: {label: 'Condition: Value between 200 and 300'},
-        position: {x: 350, y: 300},
-    },
-];
-
-const customEdge =[
-    {id: 'e1-2', source: '1', target: '2', animated: true},
-    {id: 'e2-3', source: '2', target: '3', animated: true},
-    {id: 'e3-4', source: '3', target: '4', animated: true},
-    {id: 'e5-6', source: '5', target: '6', animated: true},
+const customEdge = [
+    {id: 'e1-2', source: '6759f552e4c261194473ef04', target: 'cond-id-0', animated: true},
+    {id: 'e2-3', source: '676496740a15d707f30ed021', target: 'cond-id-1', animated: true},
+    {id: 'e3-4', source: 'cond-id-0', target: 'act-id-0', animated: true},
+    {id: 'e5-6', source: 'cond-id-1', target: 'act-id-1', animated: true},
     {id: 'e6-7', source: '6', target: '7', animated: true},
     {id: 'e7-8', source: '7', target: '8', animated: true},
 ];
+
+
 export default function ActionBoard(action) {
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
@@ -261,7 +254,7 @@ export default function ActionBoard(action) {
             try {
                 const data = await getActions();
                 setAutomations(data)
-                setNodes(customNodes); // Create nodes including the main node
+                setNodes(createNodes(data)); // Create nodes including the main node
                 setEdges(customEdge); // Create edges connecting devices to the main node
             } catch (err) {
                 console.error("Failed to fetch devices:", err);

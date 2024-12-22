@@ -9,6 +9,7 @@ import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.service.AnalyticsService;
 import dev.automata.automata.service.MainService;
+import dev.automata.automata.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -33,6 +34,7 @@ public class MainController {
     private final MainService mainService;
     private final AnalyticsService analyticsService;
     private final ApplicationEventPublisher publisher;
+    private final NotificationService notificationService;
 //    private final KafkaTemplate<String, String> kafkaTemplate;
 
 
@@ -42,43 +44,9 @@ public class MainController {
     }
 
     @GetMapping
-    public ResponseEntity<Device> status() {
-        var attrs = new ArrayList<Attribute>();
-        attrs.add(Attribute.builder()
-                .key("onOff")
-                .displayName("On Off")
-                .units("")
-                .visible(true)
-                .type("ACTION|OUT")
-                .build());
-        attrs.add(Attribute.builder()
-                .key("bright")
-                .displayName("Brightness")
-                .units("")
-                .visible(true)
-                .type("DATA|SLIDER")
-                .extras(Map.of("min", 0, "max", 255))
-                .build());
-        attrs.add(Attribute.builder()
-                .key("preset")
-                .displayName("Presets")
-                .units("")
-                .visible(true)
-                .type("DATA|PRESET")
-                .extras(Map.of("p1", 1, "p2", 2, "p3", 3, "p4", 4))
-                .build());
-        var reg = RegisterDevice.builder()
-                .name("WLED")
-                .sleep(false)
-                .status(Status.ONLINE)
-                .accessUrl("http://192.168.29.196")
-                .type("WLED")
-                .macAddr("8C:A3:99:CF:FB:AC")
-                .updateInterval(30000L)
-                .reboot(false)
-                .attributes(attrs).build();
-//        var res = mainService.registerDevice(reg);
-        return ResponseEntity.ok(new Device());
+    public ResponseEntity<String> status() {
+        notificationService.sendNotification("hello", "medium");
+        return ResponseEntity.ok("success");
     }
 
     @GetMapping("/updatePosition/{deviceId}/{x}/{y}")

@@ -118,6 +118,7 @@ export default function DeviceNodes() {
                         <EditIcon />
                     </Fab>
                 </Panel>
+
                 {/*<Background style={{width: '80%', height: '80%'}}/>*/}
                 {/*<Controls />*/}
                 {editUi && <NodeInspector/>}
@@ -128,6 +129,7 @@ export default function DeviceNodes() {
             >
                 <CircularProgress color="inherit" />
             </Backdrop>
+
         </div>
     );
 }

@@ -9,6 +9,7 @@ import {darkTheme} from "./Theme.jsx";
 import SignIn from "./components/auth/SignIn.jsx";
 import SignUp from "./components/auth/SignUp.jsx";
 import {BrowserRouter, Route, Routes} from "react-router-dom";
+import Notifications from "./components/Notifications.jsx";
 
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <>
             <ThemeProvider theme={darkTheme}>
                 <BrowserRouter>
+                    <Notifications/>
                     <main>
                         <header>
                             <Nav/>
@@ -40,6 +42,7 @@ function App() {
                                 <Route path="/" element={<DeviceNodes/>}/>
                                 <Route path="actions" element={<ActionBoard/>}/>
                             </Routes>
+
 
 
                         </section>

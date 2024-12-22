@@ -1,11 +1,11 @@
 import useWebSocket from "../services/useWebSocket.jsx";
-import {useEffect} from "react";
+import React, {useEffect} from "react";
 import {Snackbar} from "@mui/material";
 import Button from "@mui/material/Button";
 
 
 export default function Notifications() {
-    const {messages, sendMessage} = useWebSocket('/topic/notifications');
+    const {messages, sendMessage} = useWebSocket('/topic/notification');
     const [open, setOpen] = React.useState(false);
 
     const handleClick = () => {
@@ -21,19 +21,22 @@ export default function Notifications() {
     };
 
     useEffect(() => {
-
+        console.log(messages)
+        setOpen(true);
     }, [messages])
 
     return(
-        <div>
-            <Button onClick={handleClick}>Open Snackbar</Button>
-            <Snackbar
-                open={open}
-                autoHideDuration={6000}
-                onClose={handleClose}
-                message="Note archived"
-                action={action}
-            />
+        <div style={{position:'absolute'}}>
+            {/*<Button onClick={handleClick}>Open Snackbar</Button>*/}
+            {messages.message && (
+                <Snackbar
+                    open={open}
+                    autoHideDuration={6000}
+                    onClose={handleClose}
+                    message={messages.message}
+                />
+            )}
+
         </div>
     )
 }
