@@ -57,6 +57,11 @@ public class AutomationController {
         action5.setKey("bright");
         action5.setDeviceId("67571bf46f2d631aa77cc632");
 
+        var action6 = new Automation.Action();
+        action6.setData("10");
+        action6.setKey("buzzer");
+        action6.setDeviceId("67571bf46f2d631aa77cc632");
+
         var condition = new Automation.Condition();
         condition.setCondition("numeric");
         condition.setBelow("60");

@@ -19,6 +19,7 @@ const useWebSocket = (topic) => {
         const socket = new SockJS(url);
         const client = Stomp.over(socket);
 
+        client.debug = () => {};
 
         client.connect({}, (frame) => {
             // console.log('Connected: ' + frame);

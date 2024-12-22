@@ -13,7 +13,7 @@ import useWebSocket from "../../services/useWebSocket.jsx";
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
-import {Card} from "@mui/material";
+import {Backdrop, Card, CircularProgress} from "@mui/material";
 import ChartNode from "../charts/ChartNode.jsx";
 import NodeInspector from "./NodeInspector.jsx";
 import Button from "@mui/material/Button";
@@ -28,6 +28,7 @@ const nodeTypes = {
 };
 
 export default function DeviceNodes() {
+    const [openBackdrop, setOpenBackdrop] = React.useState(false);
     const {messages, sendMessage} = useWebSocket('/topic/data');
     const {messages: data, sendMessage: sendData} = useWebSocket('/topic/devices');
     const [nodes, setNodes] = useNodesState([]);
@@ -60,6 +61,7 @@ export default function DeviceNodes() {
 
 
     useEffect(() => {
+        setOpenBackdrop(true);
         const fetchData = async () => {
             try {
                 const devices = await getDevices();
@@ -67,8 +69,10 @@ export default function DeviceNodes() {
                 var dev = devices.filter((d)=> d.showInDashboard===true)
                 // const chart = await getChartData("6713fd6118af335020f90f73");
                 setNodes(createNodes(dev, [])); // Create nodes including the main node
-                setEdges(createEdges(dev, [])); // Create edges connecting devices to the main node
+                setEdges(createEdges(dev, []));
+                setOpenBackdrop(false);
             } catch (err) {
+                setOpenBackdrop(false);
                 console.error("Failed to fetch devices:", err);
             }
         };
@@ -118,6 +122,12 @@ export default function DeviceNodes() {
                 {/*<Controls />*/}
                 {editUi && <NodeInspector/>}
             </ReactFlow>
+            <Backdrop
+                sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
+                open={openBackdrop}
+            >
+                <CircularProgress color="inherit" />
+            </Backdrop>
         </div>
     );
 }

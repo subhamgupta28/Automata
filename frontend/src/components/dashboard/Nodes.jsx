@@ -45,10 +45,11 @@ const CustomModal = ({ isOpen, onClose, device }) => {
             // Handle error gracefully
         }
     };
+    const switchBtn = device.attributes.filter((t) => t.type.startsWith("MENU|BTN"));
 
     const handleAction = async (action) => {
         try {
-            await sendAction(device.id, { key: action, [action]: true, device_id: device.id, direct: true });
+            await sendAction(device.id, { key: action, [action]: true, device_id: device.id, direct: true }, device.type);
         } catch (err) {
             // Handle action error
         }
@@ -74,14 +75,45 @@ const CustomModal = ({ isOpen, onClose, device }) => {
     return (
         <Dialog fullWidth maxWidth="md" onClose={onClose} open={isOpen}>
             <DialogTitle>Device Settings</DialogTitle>
-            <DialogContent style={{ overflow: 'auto' }}>
+            <DialogContent style={{ overflow: 'auto'}}>
                 <Stack direction="row" divider={<Divider orientation="vertical" flexItem />} spacing={2}>
-                    <div style={{ width: '70%' }}>
-                        Item 1
-                    </div>
-                    <div>
-                        <table style={{ marginTop: '12px' }}>
+                    <div style={{ width: '65%' }}>
+                        {/* make the table strike border*/}
+                        <table>
                             <thead>
+                            <tr>
+                                <td>Params</td>
+                                <td>Value</td>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td>Access URL</td>
+                                <td>{device.accessUrl}</td>
+                            </tr>
+                            <tr>
+                                <td>Mac Address</td>
+                                <td>{device.macAddr}</td>
+                            </tr>
+                            <tr>
+                                <td>Update Interval</td>
+                                <td>{device.updateInterval}</td>
+                            </tr>
+                            </tbody>
+                        </table>
+
+                        {switchBtn.map((btn)=>(
+                            <Button aria-label="delete" variant="contained" style={{marginLeft:"12px", marginTop:"12px"}}
+                                    onClick={() => handleAction(btn["key"])}>
+                                {btn["displayName"]}
+                            </Button>
+                        ))}
+
+
+                    </div>
+                    <div style={{ width: '30%' }}>
+                        <table style={{marginTop: '12px'}}>
+                        <thead>
                             <tr>
                                 <td>Attribute</td>
                                 <td>Show in charts</td>
@@ -173,22 +205,22 @@ export function Device({data, isConnectable}) {
                         )}
 
                         {gaugeData && data.live && gaugeData.map((gauge) => (
-                            <GaugeChart value={data.live[gauge.key]} maxValue={gauge.extras.max}
+                            <GaugeChart key={gauge.key} value={data.live[gauge.key]} maxValue={gauge.extras.max}
                                         displayName={gauge.displayName}/>
                         ))}
 
                         {sliderData && data.live && sliderData.map((slide) => (
-                            <CustomSlider value={data.live[slide.key]} deviceId={data.value.id} type={data.value.type} data={slide}
+                            <CustomSlider key={slide.key} value={data.live[slide.key]} deviceId={data.value.id} type={data.value.type} data={slide}
                                           displayName={slide.displayName}/>
                         ))}
                         {presets && data.live && presets.map((slide) => (
-                            <Presets value={data.live[slide.key]} deviceId={data.value.id} type={data.value.type} data={slide}
+                            <Presets key={slide.key} value={data.live[slide.key]} deviceId={data.value.id} type={data.value.type} data={slide}
                                           displayName={slide.displayName}/>
                         ))}
 
                         <div style={{display:'flex', justifyContent: 'space-around'}}>
                             {switchBtn && data.live && switchBtn.map((slide) => (
-                                <SwitchButton value={data.live[slide.key]} deviceId={data.value.id} data={slide} type={data.value.type}
+                                <SwitchButton key={slide.key} value={data.live[slide.key]} deviceId={data.value.id} data={slide} type={data.value.type}
                                               displayName={slide.displayName}/>
                             ))}
                         </div>
@@ -297,7 +329,7 @@ export function MainNode({data, isConnectable}) {
                         gap: '10px', /* Space between items */
                          }}>
                         {charts.map((device, index) => (
-                            <BarChartComp chartDevice={device} />
+                            <BarChartComp key={device.id} chartDevice={device} />
                         ))}
                     </CardContent>
 
@@ -326,7 +358,7 @@ function BarChartComp({chartDevice}) {
     // Initialize state for the chart data and the selected device/attribute
     const [chartData, setChartData] = useState({
         dataKey: "p",
-        data: [0],
+        data: [{ p: 0 }],
         label: "p",
         attributes: [],
         timestamps: [""],
@@ -335,7 +367,7 @@ function BarChartComp({chartDevice}) {
 
     const visibleAttr = chartDevice?.attributes.filter(attr => attr.visible === true);
 
-    console.log("visibleAttr", visibleAttr)
+    // console.log("visibleAttr", visibleAttr)
     // const [deviceId, setDeviceId] = useState(0);
     const [selectedAttribute, setAttribute] = useState(visibleAttr[0]?.key || "");
     // const [chartDevice, setChartDevice] = useState(chartDevice?.id || "");
@@ -345,7 +377,7 @@ function BarChartComp({chartDevice}) {
         const fetchChartData = async () => {
             try {
                 const data = await getChartData(chartDevice.id, selectedAttribute);
-                console.log("chart data for device:", chartDevice, "attribute:", selectedAttribute, data);
+                // console.log("chart data for device:", chartDevice, "attribute:", selectedAttribute, data);
                 setChartData(data);
 
             } catch (err) {
@@ -368,7 +400,7 @@ function BarChartComp({chartDevice}) {
     // Handle selecting an attribute
     const handleAttribute = useCallback((key) => {
         setAttribute(key);
-        console.log("Selected attribute:", key);
+        // console.log("Selected attribute:", key);
     }, []);
 
     const valueFormatter = (value) => {
