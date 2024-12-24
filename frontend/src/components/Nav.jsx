@@ -6,7 +6,7 @@ import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import AdbIcon from '@mui/icons-material/Adb';
 import {useEffect} from "react";
-import {getDevices, getServerTime} from "../services/apis.jsx";
+import {getDevices, getNotifications, getServerTime} from "../services/apis.jsx";
 import {NavLink} from "react-router-dom";
 
 const pages = ['Home', 'Actions'];
@@ -30,12 +30,12 @@ function Nav() {
 
     useEffect(() => {
         setTime(formattedDateTime)
-        // const fetchData = async () => {
-        //     const t = await getServerTime();
-        //     setTime(t);
-        // }
-        //
-        // fetchData();
+        const fetchData = async () => {
+            const t = await getNotifications();
+
+        }
+
+        fetchData();
 
     }, [])
 
