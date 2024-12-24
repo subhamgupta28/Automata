@@ -6,24 +6,20 @@ import dev.automata.automata.model.Data;
 import dev.automata.automata.repository.AttributeRepository;
 import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceChartsRepository;
-import dev.automata.automata.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.aggregation.DateOperators;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
-import java.time.*;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
-import static org.springframework.data.mongodb.core.aggregation.DateOperators.Timezone.fromOffset;
-import static org.springframework.data.mongodb.core.aggregation.Fields.field;
-import static org.springframework.data.mongodb.core.aggregation.Fields.from;
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 
 @Service
@@ -31,155 +27,71 @@ import static org.springframework.data.mongodb.core.query.Criteria.where;
 public class AnalyticsService {
     private final DataRepository dataRepository;
     private final AttributeRepository attributeRepository;
-    private final DeviceRepository deviceRepository;
-    private final MongoTemplate mongoTemplate;
     private final DeviceChartsRepository deviceChartsRepository;
-
-
-//    public ChartDataDto getChartData(String deviceId, String attributeKey) {
-//        ChartDataDto chartDataDto = new ChartDataDto();
-//        chartDataDto.setDeviceId(deviceId);
-//        var attributes = attributeRepository.findByDeviceIdAndType(deviceId, "%");
-//        LocalDate today = LocalDate.now();
-//
-//        if (!attributes.isEmpty()) {
-//            var attr = attributes.stream().filter(s -> s.getKey().equals(attributeKey)).toList();
-//            System.err.println(attr);
-//            chartDataDto.setUnit(attr.getFirst().getUnits());
-//        }
-//    }
-
+    private final MongoTemplate mongoTemplate;
 
     public ChartDataDto getChartData2(String deviceId, String attributeKey, String period) {
         ChartDataDto chartDataDto = new ChartDataDto();
         chartDataDto.setDeviceId(deviceId);
-
-        int week = 6;
-        if (period.equals("day")) {
-            week = 0;
-        }
         chartDataDto.setPeriod(period);
+
+        int week = period.equals("day") ? 0 : 6;
 
         var attrs = deviceChartsRepository.findByDeviceId(deviceId);
         var attributes = attributeRepository.findByDeviceIdAndTypeNot(deviceId, "DATA|AUX");
 
         List<Attribute> filteredAttributes = attributes.stream()
                 .filter(attribute -> attrs.stream().anyMatch(attr -> attr.getAttributeKey().equals(attribute.getKey()) && attr.isShowChart()))
-                .toList();
-
-//        System.err.println(attrs.size());
-//        System.err.println(attributes.size());
-//        System.err.println(filteredAttributes.stream().map(Attribute::getKey).collect(Collectors.joining(", ")));
+                .collect(Collectors.toList());
 
         LocalDateTime now = LocalDateTime.now();
-
-        // Calculate the start of the last 24 hours (24 hours ago)
-        LocalDateTime startOfLast24Hours = now.minusHours(11);
-
-        // Convert to Date
-        Date startDate = Date.from(startOfLast24Hours.atZone(ZoneId.systemDefault()).toInstant());
+        Date startDate = Date.from(now.minusHours(11).atZone(ZoneId.systemDefault()).toInstant());
         Date endDate = Date.from(now.atZone(ZoneId.systemDefault()).toInstant());
 
-
         if (!filteredAttributes.isEmpty()) {
-            String finalAttributeKey = attributeKey;
-            var attr = filteredAttributes.stream().filter(s -> s.getKey().equals(finalAttributeKey)).toList();
+            var attr = filteredAttributes.stream().filter(s -> s.getKey().equals(attributeKey)).findFirst();
             chartDataDto.setAttributes(filteredAttributes.stream().map(Attribute::getKey).collect(Collectors.toList()));
-            if (attr.isEmpty()){
-                chartDataDto.setMessage("No attribute found for key: " + attributeKey+". Use one of these to fetch charts.");
-                chartDataDto.setData(new ArrayList<>());
-                chartDataDto.setDataKey("");
-                chartDataDto.setUnit("");
-                chartDataDto.setLabel("");
+            if (attr.isEmpty()) {
+                chartDataDto.setMessage("No attribute found for key: " + attributeKey + ". Use one of these to fetch charts.");
                 return chartDataDto;
             }
-//            System.err.println(attr);
-            chartDataDto.setUnit(attr.getFirst().getUnits());
+            chartDataDto.setUnit(attr.get().getUnits());
         }
 
-
-        // Step 1: Match stage (filter by deviceId and date range)
-        var match = match(where("deviceId").is(deviceId)
-                .and("updateDate").gte(startDate).lte(endDate));
-
-
-        var projectBuilder = project(
-                from(
-                        field("deviceId"),
-                        field("data"),
-                        field("updateDate"),
-                        field("dateTime", "day")
-                ))
-                .and(
-                        DateOperators.dateOf("updateDate")
-                                .toString("%m-%d %H")
-                                .withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))
-                ).as("dateDay")
-                .and(
-                        DateOperators.dateOf("updateDate")
-                                .toString("%m-%d %H:%M")
-                                .withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))
-                ).as("dateShow");
-        /*
-        "%Y-%m-%dT%H:%M:%S.%LZ"
-        * */
-
-
-        projectBuilder = projectBuilder.andExpression("toDouble(data." + attributeKey + ")").as("t" + attributeKey);
-
-
-        // Step 3: Group by day and apply sum and other operations for each dynamic key
-        var groupBuilder = Aggregation.group("dateDay")
+        var match = match(where("deviceId").is(deviceId).and("updateDate").gte(startDate).lte(endDate));
+        var project = project("deviceId", "data", "updateDate")
+                .and(DateOperators.dateOf("updateDate").toString("%m-%d %H").withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))).as("dateDay")
+                .and(DateOperators.dateOf("updateDate").toString("%m-%d %H:%M").withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))).as("dateShow")
+                .andExpression("toDouble(data." + attributeKey + ")").as("t" + attributeKey);
+        var group = group("dateDay")
                 .count().as("count")
                 .max("dateShow").as("endOfDay")
-                .min("dateShow").as("startOfDay");
+                .min("dateShow").as("startOfDay")
+                .avg("t" + attributeKey).as("net" + attributeKey);
+        var sort = sort(Sort.by(Sort.Order.asc("startOfDay")));
 
-
-        // Dynamically sum up values for each key
-
-        groupBuilder = groupBuilder.avg("t" + attributeKey).as("net" + attributeKey);
-//                .push("t" + attributeKey).as("nC" + attributeKey);
-        var sort = Aggregation.sort(Sort.by(Sort.Order.asc("startOfDay")));
-
-
-        Aggregation aggregation = newAggregation(match, projectBuilder, groupBuilder, sort);
+        Aggregation aggregation = newAggregation(match, project, group, sort);
         AggregationResults<Object> results = mongoTemplate.aggregate(aggregation, Data.class, Object.class);
 
-
-        List<Object> resultList = results.getMappedResults();
         List<Object> finalResultList = new ArrayList<>();
         List<String> labels = new ArrayList<>();
-        for (Object object : resultList) {
-            try {
-                var map = (Map<String, Object>) object;
-                for (Map.Entry<String, Object> entry : map.entrySet()) {
-                    if (entry.getKey().startsWith("nC")) {
-                        var list = (List<Object>) entry.getValue();
-                        var val = list.stream().map(d->Math.abs(Double.parseDouble(d.toString()))).toList();
-                        map.put(entry.getKey(), val);
-                    }
-                    if (entry.getKey().startsWith("net")) {
-                        var d = Double.parseDouble(entry.getValue().toString());
-                        map.put(entry.getKey(), Double.parseDouble(String.format("%.2f", Math.abs(d))));
-                    }
-                    if (entry.getKey().startsWith("startOfDay")) {
-                        labels.add(entry.getValue().toString());
-                    }
+        for (Object object : results.getMappedResults()) {
+            var map = (Map<String, Object>) object;
+            map.forEach((key, value) -> {
+                if (key.startsWith("net")) {
+                    map.put(key, Double.parseDouble(String.format("%.2f", Math.abs(Double.parseDouble(value.toString())))));
                 }
-                finalResultList.add(map);
-            } catch (Exception e) {
-                e.printStackTrace(System.err);
-            }
+                if (key.startsWith("startOfDay")) {
+                    labels.add(value.toString());
+                }
+            });
+            finalResultList.add(map);
         }
 
         chartDataDto.setTimestamps(labels);
         chartDataDto.setLabel(attributeKey);
-        attributeKey = "net" + attributeKey;
         chartDataDto.setData(finalResultList);
-        chartDataDto.setDataKey(attributeKey);
-//        chartDataDto.setPeriod(startOfWeek + " to " + endOfWeek);
+        chartDataDto.setDataKey("net" + attributeKey);
         return chartDataDto;
     }
-
-
 }

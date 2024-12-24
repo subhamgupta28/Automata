@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     TextField,
     Button,
@@ -7,13 +7,107 @@ import {
     InputLabel,
     Select,
     MenuItem,
-    Checkbox,
-    FormControlLabel,
     Grid,
     DialogTitle, DialogContent, Dialog
 } from '@mui/material';
+import {getDevices} from "../../services/apis.jsx";
 
-export default function CreateAction({ isOpen, onClose, automations }) {
+
+function Actions({action, devices, triggerDevice}) {
+    const [actions, setActions] = useState([{deviceId: triggerDevice.id}]);
+    const [deviceOptions, setDeviceOptions] = useState([]);
+    const [actionOptions, setActionOptions] = useState([]);
+    const [selectedDevice, setSelectedDevice] = useState(devices[0])
+
+    const handleChange = (e, index = null) => {
+        const {name, value} = e.target;
+        const updatedData = {...actions};
+
+        updatedData[index][name] = value;
+
+        console.log("act", actions);
+
+        setActions(updatedData);
+    };
+
+    const selectDevice = (e, index) => {
+        const {name, value} = e.target;
+
+        let dev = devices.filter((d) => d.id === value)[0];
+        console.log(name, value, dev)
+        setSelectedDevice(dev);
+    }
+    const handleAddAction = () => {
+
+    }
+
+    return (
+        <Grid container spacing={2} sx={{marginBottom: 2, marginLeft: 2}}>
+            {
+                actions.map((action, index) => (
+                    <Grid item xs={12} key={index}>
+                        <FormControl fullWidth sx={{marginBottom: 1}}>
+                            <InputLabel>Action Device</InputLabel>
+                            <Select
+                                size='small'
+                                value={selectedDevice.id}
+                                label="Action Device"
+                                onChange={(e) => selectDevice(e, index)}
+                                name="deviceId"
+                            >
+                                {devices.map((device) => (
+                                    <MenuItem key={device.id} value={device.id}>
+                                        {device.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <FormControl fullWidth sx={{marginBottom: 1}}>
+                            <InputLabel>Action Key</InputLabel>
+                            <Select
+                                size='small'
+                                value={action.key}
+                                label="Action Key"
+                                onChange={(e) => handleChange(e, index)}
+                                name="key"
+                            >
+                                {selectedDevice.attributes.map((actionOption) => (
+                                    <MenuItem key={actionOption.id} value={actionOption.key}>
+                                        {actionOption.displayName}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <TextField
+                            size='small'
+                            label="Action Data"
+                            fullWidth
+                            value={action.data}
+                            onChange={(e) => handleChange(e, index)}
+                            name="data"
+                            sx={{marginBottom: 1}}
+                        />
+                    </Grid>
+                ))
+            }
+            <Grid item xs={12}>
+                <Button size='small' variant="outlined" onClick={handleAddAction}>
+                    Add Action
+                </Button>
+            </Grid>
+        </Grid>
+    )
+}
+
+export default function CreateAction({isOpen, onClose, automations}) {
+    const [devices, setDevices] = useState([]);
+    const [triggerDevice, setTriggerDevice] = useState({id: ""});
+    const [triggerData, setTriggerData] = useState({
+        deviceId: "",
+        type: "",
+        value: "",
+        key: ""
+    });
     const [data, setData] = useState({
         id: "6759f552e4c261194473ef04",
         name: "When motion is detected turn on the lights",
@@ -24,17 +118,17 @@ export default function CreateAction({ isOpen, onClose, automations }) {
             key: "button"
         },
         actions: [
-            { key: "pwm", deviceId: "6713fd6118af335020f90f73", data: "255" },
-            { key: "onOff", deviceId: "67571bf46f2d631aa77cc632", data: "1" }
+            {key: "pwm", deviceId: "6713fd6118af335020f90f73", data: "255"},
+            {key: "onOff", deviceId: "67571bf46f2d631aa77cc632", data: "1"}
         ],
         conditions: [
-            { condition: "numeric", valueType: "int", above: "200", below: "300", value: "250" }
+            {condition: "numeric", valueType: "int", above: "200", below: "300", value: "250"}
         ]
     });
 
     const handleChange = (e, section, index = null) => {
-        const { name, value } = e.target;
-        const updatedData = { ...data };
+        const {name, value} = e.target;
+        const updatedData = {...data};
 
         if (section === 'trigger') {
             updatedData.trigger[name] = value;
@@ -49,17 +143,45 @@ export default function CreateAction({ isOpen, onClose, automations }) {
         setData(updatedData);
     };
 
+    useEffect(() => {
+        const fetchDevices = async () => {
+            try {
+                const devices = await getDevices();
+                console.log("devices", devices);
+                setDevices(devices);
+            } catch (err) {
+                console.error("Failed to fetch devices:", err);
+            }
+        };
+
+        fetchDevices();
+    }, []);
+
     const handleAddAction = () => {
-        const updatedData = { ...data };
-        updatedData.actions.push({ key: "", deviceId: "", data: "" });
+        const updatedData = {...data};
+        updatedData.actions.push({key: "", deviceId: "", data: ""});
         setData(updatedData);
     };
 
     const handleAddCondition = () => {
-        const updatedData = { ...data };
-        updatedData.conditions.push({ condition: "numeric", valueType: "int", above: "", below: "", value: "" });
+        const updatedData = {...data};
+        updatedData.conditions.push({condition: "numeric", valueType: "int", above: "", below: "", value: ""});
         setData(updatedData);
     };
+
+    const selectTriggerDevice = (e) => {
+        const {name, value} = e.target;
+        let dev = devices.filter((d) => d.id === value)[0];
+        console.log(name, value, dev)
+        setTriggerDevice(dev);
+    }
+    const handleTriggerData = (e) => {
+        const {name, value} = e.target;
+        const updatedData = {...triggerData};
+        updatedData[name] = value;
+        console.log(name, value)
+    }
+
 
     return (
         <Dialog fullWidth maxWidth="md" onClose={onClose} open={isOpen}>
@@ -90,15 +212,38 @@ export default function CreateAction({ isOpen, onClose, automations }) {
                                     <MenuItem value="event">Event</MenuItem>
                                 </Select>
                             </FormControl>
-                            <TextField
-                                size='small'
-                                label="Trigger Value"
-                                fullWidth
-                                value={data.trigger.value}
-                                onChange={(e) => handleChange(e, 'trigger')}
-                                name="value"
-                                sx={{marginBottom: 2}}
-                            />
+                            <FormControl fullWidth sx={{marginBottom: 1}}>
+                                <InputLabel>Trigger Device</InputLabel>
+                                <Select
+                                    size='small'
+                                    value={triggerDevice.id}
+                                    label="Trigger Device"
+                                    onChange={(e) => selectTriggerDevice(e)}
+                                    name="deviceId"
+                                >
+                                    {devices && devices.map((device) => (
+                                        <MenuItem key={device.id} value={device.id}>
+                                            {device.name}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <FormControl fullWidth sx={{marginBottom: 1}}>
+                                <InputLabel>Action Key</InputLabel>
+                                <Select
+                                    size='small'
+                                    value={triggerDevice.key}
+                                    label="Trigger Key"
+                                    onChange={(e) => handleTriggerData(e )}
+                                    name="key"
+                                >
+                                    {triggerDevice.attributes && triggerDevice.attributes.map((actionOption) => (
+                                        <MenuItem key={actionOption.id} value={actionOption.key}>
+                                            {actionOption.displayName}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
                             <TextField
                                 size='small'
                                 label="Trigger Key"
@@ -109,44 +254,8 @@ export default function CreateAction({ isOpen, onClose, automations }) {
                                 sx={{marginBottom: 2}}
                             />
                         </div>
-                        <Grid container spacing={2} sx={{marginBottom: 2, marginLeft: 2}}>
-                            {data.actions.map((action, index) => (
-                                <Grid item xs={12} key={index}>
-                                    <TextField
-                                        size='small'
-                                        label="Action Device ID"
-                                        fullWidth
-                                        value={action.deviceId}
-                                        onChange={(e) => handleChange(e, 'actions', index)}
-                                        name="deviceId"
-                                        sx={{marginBottom: 1}}
-                                    />
-                                    <TextField
-                                        size='small'
-                                        label="Action Key"
-                                        fullWidth
-                                        value={action.key}
-                                        onChange={(e) => handleChange(e, 'actions', index)}
-                                        name="key"
-                                        sx={{marginBottom: 1}}
-                                    />
-                                    <TextField
-                                        size='small'
-                                        label="Action Data"
-                                        fullWidth
-                                        value={action.data}
-                                        onChange={(e) => handleChange(e, 'actions', index)}
-                                        name="data"
-                                        sx={{marginBottom: 1}}
-                                    />
-                                </Grid>
-                            ))}
-                            <Grid item xs={12}>
-                                <Button size='small' variant="outlined" onClick={handleAddAction}>
-                                    Add Action
-                                </Button>
-                            </Grid>
-                        </Grid>
+                        <Actions action={automations} devices={devices} triggerDevice={triggerDevice}/>
+
                         <Grid container spacing={2} sx={{marginBottom: 2, marginLeft: 2}}>
                             {data.conditions.map((condition, index) => (
                                 <Grid item xs={12} key={index}>

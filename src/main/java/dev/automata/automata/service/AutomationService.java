@@ -116,7 +116,7 @@ public class AutomationService {
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
 //        System.err.println(payload);
-        if (isTriggered(automation, payload)) {
+        if (payload!=null && isTriggered(automation, payload)) {
             executeActions(automation);
         } else {
             System.err.println("No state match for payload: " + payload);
@@ -125,7 +125,6 @@ public class AutomationService {
 
     private boolean isTriggered(Automation automation, Map<String, Object> payload) {
         // Check trigger conditions (e.g., time-based, state change, etc.)
-        // This is just an example for time-based triggers
         String key = automation.getTrigger().getKey();
         var condition = automation.getConditions().getFirst();
         var value = payload.get(key).toString();
@@ -135,9 +134,6 @@ public class AutomationService {
             return isCurrentTime(triggerTime);
         }
         if ("state".equals(automation.getTrigger().getType())) {
-            String deviceId = automation.getTrigger().getDeviceId();
-
-
             if (condition.getIsExact()) {
                 var expectedValue = condition.getValue();
                 return value.equals(expectedValue);
@@ -146,10 +142,6 @@ public class AutomationService {
                 var below = Double.parseDouble(condition.getBelow());//60
                 System.err.println(value + " " + above + " " + below);
                 return parseValue > above && parseValue < below;
-//            String expectedState = automation.getTrigger().getValue();
-//            String actualState = payload.get(key).toString();
-//            System.err.println(expectedState + " " + actualState);
-//            return expectedState.equals(actualState);
             }
         }
         if ("periodic".equals(automation.getTrigger().getType())) {
@@ -244,10 +236,8 @@ public class AutomationService {
     private void triggerPeriodicAutomations() {
         var automations = automationRepository.findAll();
         automations.forEach(a -> {
-            if ("periodic".equals(a.getTrigger().getType())) {
-                var lastData = mainService.getLastData(a.getTrigger().getDeviceId());
-                checkAndExecuteSingleAutomation(a, lastData);
-            }
+            var lastData = mainService.getLastData(a.getTrigger().getDeviceId());
+            checkAndExecuteSingleAutomation(a, lastData);
         });
     }
 

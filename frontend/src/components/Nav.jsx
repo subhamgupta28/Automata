@@ -30,12 +30,12 @@ function Nav() {
 
     useEffect(() => {
         setTime(formattedDateTime)
-        const fetchData = async () => {
-            const t = await getServerTime();
-            setTime(t);
-        }
-
-        fetchData();
+        // const fetchData = async () => {
+        //     const t = await getServerTime();
+        //     setTime(t);
+        // }
+        //
+        // fetchData();
 
     }, [])
 
@@ -107,10 +107,10 @@ function Nav() {
 
                     </Box>
                     <Box>
-                        <Typography style={{marginRight: "10px"}}
-                        >
-                            {time}
-                        </Typography>
+                        {/*<Typography style={{marginRight: "10px"}}*/}
+                        {/*>*/}
+                        {/*    {time}*/}
+                        {/*</Typography>*/}
 
                     </Box>
 

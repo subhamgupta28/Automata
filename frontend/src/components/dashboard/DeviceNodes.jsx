@@ -1,43 +1,40 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Background, Controls, Panel,
+    applyNodeChanges,
     ReactFlow,
-    useEdgesState, useNodes,
-    useNodesState, useReactFlow
+    useEdgesState,
+    useNodesState
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import {getChartData, getDevices, getLastDataByDeviceId} from "../../services/apis.jsx";
+import { getDevices } from "../../services/apis.jsx";
 import useWebSocket from "../../services/useWebSocket.jsx";
-import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
-import {Device, MainNode} from "./Nodes.jsx";
-import {createEdges, createNodes} from "./EdgeNode.jsx";
-import {Backdrop, Card, CircularProgress} from "@mui/material";
-import ChartNode from "../charts/ChartNode.jsx";
-import NodeInspector from "./NodeInspector.jsx";
-import Button from "@mui/material/Button";
-import {Fab} from "@mui/material";
+import { AnimatedSVGEdge } from "./AnimatedSVGEdge.jsx";
+import { Device, MainNode } from "./Nodes.jsx";
+import { createEdges, createNodes } from "./EdgeNode.jsx";
+import { Backdrop, CircularProgress, Fab } from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
+import NodeInspector from "./NodeInspector.jsx";
 
-const edgeTypes = {animatedSvg: AnimatedSVGEdge};
+const edgeTypes = { animatedSvg: AnimatedSVGEdge };
 const nodeTypes = {
     deviceNode: Device,
-    mainNode: MainNode,
-    lineChartNode: ChartNode
+    mainNode: MainNode
 };
 
-export default function DeviceNodes() {
-    const [openBackdrop, setOpenBackdrop] = React.useState(false);
-    const {messages, sendMessage} = useWebSocket('/topic/data');
-    const {messages: data, sendMessage: sendData} = useWebSocket('/topic/devices');
+const DeviceNodes = () => {
+    const [openBackdrop, setOpenBackdrop] = useState(false);
+    const { messages } = useWebSocket('/topic/data');
+    const { messages: data } = useWebSocket('/topic/devices');
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
     const [editUi, setEditUi] = useState(false);
-    // const [editUi, setEditUi] = useState(false);
-    const handleEdit = () => {
-        setEditUi(a=>!a)
-    }
+
+    const handleEdit = useCallback(() => {
+        setEditUi(prev => !prev);
+    }, []);
+
     useEffect(() => {
         setNodes((nds) =>
             nds.map((node) => {
@@ -48,10 +45,7 @@ export default function DeviceNodes() {
                     }
                     return {
                         ...node,
-                        style: {
-                            ...node.style,
-                        },
-                        data: {value: dt, live: messages.data}
+                        data: { value: dt, live: messages.data }
                     };
                 }
                 return node;
@@ -59,16 +53,13 @@ export default function DeviceNodes() {
         );
     }, [messages, setNodes]);
 
-
     useEffect(() => {
         setOpenBackdrop(true);
         const fetchData = async () => {
             try {
                 const devices = await getDevices();
-
-                var dev = devices.filter((d)=> d.showInDashboard===true)
-                // const chart = await getChartData("6713fd6118af335020f90f73");
-                setNodes(createNodes(dev, [])); // Create nodes including the main node
+                const dev = devices.filter((d) => d.showInDashboard === true);
+                setNodes(createNodes(dev, []));
                 setEdges(createEdges(dev, []));
                 setOpenBackdrop(false);
             } catch (err) {
@@ -78,8 +69,7 @@ export default function DeviceNodes() {
         };
 
         fetchData();
-    }, [data]);
-
+    }, [data, setNodes, setEdges]);
 
     const onNodesChange = useCallback(
         (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -94,34 +84,25 @@ export default function DeviceNodes() {
         [setEdges],
     );
 
-    // const handleEdit = () => {
-    //   setEditUi(a=>!a)
-    // }
+    const defaultViewport = useMemo(() => ({ x: 0, y: 0, zoom: 0.65 }), []);
 
     return (
-        <div style={{height: '92dvh'}}>
+        <div style={{ height: '92dvh' }}>
             <ReactFlow
                 colorMode="light"
                 nodes={nodes}
                 edges={edges}
                 edgeTypes={edgeTypes}
-                // snapToGrid={editUi}
-                // nodesFocusable={true}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                defaultViewport={{x: 0, y: 0, zoom: 0.65}}
+                defaultViewport={defaultViewport}
                 nodeTypes={nodeTypes}
             >
-                <Panel position="bottom-right" style={{marginBottom: '50px'}}>
-                    <Fab color="primary" aria-label="add" onClick={handleEdit}>
-                        <EditIcon />
-                    </Fab>
-                </Panel>
-
-                {/*<Background style={{width: '80%', height: '80%'}}/>*/}
-                {/*<Controls />*/}
-                {editUi && <NodeInspector/>}
+                <Fab color="primary" aria-label="add" onClick={handleEdit} style={{ position: 'absolute', bottom: '50px', right: '50px' }}>
+                    <EditIcon />
+                </Fab>
+                {editUi && <NodeInspector />}
             </ReactFlow>
             <Backdrop
                 sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
@@ -129,7 +110,8 @@ export default function DeviceNodes() {
             >
                 <CircularProgress color="inherit" />
             </Backdrop>
-
         </div>
     );
-}
+};
+
+export default React.memo(DeviceNodes);

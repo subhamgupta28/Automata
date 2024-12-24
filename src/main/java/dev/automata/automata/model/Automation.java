@@ -26,6 +26,8 @@ public class Automation {
     private List<Action> actions;
     @JsonProperty("conditions")
     private List<Condition> conditions;
+    private int x;
+    private int y;
 
 
     @Getter
@@ -40,6 +42,8 @@ public class Automation {
         private String value; // 300
         private String key; //range
         private String name;
+        private int x;
+        private int y;
     }
 
     @Getter
@@ -52,6 +56,8 @@ public class Automation {
         private String deviceId; //---
         private String data; //255
         private String name;
+        private int x;
+        private int y;
         // Getters and setters
     }
 
@@ -67,7 +73,8 @@ public class Automation {
         private String below; // 300
         private String value;
         private Boolean isExact; // true
-
+        private int x;
+        private int y;
         // Getters and setters
     }
 

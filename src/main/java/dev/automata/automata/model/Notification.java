@@ -1,35 +1,27 @@
 package dev.automata.automata.model;
 
-
 import lombok.*;
+import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
 import java.util.Date;
-import java.util.Map;
 
-@Document(collection = "data")
+@Document(collection = "notifications")
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
 @ToString
-
-public class Data {
+public class Notification {
     @Id
     private String id;
+    private String message;
+    private String severity;
 
     @Indexed
-    private String deviceId;
-    private String dateTime;
-    private Map<String, Object> data;
+    private Date timestamp;
 
-    private Long timestamp;
-
-    @Indexed
-    private Date updateDate;
 }

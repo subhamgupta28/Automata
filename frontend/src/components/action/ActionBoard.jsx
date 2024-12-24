@@ -156,6 +156,7 @@ const createNodes = (data) => {
     let triggerNode = [];
     let actionNode = [];
     let conditionNode = [];
+    let edge = [];
     let x = 40;
     let y = 40;
 
@@ -164,8 +165,10 @@ const createNodes = (data) => {
     let ccd = 0;
     let ax = x + 600;
     let ay = y + 40;
-    let cy = y + 40;
+    let cy = y ;
     let cx = x + 300;
+    let edgeId = 0;
+
     data.map(action => {
         let trigger = action.trigger;
         let actions = action.actions;
@@ -179,6 +182,23 @@ const createNodes = (data) => {
         });
         y += 80;
 
+        condition.map((cond, index) => {
+            conditionNode.push({
+                id: "cond-id-" + ccd,
+                type: 'condition',
+                position: {x: cx, y: cy*2},
+                data: {value: cond},
+            });
+            edge.push({
+                id: `edge-${edgeId}`,
+                source: action.id,
+                target: "cond-id-" + ccd,
+                animated: true,
+            });
+            edgeId++;
+            cy += 80;
+            ccd++;
+        });
 
         actions.map(((act, index) => {
             actionNode.push({
@@ -187,29 +207,22 @@ const createNodes = (data) => {
                 position: {x: ax, y: ay},
                 data: {value: act},
             });
+            edge.push({
+                id: `edge-${edgeId}`,
+                source: "cond-id-" + (ccd-condition.length),
+                target: "act-id-" + sct,
+                animated: true,
+            });
+            edgeId++;
             ay += 60;
             sct++;
         }));
-
-
-        condition.map((cond, index) => {
-            conditionNode.push({
-                id: "cond-id-" + ccd,
-                type: 'condition',
-                position: {x: cx, y: cy},
-                data: {value: cond},
-            });
-            cy += 80;
-            ccd++;
-        });
-
+        ay+=40;
 
     })
 
-    console.log("trigger", triggerNode);
-    console.log("action", actionNode);
-    console.log("condition", conditionNode);
-    return [...triggerNode, ...actionNode, ...conditionNode];
+    console.log("edge", edge);
+    return {nodes:[...triggerNode, ...actionNode, ...conditionNode], edges: edge};
 }
 
 const createEdges = (data) => {
@@ -236,9 +249,13 @@ const customEdge = [
     {id: 'e1-2', source: '6759f552e4c261194473ef04', target: 'cond-id-0', animated: true},
     {id: 'e2-3', source: '676496740a15d707f30ed021', target: 'cond-id-1', animated: true},
     {id: 'e3-4', source: 'cond-id-0', target: 'act-id-0', animated: true},
-    {id: 'e5-6', source: 'cond-id-1', target: 'act-id-1', animated: true},
-    {id: 'e6-7', source: '6', target: '7', animated: true},
-    {id: 'e7-8', source: '7', target: '8', animated: true},
+    {id: 'e5-5', source: 'cond-id-0', target: 'act-id-1', animated: true},
+    {id: 'e5-6', source: 'cond-id-1', target: 'act-id-2', animated: true},
+    {id: 'e5-7', source: 'cond-id-1', target: 'act-id-3', animated: true},
+    {id: 'e5-8', source: 'cond-id-1', target: 'act-id-4', animated: true},
+    {id: 'e5-9', source: 'cond-id-1', target: 'act-id-5', animated: true},
+    {id: 'e5-10', source: 'cond-id-1', target: 'act-id-6', animated: true},
+    {id: 'e5-11', source: 'cond-id-1', target: 'act-id-7', animated: true},
 ];
 
 
@@ -254,8 +271,9 @@ export default function ActionBoard(action) {
             try {
                 const data = await getActions();
                 setAutomations(data)
-                setNodes(createNodes(data)); // Create nodes including the main node
-                setEdges(customEdge); // Create edges connecting devices to the main node
+                const {nodes, edges} = createNodes(data)
+                setNodes(nodes); // Create nodes including the main node
+                setEdges(edges); // Create edges connecting devices to the main node
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
             }

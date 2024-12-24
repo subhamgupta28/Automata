@@ -103,7 +103,7 @@ const CustomModal = ({ isOpen, onClose, device }) => {
                         </table>
 
                         {switchBtn.map((btn)=>(
-                            <Button aria-label="delete" variant="contained" style={{marginLeft:"12px", marginTop:"12px"}}
+                            <Button key={btn["key"]} aria-label="delete" variant="contained" style={{marginLeft:"12px", marginTop:"12px"}}
                                     onClick={() => handleAction(btn["key"])}>
                                 {btn["displayName"]}
                             </Button>
