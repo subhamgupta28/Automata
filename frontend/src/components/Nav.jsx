@@ -8,13 +8,17 @@ import AdbIcon from '@mui/icons-material/Adb';
 import {useEffect} from "react";
 import {getDevices, getNotifications, getServerTime} from "../services/apis.jsx";
 import {NavLink} from "react-router-dom";
+import {Alert, Menu, MenuItem} from "@mui/material";
+import IconButton from "@mui/material/IconButton";
+import MenuIcon from '@mui/icons-material/NotificationImportant';
 
-const pages = ['Home', 'Actions'];
+// const pages = ['Home', 'Actions'];
 const settings = ['Profile', 'Account', 'Dashboard', 'Logout'];
 
 function Nav() {
     const [anchorElNav, setAnchorElNav] = React.useState(null);
     const [anchorElUser, setAnchorElUser] = React.useState(null);
+    const [notifications, setNotifications] = React.useState([]);
     const [time, setTime] = React.useState(Date());
     const date = new Date();
     const formattedDateTime = date.toLocaleString('en-US', {
@@ -29,10 +33,11 @@ function Nav() {
 
 
     useEffect(() => {
-        setTime(formattedDateTime)
+        // setTime(formattedDateTime)
         const fetchData = async () => {
             const t = await getNotifications();
-
+            console.log("notifications", t);
+            setNotifications(t);
         }
 
         fetchData();
@@ -104,19 +109,49 @@ function Nav() {
                         <NavLink style={{marginLeft:'14px', color: 'white', display: 'block'}} to="/actions" end>
                             Actions
                         </NavLink>
-
+                        <NavLink style={{marginLeft:'14px', color: 'white', display: 'block'}} to="/devices" end>
+                            Devices
+                        </NavLink>
                     </Box>
                     <Box>
                         {/*<Typography style={{marginRight: "10px"}}*/}
                         {/*>*/}
                         {/*    {time}*/}
                         {/*</Typography>*/}
-
+                        <IconButton
+                            size="large"
+                            aria-label="account of current user"
+                            aria-controls="menu-appbar"
+                            aria-haspopup="true"
+                            onClick={handleOpenUserMenu}
+                            color="inherit"
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                        <Menu
+                            sx={{ mt: '45px' }}
+                            id="menu-appbar"
+                            anchorEl={anchorElUser}
+                            anchorOrigin={{
+                                vertical: 'top',
+                                horizontal: 'right',
+                            }}
+                            keepMounted
+                            transformOrigin={{
+                                vertical: 'top',
+                                horizontal: 'right',
+                            }}
+                            open={Boolean(anchorElUser)}
+                            onClose={handleCloseUserMenu}
+                        >
+                            {notifications.map((setting) => (
+                                <MenuItem key={setting.id} onClick={handleCloseUserMenu}>
+                                    {setting.message}
+                                </MenuItem>
+                            ))}
+                        </Menu>
                     </Box>
 
-                    <Box sx={{flexGrow: 0}}>
-
-                    </Box>
                 </Toolbar>
             </Container>
         </AppBar>

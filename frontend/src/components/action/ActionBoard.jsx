@@ -11,8 +11,12 @@ import {
 import React, {useCallback, useEffect, useState} from "react";
 import {getActions} from "../../services/apis.jsx";
 import CreateAction from "./CreateAction.jsx";
-import {Card, Fab} from "@mui/material";
+import {Button, Card, CardActions, CardContent, CardHeader, Fab} from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
+import Divider from "@mui/material/Divider";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
 
 export function ProducerNode({data, isConnectable}) {
 
@@ -165,7 +169,7 @@ const createNodes = (data) => {
     let ccd = 0;
     let ax = x + 600;
     let ay = y + 40;
-    let cy = y ;
+    let cy = y;
     let cx = x + 300;
     let edgeId = 0;
 
@@ -186,7 +190,7 @@ const createNodes = (data) => {
             conditionNode.push({
                 id: "cond-id-" + ccd,
                 type: 'condition',
-                position: {x: cx, y: cy*2},
+                position: {x: cx, y: cy * 2},
                 data: {value: cond},
             });
             edge.push({
@@ -209,7 +213,7 @@ const createNodes = (data) => {
             });
             edge.push({
                 id: `edge-${edgeId}`,
-                source: "cond-id-" + (ccd-condition.length),
+                source: "cond-id-" + (ccd - condition.length),
                 target: "act-id-" + sct,
                 animated: true,
             });
@@ -217,12 +221,12 @@ const createNodes = (data) => {
             ay += 60;
             sct++;
         }));
-        ay+=40;
+        ay += 40;
 
     })
 
     console.log("edge", edge);
-    return {nodes:[...triggerNode, ...actionNode, ...conditionNode], edges: edge};
+    return {nodes: [...triggerNode, ...actionNode, ...conditionNode], edges: edge};
 }
 
 const createEdges = (data) => {
@@ -257,7 +261,14 @@ const customEdge = [
     {id: 'e5-10', source: 'cond-id-1', target: 'act-id-6', animated: true},
     {id: 'e5-11', source: 'cond-id-1', target: 'act-id-7', animated: true},
 ];
-
+const bull = (
+    <Box
+        component="span"
+        sx={{ display: 'inline-block', mx: '2px', transform: 'scale(0.8)' }}
+    >
+        •
+    </Box>
+);
 
 export default function ActionBoard(action) {
     const [nodes, setNodes] = useNodesState([]);
@@ -300,28 +311,49 @@ export default function ActionBoard(action) {
     }
 
     return (
-        <div style={{height: '92dvh'}}>
+        <div >
             <CreateAction isOpen={isModalOpen} onClose={handleCloseModal} automations={automations}/>
-            <ReactFlow
-                colorMode="dark"
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                nodeTypes={{
-                    trigger: TriggerNode,
-                    action: ActionNode,
-                    condition: ConditionNode,
-                }}
-            >
-                <Panel position="bottom-right" style={{marginBottom: '50px'}}>
-                    <Fab color="primary" aria-label="add" onClick={handleCreateAction}>
-                        <EditIcon/>
-                    </Fab>
-                </Panel>
+            <Stack direction="row" divider={<Divider orientation="vertical" flexItem/>}>
+                <div style={{width: '75%', height: '92dvh'}}>
+                    <ReactFlow
+                        colorMode="dark"
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        nodeTypes={{
+                            trigger: TriggerNode,
+                            action: ActionNode,
+                            condition: ConditionNode,
+                        }}
+                    >
+                        <Panel position="bottom-right" style={{marginBottom: '50px'}}>
+                            <Fab color="primary" aria-label="add" onClick={handleCreateAction}>
+                                <EditIcon/>
+                            </Fab>
+                        </Panel>
 
-            </ReactFlow>
+                    </ReactFlow>
+                </div>
+                <div style={{ width: '25%', height: '90dvh' }}>
+                    <Card style={{height: '100%', margin:'10px'}}>
+                        <CardContent>
+                            <Typography variant="h6" component="div">
+                                Automation Editor
+                            </Typography>
+                            <Typography gutterBottom sx={{ color: 'text.secondary', fontSize: 14 }}>
+                                Create and manage automations
+                            </Typography>
+
+                        </CardContent>
+                        <CardActions>
+                            <Button size="small">Add Node</Button>
+                        </CardActions>
+                    </Card>
+                </div>
+            </Stack>
+
         </div>
     );
 }

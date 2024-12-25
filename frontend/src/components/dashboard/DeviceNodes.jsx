@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges,
+    applyNodeChanges, Panel,
     ReactFlow,
     useEdgesState,
     useNodesState
@@ -13,7 +13,7 @@ import useWebSocket from "../../services/useWebSocket.jsx";
 import { AnimatedSVGEdge } from "./AnimatedSVGEdge.jsx";
 import { Device, MainNode } from "./Nodes.jsx";
 import { createEdges, createNodes } from "./EdgeNode.jsx";
-import { Backdrop, CircularProgress, Fab } from "@mui/material";
+import {Backdrop, Card, CircularProgress, Fab} from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import NodeInspector from "./NodeInspector.jsx";
 
@@ -99,7 +99,12 @@ const DeviceNodes = () => {
                 defaultViewport={defaultViewport}
                 nodeTypes={nodeTypes}
             >
-                <Fab color="primary" aria-label="add" onClick={handleEdit} style={{ position: 'absolute', bottom: '50px', right: '50px' }}>
+                {/*<Panel position="bottom-center" style={{marginBottom: '10px'}}>*/}
+                {/*    <Card style={{width:'600px', height:'60px'}}>*/}
+                {/*        hello*/}
+                {/*    </Card>*/}
+                {/*</Panel>*/}
+                <Fab color="primary" aria-label="add" onClick={handleEdit} style={{ position: 'absolute', bottom: '50px', right: '14px' }}>
                     <EditIcon />
                 </Fab>
                 {editUi && <NodeInspector />}

@@ -10,6 +10,7 @@ import SignIn from "./components/auth/SignIn.jsx";
 import SignUp from "./components/auth/SignUp.jsx";
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import Notifications from "./components/Notifications.jsx";
+import Devices from "./components/Devices.jsx";
 
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
                             <Routes>
                                 <Route path="/" element={<DeviceNodes/>}/>
                                 <Route path="actions" element={<ActionBoard/>}/>
+                                <Route path="devices" element={<Devices/>}/>
                             </Routes>
 
 

@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import { useEffect, useState, useRef } from 'react';
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
 
@@ -12,33 +12,39 @@ const url = __API_MODE__ === 'serve'
 
 
 const useWebSocket = (topic) => {
-    const [stompClient, setStompClient] = useState(null);
-    const [messages, setMessages] = useState({device_id: ""});
+    const [messages, setMessages] = useState({ device_id: "" });
+    const stompClientRef = useRef(null);
 
     useEffect(() => {
         const socket = new SockJS(url);
         const client = Stomp.over(socket);
 
         client.debug = () => {};
+        // console.log(client)
 
         client.connect({}, (frame) => {
-            // console.log('Connected: ' + frame);
             client.subscribe(topic, (message) => {
-                // setMessages((prev) => [...prev, message.body]);
                 setMessages(JSON.parse(message.body));
             });
         });
 
-        setStompClient(client);
+        stompClientRef.current = client;
+
+        return () => {
+            if (stompClientRef.current.connected){
+                console.log("websocket disconnected")
+                stompClientRef.current.disconnect();
+            }
+        };
     }, [url, topic]);
 
     const sendMessage = (destination, message) => {
-        if (stompClient) {
-            stompClient.send(destination, {}, message);
+        if (stompClientRef.current) {
+            stompClientRef.current.send(destination, {}, message);
         }
     };
 
-    return {messages, sendMessage};
+    return { messages, sendMessage };
 };
 
 export default useWebSocket;
