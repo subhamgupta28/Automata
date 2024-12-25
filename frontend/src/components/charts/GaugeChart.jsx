@@ -9,12 +9,19 @@ export function GaugeChart({value, maxValue, displayName}) {
                     value={parseInt(value)}
                     startAngle={-110}
                     endAngle={110}
-                    height={100}
+                    height={125}
                     valueMin={0}
+                    cornerRadius="50%"
                     valueMax={maxValue}
+
+                    innerRadius="75%"
+                    outerRadius="100%"
                     sx={{
                         [`& .${gaugeClasses.valueText}`]: {
                             transform: 'translate(0px, 0px)',
+                        },
+                        [`& .${gaugeClasses.valueArc}`]: {
+                            fill: 'orange',
                         },
                     }}
                     text={

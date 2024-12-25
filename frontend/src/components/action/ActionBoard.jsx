@@ -17,6 +17,7 @@ import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
+import AddActionDialog from "./AddActionDialog.jsx";
 
 export function ProducerNode({data, isConnectable}) {
 
@@ -312,7 +313,8 @@ export default function ActionBoard(action) {
 
     return (
         <div >
-            <CreateAction isOpen={isModalOpen} onClose={handleCloseModal} automations={automations}/>
+            {/*<CreateAction isOpen={isModalOpen} onClose={handleCloseModal} automations={automations}/>*/}
+            <AddActionDialog isOpen={isModalOpen} onClose={handleCloseModal}/>
             <Stack direction="row" divider={<Divider orientation="vertical" flexItem/>}>
                 <div style={{width: '75%', height: '92dvh'}}>
                     <ReactFlow
@@ -328,11 +330,11 @@ export default function ActionBoard(action) {
                             condition: ConditionNode,
                         }}
                     >
-                        <Panel position="bottom-right" style={{marginBottom: '50px'}}>
-                            <Fab color="primary" aria-label="add" onClick={handleCreateAction}>
-                                <EditIcon/>
-                            </Fab>
-                        </Panel>
+                        {/*<Panel position="bottom-right" style={{marginBottom: '50px'}}>*/}
+                        {/*    <Fab color="primary" aria-label="add" onClick={handleCreateAction}>*/}
+                        {/*        <EditIcon/>*/}
+                        {/*    </Fab>*/}
+                        {/*</Panel>*/}
 
                     </ReactFlow>
                 </div>
@@ -348,7 +350,7 @@ export default function ActionBoard(action) {
 
                         </CardContent>
                         <CardActions>
-                            <Button size="small">Add Node</Button>
+                            <Button size="small" onClick={handleCreateAction}>Add Node</Button>
                         </CardActions>
                     </Card>
                 </div>

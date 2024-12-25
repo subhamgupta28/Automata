@@ -63,6 +63,7 @@ public class MainController {
         map.put("key", action);
         map.put("value", value);
         messagingTemplate.convertAndSend("/topic/action", map);
+
         return ResponseEntity.ok("sent");
     }
 
@@ -74,6 +75,10 @@ public class MainController {
         return ResponseEntity.ok(mainService.saveData(deviceId, payload));
     }
 
+    @GetMapping("/showInDashboard/{deviceId}/{isVisible}")
+    public ResponseEntity<String> showInDashboard(@PathVariable String deviceId, @PathVariable String isVisible) {
+        return ResponseEntity.ok(mainService.showInDashboard(deviceId, isVisible));
+    }
 
 
     @GetMapping(value = "/devices")
@@ -112,6 +117,7 @@ public class MainController {
         map.put("deviceId", device.getId());
         map.put("deviceConfig", device);
         map.put("data", new HashMap<>());
+
         messagingTemplate.convertAndSend("/topic/data", map);
         return ResponseEntity.ok(device);
     }

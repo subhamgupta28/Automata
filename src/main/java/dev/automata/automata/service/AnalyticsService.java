@@ -45,7 +45,7 @@ public class AnalyticsService {
                 .collect(Collectors.toList());
 
         LocalDateTime now = LocalDateTime.now();
-        Date startDate = Date.from(now.minusHours(11).atZone(ZoneId.systemDefault()).toInstant());
+        Date startDate = Date.from(now.minusHours(7).atZone(ZoneId.systemDefault()).toInstant());
         Date endDate = Date.from(now.atZone(ZoneId.systemDefault()).toInstant());
 
         if (!filteredAttributes.isEmpty()) {

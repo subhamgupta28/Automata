@@ -10,7 +10,7 @@ import {
     Dialog, DialogActions,
     DialogContent,
     DialogTitle,
-    Modal, Paper, Slider,
+    Modal, Paper, Slider, Snackbar,
     SvgIcon, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
@@ -34,6 +34,7 @@ import Divider from "@mui/material/Divider";
 import SwitchButton from "../charts/SwitchButton.jsx";
 import Avatar from "@mui/material/Avatar";
 import Presets from "../charts/Presets.jsx";
+import CustomPieChart from "../charts/CustomPieChart.jsx";
 
 
 const CustomModal = ({ isOpen, onClose, device }) => {
@@ -153,8 +154,6 @@ export function Device({data, isConnectable}) {
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
     let color;
-
-
     const gaugeData = data.value.attributes.filter((t) => t.type === "DATA|GAUGE");
     const sliderData = data.value.attributes.filter((t) => t.type === "DATA|SLIDER");
     const map = data.value.attributes.filter((t) => t.type.startsWith("DATA|MAIN,MAP"));
@@ -182,11 +181,17 @@ export function Device({data, isConnectable}) {
             color = "#ff0000"; // Default icon
 
 
-
     return (
         <div className="text-updater-node" key={data.value.id} >
             <div style={{borderRadius: '12px', padding: '1px'}}>
-                <Card elevation={0} style={{display: 'flex', borderRadius: '12px', marginLeft: '2px', marginRight: '2px', padding: '4px', boxShadow: '0 0 50px 15px #1c1c1c'}}>
+                <Card elevation={0} style={{
+                    display: 'flex',
+                    borderRadius: '12px',
+                    marginLeft: '2px',
+                    marginRight: '2px',
+                    padding: '4px',
+                    // boxShadow: '0 0 50px 15px #ffa500'
+                }}>
                     <CardContent
                         style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px', justifyContent: 'center'}}>
                         <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
@@ -306,7 +311,7 @@ export function MainNode({data, isConnectable}) {
                     minHeight: '500px',
                     minWidth: '400px',
                     borderRadius: '18px',
-                    boxShadow: '0 0 50px 15px #1c1c1c'
+                    boxShadow: 'rgb(255 165 0 / 5%) 0px 0px 50px 15px'
                 }}>
                     {/* Render Handles for Chart Nodes */}
                     {chartIds.map((id, index) => (
@@ -329,8 +334,10 @@ export function MainNode({data, isConnectable}) {
                         gap: '10px', /* Space between items */
                          }}>
                         {charts.map((device, index) => (
+
                             <BarChartComp key={device.id} chartDevice={device} />
                         ))}
+
                     </CardContent>
 
                     {/*<Stack style={{ display: 'flex', alignItems: 'center', marginLeft: '20px', marginRight: '20px' }}>*/}
@@ -413,7 +420,7 @@ function BarChartComp({chartDevice}) {
                 label: chartData.label,
             },
         ],
-        series: [{ dataKey: chartData.dataKey,label: 'Showing last 12 Hours data', valueFormatter }],
+        series: [{ dataKey: chartData.dataKey,label: 'Showing last 8 Hours data', valueFormatter }],
         height: 250,
         width: 600,
         sx: {
@@ -425,32 +432,44 @@ function BarChartComp({chartDevice}) {
 
     return (
         <div>
-            <BarChart className="nodrag"
-                      dataset={chartData.data}
-                      // barLabel={(item, context) => {
-                      //     return item.value?.toString();
-                      // }}
-                      colors={['#757575']}
-                      xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps }]}
-                      borderRadius={10}
-                      {...chartSetting}
-            />
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-                <Typography>Attributes</Typography>
-                <div style={{ margin: '14px' }}>
-                    {chartData.attributes.map((name) => (
-                        <Chip
-                            key={name}
-                            className="nodrag"
-                            clickable
-                            onClick={() => handleAttribute(name)}
-                            style={{ margin: '4px' }}
-                            label={name}
-                            color="info"
-                        />
-                    ))}
+            {chartDevice.name}
+            {
+                chartData.attributes.length <= 2 ? (
+                    <CustomPieChart className="nodrag" data={chartData.data} dataKey={chartData.dataKey} unit={chartData.unit}/>
+                ):(
+                    <BarChart className="nodrag"
+                              dataset={chartData.data}
+                        // barLabel={(item, context) => {
+                        //     return item.value?.toString();
+                        // }}
+                              colors={['orange']}
+                              xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps }]}
+                              borderRadius={10}
+                              {...chartSetting}
+                    />
+                )
+            }
+
+
+            {chartData.attributes.length > 1 && (
+                <div style={{display: 'flex', alignItems: 'center'}}>
+                    <Typography>Attributes</Typography>
+                    <div style={{margin: '14px'}}>
+                        {chartData.attributes.map((name) => (
+                            <Chip
+                                key={name}
+                                className="nodrag"
+                                clickable
+                                onClick={() => handleAttribute(name)}
+                                style={{margin: '4px'}}
+                                label={name}
+                                color="info"
+                            />
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
+
         </div>
     );
 }

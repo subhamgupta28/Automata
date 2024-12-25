@@ -27,6 +27,7 @@ public class MainService {
     private final DeviceRepository deviceRepository;
     private final DashboardRepository deviceDashboardRepository;
     private final DeviceChartsRepository dashboardChartsRepository;
+    private final NotificationService notificationService;
 
     /*
      * Device: name = battery
@@ -270,7 +271,7 @@ public class MainService {
 //        device.setShowCharts(false);
 
         deviceDashboardRepository.save(device);
-
+        notificationService.sendNotification("Devices positions updated", "success");
         return "success";
     }
 
@@ -298,7 +299,20 @@ public class MainService {
 //        System.err.println(attr);
 //        attr.setVisible(!Boolean.parseBoolean(isVisible));
 //        attributeRepository.save(attr);
-
+        notificationService.sendNotification("Attribute updated and now "+ (isShow?" visible in charts":" not visible in charts"), "success");
         return "success";
+    }
+
+    public String showInDashboard(String deviceId, String isVisible) {
+        var isShow = Boolean.parseBoolean(isVisible);
+        var device = deviceDashboardRepository.findByDeviceId(deviceId).orElse(null);
+        if (device != null) {
+            device.setShowInDashboard(isShow);
+            deviceDashboardRepository.save(device);
+            notificationService.sendNotification("Device is "+(isShow?" visible ":" not visible ")+"in dashboard", "success");
+            return "success";
+        }
+        notificationService.sendNotification("Something went wrong", "error");
+        return "error";
     }
 }

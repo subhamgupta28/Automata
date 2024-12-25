@@ -31,6 +31,7 @@ public class AutomationService {
     private final SimpMessagingTemplate messagingTemplate;
     private final RedisService redisService;
     private final MainService mainService;
+    private final NotificationService notificationService;
 
     private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
 
@@ -57,7 +58,13 @@ public class AutomationService {
         var map = new HashMap<String, Object>();
 
         if (deviceType.equals("WLED")) {
-            return handleWLED(deviceId, payload);
+            var res = handleWLED(deviceId, payload);
+            if (res.equals("Success")) {
+                notificationService.sendNotification("Action applied", "success");
+            }else {
+                notificationService.sendNotification("Action failed", "error");
+            }
+            return res;
         }
 
 //        Automation action = actionRepository.findByProducerDeviceIdAndProducerKey(deviceId, payload.get("key").toString());
@@ -65,6 +72,7 @@ public class AutomationService {
             map.put(payload.get("key").toString(), payload.get(payload.get("key").toString()).toString());
             System.err.println("direct = " + map);
             messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
+            notificationService.sendNotification("Action applied", "success");
             return "No saved action found but sent directly";
         }
         var automationCache = redisService.getAutomationCache(deviceId);
@@ -78,6 +86,7 @@ public class AutomationService {
 //
 //        map.put(action.getConsumerKey(), action.getValueNegativeC());
 //        messagingTemplate.convertAndSend("/topic/action/" + action.getConsumerDeviceId(), map);
+        notificationService.sendNotification("Action applied", "success");
         System.err.println("Action sent!" + map);
         return "Action successfully sent!";
     }
@@ -87,14 +96,18 @@ public class AutomationService {
         if (device != null) {
             var wled = new Wled(device.getAccessUrl());
             var key = payload.get("key").toString();
-            switch (key) {
-                case "bright":
-                    return wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
-                case "onOff":
-                    return wled.powerOnOff(true);
-                case "preset":
-                    return wled.setPresets(Integer.parseInt(payload.get(key).toString()));
+            try {
+                switch (key) {
+                    case "bright":
+                        return wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
+                    case "onOff":
+                        return wled.powerOnOff(true);
+                    case "preset":
+                        return wled.setPresets(Integer.parseInt(payload.get(key).toString()));
 
+                }
+            }catch (Exception e){
+                return "Error";
             }
         }
         return "Not found";
@@ -186,10 +199,11 @@ public class AutomationService {
             }
 
             payload.put("key", action.getKey());
-
+            notificationService.sendNotification("Executing automations for device "+ device.getName(), "success");
             if (device.getType().equals("WLED")) {
                 handleWLED(action.getDeviceId(), payload);
             } else {
+
                 messagingTemplate.convertAndSend(
                         "/topic/action/" + action.getDeviceId(), payload
                 );

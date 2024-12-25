@@ -1,8 +1,8 @@
 import useWebSocket from "../services/useWebSocket.jsx";
 import React, {useEffect} from "react";
-import {Snackbar} from "@mui/material";
+import {Alert, Snackbar} from "@mui/material";
 import Button from "@mui/material/Button";
-
+import Slide from '@mui/material/Slide';
 
 export default function Notifications() {
     const {messages, sendMessage} = useWebSocket('/topic/notification');
@@ -31,10 +31,20 @@ export default function Notifications() {
             {messages.message && (
                 <Snackbar
                     open={open}
-                    autoHideDuration={6000}
+                    TransitionComponent={Slide}
+                    autoHideDuration={3000}
                     onClose={handleClose}
-                    message={messages.message}
-                />
+                >
+                    <Alert
+                        onClose={handleClose}
+                        severity={messages.severity}
+                        icon={false}
+                        variant="filled"
+                        sx={{ width: '100%' }}
+                    >
+                        {messages.message}
+                    </Alert>
+                </Snackbar>
             )}
 
         </div>
