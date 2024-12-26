@@ -6,8 +6,6 @@ import DeviceNodes from "./components/dashboard/DeviceNodes.jsx";
 import ActionBoard from "./components/action/ActionBoard.jsx";
 import {ThemeProvider} from "@mui/material/styles";
 import {darkTheme} from "./Theme.jsx";
-import SignIn from "./components/auth/SignIn.jsx";
-import SignUp from "./components/auth/SignUp.jsx";
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import Notifications from "./components/Notifications.jsx";
 import Devices from "./components/Devices.jsx";
@@ -32,7 +30,7 @@ function App() {
                             <Nav/>
                         </header>
 
-                        <section className={"content"}>
+                        <section>
                             {/*<DndTest/>*/}
                             {/*<ActionBoard/>*/}
 

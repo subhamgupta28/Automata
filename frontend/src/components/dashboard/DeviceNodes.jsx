@@ -84,10 +84,10 @@ const DeviceNodes = () => {
         [setEdges],
     );
 
-    const defaultViewport = useMemo(() => ({ x: 0, y: 0, zoom: 0.65 }), []);
+    const defaultViewport = useMemo(() => ({ x: 0, y: 50, zoom: 0.65 }), []);
 
     return (
-        <div style={{ height: '92dvh' }}>
+        <div style={{ height: '100dvh' }}>
             <ReactFlow
                 colorMode="dark"
                 nodes={nodes}

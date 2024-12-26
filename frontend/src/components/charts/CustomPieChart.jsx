@@ -29,7 +29,7 @@ export default function CustomPieChart({data, dataKey, unit}) {
                     fontWeight: 'bold',
                 },
             }}
-            width={600}
+            width={500}
             height={300}
         />
     );

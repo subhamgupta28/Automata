@@ -309,7 +309,7 @@ export function MainNode({data, isConnectable}) {
                 <Card elevation={0} style={{
                     padding: '0px',
                     minHeight: '500px',
-                    minWidth: '400px',
+                    maxWidth: '95%',
                     borderRadius: '18px',
                     boxShadow: 'rgb(255 165 0 / 8%) 0px 0px 50px 15px'
                 }}>
@@ -329,7 +329,7 @@ export function MainNode({data, isConnectable}) {
                     {/*</Typography>*/}
 
 
-                    <CardContent style={{ padding: '12px', marginLeft: '15px', display: 'grid',
+                    <CardContent style={{ marginLeft: '15px', display: 'grid',
                         gridTemplateColumns: 'repeat(2, 1fr)', /* 4 columns */
                         gap: '10px', /* Space between items */
                          }}>

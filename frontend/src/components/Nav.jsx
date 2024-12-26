@@ -62,9 +62,9 @@ function Nav() {
 
 
     return (
-        <AppBar position="static">
+        <AppBar  elevation={0} style={{backgroundColor:'transparent', backdropFilter: 'blur(1px)'}}>
             <Container maxWidth="xl">
-                <Toolbar disableGutters variant="dense">
+                <Toolbar disableGutters variant="dense" >
                     <AdbIcon sx={{display: {xs: 'none', md: 'flex'}, mr: 1}}/>
                     <Typography
                         variant="h6"
