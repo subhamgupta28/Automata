@@ -8,7 +8,7 @@ import {
     useEdgesState,
     useNodesState
 } from "@xyflow/react";
-import React, {useCallback, useEffect, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {getActions} from "../../services/apis.jsx";
 import CreateAction from "./CreateAction.jsx";
 import {Button, Card, CardActions, CardContent, CardHeader, Fab} from "@mui/material";
@@ -311,12 +311,15 @@ export default function ActionBoard(action) {
         setIsModalOpen(true)
     }
 
+    const defaultViewport = useMemo(() => ({ x: 0, y: 50, zoom: 0.75 }), []);
+
+
     return (
         <div >
             {/*<CreateAction isOpen={isModalOpen} onClose={handleCloseModal} automations={automations}/>*/}
             <AddActionDialog isOpen={isModalOpen} onClose={handleCloseModal}/>
             <Stack direction="row" divider={<Divider orientation="vertical" flexItem/>}>
-                <div style={{width: '75%', height: '92dvh'}}>
+                <div style={{width: '75%', height: '100dvh'}}>
                     <ReactFlow
                         colorMode="dark"
                         nodes={nodes}
@@ -324,6 +327,7 @@ export default function ActionBoard(action) {
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
+                        defaultViewport={defaultViewport}
                         nodeTypes={{
                             trigger: TriggerNode,
                             action: ActionNode,
@@ -338,7 +342,7 @@ export default function ActionBoard(action) {
 
                     </ReactFlow>
                 </div>
-                <div style={{ width: '25%', height: '90dvh' }}>
+                <div style={{ width: '25%', height: '90dvh', marginTop:'50px' }}>
                     <Card style={{height: '100%', margin:'10px'}}>
                         <CardContent>
                             <Typography variant="h6" component="div">
