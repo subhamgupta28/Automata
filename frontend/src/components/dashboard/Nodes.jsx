@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {Handle, Position} from "@xyflow/react";
 import {getChartData, getDevices, refreshDeviceById, sendAction, updateAttrCharts} from "../../services/apis.jsx";
 import {
-    Alert,
+    Alert, Badge,
     Button,
     Card, CardActions,
     CardContent,
@@ -183,6 +183,7 @@ export function Device({data, isConnectable}) {
 
     return (
         <div className="text-updater-node" key={data.value.id} >
+
             <div style={{borderRadius: '12px', padding: '1px'}}>
                 <Card elevation={0} style={{
                     display: 'flex',
@@ -192,6 +193,7 @@ export function Device({data, isConnectable}) {
                     padding: '4px',
                     boxShadow: 'rgb(255 255 0 / 5%) 0px 0px 50px 15px'
                 }}>
+
                     <CardContent
                         style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px', justifyContent: 'center'}}>
                         <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
@@ -311,6 +313,8 @@ export function MainNode({data, isConnectable}) {
                     minHeight: '500px',
                     maxWidth: '95%',
                     borderRadius: '18px',
+                    // backgroundColor:'transparent',
+                    // backdropFilter: 'blur(1px)',
                     boxShadow: 'rgb(255 165 0 / 8%) 0px 0px 50px 15px'
                 }}>
                     {/* Render Handles for Chart Nodes */}
