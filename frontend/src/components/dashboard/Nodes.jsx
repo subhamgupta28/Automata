@@ -190,7 +190,7 @@ export function Device({data, isConnectable}) {
                     marginLeft: '2px',
                     marginRight: '2px',
                     padding: '4px',
-                    // boxShadow: '0 0 50px 15px #ffa500'
+                    boxShadow: 'rgb(255 255 0 / 5%) 0px 0px 50px 15px'
                 }}>
                     <CardContent
                         style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px', justifyContent: 'center'}}>
@@ -311,7 +311,7 @@ export function MainNode({data, isConnectable}) {
                     minHeight: '500px',
                     minWidth: '400px',
                     borderRadius: '18px',
-                    boxShadow: 'rgb(255 165 0 / 5%) 0px 0px 50px 15px'
+                    boxShadow: 'rgb(255 165 0 / 8%) 0px 0px 50px 15px'
                 }}>
                     {/* Render Handles for Chart Nodes */}
                     {chartIds.map((id, index) => (

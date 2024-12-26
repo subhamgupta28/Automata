@@ -5,7 +5,8 @@ export default function CustomPieChart({data, dataKey, unit}) {
     const dat = data.map((d) => {
         return {
             value: d[dataKey],
-            color: 'orange'
+            color: 'orange',
+            label: d._id
         }
     });
 
@@ -18,7 +19,7 @@ export default function CustomPieChart({data, dataKey, unit}) {
                     // arcLabelRadius: '60%',
                     innerRadius: 60,
                     outerRadius: 130,
-                    paddingAngle: 2,
+                    paddingAngle: 4,
                     cornerRadius: 5,
                     data: dat
                 },

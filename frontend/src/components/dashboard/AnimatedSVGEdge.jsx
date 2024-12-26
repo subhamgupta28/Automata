@@ -21,7 +21,7 @@ export function AnimatedSVGEdge({
 
     return (
         <>
-            <BaseEdge id={id} path={edgePath} style={{stroke: '#ffa500', strokeWidth: '3px'}}/>
+            <BaseEdge id={id} path={edgePath} style={{stroke: '#ffa500', strokeWidth: '3px', }}/>
             <circle r="4" fill="#ffa500">
                 <animateMotion dur="6s" repeatCount="indefinite" path={edgePath}/>
             </circle>
