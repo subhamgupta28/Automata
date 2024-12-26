@@ -19,7 +19,7 @@ export default function CustomPieChart({data, dataKey, unit}) {
                     // arcLabelRadius: '60%',
                     innerRadius: 60,
                     outerRadius: 130,
-                    paddingAngle: 4,
+                    paddingAngle: 2,
                     cornerRadius: 5,
                     data: dat
                 },

@@ -334,7 +334,6 @@ export function MainNode({data, isConnectable}) {
                         gap: '10px', /* Space between items */
                          }}>
                         {charts.map((device, index) => (
-
                             <BarChartComp key={device.id} chartDevice={device} />
                         ))}
 

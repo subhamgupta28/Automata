@@ -7,9 +7,9 @@ export function GaugeChart({value, maxValue, displayName}) {
             <div>
                 <Gauge
                     value={parseInt(value)}
-                    startAngle={-110}
-                    endAngle={110}
-                    height={125}
+                    startAngle={-130}
+                    endAngle={130}
+                    height={145}
                     valueMin={0}
                     cornerRadius="50%"
                     valueMax={maxValue}
