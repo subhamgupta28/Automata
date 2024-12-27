@@ -1,20 +1,26 @@
 import * as React from 'react';
 import {PieChart, pieArcLabelClasses} from '@mui/x-charts/PieChart';
 
-export default function CustomPieChart({data, dataKey, unit}) {
-    const dat = data.map((d) => {
+export default function CustomPieChart({chartData}) {
+
+    let data = chartData.data[0];
+    let attributes = chartData.attributes;
+    let labels = chartData.timestamps;
+    // console.log(data);
+    const dat = attributes.map((d, index) => {
         return {
-            value: d[dataKey],
+            value: data[d],
             color: 'orange',
-            label: d._id
+            label: labels[index]
         }
     });
+    // console.log(dat)
 
     return (
         <PieChart
             series={[
                 {
-                    arcLabel: (item) => `${item.value} ${unit}`,
+                    arcLabel: (item) => `${item.value}`,
                     arcLabelMinAngle: 25,
                     // arcLabelRadius: '60%',
                     innerRadius: 60,

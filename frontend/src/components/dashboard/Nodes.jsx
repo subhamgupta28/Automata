@@ -1,40 +1,37 @@
 import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {Handle, Position} from "@xyflow/react";
-import {getChartData, getDevices, refreshDeviceById, sendAction, updateAttrCharts} from "../../services/apis.jsx";
 import {
-    Alert, Badge,
+    getChartData,
+    getDevices,
+    getPieChartData,
+    refreshDeviceById,
+    sendAction,
+    updateAttrCharts
+} from "../../services/apis.jsx";
+import {
     Button,
-    Card, CardActions,
+    Card,
     CardContent,
-    CardHeader, Chip,
+    Chip,
     Dialog, DialogActions,
     DialogContent,
     DialogTitle,
-    Modal, Paper, Slider, Snackbar,
-    SvgIcon, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import SettingsIcon from '@mui/icons-material/Settings';
-import MoodIcon from '@mui/icons-material/Mood';
-import MoodBadIcon from '@mui/icons-material/MoodBad';
-import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
 import IconButton from "@mui/material/IconButton";
 import {GaugeChart} from "../charts/GaugeChart.jsx";
 import {CustomSlider} from "../charts/CustomSlider.jsx";
-import ChartNode from "../charts/ChartNode.jsx";
 import {axisClasses} from "@mui/x-charts/ChartsAxis";
-import {BarChart, ChartContainer, lineElementClasses, LinePlot, markElementClasses, MarkPlot} from "@mui/x-charts";
-import {createEdges, createNodes} from "./EdgeNode.jsx";
+import {BarChart} from "@mui/x-charts";
 import MapView from "../charts/MapView.jsx";
-import {LineChart} from "@mui/x-charts/LineChart";
 import Stack from "@mui/material/Stack";
-import {styled} from "@mui/material/styles";
 import Checkbox from "@mui/material/Checkbox";
 import Divider from "@mui/material/Divider";
 import SwitchButton from "../charts/SwitchButton.jsx";
-import Avatar from "@mui/material/Avatar";
 import Presets from "../charts/Presets.jsx";
 import CustomPieChart from "../charts/CustomPieChart.jsx";
+import CustomBarChart from "../charts/CustomBarChart.jsx";
 
 
 const CustomModal = ({ isOpen, onClose, device }) => {
@@ -386,9 +383,16 @@ function BarChartComp({chartDevice}) {
     useEffect(() => {
         const fetchChartData = async () => {
             try {
-                const data = await getChartData(chartDevice.id, selectedAttribute);
-                // console.log("chart data for device:", chartDevice, "attribute:", selectedAttribute, data);
-                setChartData(data);
+                // console.log(visibleAttr.length)
+                if (visibleAttr.length <= 1){
+                    const data = await getPieChartData(chartDevice.id);
+                    setChartData(data);
+                }else{
+                    const data = await getChartData(chartDevice.id, selectedAttribute);
+                    // console.log("data", data)
+                    setChartData(data);
+                }
+
 
             } catch (err) {
                 console.error("Failed to fetch chart data", err);
@@ -398,62 +402,23 @@ function BarChartComp({chartDevice}) {
         fetchChartData();
     }, [selectedAttribute]);
 
-    // Handle selecting a device
-    // const handleChartDevice = useCallback((deviceId) => {
-    //     const selectedDevice = charts[deviceId];
-    //     setDeviceId(deviceId);
-    //     setChartDevice(selectedDevice.id);
-    //     setDeviceName(selectedDevice.name);
-    //     setAttribute(selectedDevice.attributes[0]?.key || "");
-    // }, [chartDevice]);
-
     // Handle selecting an attribute
     const handleAttribute = useCallback((key) => {
         setAttribute(key);
         // console.log("Selected attribute:", key);
     }, []);
 
-    const valueFormatter = (value) => {
-        return `${value} ${chartData.unit}`;
-    };
-
-    const chartSetting = useMemo(() => ({
-        yAxis: [
-            {
-                label: chartData.label,
-            },
-        ],
-        series: [{ dataKey: chartData.dataKey,label: 'Showing last 8 Hours data', valueFormatter }],
-        height: 250,
-        width: 600,
-        sx: {
-            [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
-                transform: 'translateX(-10px)',
-            },
-        },
-    }), [chartData]);
 
     return (
         <div>
             {chartDevice.name}
             {
-                chartData.attributes.length <= 2 ? (
-                    <CustomPieChart className="nodrag" data={chartData.data} dataKey={chartData.dataKey} unit={chartData.unit}/>
+                visibleAttr.length <= 1 ? (
+                    <CustomPieChart className="nodrag" chartData={chartData}/>
                 ):(
-                    <BarChart className="nodrag"
-                              dataset={chartData.data}
-                        // barLabel={(item, context) => {
-                        //     return item.value?.toString();
-                        // }}
-                              colors={['orange']}
-                              xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps }]}
-                              borderRadius={10}
-                              {...chartSetting}
-                    />
+                    <CustomBarChart chartData={chartData}/>
                 )
             }
-
-
             {chartData.attributes.length > 1 && (
                 <div style={{display: 'flex', alignItems: 'center'}}>
                     <Typography>Attributes</Typography>

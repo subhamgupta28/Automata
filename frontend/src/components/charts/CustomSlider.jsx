@@ -70,7 +70,7 @@ export function CustomSlider({value, deviceId, displayName, data, type}) {
             }
         };
         send();
-    }, 200);
+    }, 100);
 
     return (
         <div>

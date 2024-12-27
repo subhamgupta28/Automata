@@ -42,7 +42,7 @@ function Nav() {
 
         fetchData();
 
-    }, [])
+    }, [anchorElUser])
 
     const handleOpenNavMenu = (event) => {
         setAnchorElNav(event.currentTarget);
