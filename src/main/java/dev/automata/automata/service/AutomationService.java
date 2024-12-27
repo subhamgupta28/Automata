@@ -3,6 +3,7 @@ package dev.automata.automata.service;
 import dev.automata.automata.dto.AutomationCache;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.model.Automation;
+import dev.automata.automata.model.Status;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.DeviceRepository;
@@ -97,6 +98,14 @@ public class AutomationService {
             var wled = new Wled(device.getAccessUrl());
             var key = payload.get("key").toString();
             try {
+                var data = wled.getInfo(deviceId);
+                mainService.saveData(deviceId, data);
+                var devic = mainService.setStatus(deviceId, Status.ONLINE);
+                var map = new HashMap<String, Object>();
+                map.put("deviceId", deviceId);
+                map.put("data", data);
+                map.put("deviceConfig", devic.get("deviceConfig"));
+                messagingTemplate.convertAndSend("/topic/data", map);
                 switch (key) {
                     case "bright":
                         return wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
@@ -106,6 +115,7 @@ public class AutomationService {
                         return wled.setPresets(Integer.parseInt(payload.get(key).toString()));
 
                 }
+
             }catch (Exception e){
                 return "Error";
             }

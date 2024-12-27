@@ -25,7 +25,7 @@ export default function Presets({data, type, value, deviceId, displayName}) {
             <div>
                 {Object.values(data.extras).map((ex) => (
                     <IconButton key={ex} onClick={()=>send(ex)}>
-                        <Avatar  sx={{ width: 26, height: 26, bgcolor: "#4085ee" }}>{ex}</Avatar>
+                        <Avatar  sx={{ width: 26, height: 26, bgcolor: "orange", fontWeight: 'bold' }}>{ex}</Avatar>
                     </IconButton>
                 ))}
             </div>
