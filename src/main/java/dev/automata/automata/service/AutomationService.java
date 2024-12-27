@@ -94,33 +94,34 @@ public class AutomationService {
 
     private String handleWLED(String deviceId, Map<String, Object> payload) {
         var device = deviceRepository.findById(deviceId).orElse(null);
+        String result = "Not found";
         if (device != null) {
             var wled = new Wled(device.getAccessUrl());
             var key = payload.get("key").toString();
             try {
+                switch (key) {
+                    case "bright":
+                        result =  wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
+                    case "onOff":
+                        result =  wled.powerOnOff(true);
+                    case "preset":
+                        result =  wled.setPresets(Integer.parseInt(payload.get(key).toString()));
+
+                }
                 var data = wled.getInfo(deviceId);
                 mainService.saveData(deviceId, data);
+                System.err.println(data);
                 var devic = mainService.setStatus(deviceId, Status.ONLINE);
                 var map = new HashMap<String, Object>();
                 map.put("deviceId", deviceId);
                 map.put("data", data);
                 map.put("deviceConfig", devic.get("deviceConfig"));
                 messagingTemplate.convertAndSend("/topic/data", map);
-                switch (key) {
-                    case "bright":
-                        return wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
-                    case "onOff":
-                        return wled.powerOnOff(true);
-                    case "preset":
-                        return wled.setPresets(Integer.parseInt(payload.get(key).toString()));
-
-                }
-
             }catch (Exception e){
                 return "Error";
             }
         }
-        return "Not found";
+        return result;
     }
 
     public List<Automation> getActions() {
