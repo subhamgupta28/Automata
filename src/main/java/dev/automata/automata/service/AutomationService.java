@@ -62,7 +62,7 @@ public class AutomationService {
             var res = handleWLED(deviceId, payload);
             if (res.equals("Success")) {
                 notificationService.sendNotification("Action applied", "success");
-            }else {
+            } else {
                 notificationService.sendNotification("Action failed", "error");
             }
             return res;
@@ -99,15 +99,12 @@ public class AutomationService {
             var wled = new Wled(device.getAccessUrl());
             var key = payload.get("key").toString();
             try {
-                switch (key) {
-                    case "bright":
-                        result =  wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
-                    case "onOff":
-                        result =  wled.powerOnOff(true);
-                    case "preset":
-                        result =  wled.setPresets(Integer.parseInt(payload.get(key).toString()));
-
-                }
+                result = switch (key) {
+                    case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
+                    case "onOff" -> wled.powerOnOff(true);
+                    case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString()));
+                    default -> "No action found for key: " + key;
+                };
                 var data = wled.getInfo(deviceId);
                 mainService.saveData(deviceId, data);
                 System.err.println(data);
@@ -117,7 +114,7 @@ public class AutomationService {
                 map.put("data", data);
                 map.put("deviceConfig", devic.get("deviceConfig"));
                 messagingTemplate.convertAndSend("/topic/data", map);
-            }catch (Exception e){
+            } catch (Exception e) {
                 return "Error";
             }
         }
@@ -140,7 +137,7 @@ public class AutomationService {
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
 //        System.err.println(payload);
-        if (payload!=null && isTriggered(automation, payload)) {
+        if (payload != null && isTriggered(automation, payload)) {
             executeActions(automation);
         } else {
             System.err.println("No state match for payload: " + payload);
@@ -210,7 +207,7 @@ public class AutomationService {
             }
 
             payload.put("key", action.getKey());
-            notificationService.sendNotification("Executing automations for device "+ device.getName(), "success");
+            notificationService.sendNotification("Executing automations for device " + device.getName(), "success");
             if (device.getType().equals("WLED")) {
                 handleWLED(action.getDeviceId(), payload);
             } else {
