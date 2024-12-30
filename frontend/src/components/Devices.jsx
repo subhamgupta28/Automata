@@ -24,9 +24,10 @@ const DeviceCard = ({device}) => {
 
     return (
         <Grid2 item xs={12} sm={2} md={6} lg={2}>
-            <Card sx={{
-                marginBottom: 2,
-                boxShadow: 3,
+            <Card style={{
+                marginBottom: '20px',
+                width: '250px',
+                boxShadow: '0 0 10px 0 rgba(0,0,0,0.2)',
                 borderRadius: '12px',
             }}>
                 <CardContent>
@@ -54,13 +55,13 @@ const DeviceCard = ({device}) => {
                     </Typography>
                     <Divider sx={{margin: '16px 0'}}/>
 
-                    {device.attributes.map((attribute) => (
-                        <div key={attribute.id} sx={{marginBottom: 2}}>
-                            <Typography variant="body2" color="textPrimary">
-                                <strong>{attribute.displayName}</strong>: {attribute.key} ({attribute.units})
-                            </Typography>
-                        </div>
-                    ))}
+                    {/*{device.attributes.map((attribute) => (*/}
+                    {/*    <div key={attribute.id} sx={{marginBottom: 2}}>*/}
+                    {/*        <Typography variant="body2" color="textPrimary">*/}
+                    {/*            <strong>{attribute.displayName}</strong>: {attribute.key} ({attribute.units})*/}
+                    {/*        </Typography>*/}
+                    {/*    </div>*/}
+                    {/*))}*/}
 
                     {/*<Divider sx={{ margin: '16px 0' }} />*/}
 
@@ -72,7 +73,7 @@ const DeviceCard = ({device}) => {
 };
 const DeviceList = ({devices}) => {
     return (
-        <div style={{flexGrow: 1, margin: 20}}>
+        <div style={{ padding: '20px'}}>
             <Grid2 container spacing={1}>
                 {devices.map((device) => (
                     <DeviceCard key={device.id} device={device}/>
@@ -96,7 +97,7 @@ export default function Devices() {
         fetchData();
     }, []);
     return (
-        <div>
+        <div style={{paddingTop: '60px'}}>
             {/*<Action/>*/}
 
             <DeviceList devices={devicesData}/>

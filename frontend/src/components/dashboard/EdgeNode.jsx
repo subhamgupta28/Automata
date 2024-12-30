@@ -103,6 +103,7 @@ export const createNodes = (devices, charts) => {
         index += 540
     })
 
+    console.log("deviceNodes", deviceNodes);
 
     const mainNode = {
         id: 'main-node-1',

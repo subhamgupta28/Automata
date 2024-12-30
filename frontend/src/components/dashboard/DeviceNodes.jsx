@@ -1,24 +1,24 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, {useCallback, useEffect, useState, useMemo} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
     applyNodeChanges, Panel,
-    ReactFlow,
+    ReactFlow, ReactFlowProvider,
     useEdgesState,
-    useNodesState
+    useNodesState, useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { getDevices } from "../../services/apis.jsx";
+import {getDevices} from "../../services/apis.jsx";
 import useWebSocket from "../../services/useWebSocket.jsx";
-import { AnimatedSVGEdge } from "./AnimatedSVGEdge.jsx";
-import { Device, MainNode } from "./Nodes.jsx";
-import { createEdges, createNodes } from "./EdgeNode.jsx";
+import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
+import {Device, MainNode} from "./Nodes.jsx";
+import {createEdges, createNodes} from "./EdgeNode.jsx";
 import {Backdrop, Card, CircularProgress, Fab} from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import NodeInspector from "./NodeInspector.jsx";
 import Typography from "@mui/material/Typography";
 
-const edgeTypes = { animatedSvg: AnimatedSVGEdge };
+const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {
     deviceNode: Device,
     mainNode: MainNode
@@ -26,12 +26,12 @@ const nodeTypes = {
 
 const DeviceNodes = () => {
     const [openBackdrop, setOpenBackdrop] = useState(false);
-    const { messages } = useWebSocket('/topic/data');
-    const { messages: data } = useWebSocket('/topic/devices');
+    const {messages} = useWebSocket('/topic/data');
+    const {messages: data} = useWebSocket('/topic/devices');
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
     const [editUi, setEditUi] = useState(false);
-
+    const { fitView } = useReactFlow();
     const handleEdit = useCallback(() => {
         setEditUi(prev => !prev);
     }, []);
@@ -46,7 +46,7 @@ const DeviceNodes = () => {
                     }
                     return {
                         ...node,
-                        data: { value: dt, live: messages.data }
+                        data: {value: dt, live: messages.data}
                     };
                 }
                 return node;
@@ -85,41 +85,60 @@ const DeviceNodes = () => {
         [setEdges],
     );
 
-    const defaultViewport = useMemo(() => ({ x: 0, y: 70, zoom: 0.65 }), []);
+    const defaultViewport = useMemo(() => ({x: 0, y: 70, zoom: 0.65}), []);
 
+    const handleNodeClick = useCallback(
+        (_, node) => {
+            fitView({ nodes: [node], duration: 150, maxZoom:1 });
+        },
+            [fitView],
+    );
     return (
-        <div style={{ height: '100dvh' }}>
-            <ReactFlow
-                colorMode="dark"
-                nodes={nodes}
-                edges={edges}
-                edgeTypes={edgeTypes}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                defaultViewport={defaultViewport}
-                nodeTypes={nodeTypes}
-            >
-                {editUi && (
-                    <Panel position="bottom-center" style={{marginBottom: '10px'}}>
-                        <Typography variant="body" component="div">
-                            Click on any node and use the arrow keys or drag with mouse to move the nodes.
-                        </Typography>
-                    </Panel>
-                )}
-                <Fab color="primary" aria-label="add" onClick={handleEdit} style={{ position: 'absolute', bottom: '50px', right: '14px' }}>
-                    <EditIcon />
-                </Fab>
-                {editUi && <NodeInspector />}
-            </ReactFlow>
+        <div style={{height: '100dvh'}}>
+                <ReactFlow
+                    colorMode="dark"
+                    nodes={nodes}
+                    edges={edges}
+                    edgeTypes={edgeTypes}
+                    // onNodeClick={handleNodeClick}
+                    // fitView
+                    // fitViewOptions={{ nodes: [{ id: '' }] }}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    defaultViewport={defaultViewport}
+                    nodeTypes={nodeTypes}
+                >
+                    {editUi && (
+                        <Panel position="bottom-center" style={{marginBottom: '10px'}}>
+                            <Typography variant="body" component="div">
+                                Click on any node and use the arrow keys or drag with mouse to move the nodes.
+                            </Typography>
+                        </Panel>
+                    )}
+                    <Fab color="primary" aria-label="add" onClick={handleEdit}
+                         style={{position: 'absolute', bottom: '50px', right: '14px'}}>
+                        <EditIcon/>
+                    </Fab>
+                    {editUi && <NodeInspector/>}
+                </ReactFlow>
             <Backdrop
-                sx={(theme) => ({ color: '#fff', zIndex: theme.zIndex.drawer + 1 })}
+                sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
                 open={openBackdrop}
             >
-                <CircularProgress color="inherit" />
+                <CircularProgress color="inherit"/>
             </Backdrop>
         </div>
     );
 };
 
-export default React.memo(DeviceNodes);
+const Dashboard = () => {
+
+    return (
+        <ReactFlowProvider>
+            <DeviceNodes/>
+        </ReactFlowProvider>
+    )
+}
+
+export default React.memo(Dashboard);
