@@ -23,8 +23,8 @@ export default function CustomPieChart({chartData}) {
                     arcLabel: (item) => `${item.value}`,
                     arcLabelMinAngle: 25,
                     // arcLabelRadius: '60%',
-                    innerRadius: 60,
-                    outerRadius: 130,
+                    innerRadius: 50,
+                    outerRadius: 110,
                     paddingAngle: 2,
                     cornerRadius: 5,
                     data: dat
@@ -35,7 +35,7 @@ export default function CustomPieChart({chartData}) {
                     fontWeight: 'bold',
                 },
             }}
-            width={500}
+            width={550}
             height={300}
         />
     );

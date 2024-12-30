@@ -16,6 +16,7 @@ import { createEdges, createNodes } from "./EdgeNode.jsx";
 import {Backdrop, Card, CircularProgress, Fab} from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import NodeInspector from "./NodeInspector.jsx";
+import Typography from "@mui/material/Typography";
 
 const edgeTypes = { animatedSvg: AnimatedSVGEdge };
 const nodeTypes = {
@@ -99,11 +100,13 @@ const DeviceNodes = () => {
                 defaultViewport={defaultViewport}
                 nodeTypes={nodeTypes}
             >
-                {/*<Panel position="bottom-center" style={{marginBottom: '10px'}}>*/}
-                {/*    <Card style={{width:'600px', height:'60px'}}>*/}
-                {/*        hello*/}
-                {/*    </Card>*/}
-                {/*</Panel>*/}
+                {editUi && (
+                    <Panel position="bottom-center" style={{marginBottom: '10px'}}>
+                        <Typography variant="body" component="div">
+                            Click on any node and use the arrow keys or drag with mouse to move the nodes.
+                        </Typography>
+                    </Panel>
+                )}
                 <Fab color="primary" aria-label="add" onClick={handleEdit} style={{ position: 'absolute', bottom: '50px', right: '14px' }}>
                     <EditIcon />
                 </Fab>

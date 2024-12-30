@@ -14,9 +14,13 @@ export default function CustomBarChart ({chartData}){
                 label: chartData.label,
             },
         ],
-        series: [{ dataKey: chartData.dataKey,label: 'Showing last 8 Hours data', valueFormatter }],
+        series: [{
+            dataKey: chartData.dataKey,
+            // label: 'Showing last 8 Hours data',
+            valueFormatter
+        }],
         height: 250,
-        width: 600,
+        width: 650,
         sx: {
             [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
                 transform: 'translateX(-10px)',

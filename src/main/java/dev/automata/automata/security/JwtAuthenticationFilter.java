@@ -1,5 +1,7 @@
 package dev.automata.automata.security;
 
+import dev.automata.automata.model.RequestInfo;
+import dev.automata.automata.repository.RequestInfoRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final RequestInfoRepository requestInfoRepository;
 
     @Override
     protected void doFilterInternal(
@@ -31,6 +34,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
+        System.err.println(request.getRequestURL());
+//        System.err.println(request);
+        System.err.println(request.getRemoteAddr());
+        System.err.println(request.getRemoteHost());
+        System.err.println(request.getMethod());
+        System.err.println(request.getQueryString());
+
+        var requestInfo = RequestInfo.builder()
+                .requestURI(request.getRequestURI())
+                .remoteAddr(request.getRemoteAddr())
+                .requestURL(request.getRequestURL().toString())
+                .host(request.getRemoteHost())
+                .method(request.getMethod())
+                .queryString(request.getQueryString())
+                .build();
+        requestInfoRepository.save(requestInfo);
+
         if (request.getServletPath().contains("/api/v1/auth")) {
             filterChain.doFilter(request, response);
             return;

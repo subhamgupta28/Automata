@@ -7,6 +7,10 @@ import React from "react";
 
 export default function SwitchButton({value, deviceId, displayName, data, type}) {
     const [on, setOn] = React.useState(value === true);
+
+    React.useEffect(() => {
+        setOn(value === true);
+    }, [value])
     const send = async (e) => {
         try {
             let act = data.key;
