@@ -1,7 +1,5 @@
 package dev.automata.automata.security;
 
-import dev.automata.automata.model.RequestInfo;
-import dev.automata.automata.repository.RequestInfoRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,14 +7,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
 
@@ -26,7 +22,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
-    private final RequestInfoRepository requestInfoRepository;
+//    private final RequestInfoRepository requestInfoRepository;
 
     @Override
     protected void doFilterInternal(
@@ -34,22 +30,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        System.err.println(request.getRequestURL());
-//        System.err.println(request);
-        System.err.println(request.getRemoteAddr());
-        System.err.println(request.getRemoteHost());
-        System.err.println(request.getMethod());
-        System.err.println(request.getQueryString());
 
-        var requestInfo = RequestInfo.builder()
-                .requestURI(request.getRequestURI())
-                .remoteAddr(request.getRemoteAddr())
-                .requestURL(request.getRequestURL().toString())
-                .host(request.getRemoteHost())
-                .method(request.getMethod())
-                .queryString(request.getQueryString())
-                .build();
-        requestInfoRepository.save(requestInfo);
+//        String remoteHost = request.getRemoteHost();
+//        if (remoteHost.startsWith("192.167.") || remoteHost.startsWith("10.") || remoteHost.startsWith("172.")) {
+//            System.err.println("Request from allowed IP range: " + remoteHost);
+//        } else {
+//            System.err.println("Authentication required for IP: " + remoteHost);
+//            response.setHeader("WWW-Authenticate", "Basic realm=\"Restricted Access\"");
+//            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
+//            return;
+//        }
+
+
+//        var requestInfo = RequestInfo.builder()
+//                .requestURI(request.getRequestURI())
+//                .remoteAddr(request.getRemoteAddr())
+//                .requestURL(request.getRequestURL().toString())
+//                .host(request.getRemoteHost())
+//                .method(request.getMethod())
+//                .queryString(request.getQueryString())
+//                .build();
+//        requestInfoRepository.save(requestInfo);
 
         if (request.getServletPath().contains("/api/v1/auth")) {
             filterChain.doFilter(request, response);
