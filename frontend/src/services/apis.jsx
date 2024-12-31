@@ -95,6 +95,16 @@ export const sendAction = async (deviceId, payload, deviceType) => {
     return response.data;
 }
 
+export const saveAutomationDetail = async (payload) => {
+    const response = await axios.post(BASE_URL + "action/saveAutomationDetail", payload, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
+
 export const getNotifications = async () => {
     const response = await axios.get(BASE_URL + "utils/notifications", {
         headers: {

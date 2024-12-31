@@ -1,0 +1,228 @@
+{
+  "nodes": [
+    {
+      "id": "node_0",
+      "type": "trigger",
+      "position": {
+        "x": 131.00000000000003,
+        "y": 132.66666666666669
+      },
+      "data": {
+        "label": "trigger node",
+        "value": {
+          "isNewNode": true,
+          "name": "trigger"
+        }
+      },
+      "measured": {
+        "width": 263,
+        "height": 311
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node_1",
+      "type": "action",
+      "position": {
+        "x": 886.6666666666666,
+        "y": -0.9999999999999432
+      },
+      "data": {
+        "label": "action node",
+        "value": {
+          "isNewNode": true,
+          "name": "action"
+        }
+      },
+      "measured": {
+        "width": 243,
+        "height": 47
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node_2",
+      "type": "condition",
+      "position": {
+        "x": 497.66666666666663,
+        "y": 265.6666666666667
+      },
+      "data": {
+        "label": "condition node",
+        "value": {
+          "isNewNode": true,
+          "name": "condition"
+        }
+      },
+      "measured": {
+        "width": 243,
+        "height": 47
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node_3",
+      "type": "action",
+      "position": {
+        "x": 887.3333333333334,
+        "y": 102.66666666666663
+      },
+      "data": {
+        "label": "action node",
+        "value": {
+          "isNewNode": true,
+          "name": "action"
+        }
+      },
+      "measured": {
+        "width": 243,
+        "height": 47
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node_4",
+      "type": "action",
+      "position": {
+        "x": 888.3333333333333,
+        "y": 196.00000000000009
+      },
+      "data": {
+        "label": "action node",
+        "value": {
+          "isNewNode": true,
+          "name": "action"
+        }
+      },
+      "measured": {
+        "width": 243,
+        "height": 47
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node_5",
+      "type": "action",
+      "position": {
+        "x": 888,
+        "y": 291.6666666666667
+      },
+      "data": {
+        "label": "action node",
+        "value": {
+          "isNewNode": true,
+          "name": "action"
+        }
+      },
+      "measured": {
+        "width": 243,
+        "height": 47
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node_6",
+      "type": "action",
+      "position": {
+        "x": 887.6666666666666,
+        "y": 389.33333333333337
+      },
+      "data": {
+        "label": "action node",
+        "value": {
+          "isNewNode": true,
+          "name": "action"
+        }
+      },
+      "measured": {
+        "width": 243,
+        "height": 47
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "node_7",
+      "type": "action",
+      "position": {
+        "x": 888.3333333333333,
+        "y": 485.66666666666674
+      },
+      "data": {
+        "label": "action node",
+        "value": {
+          "isNewNode": true,
+          "name": "action"
+        }
+      },
+      "measured": {
+        "width": 243,
+        "height": 47
+      },
+      "selected": true,
+      "dragging": false
+    }
+  ],
+  "edges": [
+    {
+      "source": "node_0",
+      "sourceHandle": "b",
+      "target": "node_2",
+      "targetHandle": "cond-t",
+      "id": "xy-edge__node_0b-node_2cond-t"
+    },
+    {
+      "source": "node_2",
+      "sourceHandle": "cond-s",
+      "target": "node_1",
+      "targetHandle": "b",
+      "id": "xy-edge__node_2cond-s-node_1b"
+    },
+    {
+      "source": "node_2",
+      "sourceHandle": "cond-s",
+      "target": "node_3",
+      "targetHandle": "b",
+      "id": "xy-edge__node_2cond-s-node_3b"
+    },
+    {
+      "source": "node_2",
+      "sourceHandle": "cond-s",
+      "target": "node_4",
+      "targetHandle": "b",
+      "id": "xy-edge__node_2cond-s-node_4b"
+    },
+    {
+      "source": "node_2",
+      "sourceHandle": "cond-s",
+      "target": "node_5",
+      "targetHandle": "b",
+      "id": "xy-edge__node_2cond-s-node_5b"
+    },
+    {
+      "source": "node_2",
+      "sourceHandle": "cond-s",
+      "target": "node_6",
+      "targetHandle": "b",
+      "id": "xy-edge__node_2cond-s-node_6b"
+    },
+    {
+      "source": "node_2",
+      "sourceHandle": "cond-s",
+      "target": "node_7",
+      "targetHandle": "b",
+      "id": "xy-edge__node_2cond-s-node_7b"
+    }
+  ],
+  "viewport": {
+    "x": -122,
+    "y": 157,
+    "zoom": 0.75
+  }
+}

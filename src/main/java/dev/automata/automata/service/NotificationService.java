@@ -22,8 +22,8 @@ public class NotificationService {
                 .severity(severity)
                 .timestamp(new Date())
                 .build();
-        var notify = notificationRepository.save(notification);
-        messagingTemplate.convertAndSend("/topic/notification", notify);
+//        var notify = notificationRepository.save(notification);
+        messagingTemplate.convertAndSend("/topic/notification", notification);
     }
 
     public List<Notification> getLastFiveNotifications() {

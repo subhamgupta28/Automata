@@ -4,123 +4,52 @@ import {
     applyNodeChanges,
     Controls, Handle, Panel, Position,
     ReactFlow, ReactFlowProvider,
-    useEdgesState,
+    useEdgesState, useHandleConnections, useNodesData,
     useNodesState, useReactFlow
 } from "@xyflow/react";
 import React, {useCallback, useEffect, useMemo, useState, createContext, useContext, useRef} from "react";
-import {getActions, getDevices} from "../../services/apis.jsx";
+import {getActions, getDevices, saveAutomationDetail} from "../../services/apis.jsx";
 import CreateAction from "./CreateAction.jsx";
-import {Button, Card, CardActions, CardContent, CardHeader, Fab} from "@mui/material";
+import {
+    Button,
+    Card,
+    CardActions,
+    CardContent,
+    CardHeader,
+    Fab,
+    FormControl,
+    InputLabel,
+    MenuItem,
+    Select
+} from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import AddActionDialog from "./AddActionDialog.jsx";
-
+import {ActionNode, ConditionNode, TriggerNode} from "./NodeTypes.jsx";
 
 
 const triggerStyle = {
     padding: '10px',
     borderRadius: '5px',
-    width: '200px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    width: '220px',
     border: '2px solid #6DBF6D',
 };
 
 const actionStyle = {
     padding: '10px',
     borderRadius: '5px',
-    width: '200px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    width: '220px',
     border: '2px solid #0288D1',
 };
 
 const conditionStyle = {
     padding: '10px',
     borderRadius: '5px',
-    width: '200px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    width: '220px',
     border: '2px solid #FFEB3B',
-};
-
-// Custom Trigger Node
-const TriggerNode = ({data, isConnectable}) => {
-    // const fetchData = async () => {
-    //     try {
-    //         const data = await getDevices();
-    //         console.log("devices", data);
-    //     } catch (err) {
-    //         console.error("Failed to fetch devices:", err);
-    //     }
-    // };
-    //
-    // if (data.value && data.value.isNewNode) {
-    //     fetchData();
-    // }
-
-
-
-
-
-
-    return (
-        <Card style={triggerStyle}>
-            {data.value && (
-                <strong>{data.value.name}</strong>
-            )}
-
-            <Handle
-                type="source"
-                position={Position.Right}
-                id="b"
-                isConnectable={isConnectable}
-            />
-        </Card>
-    );
-};
-
-// Custom Action Node
-const ActionNode = ({data, isConnectable}) => {
-    return (
-        <Card style={actionStyle}>
-            <Handle
-                type="target"
-                position={Position.Left}
-                id="b"
-
-                isConnectable={isConnectable}
-            />
-            {data.value && (
-                <strong>{data.value.name}</strong>
-            )}
-
-        </Card>
-    );
-};
-
-// Custom Condition Node
-const ConditionNode = ({data, isConnectable}) => {
-    return (
-        <Card style={conditionStyle}>
-            <Handle
-                type="target"
-                position={Position.Left}
-                id="b"
-                isConnectable={isConnectable}
-            />
-            {data.value && (
-                <strong>{data.value.name}</strong>
-            )}
-
-            <Handle
-                type="source"
-                position={Position.Right}
-                id="b"
-                isConnectable={isConnectable}
-            />
-        </Card>
-    );
 };
 
 const createNodes = (data) => {
@@ -217,7 +146,7 @@ const createEdges = (data) => {
 }
 
 let id = 0;
-const getId = () => `dndnode_${id++}`;
+const getId = (type) => `node_${type}_${id++}`;
 
 export function ActionBoard(action) {
     const [nodes, setNodes] = useNodesState([]);
@@ -226,9 +155,39 @@ export function ActionBoard(action) {
     const [automations, setAutomations] = useState([]);
     const handleCloseModal = () => setIsModalOpen(false);
     const reactFlowWrapper = useRef(null);
-    const { screenToFlowPosition } = useReactFlow();
+    const {screenToFlowPosition} = useReactFlow();
     const [type, setType] = useDnD();
+    const [rfInstance, setRfInstance] = useState(null);
+    const isValidConnection = useCallback((connection) => {
 
+        console.log("connection", connection)
+        return connection.target === 'node_1';
+    }, []);
+    const onSave = useCallback(() => {
+        const saveFlow = async (payload) => {
+            await saveAutomationDetail(payload)
+        }
+
+        if (rfInstance) {
+            const flow = rfInstance.toObject();
+            // saveFlow(JSON.stringify(flow));
+            localStorage.setItem("flow", JSON.stringify(flow));
+        }
+    }, [rfInstance]);
+    const onRestore = useCallback(() => {
+        const restoreFlow = async () => {
+            const flow = JSON.parse(localStorage.getItem("flow"));
+
+            if (flow) {
+                const { x = 0, y = 0, zoom = 1 } = flow.viewport;
+                setNodes(flow.nodes || []);
+                setEdges(flow.edges || []);
+
+            }
+        };
+
+        restoreFlow();
+    }, [setNodes]);
 
     const onDragOver = useCallback((event) => {
         event.preventDefault();
@@ -248,10 +207,10 @@ export function ActionBoard(action) {
                 y: event.clientY,
             });
             const newNode = {
-                id: getId(),
+                id: getId(type),
                 type,
                 position,
-                data: { label: `${type} node` , value:{isNewNode: true, name: type}},
+                data: {value: {isNewNode: true, name: type}},
             };
 
             setNodes((nds) => nds.concat(newNode));
@@ -292,14 +251,14 @@ export function ActionBoard(action) {
         setIsModalOpen(true)
     }
 
-    const defaultViewport = useMemo(() => ({ x: 0, y: 50, zoom: 0.75 }), []);
+    const defaultViewport = useMemo(() => ({x: 0, y: 50, zoom: 0.75}), []);
 
     const onDragStart = (event, nodeType) => {
         setType(nodeType);
         event.dataTransfer.effectAllowed = 'move';
     };
     return (
-        <div >
+        <div>
             {/*<CreateAction isOpen={isModalOpen} onClose={handleCloseModal} automations={automations}/>*/}
             {/*<AddActionDialog isOpen={isModalOpen} onClose={handleCloseModal}/>*/}
             <Stack direction="row" divider={<Divider orientation="vertical" flexItem/>}>
@@ -311,8 +270,11 @@ export function ActionBoard(action) {
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
+                        onInit={setRfInstance}
+                        // isValidConnection={isValidConnection}
                         defaultViewport={defaultViewport}
                         onDrop={onDrop}
+                        className="validationflow"
                         onDragOver={onDragOver}
                         nodeTypes={{
                             trigger: TriggerNode,
@@ -325,26 +287,31 @@ export function ActionBoard(action) {
                         {/*        <EditIcon/>*/}
                         {/*    </Fab>*/}
                         {/*</Panel>*/}
-
+                        <Panel position="bottom-right" style={{marginBottom: '50px'}}>
+                            <button onClick={onRestore}>restore</button>
+                            <button onClick={onSave}>save</button>
+                        </Panel>
                     </ReactFlow>
                 </div>
-                <div style={{ width: '25%', height: '90dvh', marginTop:'50px' }}>
-                    <Card style={{height: '100%', margin:'10px'}}>
+                <div style={{width: '25%', height: '90dvh', marginTop: '50px'}}>
+                    <Card style={{height: '100%', margin: '10px'}}>
                         <CardContent>
                             <Typography variant="h6" component="div">
-                                Automation Editor
+                                Automation Playground
                             </Typography>
                             <Typography gutterBottom sx={{color: 'text.secondary', fontSize: 14}}>
-                                Automations Playground. Drag and drop nodes to create automations.
+                                Drag and drop nodes to create automations.
                             </Typography>
                             <div style={triggerStyle} onDragStart={(event) => onDragStart(event, 'trigger')}
                                  draggable>
                                 Add Trigger
                             </div>
-                            <div style={{...conditionStyle, marginTop:'10px'}} onDragStart={(event) => onDragStart(event, 'condition')} draggable>
+                            <div style={{...conditionStyle, marginTop: '10px'}}
+                                 onDragStart={(event) => onDragStart(event, 'condition')} draggable>
                                 Add Condition
                             </div>
-                            <div style={{...actionStyle, marginTop:'10px'}} onDragStart={(event) => onDragStart(event, 'action')}
+                            <div style={{...actionStyle, marginTop: '10px'}}
+                                 onDragStart={(event) => onDragStart(event, 'action')}
                                  draggable>
                                 Add Action
                             </div>

@@ -254,7 +254,7 @@ export default function CreateAction({isOpen, onClose, automations}) {
                                 sx={{marginBottom: 2}}
                             />
                         </div>
-                        <Actions action={automations} devices={devices} triggerDevice={triggerDevice}/>
+                        {/*<Actions action={automations} devices={devices} triggerDevice={triggerDevice}/>*/}
 
                         <Grid container spacing={2} sx={{marginBottom: 2, marginLeft: 2}}>
                             {data.conditions.map((condition, index) => (

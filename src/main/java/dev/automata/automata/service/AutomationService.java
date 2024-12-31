@@ -3,8 +3,10 @@ package dev.automata.automata.service;
 import dev.automata.automata.dto.AutomationCache;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.model.Automation;
+import dev.automata.automata.model.AutomationDetail;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.modules.Wled;
+import dev.automata.automata.repository.AutomationDetailRepository;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import jakarta.annotation.PostConstruct;
@@ -33,6 +35,7 @@ public class AutomationService {
     private final RedisService redisService;
     private final MainService mainService;
     private final NotificationService notificationService;
+    private final AutomationDetailRepository automationDetailRepository;
 
     private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
 
@@ -282,5 +285,11 @@ public class AutomationService {
 
         });
 
+    }
+
+    public String saveAutomationDetail(AutomationDetail automation) {
+        automationDetailRepository.save(automation);
+        notificationService.sendNotification("Automation saved successfully", "success");
+        return "success";
     }
 }

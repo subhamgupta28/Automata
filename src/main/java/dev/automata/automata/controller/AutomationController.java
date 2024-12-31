@@ -2,6 +2,7 @@ package dev.automata.automata.controller;
 
 
 import dev.automata.automata.model.Automation;
+import dev.automata.automata.model.AutomationDetail;
 import dev.automata.automata.service.AutomationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -97,6 +98,11 @@ public class AutomationController {
             return "Device Id not found";
         }
         return actionService.handleAction(deviceId, payload, "");
+    }
+
+    @PostMapping("/saveAutomationDetail")
+    public ResponseEntity<String> saveAutomationDetail(@RequestBody AutomationDetail automation) {
+        return ResponseEntity.ok(actionService.saveAutomationDetail(automation));
     }
 
 
