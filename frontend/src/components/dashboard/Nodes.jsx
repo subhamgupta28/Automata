@@ -188,7 +188,7 @@ export function Device({data, isConnectable}) {
                     marginLeft: '2px',
                     marginRight: '2px',
                     padding: '4px',
-                    boxShadow: 'rgb(255 225 225 / 5%) 0px 0px 50px 15px'
+                    boxShadow: 'rgb(255 255 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
                     <CardContent
@@ -312,7 +312,7 @@ export function MainNode({data, isConnectable}) {
                     borderRadius: '18px',
                     // backgroundColor:'transparent',
                     // backdropFilter: 'blur(1px)',
-                    boxShadow: 'rgb(255 200 100 / 8%) 0px 0px 50px 15px'
+                    boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
                     {/* Render Handles for Chart Nodes */}
                     {chartIds.map((id, index) => (
@@ -431,7 +431,7 @@ function BarChartComp({chartDevice}) {
                                 onClick={() => handleAttribute(name)}
                                 style={{margin: '4px'}}
                                 label={name}
-                                color="info"
+                                // color="info"
                             />
                         ))}
                     </div>

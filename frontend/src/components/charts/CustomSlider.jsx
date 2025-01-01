@@ -11,12 +11,12 @@ const HomeAssistantSlider = styled(Slider)({
     padding: '15px 0',
     '& .MuiSlider-rail': {
         opacity: 0.2, // Make the rail more subtle
-        backgroundColor: '#ffa500', // Light grey color for the rail
+        backgroundColor: '#b9b9b9', // Light grey color for the rail
     },
     '& .MuiSlider-track': {
         border: 'none', // Remove the track's border
         // paddingRight:'4px',
-        backgroundColor: 'orange', // Use the blue color for the active track
+        backgroundColor: '#b9b9b9', // Use the blue color for the active track
     },
     '& .MuiSlider-markLabel': {
         top: 55
@@ -37,7 +37,7 @@ const HomeAssistantSlider = styled(Slider)({
             backgroundColor: 'white', // Change thumb color when hovered
         },
         '&:active': {
-            backgroundColor: 'orange', // Darker blue when active
+            backgroundColor: '#b9b9b9', // Darker blue when active
         },
     },
 });

@@ -21,7 +21,7 @@ export function GaugeChart({value, maxValue, displayName}) {
                             transform: 'translate(0px, 0px)',
                         },
                         [`& .${gaugeClasses.valueArc}`]: {
-                            fill: 'orange',
+                            fill: '#b9b9b9',
                         },
                     }}
                     text={

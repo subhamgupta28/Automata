@@ -10,7 +10,7 @@ export default function CustomPieChart({chartData}) {
     const dat = attributes.map((d, index) => {
         return {
             value: data[d],
-            color: 'orange',
+            color: '#b9b9b9',
             label: labels[index]
         }
     });

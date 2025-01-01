@@ -33,7 +33,7 @@ export default function CustomBarChart ({chartData}){
             // barLabel={(item, context) => {
             //     return item.value?.toString();
             // }}
-                  colors={['orange']}
+                  colors={['#b9b9b9']}
                   xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps }]}
                   borderRadius={10}
                   {...chartSetting}
