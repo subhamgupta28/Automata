@@ -1,24 +1,56 @@
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
+import { createTheme } from '@mui/material/styles';
 
 export const darkTheme = createTheme({
-    colorSchemes: { light: true, dark: true },
     palette: {
         mode: 'dark',
         primary: {
-            main: '#fce02b',
-            // light: will be calculated from palette.primary.main,
-            // dark: will be calculated from palette.primary.main,
-            // contrastText: will be calculated to contrast with palette.primary.main
+            main: '#fce02b', // Primary yellow accent
         },
-        // secondary: {
-        //     main: '#E0C2FF',
-        //     light: '#F5EBFF',
-        //     // dark: will be calculated from palette.secondary.main,
-        //     contrastText: '#47008F',
+        secondary: {
+            main: '#03a9f4', // Secondary blue for highlights
+        },
+        background: {
+            default: '#121212', // Dark background for the main canvas
+            // paper: '#1c1c1c', // Slightly lighter background for cards and paper
+        },
+        text: {
+            primary: '#ffffff', // White text for easy readability
+            secondary: '#b0b0b0', // Light gray text for secondary text
+        },
+        divider: '#444444', // Dividers to separate sections with a soft contrast
+    },
+    typography: {
+        fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif', // Clean, modern font family
+        h1: {
+            fontSize: '2.5rem',
+            fontWeight: 500,
+            color: '#fce02b',
+        },
+        h2: {
+            fontSize: '2rem',
+            fontWeight: 500,
+            color: '#ffffff',
+        },
+        body1: {
+            fontSize: '1rem',
+            color: '#e0e0e0', // Slightly lighter body text
+        },
+    },
+    components: {
+        // MuiButton: {
+        //     styleOverrides: {
+        //         root: {
+        //             backgroundColor: '#fce02b', // Primary color for buttons
+        //             color: '#121212', // Text color on buttons
+        //             '&:hover': {
+        //                 backgroundColor: '#e5c21b', // Darker yellow on hover
+        //             },
+        //         },
+        //     },
         // },
     },
 });
+
 
 export const lightTheme = createTheme({
     palette: {

@@ -29,7 +29,7 @@ export default function SwitchButton({value, deviceId, displayName, data, type})
 
     return(
         <div>
-            <Switch color="warning" onChange={send} checked={on}/>
+            <Switch onChange={send} checked={on}/>
             <span style={{fontSize:'small'}} >{displayName}</span>
         </div>
     )

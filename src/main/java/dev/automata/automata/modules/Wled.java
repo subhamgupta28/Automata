@@ -42,7 +42,7 @@ public class Wled {
 
                 boolean onOff = getTagValue(doc, "ac") > 0;
                 int bright = getTagValue(doc, "ac");
-                int preset = getTagValue(doc, "fx");
+                int preset = getTagValue(doc, "ps");
 
                 var map =  new HashMap<String, Object>();
                 map.put("onOff", onOff);

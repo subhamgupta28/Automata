@@ -19,6 +19,7 @@ public class Automation {
     @Id
     private String id;
     private String name;
+    private Boolean isEnabled;
 
     @JsonProperty("trigger")
     private Trigger trigger;
@@ -26,8 +27,7 @@ public class Automation {
     private List<Action> actions;
     @JsonProperty("conditions")
     private List<Condition> conditions;
-    private int x;
-    private int y;
+
 
 
     @Getter
@@ -36,14 +36,11 @@ public class Automation {
     @NoArgsConstructor
     @ToString
     public static class Trigger {
-
         private String deviceId;
         private String type; // state, time
         private String value; // 300
         private String key; //range
         private String name;
-        private int x;
-        private int y;
     }
 
     @Getter
@@ -56,8 +53,6 @@ public class Automation {
         private String deviceId; //---
         private String data; //255
         private String name;
-        private int x;
-        private int y;
         // Getters and setters
     }
 
@@ -73,8 +68,6 @@ public class Automation {
         private String below; // 300
         private String value;
         private Boolean isExact; // true
-        private int x;
-        private int y;
         // Getters and setters
     }
 

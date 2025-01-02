@@ -156,7 +156,7 @@ export function Device({data, isConnectable}) {
     const map = data.value.attributes.filter((t) => t.type.startsWith("DATA|MAIN,MAP"));
     const switchBtn = data.value.attributes.filter((t) => t.type.startsWith("DATA|SWITCH"));
     const presets = data.value.attributes.filter((t) => t.type.startsWith("DATA|PRESET"));
-    // console.log("switchBtn", switchBtn)
+    // console.log("presets", presets)
 
 
     const handleAction = (attribute) => {
@@ -218,7 +218,7 @@ export function Device({data, isConnectable}) {
                                           displayName={slide.displayName}/>
                         ))}
                         {presets && data.live && presets.map((slide) => (
-                            <Presets key={slide.key} value={data.live[slide.key]} deviceId={data.value.id} type={data.value.type} data={slide}
+                            <Presets key={slide.key} value={data.live} deviceId={data.value.id} type={data.value.type} data={slide}
                                           displayName={slide.displayName}/>
                         ))}
 

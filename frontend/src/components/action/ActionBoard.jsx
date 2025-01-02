@@ -2,7 +2,7 @@ import {
     addEdge,
     applyEdgeChanges,
     applyNodeChanges,
-    Controls, Handle, Panel, Position,
+    Controls, Handle, MarkerType, Panel, Position,
     ReactFlow, ReactFlowProvider,
     useEdgesState, useHandleConnections, useNodesData,
     useNodesState, useReactFlow
@@ -29,6 +29,7 @@ import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import AddActionDialog from "./AddActionDialog.jsx";
 import {ActionNode, ConditionNode, TriggerNode} from "./NodeTypes.jsx";
+import CustomEdge from "./CustomEdge.jsx";
 
 
 const triggerStyle = {
@@ -153,11 +154,31 @@ export function ActionBoard(action) {
     const [edges, setEdges] = useEdgesState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [automations, setAutomations] = useState([]);
+    const [devices, setDevices] = useState([]);
     const handleCloseModal = () => setIsModalOpen(false);
     const reactFlowWrapper = useRef(null);
     const {screenToFlowPosition} = useReactFlow();
     const [type, setType] = useDnD();
     const [rfInstance, setRfInstance] = useState(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // const res = await getDevices();
+                // setDevices(res);
+                // const data = await getActions();
+                // setAutomations(data)
+                // const {nodes, edges} = createNodes(data)
+                // setNodes(nodes); // Create nodes including the main node
+                // setEdges(edges); // Create edges connecting devices to the main node
+            } catch (err) {
+                console.error("Failed to fetch devices:", err);
+            }
+        };
+
+        fetchData();
+    }, []);
+
     const isValidConnection = useCallback((connection) => {
 
         console.log("connection", connection)
@@ -171,15 +192,17 @@ export function ActionBoard(action) {
         if (rfInstance) {
             const flow = rfInstance.toObject();
             // saveFlow(JSON.stringify(flow));
+            console.log("flow", flow)
             localStorage.setItem("flow", JSON.stringify(flow));
         }
     }, [rfInstance]);
+
     const onRestore = useCallback(() => {
         const restoreFlow = async () => {
             const flow = JSON.parse(localStorage.getItem("flow"));
 
             if (flow) {
-                const { x = 0, y = 0, zoom = 1 } = flow.viewport;
+                const {x = 0, y = 0, zoom = 1} = flow.viewport;
                 setNodes(flow.nodes || []);
                 setEdges(flow.edges || []);
 
@@ -210,7 +233,7 @@ export function ActionBoard(action) {
                 id: getId(type),
                 type,
                 position,
-                data: {value: {isNewNode: true, name: type}},
+                data: {value: {isNewNode: true, name: type, devices} },
             };
 
             setNodes((nds) => nds.concat(newNode));
@@ -218,21 +241,7 @@ export function ActionBoard(action) {
         [screenToFlowPosition, type],
     );
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // const data = await getActions();
-                // setAutomations(data)
-                // const {nodes, edges} = createNodes(data)
-                // setNodes(nodes); // Create nodes including the main node
-                // setEdges(edges); // Create edges connecting devices to the main node
-            } catch (err) {
-                console.error("Failed to fetch devices:", err);
-            }
-        };
 
-        fetchData();
-    }, []);
 
     const onNodesChange = useCallback(
         (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -243,7 +252,13 @@ export function ActionBoard(action) {
         [setEdges],
     );
     const onConnect = useCallback(
-        (connection) => setEdges((eds) => addEdge(connection, eds)),
+        (connection) => {
+            const edge = {
+                ...connection,
+                type: 'custom-edge',
+            };
+            setEdges((eds) => addEdge(edge, eds));
+        },
         [setEdges],
     );
 
@@ -262,7 +277,7 @@ export function ActionBoard(action) {
             {/*<CreateAction isOpen={isModalOpen} onClose={handleCloseModal} automations={automations}/>*/}
             {/*<AddActionDialog isOpen={isModalOpen} onClose={handleCloseModal}/>*/}
             <Stack direction="row" divider={<Divider orientation="vertical" flexItem/>}>
-                <div style={{width: '75%', height: '100dvh'}} className="reactflow-wrapper" ref={reactFlowWrapper}>
+                <div style={{width: '80%', height: '100dvh'}} className="reactflow-wrapper" ref={reactFlowWrapper}>
                     <ReactFlow
                         colorMode="dark"
                         nodes={nodes}
@@ -271,6 +286,9 @@ export function ActionBoard(action) {
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
                         onInit={setRfInstance}
+                        edgeTypes={{
+                            'custom-edge': CustomEdge,
+                        }}
                         // isValidConnection={isValidConnection}
                         defaultViewport={defaultViewport}
                         onDrop={onDrop}
@@ -292,8 +310,11 @@ export function ActionBoard(action) {
                             <button onClick={onSave}>save</button>
                         </Panel>
                     </ReactFlow>
+                    {/*<Card style={{margin: '10px', height: '18%', padding:'8px'}} variant='outlined'>*/}
+                    {/*    hello*/}
+                    {/*</Card>*/}
                 </div>
-                <div style={{width: '25%', height: '90dvh', marginTop: '50px'}}>
+                <div style={{width: '20%', height: '90dvh', marginTop: '50px'}}>
                     <Card style={{height: '100%', margin: '10px'}}>
                         <CardContent>
                             <Typography variant="h6" component="div">

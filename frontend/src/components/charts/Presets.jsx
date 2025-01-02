@@ -6,6 +6,7 @@ import {deepOrange} from "@mui/material/colors";
 
 
 export default function Presets({data, type, value, deviceId, displayName}) {
+    console.log("preset", value)
     const send = async (e) => {
         try {
             let act = data.key;
@@ -25,7 +26,7 @@ export default function Presets({data, type, value, deviceId, displayName}) {
             <div>
                 {Object.values(data.extras).map((ex) => (
                     <IconButton key={ex} onClick={()=>send(ex)}>
-                        <Avatar  sx={{ width: 26, height: 26, bgcolor: "orange", fontWeight: 'bold' }}>{ex}</Avatar>
+                        <Avatar  sx={{ width: 26, height: 26, bgcolor: ex === value? "orange":"", fontWeight: 'bold' }}>{ex}</Avatar>
                     </IconButton>
                 ))}
             </div>
