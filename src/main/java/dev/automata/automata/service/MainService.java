@@ -234,6 +234,8 @@ public class MainService {
             device.setLastData(lastData);
             deviceList.add(device);
         });
+        deviceList.sort(Comparator.comparingDouble(Device::getY).thenComparingDouble(Device::getX));
+
         return deviceList;
     }
 

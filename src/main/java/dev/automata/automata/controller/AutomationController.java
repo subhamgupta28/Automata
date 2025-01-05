@@ -110,6 +110,11 @@ public class AutomationController {
         return ResponseEntity.ok(actionService.getAutomationDetail(id));
     }
 
+    @GetMapping("/disable/{id}/{enabled}")
+    public ResponseEntity<String> disableAutomation(@PathVariable String id, @PathVariable Boolean enabled) {
+        return ResponseEntity.ok(actionService.disableAutomation(id, enabled));
+    }
+
     @PostMapping("/sendAction/{deviceId}/{deviceType}")
     public ResponseEntity<String> handleAction(
             @RequestBody Map<String, Object> payload,

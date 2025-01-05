@@ -6,12 +6,12 @@ import {
     useEdgesState, useNodesState, useReactFlow
 } from "@xyflow/react";
 import React, {useCallback, useEffect, useMemo, useState, createContext, useContext, useRef} from "react";
-import {getActions, getAutomationDetail, saveAutomationDetail} from "../../services/apis.jsx";
+import {disableAutomation, getActions, getAutomationDetail, saveAutomationDetail} from "../../services/apis.jsx";
 
 import {
     Button,
     Card,
-    CardContent,
+    CardContent, Switch,
 } from "@mui/material";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
@@ -42,99 +42,6 @@ const conditionStyle = {
     border: '2px solid #FFEB3B',
 };
 
-const createNodes = (data) => {
-    let triggerNode = [];
-    let actionNode = [];
-    let conditionNode = [];
-    let edge = [];
-    let x = 40;
-    let y = 40;
-
-
-    let sct = 0;
-    let ccd = 0;
-    let ax = x + 600;
-    let ay = y + 40;
-    let cy = y;
-    let cx = x + 300;
-    let edgeId = 0;
-
-    data.map(action => {
-        let trigger = action.trigger;
-        let actions = action.actions;
-        let condition = action.conditions;
-
-        triggerNode.push({
-            id: action.id,
-            type: 'trigger',
-            position: {x: x, y: y * 2},
-            data: {value: action},
-        });
-        y += 80;
-
-        condition.map((cond, index) => {
-            conditionNode.push({
-                id: "cond-id-" + ccd,
-                type: 'condition',
-                position: {x: cx, y: cy * 2},
-                data: {value: cond},
-            });
-            edge.push({
-                id: `edge-${edgeId}`,
-                source: action.id,
-                target: "cond-id-" + ccd,
-                animated: true,
-            });
-            edgeId++;
-            cy += 80;
-            ccd++;
-        });
-
-        actions.map(((act, index) => {
-            actionNode.push({
-                id: "act-id-" + sct,
-                type: 'action',
-                position: {x: ax, y: ay},
-                data: {value: act},
-            });
-            edge.push({
-                id: `edge-${edgeId}`,
-                source: "cond-id-" + (ccd - condition.length),
-                target: "act-id-" + sct,
-                animated: true,
-            });
-            edgeId++;
-            ay += 60;
-            sct++;
-        }));
-        ay += 40;
-
-    })
-
-    console.log("edge", edge);
-    return {nodes: [...triggerNode, ...actionNode, ...conditionNode], edges: edge};
-}
-
-const createEdges = (data) => {
-    let edges = [];
-    let index = 0;
-
-    data.map(device => {
-        edges.push({
-            id: `edge-${device.id}`, // Unique edge ID
-            source: `${device.id}`,     // The ID of the main node
-            target: 'main-node-1',
-            // type: 'animatedSvg',// The ID of the device node
-            targetHandle: 'main-node-' + index,       // Source handle ID if applicable
-            animated: true,
-            style: {stroke: '#ffffff', strokeWidth: '3px'}
-        })
-        index++;
-    });
-
-    return [...edges]
-}
-
 let id = 0;
 const getId = (type) => `node_${type}_${id++}`;
 
@@ -143,6 +50,8 @@ export function ActionBoard(action) {
     const [edges, setEdges] = useEdgesState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [automations, setAutomations] = useState([]);
+    const [selectedAutomation, setSelectedAutomation] = useState({});
+    const [automationDetail, setAutomationDetail] = useState({});
     const {devices, loading, error} = useCachedDevices();
     const handleCloseModal = () => setIsModalOpen(false);
     const reactFlowWrapper = useRef(null);
@@ -154,7 +63,7 @@ export function ActionBoard(action) {
         const fetchData = async () => {
             try {
                 // const res = await getDevices();
-                // setDevices(res);
+                // setDevices(devices);
                 const data = await getActions();
                 setAutomations(data)
                 // const {nodes, edges} = createNodes(data)
@@ -175,16 +84,18 @@ export function ActionBoard(action) {
     }, []);
     const onSave = useCallback(() => {
         const saveFlow = async (payload) => {
+            // console.log("saveFlow", automationDetail);
             await saveAutomationDetail(payload)
         }
 
         if (rfInstance) {
             const flow = rfInstance.toObject();
-            saveFlow(JSON.stringify(flow));
-            console.log("flow", flow)
+            // console.log("detail", automationDetail)
+            saveFlow({...flow, id: automationDetail.id});
+            // console.log("flow", flow)
             localStorage.setItem("flow", JSON.stringify(flow));
         }
-    }, [rfInstance]);
+    }, [rfInstance, automationDetail]);
 
     const onRestore = useCallback(() => {
         const restoreFlow = async () => {
@@ -206,6 +117,10 @@ export function ActionBoard(action) {
         event.dataTransfer.dropEffect = 'move';
     }, []);
 
+    const handleDisableAutomation = async (e) => {
+        await disableAutomation(selectedAutomation.id, e.target.checked)
+    }
+
 
     const onDrop = useCallback(
         (event) => {
@@ -223,7 +138,7 @@ export function ActionBoard(action) {
                 id: getId(type),
                 type,
                 position,
-                data: {value: {isNewNode: true, name: type} },
+                data: {value: {isNewNode: true, name: type}},
             };
 
             setNodes((nds) => nds.concat(newNode));
@@ -233,7 +148,10 @@ export function ActionBoard(action) {
 
 
     const openAutomation = async (a) => {
-      const detail = await getAutomationDetail(a.id);
+        setSelectedAutomation(a);
+        const detail = await getAutomationDetail(a.id);
+        console.log("detail", detail);
+        setAutomationDetail(detail);
         setNodes(detail.nodes || []);
         setEdges(detail.edges || []);
 
@@ -270,8 +188,6 @@ export function ActionBoard(action) {
     };
     return (
         <div>
-            {/*<CreateAction isOpen={isModalOpen} onClose={handleCloseModal} automations={automations}/>*/}
-            {/*<AddActionDialog isOpen={isModalOpen} onClose={handleCloseModal}/>*/}
             <Stack direction="row" divider={<Divider orientation="vertical" flexItem/>}>
                 <div style={{width: '80%', height: '100dvh'}} className="reactflow-wrapper" ref={reactFlowWrapper}>
                     <ReactFlow
@@ -296,19 +212,21 @@ export function ActionBoard(action) {
                             condition: ConditionNode,
                         }}
                     >
-                        {/*<Panel position="bottom-right" style={{marginBottom: '50px'}}>*/}
-                        {/*    <Fab color="primary" aria-label="add" onClick={handleCreateAction}>*/}
-                        {/*        <EditIcon/>*/}
-                        {/*    </Fab>*/}
-                        {/*</Panel>*/}
+                        {selectedAutomation.id && (
+                            <Panel position="bottom-left" style={{marginBottom: '50px'}}>
+                                <Card variant='outlined' style={{padding:'10px'}}>
+                                    <Typography variant="body2" color="textSecondary">
+                                        Enabled: <Switch defaultChecked size="small" checked={selectedAutomation.isEnabled}
+                                                         onChange={handleDisableAutomation}/>
+                                    </Typography>
+                                </Card>
+                            </Panel>
+                        )}
                         <Panel position="bottom-right" style={{marginBottom: '50px'}}>
                             <Button variant='outlined' onClick={onRestore}>Restore</Button>
                             <Button variant='outlined' onClick={onSave} style={{marginLeft: '10px'}}>Save</Button>
                         </Panel>
                     </ReactFlow>
-                    {/*<Card style={{margin: '10px', height: '18%', padding:'8px'}} variant='outlined'>*/}
-                    {/*    hello*/}
-                    {/*</Card>*/}
                 </div>
                 <div style={{width: '20%', height: '90dvh', marginTop: '50px'}}>
                     <Card style={{height: '100%', margin: '10px'}}>
@@ -336,19 +254,16 @@ export function ActionBoard(action) {
                                 <Typography>
                                     Saved Automations
                                 </Typography>
-                                {automations.map(a=>(
-                                    <Card variant='outlined' style={{padding: '10px', marginTop: '10px'}} key={a.id} >
+                                {automations.map(a => (
+                                    <Card variant='outlined' style={{padding: '10px', marginTop: '10px'}} key={a.id}>
                                         {a.name}
-                                        <Button size='small' onClick={()=> openAutomation(a)}>
+                                        <Button size='small' onClick={() => openAutomation(a)}>
                                             Open
                                         </Button>
                                     </Card>
                                 ))}
                             </div>
                         </CardContent>
-                        {/*<CardActions>*/}
-                        {/*    <Button size="small" onClick={handleCreateAction}>Add Action</Button>*/}
-                        {/*</CardActions>*/}
                     </Card>
                 </div>
             </Stack>

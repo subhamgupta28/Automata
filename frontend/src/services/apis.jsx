@@ -76,6 +76,16 @@ export const updateShowInDashboard = async (deviceId, isVisible) => {
     return response.data;
 }
 
+export const disableAutomation = async (id, isEnabled) => {
+    const response = await axios.get(BASE_URL + "action/disable/" + id  + "/" + isEnabled, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
+
 export const refreshDeviceById = async (deviceId) => {
     const response = await axios.get(BASE_URL + "main/update/" + deviceId, {
         headers: {

@@ -35,7 +35,7 @@ export default function CustomPieChart({chartData}) {
                     fontWeight: 'bold',
                 },
             }}
-            width={550}
+            width={500}
             height={300}
         />
     );

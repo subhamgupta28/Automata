@@ -3,139 +3,117 @@
     {
       "id": "node_trigger_0",
       "type": "trigger",
+      "selected": false,
+      "dragging": false,
       "position": {
-        "x": 69.33333333333337,
-        "y": 94
+        "x": 59.666666666666686,
+        "y": 38
       },
       "data": {
-        "value": {
-          "isNewNode": true,
-          "name": "trigger",
-          "devices": []
-        },
         "triggerData": {
-          "deviceId": "670e9f4d4f15cd01e98640cf",
+          "deviceId": "670edfe8166ab22722fbf728",
           "type": "state",
-          "key": "range",
-          "name": "When motion is detected",
-          "value": "200"
+          "key": "temp",
+          "name": "Temp control",
+          "value": "20"
+        },
+        "conditionData": null,
+        "actionData": null,
+        "value": {
+          "name": "trigger",
+          "newNode": false
         }
       },
       "measured": {
         "width": 243,
         "height": 427
-      },
-      "selected": false,
-      "dragging": false
+      }
     },
     {
       "id": "node_condition_1",
       "type": "condition",
+      "selected": false,
+      "dragging": false,
       "position": {
-        "x": 474.66666666666663,
-        "y": 93.33333333333333
+        "x": 411.00000000000006,
+        "y": 36.333333333333336
       },
       "data": {
-        "value": {
-          "isNewNode": true,
-          "name": "condition",
-          "devices": []
-        },
+        "triggerData": null,
         "conditionData": {
           "condition": "range",
           "valueType": "int",
-          "below": "800",
-          "above": "600",
-          "value": "400",
-          "isExact": true
+          "below": "34",
+          "above": "20",
+          "value": "",
+          "isExact": false
+        },
+        "actionData": null,
+        "value": {
+          "name": "condition",
+          "newNode": false
         }
       },
       "measured": {
         "width": 243,
         "height": 275
-      },
-      "selected": false,
-      "dragging": false
+      }
     },
     {
       "id": "node_action_2",
       "type": "action",
+      "selected": false,
+      "dragging": false,
       "position": {
-        "x": 913.6666666666665,
-        "y": 92
+        "x": 772,
+        "y": 31.999999999999993
       },
       "data": {
-        "value": {
-          "isNewNode": true,
-          "name": "action",
-          "devices": []
-        },
+        "triggerData": null,
+        "conditionData": null,
         "actionData": {
-          "deviceId": "6755d5ec3667d03a2c053eff",
-          "key": "toggle",
+          "deviceId": "67571bf46f2d631aa77cc632",
+          "key": "preset",
           "name": "",
           "data": "2"
+        },
+        "value": {
+          "name": "action",
+          "newNode": false
         }
       },
       "measured": {
         "width": 243,
         "height": 203
-      },
-      "selected": false,
-      "dragging": false
+      }
     },
     {
       "id": "node_action_3",
       "type": "action",
-      "position": {
-        "x": 915,
-        "y": 337.33333333333337
-      },
-      "data": {
-        "value": {
-          "isNewNode": true,
-          "name": "action",
-          "devices": []
-        },
-        "actionData": {
-          "deviceId": "67571bf46f2d631aa77cc632",
-          "key": "onOff",
-          "name": "",
-          "data": "1"
-        }
-      },
-      "measured": {
-        "width": 243,
-        "height": 203
-      },
       "selected": false,
-      "dragging": false
-    },
-    {
-      "id": "node_action_0",
-      "type": "action",
+      "dragging": false,
       "position": {
-        "x": 913.3333333333334,
-        "y": 571.3333333333335
+        "x": 773.0000000000001,
+        "y": 286
       },
       "data": {
-        "value": {
-          "isNewNode": true,
-          "name": "action"
-        },
+        "triggerData": null,
+        "conditionData": null,
         "actionData": {
           "deviceId": "673b8250da1ad94ac1d28280",
           "key": "speed",
           "name": "",
-          "data": "100"
+          "data": "30"
+        },
+        "value": {
+          "name": "action",
+          "newNode": false
         }
       },
       "measured": {
         "width": 243,
         "height": 203
-      },
-      "selected": true,
-      "dragging": false
+      }
     }
   ],
   "edges": [
@@ -162,14 +140,6 @@
       "targetHandle": "b",
       "type": "custom-edge",
       "id": "xy-edge__node_condition_1cond-s-node_action_3b"
-    },
-    {
-      "source": "node_condition_1",
-      "sourceHandle": "cond-s",
-      "target": "node_action_0",
-      "targetHandle": "b",
-      "type": "custom-edge",
-      "id": "xy-edge__node_condition_1cond-s-node_action_0b"
     }
   ],
   "viewport": {

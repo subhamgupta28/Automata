@@ -1,14 +1,15 @@
 import React, {memo, useCallback, useEffect, useState} from "react";
 import {getDevices} from "../../services/apis.jsx";
-import {Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
+import {Button, Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
 import Typography from "@mui/material/Typography";
 import {Handle, Position, useHandleConnections, useNodes, useNodesData, useReactFlow} from "@xyflow/react";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import CancelIcon from "@mui/icons-material/Cancel";
+import AddIcon from "@mui/icons-material/Add";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import DeleteIcon from '@mui/icons-material/Delete';
-import {BaseHandle} from "./BaseHandle.jsx";
+
 
 const triggerStyle = {
     padding: '10px',
@@ -65,9 +66,7 @@ const TriggerNode = ({id, data, isConnectable}) => {
             }
         };
 
-        if (data.value && data.value.isNewNode) {
-            fetchData();
-        }
+        fetchData();
     }, [devices])
 
     useEffect(() => {
@@ -179,12 +178,16 @@ const TriggerNode = ({id, data, isConnectable}) => {
 
             )}
             <Handle
-                style={{width: '18px', height: '18px', background: '#6DBF6D'}}
+                style={{width: '18px', height: '18px', background: '#6DBF6D', opacity: 0}}
                 type="source"
                 position={Position.Right}
                 id="b"
                 isConnectable={isConnectable}
             />
+            <AddIcon style={{background: '#6DBF6D', top: '50%',
+                right: 0,
+                transform: 'translate(50%, -50%)'
+            }} className='react-flow__handle'/>
         </Card>
     );
 };
@@ -193,12 +196,14 @@ const TriggerNode = ({id, data, isConnectable}) => {
 // Custom Action Node
 const ActionNode = ({id, data, isConnectable}) => {
     const {updateNodeData, setEdges, setNodes} = useReactFlow();
+    console.log("actions", data);
     const actionData = data.actionData ? data.actionData : {
         key: '',
         data: '',
         name: '',
         deviceId: ''
     };
+    console.log("actions_1", data);
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
     const {devices, loading, error} = useCachedDevices();
     const [name, setName] = useState(actionData.name);
@@ -209,8 +214,8 @@ const ActionNode = ({id, data, isConnectable}) => {
         const fetchData = async () => {
             try {
 
-                if (data.actionData.deviceId) {
-                    const device = devices.filter((d) => d.id === data.actionData.deviceId);
+                if (actionData.deviceId) {
+                    const device = devices.filter((d) => d.id === actionData.deviceId);
                     setSelectedDevice(device[0]);
                 } else {
                     setSelectedDevice(devices[0]);
@@ -222,10 +227,8 @@ const ActionNode = ({id, data, isConnectable}) => {
             }
         };
 
-        if (data.value && data.value.isNewNode) {
-            fetchData();
-        }
-    }, [data.actionData, devices])
+        fetchData();
+    }, [data.value, devices])
     const handleTriggerKey = (e, select) => {
         if (select === 'name') {
             setName(e.target.value);
@@ -328,9 +331,9 @@ const ConditionNode = ({id, data, isConnectable}) => {
     const conditionData = data.conditionData ? data.conditionData : {
         condition: 'numeric',
         valueType: 'int',
-        below: '',
-        above: '',
-        value: '',
+        below: '0',
+        above: '0',
+        value: '0',
         isExact: false
     };
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
@@ -396,12 +399,16 @@ const ConditionNode = ({id, data, isConnectable}) => {
     return (
         <Card style={{...conditionStyle, padding: '10px'}}>
             <Handle
-                style={{width: '18px', height: '18px', background: '#FFEB3B'}}
+                style={{width: '18px', height: '18px', background: '#FFEB3B', opacity:0}}
                 type="target"
                 position={Position.Left}
                 id="cond-t"
                 isConnectable={isConnectable}
             />
+            <AddIcon style={{background: '#FFEB3B', top: '50%',
+                left: 0,
+                transform: 'translate(-50%, -50%)'
+            }} className='react-flow__handle'/>
             <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top:'0', right:'0'}}>
                 <DeleteIcon/>
             </IconButton>
@@ -419,10 +426,8 @@ const ConditionNode = ({id, data, isConnectable}) => {
                     name="condition"
                     onChange={(e) => handleChange(e, 'condition')}
                     variant='outlined'>
-                    <MenuItem value={'greater'}> greater than </MenuItem>
                     <MenuItem value={'equal'}> equal to</MenuItem>
-                    <MenuItem value={'less'}> less than </MenuItem>
-                    <MenuItem value={'range'}> in a range </MenuItem>
+                    <MenuItem value={'range'}> between </MenuItem>
                 </Select>
             </FormControl>
 
@@ -468,6 +473,10 @@ const ConditionNode = ({id, data, isConnectable}) => {
                 id="cond-s"
                 isConnectable={isConnectable}
             />
+            <AddIcon style={{background: '#FFEB3B', top: '50%',
+                right: 0,
+                transform: 'translate(50%, -50%)'
+            }} className='react-flow__handle'/>
         </Card>
     );
 };

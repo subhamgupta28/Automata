@@ -20,7 +20,7 @@ export default function CustomBarChart ({chartData}){
             valueFormatter
         }],
         height: 250,
-        width: 650,
+        width: 500,
         sx: {
             [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
                 transform: 'translateX(-10px)',

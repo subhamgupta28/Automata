@@ -271,7 +271,7 @@ export function Device({data, isConnectable}) {
                 type="source"
                 position={Position.Right}
                 id="b"
-                style={{top: 30}}
+                style={{top: 30,width: '10px', height:'10px', background: color}}
                 isConnectable={isConnectable}
             />
         </div>
@@ -307,8 +307,8 @@ export function MainNode({data, isConnectable}) {
             <div style={{ borderRadius: '16px' }}>
                 <Card elevation={0} style={{
                     padding: '0px',
-                    minHeight: '500px',
-                    maxWidth: '95%',
+                    minHeight: '700px',
+                    // maxWidth: '95%',
                     borderRadius: '18px',
                     // backgroundColor:'transparent',
                     // backdropFilter: 'blur(1px)',
@@ -330,7 +330,7 @@ export function MainNode({data, isConnectable}) {
                     {/*</Typography>*/}
 
 
-                    <CardContent style={{ marginLeft: '15px', display: 'grid',
+                    <CardContent style={{ marginLeft: '15px', display: 'grid', marginTop: '10px',
                         gridTemplateColumns: 'repeat(2, 1fr)', /* 4 columns */
                         gap: '10px', /* Space between items */
                          }}>
@@ -351,7 +351,7 @@ export function MainNode({data, isConnectable}) {
                             type="target"
                             position={Position.Left}
                             id={id}
-                            style={{ top: 140 + index * 50 }}
+                            style={{ top: 100 + index * 55, width: '10px', height:'10px', background: 'orange' }}
                             isConnectable={isConnectable}
                         />
                     ))}
@@ -420,7 +420,7 @@ function BarChartComp({chartDevice}) {
                 )
             }
             {chartData.attributes.length > 1 && (
-                <div style={{display: 'flex', alignItems: 'center'}}>
+                <div style={{display: 'flex', alignItems: 'center', flexDirection: 'column', width:'500px'}}>
                     <Typography>Attributes</Typography>
                     <div style={{margin: '14px'}}>
                         {chartData.attributes.map((name) => (

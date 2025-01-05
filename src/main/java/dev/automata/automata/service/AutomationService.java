@@ -68,7 +68,7 @@ public class AutomationService {
             var data = deviceState.getPayload();
             data.putAll(payload);
             finalDeviceState.payload(data);
-        }else{
+        } else {
             finalDeviceState.payload(payload);
         }
         deviceActionStateRepository.save(finalDeviceState.build());
@@ -304,69 +304,70 @@ public class AutomationService {
     }
 
     public String saveAutomationDetail(AutomationDetail automationDetail) {
-        var automation =  new Automation();
+        var automation = new Automation();
         automation.setIsEnabled(true);
         automation.setIsActive(false);
         if (automationDetail.getId() != null) {
             automation.setId(automationDetail.getId());
         }
 
-        var trigger = automationDetail.getNodes().stream().filter(t->{
-           var mp = (Map<String, Object>) t.get("data");
-           return mp.get("triggerData")!=null;
+        var trigger = automationDetail.getNodes().stream().filter(t -> {
+            var mp = t.getData();
+            return mp.getTriggerData() != null;
         }).findFirst();
         if (trigger.isPresent()) {
-            var dt = (Map<String, Object>) trigger.get().get("data");
-            var triggerData = (Map<String, Object>) dt.get("triggerData");
+            var dt = trigger.get().getData();
+            var triggerData = dt.getTriggerData();
             System.err.println(triggerData);
             var trig = new Automation.Trigger();
-            trig.setType(triggerData.get("type").toString());
-            trig.setKey(triggerData.get("key").toString());
-            trig.setDeviceId(triggerData.get("deviceId").toString());
-            trig.setValue(triggerData.get("value").toString());
+            trig.setType(triggerData.getType());
+            trig.setKey(triggerData.getKey());
+            trig.setDeviceId(triggerData.getDeviceId());
+            trig.setValue(triggerData.getValue());
             automation.setTrigger(trig);
-            automation.setName(triggerData.get("name").toString());
+            automation.setName(triggerData.getName());
         }
 
-        var actions = automationDetail.getNodes().stream().filter(t->{
-            var mp = (Map<String, Object>) t.get("data");
-            return mp.get("actionData")!=null;
+        var actions = automationDetail.getNodes().stream().filter(t -> {
+            var mp = t.getData();
+            return mp.getActionData() != null;
         }).toList();
         if (!actions.isEmpty()) {
             var list = new ArrayList<Automation.Action>();
             for (var action : actions) {
-                var dt = (Map<String, Object>) action.get("data");
-                var data = (Map<String, Object>) dt.get("actionData");
+                var dt = action.getData();
+                var data = dt.getActionData();
 
                 var action1 = new Automation.Action();
-                action1.setData(data.get("data").toString());
-                action1.setKey(data.get("key").toString());
-                action1.setDeviceId(data.get("deviceId").toString());
+                action1.setData(data.getData());
+                action1.setKey(data.getKey());
+                action1.setDeviceId(data.getDeviceId());
                 list.add(action1);
             }
             automation.setActions(list);
 
         }
 
-        var condition = automationDetail.getNodes().stream().filter(t->{
-            var mp = (Map<String, Object>) t.get("data");
-            return mp.get("conditionData")!=null;
+        var condition = automationDetail.getNodes().stream().filter(t -> {
+            var mp = t.getData();
+            return mp.getConditionData() != null;
         }).findFirst().orElse(null);
-        if (condition!=null) {
-            var dt = (Map<String, Object>) condition.get("data");
-            var data = (Map<String, Object>) dt.get("conditionData");
+        if (condition != null) {
+            var dt = condition.getData();
+            var data = dt.getConditionData();
 
             var cond = new Automation.Condition();
-            cond.setCondition(data.get("condition").toString());
-            cond.setBelow(data.get("below").toString());
-            cond.setAbove(data.get("above").toString());
-            cond.setValueType(data.get("valueType").toString());
-            cond.setValue(data.get("value").toString());
-            cond.setIsExact(Boolean.parseBoolean(data.get("isExact").toString()));
+            cond.setCondition(data.getCondition());
+            cond.setBelow(data.getBelow());
+            cond.setAbove(data.getAbove());
+            cond.setValueType(data.getValueType());
+            cond.setValue(data.getValue());
+            cond.setIsExact(data.isExact());
             automation.setConditions(List.of(cond));
         }
 
-        System.err.println(trigger);
+        System.err.println(automation.getId());
+        System.err.println(automationDetail.getId());
 
         var res = automationRepository.save(automation);
         automationDetail.setId(res.getId());
@@ -378,5 +379,15 @@ public class AutomationService {
 
     public AutomationDetail getAutomationDetail(String id) {
         return automationDetailRepository.findById(id).orElse(null);
+    }
+
+    public String disableAutomation(String id, Boolean enabled) {
+        var aut = automationRepository.findById(id).orElse(null);
+        if (aut!=null){
+            aut.setIsEnabled(enabled);
+            automationRepository.save(aut);
+            notificationService.sendNotification("Automation updated", "success");
+        }
+        return "success";
     }
 }
