@@ -28,7 +28,7 @@ export default function SwitchButton({value, deviceId, displayName, data, type})
     };
 
     return(
-        <div>
+        <div style={{display:'flex', flexDirection:'column',justifyContent: 'space-between', alignItems: 'center'}}>
             <Switch onChange={send} checked={on}/>
             <span style={{fontSize:'small'}} >{displayName}</span>
         </div>

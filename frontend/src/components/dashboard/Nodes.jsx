@@ -15,7 +15,7 @@ import {
     Chip,
     Dialog, DialogActions,
     DialogContent,
-    DialogTitle,
+    DialogTitle, Grid2,
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -181,7 +181,7 @@ export function Device({data, isConnectable}) {
     return (
         <div className="text-updater-node" key={data.value.id} >
 
-            <div style={{borderRadius: '12px', padding: '1px'}}>
+            <div style={{borderRadius: '12px'}}>
                 <Card elevation={0} style={{
                     display: 'flex',
                     borderRadius: '12px',
@@ -192,7 +192,7 @@ export function Device({data, isConnectable}) {
                 }}>
 
                     <CardContent
-                        style={{minWidth: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px', justifyContent: 'center'}}>
+                        style={{width: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px', justifyContent: 'center'}}>
                         <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                             {data.value.name}
                             {/*<SvgIcon component={icon} inheritViewBox style={{marginLeft: '8px',}}/>*/}
@@ -222,45 +222,42 @@ export function Device({data, isConnectable}) {
                                           displayName={slide.displayName}/>
                         ))}
 
-                        <div style={{display:'flex', justifyContent: 'space-around'}}>
-                            {switchBtn && data.live && switchBtn.map((slide) => (
-                                <SwitchButton key={slide.key} value={data.live[slide.key]} deviceId={data.value.id} data={slide} type={data.value.type}
-                                              displayName={slide.displayName}/>
+
+                        <div style={{gridTemplateColumns: 'repeat(2, 1fr)', display: 'grid', gap: '10px'}}>
+                            {data.value.attributes.map(attribute => (
+                                (attribute.type === "DATA|MAIN") && (
+                                    <Card style={{borderRadius: '12px',padding: '6px', display:'flex', flexDirection:'column', justifyContent: 'space-between', alignItems: 'center'}}>
+                                        <Typography variant='subtitle2'>{data.live[attribute["key"]]} {attribute["units"]}</Typography>
+                                        <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
+                                    </Card>
+                                )
                             ))}
+                            {switchBtn && (
+                                <div style={{display: 'flex', justifyContent: 'space-around'}}>
+                                    {data.live && switchBtn.map((slide) => (
+                                        <SwitchButton key={slide.key} value={data.live[slide.key]}
+                                                      deviceId={data.value.id} data={slide} type={data.value.type}
+                                                      displayName={slide.displayName}/>
+                                    ))}
+                                </div>
+                            )}
+
                         </div>
 
 
-
                         {data.live && (
-                            <table style={{width: '100%', marginTop: '12px'}}>
-                                <tbody style={{padding: '0'}}>
-                                {
-                                    data.value.attributes.map(attribute => (
-                                        (attribute.type === "DATA|MAIN") && (
-                                            <tr key={attribute.id} >
-                                                <td>{attribute["displayName"]}</td>
-                                                <td>{data.live[attribute["key"]]}</td>
-                                                <td>{attribute["units"]}</td>
-                                            </tr>
-                                        )
-                                    ))
-                                }
+                            <div style={{width: '100%', marginTop: '12px', display: 'flex', justifyContent:'center', alignItems: 'center'}}>
                                 {
                                     data.value.attributes.map(attribute => (
                                         (attribute.type === "ACTION|OUT") && (
-                                            <tr style={{width: '100%'}} key={attribute.id}>
-                                                <th colSpan="3">
-                                                    <Button aria-label="delete" style={{width: '100%'}}
-                                                            onClick={() => handleAction(attribute)}>
-                                                        {attribute["displayName"]}
-                                                    </Button>
-                                                </th>
-                                            </tr>
+                                            <Button key={attribute.id} aria-label="delete"
+                                                    onClick={() => handleAction(attribute)}>
+                                                {attribute["displayName"]}
+                                            </Button>
                                         )
                                     ))
                                 }
-                                </tbody>
-                            </table>
+                            </div>
                         )}
                     </CardContent>
                 </Card>

@@ -37,7 +37,7 @@ export const createEdges = (devices, charts) => {
 
 export const createNodes = (devices, charts) => {
 
-    const initX = 1020;
+    const initX = 1260;
     const initY = 120;
     let index = 120;
     let deviceNodes = [];
