@@ -154,11 +154,11 @@ public class AutomationService {
 //        System.err.println(payload);
         if (payload != null && isTriggered(automation, payload)) {
             automation.setIsActive(true);
-            automationRepository.save(automation);
+//            automationRepository.save(automation);
             executeActions(automation);
         } else {
             automation.setIsActive(false);
-            automationRepository.save(automation);
+//            automationRepository.save(automation);
             System.err.println("No state match for payload: " + payload);
         }
     }
@@ -362,7 +362,7 @@ public class AutomationService {
             cond.setAbove(data.getAbove());
             cond.setValueType(data.getValueType());
             cond.setValue(data.getValue());
-            cond.setIsExact(data.isExact());
+            cond.setIsExact(data.getIsExact());
             automation.setConditions(List.of(cond));
         }
 

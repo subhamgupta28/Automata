@@ -116,7 +116,7 @@ public class AutomationDetail {
                 private String below;
                 private String above;
                 private String value;
-                private boolean isExact;
+                private Boolean isExact;
             }
 
             @Getter

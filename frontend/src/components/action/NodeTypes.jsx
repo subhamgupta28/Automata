@@ -328,6 +328,7 @@ const ActionNode = ({id, data, isConnectable}) => {
 
 // Custom Condition Node
 const ConditionNode = ({id, data, isConnectable}) => {
+    console.log("data", data);
     const conditionData = data.conditionData ? data.conditionData : {
         condition: 'numeric',
         valueType: 'int',
@@ -336,12 +337,13 @@ const ConditionNode = ({id, data, isConnectable}) => {
         value: '0',
         isExact: false
     };
+
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
     const [triggerData, setTriggerData] = useState({})
     const [condition, setCondition] = useState(conditionData.condition)
     const [above, setAbove] = useState(conditionData.above)
     const [below, setBelow] = useState(conditionData.below)
-    const [isRange, setIsRange] = useState(!conditionData.isExact)
+    const [isRange, setIsRange] = useState(conditionData.isExact)
     const [conditionValue, setConditionValue] = useState(conditionData.value)
     const connections = useHandleConnections({
         type: 'target',
@@ -369,7 +371,7 @@ const ConditionNode = ({id, data, isConnectable}) => {
     }, [nodesData]);
 
     useEffect(() => {
-        // console.log("node id", id, triggerData);
+        console.log("node id", id, isRange);
         updateNodeData(id, {
             conditionData: {
                 condition: condition,
@@ -377,7 +379,7 @@ const ConditionNode = ({id, data, isConnectable}) => {
                 below: below,
                 above: above,
                 value: conditionValue,
-                isExact: !isRange
+                isExact: isRange
             }
         })
     }, [condition, conditionValue, below, above, isRange]);
@@ -387,7 +389,8 @@ const ConditionNode = ({id, data, isConnectable}) => {
         if (select === 'value') {
             setConditionValue(e.target.value);
         } else if (select === 'condition') {
-            setIsRange(e.target.value === 'range');
+            console.log(e.target.value === 'equal')
+            setIsRange(e.target.value === 'equal');
             setCondition(e.target.value);
         } else if (select === 'above') {
             setAbove(e.target.value);
@@ -431,7 +434,7 @@ const ConditionNode = ({id, data, isConnectable}) => {
                 </Select>
             </FormControl>
 
-            {!isRange ? (
+            {isRange ? (
                 <TextField
                     size='small'
                     label="Value"

@@ -1,150 +1,101 @@
-{
-  "nodes": [
-    {
-      "id": "node_trigger_0",
-      "type": "trigger",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 59.666666666666686,
-        "y": 38
+[
+  {
+    "_id": "node_trigger_0",
+    "type": "trigger",
+    "position": {
+      "x": 135,
+      "y": 75
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "trigger"
       },
-      "data": {
-        "triggerData": {
-          "deviceId": "670edfe8166ab22722fbf728",
-          "type": "state",
-          "key": "temp",
-          "name": "Temp control",
-          "value": "20"
-        },
-        "conditionData": null,
-        "actionData": null,
-        "value": {
-          "name": "trigger",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 243,
-        "height": 427
+      "triggerData": {
+        "deviceId": "670edfe8166ab22722fbf728",
+        "type": "state",
+        "key": "button",
+        "name": "env button",
+        "value": "10"
       }
     },
-    {
-      "id": "node_condition_1",
-      "type": "condition",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 411.00000000000006,
-        "y": 36.333333333333336
+    "measured": {
+      "width": new
+      NumberInt(
+      "243"
+      ),
+      "height": new
+      NumberInt(
+      "427"
+      )
+    },
+    "selected": false,
+    "dragging": false
+  },
+  {
+    "_id": "node_condition_1",
+    "type": "condition",
+    "position": {
+      "x": 516.6666666666666,
+      "y": 70.33333333333333
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "condition"
       },
-      "data": {
-        "triggerData": null,
-        "conditionData": {
-          "condition": "range",
-          "valueType": "int",
-          "below": "34",
-          "above": "20",
-          "value": "",
-          "isExact": false
-        },
-        "actionData": null,
-        "value": {
-          "name": "condition",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 243,
-        "height": 275
+      "conditionData": {
+        "condition": "equal",
+        "valueType": "int",
+        "below": "0",
+        "above": "0",
+        "value": "0",
+        "isExact": true
       }
     },
-    {
-      "id": "node_action_2",
-      "type": "action",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 772,
-        "y": 31.999999999999993
+    "measured": {
+      "width": new
+      NumberInt(
+      "243"
+      ),
+      "height": new
+      NumberInt(
+      "219"
+      )
+    },
+    "selected": true,
+    "dragging": false
+  },
+  {
+    "_id": "node_action_2",
+    "type": "action",
+    "position": {
+      "x": 870.6666666666669,
+      "y": 68.66666666666667
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "action"
       },
-      "data": {
-        "triggerData": null,
-        "conditionData": null,
-        "actionData": {
-          "deviceId": "67571bf46f2d631aa77cc632",
-          "key": "preset",
-          "name": "",
-          "data": "2"
-        },
-        "value": {
-          "name": "action",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 243,
-        "height": 203
+      "actionData": {
+        "deviceId": "67571bf46f2d631aa77cc632",
+        "key": "onOff",
+        "name": "",
+        "data": "1"
       }
     },
-    {
-      "id": "node_action_3",
-      "type": "action",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 773.0000000000001,
-        "y": 286
-      },
-      "data": {
-        "triggerData": null,
-        "conditionData": null,
-        "actionData": {
-          "deviceId": "673b8250da1ad94ac1d28280",
-          "key": "speed",
-          "name": "",
-          "data": "30"
-        },
-        "value": {
-          "name": "action",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 243,
-        "height": 203
-      }
-    }
-  ],
-  "edges": [
-    {
-      "source": "node_trigger_0",
-      "sourceHandle": "b",
-      "target": "node_condition_1",
-      "targetHandle": "cond-t",
-      "type": "custom-edge",
-      "id": "xy-edge__node_trigger_0b-node_condition_1cond-t"
+    "measured": {
+      "width": new
+      NumberInt(
+      "243"
+      ),
+      "height": new
+      NumberInt(
+      "203"
+      )
     },
-    {
-      "source": "node_condition_1",
-      "sourceHandle": "cond-s",
-      "target": "node_action_2",
-      "targetHandle": "b",
-      "type": "custom-edge",
-      "id": "xy-edge__node_condition_1cond-s-node_action_2b"
-    },
-    {
-      "source": "node_condition_1",
-      "sourceHandle": "cond-s",
-      "target": "node_action_3",
-      "targetHandle": "b",
-      "type": "custom-edge",
-      "id": "xy-edge__node_condition_1cond-s-node_action_3b"
-    }
-  ],
-  "viewport": {
-    "x": 0,
-    "y": 50,
-    "zoom": 0.75
+    "selected": false,
+    "dragging": false
   }
-}
+]
