@@ -1,6 +1,6 @@
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'; // Import necessary components
+import {MapContainer, TileLayer, Marker, Popup, CircleMarker} from 'react-leaflet'; // Import necessary components
 import L from 'leaflet'; // Import leaflet for custom icons (if needed)
-import 'leaflet/dist/leaflet.css'; // Import the Leaflet CSS file for proper map styling
+import 'leaflet/dist/leaflet.css';
 
 
 export default function MapView({lat, lng})  {

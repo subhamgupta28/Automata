@@ -196,7 +196,7 @@ export function Device({data, isConnectable}) {
                         <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                             {data.value.name}
                             {/*<SvgIcon component={icon} inheritViewBox style={{marginLeft: '8px',}}/>*/}
-                            <span style={{fontSize:'x-small', color: color}} >{data.value["status"]}</span>
+                            {/*<span style={{fontSize:'x-small', color: color}} >{data.value["status"]}</span>*/}
                             <IconButton onClick={handleOpenModal} variant='text' style={{marginLeft: '8px'}}>
                                 <SettingsIcon/>
                             </IconButton>
@@ -223,7 +223,7 @@ export function Device({data, isConnectable}) {
                         ))}
 
 
-                        <div style={{gridTemplateColumns: 'repeat(2, 1fr)', display: 'grid', gap: '10px'}}>
+                        <div style={{gridTemplateColumns: 'repeat(2, 1fr)', display: 'grid', gap: '10px', marginTop:'10px'}}>
                             {data.value.attributes.map(attribute => (
                                 (attribute.type === "DATA|MAIN") && (
                                     <Card style={{borderRadius: '12px',padding: '6px', display:'flex', flexDirection:'column', justifyContent: 'space-between', alignItems: 'center'}}>
