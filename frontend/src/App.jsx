@@ -9,6 +9,7 @@ import {darkTheme} from "./Theme.jsx";
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import Notifications from "./components/Notifications.jsx";
 import Devices from "./components/Devices.jsx";
+import {AppCacheProvider} from "./services/AppCacheContext.jsx";
 
 
 function App() {
@@ -37,11 +38,14 @@ function App() {
                             {/*<SignIn/>*/}
                             {/*<SignUp/>*/}
 
-                            <Routes>
-                                <Route path="/" element={<DeviceNodes/>}/>
-                                <Route path="actions" element={<ActionBoard/>}/>
-                                <Route path="devices" element={<Devices/>}/>
-                            </Routes>
+                            <AppCacheProvider>
+                                <Routes>
+                                    <Route path="/" element={<DeviceNodes/>}/>
+                                    <Route path="actions" element={<ActionBoard/>}/>
+                                    <Route path="devices" element={<Devices/>}/>
+                                </Routes>
+                            </AppCacheProvider>
+
 
 
 

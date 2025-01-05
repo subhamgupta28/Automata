@@ -4,10 +4,12 @@ import dev.automata.automata.dto.AutomationCache;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationDetail;
+import dev.automata.automata.model.DeviceActionState;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.AutomationDetailRepository;
 import dev.automata.automata.repository.AutomationRepository;
+import dev.automata.automata.repository.DeviceActionStateRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -20,10 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +35,7 @@ public class AutomationService {
     private final MainService mainService;
     private final NotificationService notificationService;
     private final AutomationDetailRepository automationDetailRepository;
+    private final DeviceActionStateRepository deviceActionStateRepository;
 
     private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
 
@@ -60,6 +60,18 @@ public class AutomationService {
 
     public String handleAction(String deviceId, Map<String, Object> payload, String deviceType) {
         var map = new HashMap<String, Object>();
+        var deviceState = deviceActionStateRepository.findById(deviceId).orElse(null);
+        var finalDeviceState = DeviceActionState.builder()
+                .deviceId(deviceId)
+                .deviceType(deviceType);
+        if (deviceState != null) {
+            var data = deviceState.getPayload();
+            data.putAll(payload);
+            finalDeviceState.payload(data);
+        }else{
+            finalDeviceState.payload(payload);
+        }
+        deviceActionStateRepository.save(finalDeviceState.build());
 
         if (deviceType.equals("WLED")) {
             var res = handleWLED(deviceId, payload);
@@ -108,14 +120,13 @@ public class AutomationService {
                     case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString()));
                     default -> "No action found for key: " + key;
                 };
+                System.err.println(result);
                 var data = wled.getInfo(deviceId);
                 mainService.saveData(deviceId, data);
                 System.err.println(data);
-                var devic = mainService.setStatus(deviceId, Status.ONLINE);
                 var map = new HashMap<String, Object>();
                 map.put("deviceId", deviceId);
                 map.put("data", data);
-                map.put("deviceConfig", devic.get("deviceConfig"));
                 messagingTemplate.convertAndSend("/topic/data", map);
             } catch (Exception e) {
                 return "Error";
@@ -133,6 +144,7 @@ public class AutomationService {
         for (Automation automation : automations) {
             var payload = mainService.getLastData(automation.getTrigger().getDeviceId());
             if (isTriggered(automation, payload)) {
+                notificationService.sendNotification("Executing automations:" + automation.getName(), "automation");
                 executeActions(automation);
             }
         }
@@ -141,8 +153,12 @@ public class AutomationService {
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
 //        System.err.println(payload);
         if (payload != null && isTriggered(automation, payload)) {
+            automation.setIsActive(true);
+            automationRepository.save(automation);
             executeActions(automation);
         } else {
+            automation.setIsActive(false);
+            automationRepository.save(automation);
             System.err.println("No state match for payload: " + payload);
         }
     }
@@ -210,7 +226,7 @@ public class AutomationService {
             }
 
             payload.put("key", action.getKey());
-            notificationService.sendNotification("Executing automations for device " + device.getName(), "success");
+
             if (device.getType().equals("WLED")) {
                 handleWLED(action.getDeviceId(), payload);
             } else {
@@ -259,7 +275,7 @@ public class AutomationService {
 
     @Scheduled(fixedRate = 30000)
     private void triggerPeriodicAutomations() {
-        var automations = automationRepository.findAll();
+        var automations = automationRepository.findByIsEnabledTrue();
         automations.forEach(a -> {
             var lastData = mainService.getLastData(a.getTrigger().getDeviceId());
             checkAndExecuteSingleAutomation(a, lastData);
@@ -287,9 +303,80 @@ public class AutomationService {
 
     }
 
-    public String saveAutomationDetail(AutomationDetail automation) {
-        automationDetailRepository.save(automation);
+    public String saveAutomationDetail(AutomationDetail automationDetail) {
+        var automation =  new Automation();
+        automation.setIsEnabled(true);
+        automation.setIsActive(false);
+        if (automationDetail.getId() != null) {
+            automation.setId(automationDetail.getId());
+        }
+
+        var trigger = automationDetail.getNodes().stream().filter(t->{
+           var mp = (Map<String, Object>) t.get("data");
+           return mp.get("triggerData")!=null;
+        }).findFirst();
+        if (trigger.isPresent()) {
+            var dt = (Map<String, Object>) trigger.get().get("data");
+            var triggerData = (Map<String, Object>) dt.get("triggerData");
+            System.err.println(triggerData);
+            var trig = new Automation.Trigger();
+            trig.setType(triggerData.get("type").toString());
+            trig.setKey(triggerData.get("key").toString());
+            trig.setDeviceId(triggerData.get("deviceId").toString());
+            trig.setValue(triggerData.get("value").toString());
+            automation.setTrigger(trig);
+            automation.setName(triggerData.get("name").toString());
+        }
+
+        var actions = automationDetail.getNodes().stream().filter(t->{
+            var mp = (Map<String, Object>) t.get("data");
+            return mp.get("actionData")!=null;
+        }).toList();
+        if (!actions.isEmpty()) {
+            var list = new ArrayList<Automation.Action>();
+            for (var action : actions) {
+                var dt = (Map<String, Object>) action.get("data");
+                var data = (Map<String, Object>) dt.get("actionData");
+
+                var action1 = new Automation.Action();
+                action1.setData(data.get("data").toString());
+                action1.setKey(data.get("key").toString());
+                action1.setDeviceId(data.get("deviceId").toString());
+                list.add(action1);
+            }
+            automation.setActions(list);
+
+        }
+
+        var condition = automationDetail.getNodes().stream().filter(t->{
+            var mp = (Map<String, Object>) t.get("data");
+            return mp.get("conditionData")!=null;
+        }).findFirst().orElse(null);
+        if (condition!=null) {
+            var dt = (Map<String, Object>) condition.get("data");
+            var data = (Map<String, Object>) dt.get("conditionData");
+
+            var cond = new Automation.Condition();
+            cond.setCondition(data.get("condition").toString());
+            cond.setBelow(data.get("below").toString());
+            cond.setAbove(data.get("above").toString());
+            cond.setValueType(data.get("valueType").toString());
+            cond.setValue(data.get("value").toString());
+            cond.setIsExact(Boolean.parseBoolean(data.get("isExact").toString()));
+            automation.setConditions(List.of(cond));
+        }
+
+        System.err.println(trigger);
+
+        var res = automationRepository.save(automation);
+        automationDetail.setId(res.getId());
+        automationDetailRepository.save(automationDetail);
         notificationService.sendNotification("Automation saved successfully", "success");
         return "success";
+    }
+
+
+    public AutomationDetail getAutomationDetail(String id) {
+        return automationDetailRepository.findById(id).orElse(null);
     }
 }

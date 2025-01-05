@@ -1,8 +1,12 @@
 import React from "react";
-import { Handle, HandleProps } from "@xyflow/react";
-import { cn } from "@/lib/utils";
+import { Handle } from "@xyflow/react";
+import {Button} from "@mui/material";
+
 
 export const BaseHandle = React.forwardRef(({ className, ...props }, ref) => (
-    <Handle ref={ref} className={cn("", className)} {...props} />
+    <div>
+        <Handle ref={ref} className={className} {...props} />
+        <Button>he</Button>
+    </div>
 ));
 BaseHandle.displayName = "BaseHandle";

@@ -3,6 +3,9 @@ import React, {useEffect} from "react";
 import {Alert, Snackbar} from "@mui/material";
 import Button from "@mui/material/Button";
 import Slide from '@mui/material/Slide';
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from '@mui/icons-material/Close';
+import {notificationAction} from "../services/apis.jsx";
 
 export default function Notifications() {
     const {messages, sendMessage} = useWebSocket('/topic/notification');
@@ -12,6 +15,10 @@ export default function Notifications() {
         setOpen(true);
     };
 
+    const handleAutomation = async () => {
+        await notificationAction("stop_automation", {"action":"snooze for 1 hr"});
+    };
+
     const handleClose = (event, reason) => {
         if (reason === 'clickaway') {
             return;
@@ -19,6 +26,27 @@ export default function Notifications() {
 
         setOpen(false);
     };
+
+    const action = (
+        <React.Fragment>
+            {messages.severity === "automation" && (
+                <div>
+                    <Button color="secondary" size="small" onClick={handleAutomation}>
+                        Stop Automation
+                    </Button>
+                    <IconButton
+                        size="small"
+                        aria-label="close"
+                        color="inherit"
+                        onClick={handleClose}
+                    >
+                        <CloseIcon fontSize="small" />
+                    </IconButton>
+                </div>
+            )}
+
+        </React.Fragment>
+    );
 
     useEffect(() => {
         console.log(messages)
@@ -34,16 +62,18 @@ export default function Notifications() {
                     TransitionComponent={Slide}
                     autoHideDuration={3000}
                     onClose={handleClose}
+                    message={messages.message}
+                    action={action}
                 >
-                    <Alert
-                        onClose={handleClose}
-                        severity={messages.severity}
-                        icon={false}
-                        variant="filled"
-                        sx={{ width: '100%' }}
-                    >
-                        {messages.message}
-                    </Alert>
+                    {/*<Alert*/}
+                    {/*    onClose={handleClose}*/}
+                    {/*    severity={messages.severity}*/}
+                    {/*    icon={false}*/}
+                    {/*    variant="filled"*/}
+                    {/*    sx={{ width: '100%' }}*/}
+                    {/*>*/}
+                    {/*    {messages.message}*/}
+                    {/*</Alert>*/}
                 </Snackbar>
             )}
 

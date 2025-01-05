@@ -5,10 +5,10 @@ import dev.automata.automata.service.NotificationService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @AllArgsConstructor
@@ -20,5 +20,10 @@ public class UtilityController {
     @GetMapping("/notifications")
     public ResponseEntity<List<Notification>> getLastFiveNotifications() {
         return ResponseEntity.ok(notificationService.getLastFiveNotifications());
+    }
+
+    @PostMapping("/action/{action}")
+    public ResponseEntity<String> notificationAction(@PathVariable("action") String action, @RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(notificationService.notificationAction(action, body));
     }
 }

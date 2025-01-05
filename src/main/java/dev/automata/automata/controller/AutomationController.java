@@ -105,6 +105,10 @@ public class AutomationController {
         return ResponseEntity.ok(actionService.saveAutomationDetail(automation));
     }
 
+    @GetMapping("/getAutomationDetail/{id}")
+    public ResponseEntity<AutomationDetail> getAutomationDetail(@PathVariable("id") String id) {
+        return ResponseEntity.ok(actionService.getAutomationDetail(id));
+    }
 
     @PostMapping("/sendAction/{deviceId}/{deviceType}")
     public ResponseEntity<String> handleAction(

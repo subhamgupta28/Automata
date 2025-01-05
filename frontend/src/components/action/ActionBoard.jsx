@@ -1,36 +1,25 @@
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges,
-    Controls, Handle, MarkerType, Panel, Position,
+    applyNodeChanges, Panel,
     ReactFlow, ReactFlowProvider,
-    useEdgesState, useHandleConnections, useNodesData,
-    useNodesState, useReactFlow
+    useEdgesState, useNodesState, useReactFlow
 } from "@xyflow/react";
 import React, {useCallback, useEffect, useMemo, useState, createContext, useContext, useRef} from "react";
-import {getActions, getDevices, saveAutomationDetail} from "../../services/apis.jsx";
-import CreateAction from "./CreateAction.jsx";
+import {getActions, getAutomationDetail, saveAutomationDetail} from "../../services/apis.jsx";
+
 import {
     Button,
     Card,
-    CardActions,
     CardContent,
-    CardHeader,
-    Fab,
-    FormControl,
-    InputLabel,
-    MenuItem,
-    Select
 } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import Box from "@mui/material/Box";
-import AddActionDialog from "./AddActionDialog.jsx";
 import {ActionNode, ConditionNode, TriggerNode} from "./NodeTypes.jsx";
 import CustomEdge from "./CustomEdge.jsx";
-
+import {useCachedDevices} from "../../services/AppCacheContext.jsx";
+import '@xyflow/react/dist/style.css';
 
 const triggerStyle = {
     padding: '10px',
@@ -154,7 +143,7 @@ export function ActionBoard(action) {
     const [edges, setEdges] = useEdgesState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [automations, setAutomations] = useState([]);
-    const [devices, setDevices] = useState([]);
+    const {devices, loading, error} = useCachedDevices();
     const handleCloseModal = () => setIsModalOpen(false);
     const reactFlowWrapper = useRef(null);
     const {screenToFlowPosition} = useReactFlow();
@@ -166,8 +155,8 @@ export function ActionBoard(action) {
             try {
                 // const res = await getDevices();
                 // setDevices(res);
-                // const data = await getActions();
-                // setAutomations(data)
+                const data = await getActions();
+                setAutomations(data)
                 // const {nodes, edges} = createNodes(data)
                 // setNodes(nodes); // Create nodes including the main node
                 // setEdges(edges); // Create edges connecting devices to the main node
@@ -191,7 +180,7 @@ export function ActionBoard(action) {
 
         if (rfInstance) {
             const flow = rfInstance.toObject();
-            // saveFlow(JSON.stringify(flow));
+            saveFlow(JSON.stringify(flow));
             console.log("flow", flow)
             localStorage.setItem("flow", JSON.stringify(flow));
         }
@@ -217,6 +206,7 @@ export function ActionBoard(action) {
         event.dataTransfer.dropEffect = 'move';
     }, []);
 
+
     const onDrop = useCallback(
         (event) => {
             event.preventDefault();
@@ -233,7 +223,7 @@ export function ActionBoard(action) {
                 id: getId(type),
                 type,
                 position,
-                data: {value: {isNewNode: true, name: type, devices} },
+                data: {value: {isNewNode: true, name: type} },
             };
 
             setNodes((nds) => nds.concat(newNode));
@@ -242,6 +232,12 @@ export function ActionBoard(action) {
     );
 
 
+    const openAutomation = async (a) => {
+      const detail = await getAutomationDetail(a.id);
+        setNodes(detail.nodes || []);
+        setEdges(detail.edges || []);
+
+    }
 
     const onNodesChange = useCallback(
         (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -306,8 +302,8 @@ export function ActionBoard(action) {
                         {/*    </Fab>*/}
                         {/*</Panel>*/}
                         <Panel position="bottom-right" style={{marginBottom: '50px'}}>
-                            <button onClick={onRestore}>restore</button>
-                            <button onClick={onSave}>save</button>
+                            <Button variant='outlined' onClick={onRestore}>Restore</Button>
+                            <Button variant='outlined' onClick={onSave} style={{marginLeft: '10px'}}>Save</Button>
                         </Panel>
                     </ReactFlow>
                     {/*<Card style={{margin: '10px', height: '18%', padding:'8px'}} variant='outlined'>*/}
@@ -335,6 +331,19 @@ export function ActionBoard(action) {
                                  onDragStart={(event) => onDragStart(event, 'action')}
                                  draggable>
                                 Add Action
+                            </div>
+                            <div style={{overflow: 'auto'}}>
+                                <Typography>
+                                    Saved Automations
+                                </Typography>
+                                {automations.map(a=>(
+                                    <Card variant='outlined' style={{padding: '10px', marginTop: '10px'}} key={a.id} >
+                                        {a.name}
+                                        <Button size='small' onClick={()=> openAutomation(a)}>
+                                            Open
+                                        </Button>
+                                    </Card>
+                                ))}
                             </div>
                         </CardContent>
                         {/*<CardActions>*/}

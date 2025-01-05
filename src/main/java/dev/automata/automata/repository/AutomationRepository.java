@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface AutomationRepository extends MongoRepository<Automation, String> {
 
+    List<Automation> findByIsEnabledTrue();
 }

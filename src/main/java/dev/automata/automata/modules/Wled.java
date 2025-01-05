@@ -69,7 +69,7 @@ public class Wled {
         var res = restTemplate.getForObject(ipAddress + "&T=2", String.class);
         if (res != null) {
             var bht = res.split(">")[3].replace("</ac", "");
-            return Integer.parseInt(bht) > 0 ? "Success" : "Error";
+            return "Success";
         } else
             return "Off";
     }
@@ -78,7 +78,7 @@ public class Wled {
         var res = restTemplate.getForObject(ipAddress + "&A=" + brightness, String.class);
         if (res != null) {
             var bht = res.split(">")[3].replace("</ac", "");
-            return Integer.parseInt(bht) == brightness ? "Success" : "Error";
+            return "Success";
         } else
             return "Error";
     }
@@ -87,7 +87,7 @@ public class Wled {
         var res = restTemplate.getForObject(ipAddress + "&PL=" + presets, String.class);
         if (res != null) {
             var bht = res.split(">")[41].replace("</ps", "");
-            return Integer.parseInt(bht) == presets ? "Success" : "Error";
+            return "Success";
         } else
             return "Error";
 

@@ -1,15 +1,18 @@
-import React, {memo, useEffect, useState} from "react";
+import React, {memo, useCallback, useEffect, useState} from "react";
 import {getDevices} from "../../services/apis.jsx";
 import {Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
 import Typography from "@mui/material/Typography";
-import {Handle, Position, useHandleConnections, useNodesData, useReactFlow} from "@xyflow/react";
+import {Handle, Position, useHandleConnections, useNodes, useNodesData, useReactFlow} from "@xyflow/react";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import CancelIcon from "@mui/icons-material/Cancel";
+import {useCachedDevices} from "../../services/AppCacheContext.jsx";
+import DeleteIcon from '@mui/icons-material/Delete';
+import {BaseHandle} from "./BaseHandle.jsx";
 
 const triggerStyle = {
     padding: '10px',
-    borderRadius: '5px',
+    borderRadius: '10px',
     width: '220px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '2px solid #6DBF6D',
@@ -17,7 +20,7 @@ const triggerStyle = {
 
 const actionStyle = {
     padding: '10px',
-    borderRadius: '5px',
+    borderRadius: '10px',
     width: '220px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '2px solid #0288D1',
@@ -25,7 +28,7 @@ const actionStyle = {
 
 const conditionStyle = {
     padding: '10px',
-    borderRadius: '5px',
+    borderRadius: '10px',
     width: '220px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '2px solid #FFEB3B',
@@ -33,16 +36,15 @@ const conditionStyle = {
 
 // Custom Trigger Node
 const TriggerNode = ({id, data, isConnectable}) => {
-    console.log("datta", data)
     const triggerData = data.triggerData ? data.triggerData : {
         key: '',
         value: '',
         name: '',
         deviceId: ''
     };
-    const {updateNodeData} = useReactFlow();
+    const {updateNodeData, setEdges, setNodes} = useReactFlow();
     const [selectedDevice, setSelectedDevice] = useState({id: triggerData.deviceId, name: ''});
-    const [devices, setDevices] = useState([]);
+    const {devices, loading, error} = useCachedDevices();
     const [name, setName] = useState(triggerData.name);
     const [value, setValue] = useState(triggerData.value);
     const [key, setKey] = useState(triggerData.key);
@@ -50,13 +52,11 @@ const TriggerNode = ({id, data, isConnectable}) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await getDevices();
-                setDevices(res);
                 if (data.triggerData.deviceId) {
-                    const device = res.filter((d) => d.id === data.triggerData.deviceId);
+                    const device = devices.filter((d) => d.id === data.triggerData.deviceId);
                     setSelectedDevice(device[0]);
                 } else {
-                    setSelectedDevice(res[0]);
+                    setSelectedDevice(devices[0]);
                 }
 
                 console.log("devices", data);
@@ -68,7 +68,7 @@ const TriggerNode = ({id, data, isConnectable}) => {
         if (data.value && data.value.isNewNode) {
             fetchData();
         }
-    }, [data.value])
+    }, [devices])
 
     useEffect(() => {
         // console.log("node id", id, triggerData);
@@ -104,12 +104,18 @@ const TriggerNode = ({id, data, isConnectable}) => {
         // setTriggerData(updatedData);
         // console.log(name, value)
     }
-
+    const deleteNode = (nodeId) => {
+        setNodes((nodes) => nodes.filter((node) => node.id !== nodeId)); // Remove the node
+        setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+    }
     return (
-        <Card style={{...triggerStyle, padding: '20px'}}>
+        <Card style={{...triggerStyle, padding: '10px'}}>
 
             {data.value && (
-                <div className="nodrag">
+                <div >
+                    <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top: '0', right: '0'}}>
+                        <DeleteIcon/>
+                    </IconButton>
                     <TextField
                         size='small'
                         label="Name for the trigger"
@@ -117,7 +123,7 @@ const TriggerNode = ({id, data, isConnectable}) => {
                         value={name}
                         onChange={(e) => handleTriggerKey(e, 'name')}
                         name="name"
-                        sx={{marginBottom: 2, marginTop: 1}}
+                        sx={{marginBottom: 2, marginTop: 3}}
                     />
                     <TextField
                         size='small'
@@ -132,7 +138,7 @@ const TriggerNode = ({id, data, isConnectable}) => {
                         Trigger Device is used to trigger actions based on the value of a key. It's the device that will
                         send the trigger an automation.
                     </Typography>
-                    <FormControl fullWidth sx={{marginTop: 1}}>
+                    <FormControl fullWidth sx={{marginTop: 1}} className='nodrag'>
                         <InputLabel>Trigger Device</InputLabel>
                         <Select
                             variant='outlined'
@@ -152,7 +158,7 @@ const TriggerNode = ({id, data, isConnectable}) => {
                     <Typography variant="body2" sx={{marginTop: 2}}>
                         Trigger key is the attribute of the device that will be used to trigger the automation.
                     </Typography>
-                    <FormControl fullWidth sx={{marginBottom: 1, marginTop: 1}}>
+                    <FormControl className='nodrag' fullWidth sx={{marginBottom: 1, marginTop: 1}}>
                         <InputLabel>Trigger Key</InputLabel>
                         <Select
                             variant='outlined'
@@ -183,9 +189,10 @@ const TriggerNode = ({id, data, isConnectable}) => {
     );
 };
 
+
 // Custom Action Node
 const ActionNode = ({id, data, isConnectable}) => {
-    const {updateNodeData} = useReactFlow();
+    const {updateNodeData, setEdges, setNodes} = useReactFlow();
     const actionData = data.actionData ? data.actionData : {
         key: '',
         data: '',
@@ -193,7 +200,7 @@ const ActionNode = ({id, data, isConnectable}) => {
         deviceId: ''
     };
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
-    const [devices, setDevices] = useState([]);
+    const {devices, loading, error} = useCachedDevices();
     const [name, setName] = useState(actionData.name);
     const [value, setValue] = useState(actionData.data);
     const [key, setKey] = useState(actionData.key);
@@ -201,13 +208,12 @@ const ActionNode = ({id, data, isConnectable}) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await getDevices();
-                setDevices(res);
+
                 if (data.actionData.deviceId) {
-                    const device = res.filter((d) => d.id === data.actionData.deviceId);
+                    const device = devices.filter((d) => d.id === data.actionData.deviceId);
                     setSelectedDevice(device[0]);
                 } else {
-                    setSelectedDevice(res[0]);
+                    setSelectedDevice(devices[0]);
                 }
 
                 console.log("devices", data);
@@ -219,7 +225,7 @@ const ActionNode = ({id, data, isConnectable}) => {
         if (data.value && data.value.isNewNode) {
             fetchData();
         }
-    }, [data.value])
+    }, [data.actionData, devices])
     const handleTriggerKey = (e, select) => {
         if (select === 'name') {
             setName(e.target.value);
@@ -250,6 +256,11 @@ const ActionNode = ({id, data, isConnectable}) => {
         })
     }, [selectedDevice, key, value, name]);
 
+    const deleteNode = (nodeId) => {
+        setNodes((nodes) => nodes.filter((node) => node.id !== nodeId)); // Remove the node
+        setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+    }
+
     return (
         <Card style={actionStyle}>
             <Handle
@@ -259,8 +270,12 @@ const ActionNode = ({id, data, isConnectable}) => {
                 id="b"
                 isConnectable={isConnectable}
             />
-            <div className='nodrag' style={{margin: '8px'}}>
-                <FormControl fullWidth sx={{marginTop: 1}}>
+
+            <div style={{margin: '2px'}}>
+                <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top:'0', right:'0'}}>
+                    <DeleteIcon/>
+                </IconButton>
+                <FormControl fullWidth sx={{marginTop: 3}} className='nodrag'>
                     <InputLabel>Trigger Device</InputLabel>
                     <Select
                         variant='outlined'
@@ -277,7 +292,7 @@ const ActionNode = ({id, data, isConnectable}) => {
                         ))}
                     </Select>
                 </FormControl>
-                <FormControl fullWidth sx={{marginBottom: 1, marginTop: 1}}>
+                <FormControl fullWidth sx={{marginBottom: 1, marginTop: 1}} className='nodrag'>
                     <InputLabel>Trigger Key</InputLabel>
                     <Select
                         variant='outlined'
@@ -318,12 +333,12 @@ const ConditionNode = ({id, data, isConnectable}) => {
         value: '',
         isExact: false
     };
-    const {updateNodeData} = useReactFlow();
+    const {updateNodeData, setNodes, setEdges} = useReactFlow();
     const [triggerData, setTriggerData] = useState({})
     const [condition, setCondition] = useState(conditionData.condition)
     const [above, setAbove] = useState(conditionData.above)
     const [below, setBelow] = useState(conditionData.below)
-    const [isRange, setIsRange] = useState(conditionData.isExact)
+    const [isRange, setIsRange] = useState(!conditionData.isExact)
     const [conditionValue, setConditionValue] = useState(conditionData.value)
     const connections = useHandleConnections({
         type: 'target',
@@ -332,6 +347,11 @@ const ConditionNode = ({id, data, isConnectable}) => {
     const nodesData = useNodesData(
         connections.map((connection) => connection.source),
     );
+
+    const deleteNode = (nodeId) => {
+        setNodes((nodes) => nodes.filter((node) => node.id !== nodeId)); // Remove the node
+        setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
+    }
     useEffect(() => {
 
 
@@ -354,7 +374,7 @@ const ConditionNode = ({id, data, isConnectable}) => {
                 below: below,
                 above: above,
                 value: conditionValue,
-                isExact: isRange
+                isExact: !isRange
             }
         })
     }, [condition, conditionValue, below, above, isRange]);
@@ -374,7 +394,7 @@ const ConditionNode = ({id, data, isConnectable}) => {
     }
 
     return (
-        <Card style={{...conditionStyle, padding: '20px'}}>
+        <Card style={{...conditionStyle, padding: '10px'}}>
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B'}}
                 type="target"
@@ -382,6 +402,9 @@ const ConditionNode = ({id, data, isConnectable}) => {
                 id="cond-t"
                 isConnectable={isConnectable}
             />
+            <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top:'0', right:'0'}}>
+                <DeleteIcon/>
+            </IconButton>
             <Typography variant="body1" style={{marginBottom: '18px'}}>
                 When {triggerData.key} is
             </Typography>

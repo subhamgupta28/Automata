@@ -20,6 +20,8 @@ public class Automation {
     private String id;
     private String name;
     private Boolean isEnabled;
+    private Boolean isActive;
+    private Long snoozeTime;
 
     @JsonProperty("trigger")
     private Trigger trigger;
