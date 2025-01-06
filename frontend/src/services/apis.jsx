@@ -1,4 +1,5 @@
 import axios from 'axios';
+import {useEffect, useState} from "react";
 
 
 const BASE_URL = __API_MODE__ === 'serve'
@@ -67,7 +68,7 @@ export const updateAttrCharts = async (deviceId, attribute, isVisible) => {
 }
 
 export const updateShowInDashboard = async (deviceId, isVisible) => {
-    const response = await axios.get(BASE_URL + "main/showInDashboard/" + deviceId  + "/" + isVisible, {
+    const response = await axios.get(BASE_URL + "main/showInDashboard/" + deviceId + "/" + isVisible, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
@@ -77,7 +78,7 @@ export const updateShowInDashboard = async (deviceId, isVisible) => {
 }
 
 export const disableAutomation = async (id, isEnabled) => {
-    const response = await axios.get(BASE_URL + "action/disable/" + id  + "/" + isEnabled, {
+    const response = await axios.get(BASE_URL + "action/disable/" + id + "/" + isEnabled, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
@@ -105,7 +106,7 @@ export const sendAction = async (deviceId, payload, deviceType) => {
     return response.data;
 }
 export const notificationAction = async (action, payload) => {
-    const response = await axios.post(BASE_URL + "utils/action/"+action, payload, {
+    const response = await axios.post(BASE_URL + "utils/action/" + action, payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
@@ -133,24 +134,12 @@ export const saveAutomationDetail = async (payload) => {
     return response.data;
 }
 
-export const getNotifications = async () => {
-    const response = await axios.get(BASE_URL + "utils/notifications", {
-        headers: {
-            'Content-Type': 'application/json', // Specify the content type if necessary
-            // Add any other headers if needed, e.g., Authorization
-        },
-    });
-    return response.data;
+export const getNotifications = () => {
+    return useGetFetch(BASE_URL + "utils/notifications");
 }
 
 export const getDataByDeviceId = async (deviceId) => {
-    const response = await axios.get(BASE_URL + 'main/data/' + deviceId, {
-        headers: {
-            'Content-Type': 'application/json', // Specify the content type if necessary
-            // Add any other headers if needed, e.g., Authorization
-        },
-    });
-    return response.data;
+    return useGetFetch(BASE_URL + 'main/data/' + deviceId);
 }
 
 export const getServerTime = async () => {
@@ -172,4 +161,25 @@ export const getLastDataByDeviceId = async (deviceId) => {
         },
     });
     return response.data;
+}
+
+function useGetFetch(url) {
+    const [data, setData] = useState(null);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        setData(null);
+        const fetch = async () => {
+            const response = await axios.get(url, {
+                headers: {
+                    'Content-Type': 'application/json', // Specify the content type if necessary
+                    // Add any other headers if needed, e.g., Authorization
+                },
+            })
+            setData(response.data)
+        }
+        fetch();
+    }, [url])
+
+    return {data, error}
 }

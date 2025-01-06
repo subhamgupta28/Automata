@@ -51,26 +51,17 @@ const TriggerNode = ({id, data, isConnectable}) => {
     const [key, setKey] = useState(triggerData.key);
     // const [triggerData, setTriggerData] = useState({key: data.triggerData.key});
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                if (data.triggerData.deviceId) {
-                    const device = devices.filter((d) => d.id === data.triggerData.deviceId);
-                    setSelectedDevice(device[0]);
-                } else {
-                    setSelectedDevice(devices[0]);
-                }
-
-                console.log("devices", data);
-            } catch (err) {
-                console.error("Failed to fetch devices:", err);
+        if (devices){
+            if (data.triggerData.deviceId) {
+                const device = devices.filter((d) => d.id === data.triggerData.deviceId);
+                setSelectedDevice(device[0]);
+            } else {
+                setSelectedDevice(devices[0]);
             }
-        };
-
-        fetchData();
+        }
     }, [devices])
 
     useEffect(() => {
-        // console.log("node id", id, triggerData);
         updateNodeData(id, {
             triggerData: {
                 deviceId: selectedDevice.id,
@@ -86,7 +77,6 @@ const TriggerNode = ({id, data, isConnectable}) => {
     const selectTriggerDevice = (e) => {
         const {name, value} = e.target;
         let dev = devices.filter((d) => d.id === value)[0];
-        // console.log(name, value, dev)
         setSelectedDevice(dev);
     }
     const handleTriggerKey = (e, select) => {
@@ -101,7 +91,6 @@ const TriggerNode = ({id, data, isConnectable}) => {
         // const updatedData = {...triggerData};
         // updatedData[name] = value;
         // setTriggerData(updatedData);
-        // console.log(name, value)
     }
     const deleteNode = (nodeId) => {
         setNodes((nodes) => nodes.filter((node) => node.id !== nodeId)); // Remove the node
@@ -196,38 +185,32 @@ const TriggerNode = ({id, data, isConnectable}) => {
 // Custom Action Node
 const ActionNode = ({id, data, isConnectable}) => {
     const {updateNodeData, setEdges, setNodes} = useReactFlow();
-    console.log("actions", data);
     const actionData = data.actionData ? data.actionData : {
         key: '',
         data: '',
         name: '',
         deviceId: ''
     };
-    console.log("actions_1", data);
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
     const {devices, loading, error} = useCachedDevices();
     const [name, setName] = useState(actionData.name);
     const [value, setValue] = useState(actionData.data);
     const [key, setKey] = useState(actionData.key);
 
+    const connections = useHandleConnections({
+        type: 'target',
+        id: 'b'
+    });
+
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-
-                if (actionData.deviceId) {
-                    const device = devices.filter((d) => d.id === actionData.deviceId);
-                    setSelectedDevice(device[0]);
-                } else {
-                    setSelectedDevice(devices[0]);
-                }
-
-                console.log("devices", data);
-            } catch (err) {
-                console.error("Failed to fetch devices:", err);
+        if (devices){
+            if (actionData.deviceId) {
+                const device = devices.filter((d) => d.id === actionData.deviceId);
+                setSelectedDevice(device[0]);
+            } else {
+                setSelectedDevice(devices[0]);
             }
-        };
-
-        fetchData();
+        }
     }, [data.value, devices])
     const handleTriggerKey = (e, select) => {
         if (select === 'name') {
@@ -243,21 +226,20 @@ const ActionNode = ({id, data, isConnectable}) => {
     const selectDevice = (e) => {
         const {name, value} = e.target;
         let dev = devices.filter((d) => d.id === value)[0];
-        // console.log(name, value, dev)
         setSelectedDevice(dev);
     }
 
     useEffect(() => {
-        // console.log("node id", id, triggerData);
         updateNodeData(id, {
             actionData: {
                 deviceId: selectedDevice.id,
                 key: key,
                 name,
                 data: value,
+                isEnabled: connections.length > 0
             }
         })
-    }, [selectedDevice, key, value, name]);
+    }, [selectedDevice, key, value, name, connections]);
 
     const deleteNode = (nodeId) => {
         setNodes((nodes) => nodes.filter((node) => node.id !== nodeId)); // Remove the node
@@ -328,7 +310,6 @@ const ActionNode = ({id, data, isConnectable}) => {
 
 // Custom Condition Node
 const ConditionNode = ({id, data, isConnectable}) => {
-    console.log("data", data);
     const conditionData = data.conditionData ? data.conditionData : {
         condition: 'numeric',
         valueType: 'int',
@@ -367,11 +348,9 @@ const ConditionNode = ({id, data, isConnectable}) => {
             deviceId: ''
         };
         setTriggerData(triggerData);
-        console.log(triggerData);
     }, [nodesData]);
 
     useEffect(() => {
-        console.log("node id", id, isRange);
         updateNodeData(id, {
             conditionData: {
                 condition: condition,
@@ -383,13 +362,11 @@ const ConditionNode = ({id, data, isConnectable}) => {
             }
         })
     }, [condition, conditionValue, below, above, isRange]);
-    // console.log("nodesData", nodesData)
 
     const handleChange = (e, select) => {
         if (select === 'value') {
             setConditionValue(e.target.value);
         } else if (select === 'condition') {
-            console.log(e.target.value === 'equal')
             setIsRange(e.target.value === 'equal');
             setCondition(e.target.value);
         } else if (select === 'above') {

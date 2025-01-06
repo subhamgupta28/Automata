@@ -70,7 +70,7 @@ const DeviceNodes = () => {
         };
 
         fetchData();
-    }, [data, setNodes, setEdges]);
+    }, [setNodes, setEdges]);
 
     const onNodesChange = useCallback(
         (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),

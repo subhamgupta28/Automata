@@ -63,15 +63,15 @@
       "219"
       )
     },
-    "selected": true,
+    "selected": false,
     "dragging": false
   },
   {
     "_id": "node_action_2",
     "type": "action",
     "position": {
-      "x": 870.6666666666669,
-      "y": 68.66666666666667
+      "x": 872,
+      "y": 89.33333333333334
     },
     "data": {
       "value": {
@@ -80,9 +80,142 @@
       },
       "actionData": {
         "deviceId": "67571bf46f2d631aa77cc632",
-        "key": "onOff",
+        "key": "bright",
         "name": "",
-        "data": "1"
+        "data": "20",
+        "isEnabled": true
+      }
+    },
+    "measured": {
+      "width": new
+      NumberInt(
+      "243"
+      ),
+      "height": new
+      NumberInt(
+      "203"
+      )
+    },
+    "selected": false,
+    "dragging": false
+  },
+  {
+    "_id": "node_action_0",
+    "type": "action",
+    "position": {
+      "x": 869.3333333333334,
+      "y": 332.6666666666667
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "action"
+      },
+      "actionData": {
+        "deviceId": "673b8250da1ad94ac1d28280",
+        "key": "speed",
+        "name": "",
+        "data": "50",
+        "isEnabled": true
+      }
+    },
+    "measured": {
+      "width": new
+      NumberInt(
+      "243"
+      ),
+      "height": new
+      NumberInt(
+      "203"
+      )
+    },
+    "selected": false,
+    "dragging": false
+  },
+  {
+    "_id": "node_action_0",
+    "type": "action",
+    "position": {
+      "x": 869.3333333333334,
+      "y": 332.6666666666667
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "action"
+      },
+      "actionData": {
+        "deviceId": "673b8250da1ad94ac1d28280",
+        "key": "speed",
+        "name": "",
+        "data": "50",
+        "isEnabled": true
+      }
+    },
+    "measured": {
+      "width": new
+      NumberInt(
+      "243"
+      ),
+      "height": new
+      NumberInt(
+      "203"
+      )
+    },
+    "selected": false,
+    "dragging": false
+  },
+  {
+    "_id": "node_action_1",
+    "type": "action",
+    "position": {
+      "x": 1212.6666666666667,
+      "y": 332
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "action"
+      },
+      "actionData": {
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "key": "pwm",
+        "name": "",
+        "data": "200",
+        "isEnabled": true
+      }
+    },
+    "measured": {
+      "width": new
+      NumberInt(
+      "243"
+      ),
+      "height": new
+      NumberInt(
+      "203"
+      )
+    },
+    "selected": false,
+    "dragging": false
+  },
+  {
+    "_id": "node_action_2",
+    "type": "action",
+    "position": {
+      "x": 872,
+      "y": 89.33333333333334
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "action"
+      },
+      "actionData": {
+        "deviceId": "67571bf46f2d631aa77cc632",
+        "key": "bright",
+        "name": "",
+        "data": "20",
+        "isEnabled": true
       }
     },
     "measured": {

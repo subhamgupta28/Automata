@@ -145,8 +145,11 @@ const CustomModal = ({ isOpen, onClose, device }) => {
     );
 };
 
+const DeviceItem = React.memo(({ device }) => {
+    return <li>{device.name}: {device.data}</li>;
+});
 
-export function Device({data, isConnectable}) {
+export const Device =  React.memo(({data, isConnectable})=> {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
@@ -273,7 +276,7 @@ export function Device({data, isConnectable}) {
             />
         </div>
     );
-}
+});
 
 
 export function MainNode({data, isConnectable}) {

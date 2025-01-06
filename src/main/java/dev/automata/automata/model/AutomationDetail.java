@@ -129,6 +129,7 @@ public class AutomationDetail {
                 private String key;
                 private String name;
                 private String data;
+                private Boolean isEnabled;
             }
         }
 

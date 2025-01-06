@@ -18,7 +18,7 @@ const settings = ['Profile', 'Account', 'Dashboard', 'Logout'];
 function Nav() {
     const [anchorElNav, setAnchorElNav] = React.useState(null);
     const [anchorElUser, setAnchorElUser] = React.useState(null);
-    const [notifications, setNotifications] = React.useState([]);
+    const {data: notifications, error} = getNotifications();
     const [time, setTime] = React.useState(Date());
     const date = new Date();
     const formattedDateTime = date.toLocaleString('en-US', {
@@ -31,18 +31,6 @@ function Nav() {
         hour12: true // Use 12-hour format with AM/PM
     });
 
-
-    useEffect(() => {
-        // setTime(formattedDateTime)
-        const fetchData = async () => {
-            const t = await getNotifications();
-            console.log("notifications", t);
-            setNotifications(t);
-        }
-
-        fetchData();
-
-    }, [anchorElUser])
 
     const handleOpenNavMenu = (event) => {
         setAnchorElNav(event.currentTarget);
@@ -144,7 +132,7 @@ function Nav() {
                             open={Boolean(anchorElUser)}
                             onClose={handleCloseUserMenu}
                         >
-                            {notifications.map((setting) => (
+                            {notifications && notifications.map((setting) => (
                                 <MenuItem key={setting.id} onClick={handleCloseUserMenu}>
                                     {setting.message}
                                 </MenuItem>

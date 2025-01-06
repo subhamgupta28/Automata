@@ -209,6 +209,9 @@ public class AutomationService {
     private void executeActions(Automation automation) {
         for (Automation.Action action : automation.getActions()) {
             // Execute each action (e.g., call a service, turn on a device)
+            if (action.getIsEnabled() != null && !action.getIsEnabled()){
+                continue;
+            }
             var device = mainService.getDevice(action.getDeviceId());
             System.err.println(action);
 
@@ -341,6 +344,7 @@ public class AutomationService {
                 var action1 = new Automation.Action();
                 action1.setData(data.getData());
                 action1.setKey(data.getKey());
+                action1.setIsEnabled(data.getIsEnabled());
                 action1.setDeviceId(data.getDeviceId());
                 list.add(action1);
             }
