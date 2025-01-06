@@ -6,17 +6,19 @@ import Slide from '@mui/material/Slide';
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from '@mui/icons-material/Close';
 import {notificationAction} from "../services/apis.jsx";
+import {useSnackbar} from 'notistack';
 
 export default function Notifications() {
     const {messages, sendMessage} = useWebSocket('/topic/notification');
     const [open, setOpen] = React.useState(false);
+    const {enqueueSnackbar} = useSnackbar();
 
     const handleClick = () => {
         setOpen(true);
     };
 
     const handleAutomation = async () => {
-        await notificationAction("stop_automation", {"action":"snooze for 1 hr"});
+        await notificationAction("stop_automation", {"action": "snooze for 1 hr"});
     };
 
     const handleClose = (event, reason) => {
@@ -40,7 +42,7 @@ export default function Notifications() {
                         color="inherit"
                         onClick={handleClose}
                     >
-                        <CloseIcon fontSize="small" />
+                        <CloseIcon fontSize="small"/>
                     </IconButton>
                 </div>
             )}
@@ -49,33 +51,27 @@ export default function Notifications() {
     );
 
     useEffect(() => {
-        console.log(messages)
-        setOpen(true);
+        if (messages.message) {
+            console.log(messages)
+            setOpen(true);
+            enqueueSnackbar(messages.message);
+        }
     }, [messages])
 
-    return(
-        <div style={{position:'absolute'}}>
+    return (
+        <div style={{position: 'absolute'}}>
+
             {/*<Button onClick={handleClick}>Open Snackbar</Button>*/}
-            {messages.message && (
-                <Snackbar
-                    open={open}
-                    TransitionComponent={Slide}
-                    autoHideDuration={3000}
-                    onClose={handleClose}
-                    message={messages.message}
-                    action={action}
-                >
-                    {/*<Alert*/}
-                    {/*    onClose={handleClose}*/}
-                    {/*    severity={messages.severity}*/}
-                    {/*    icon={false}*/}
-                    {/*    variant="filled"*/}
-                    {/*    sx={{ width: '100%' }}*/}
-                    {/*>*/}
-                    {/*    {messages.message}*/}
-                    {/*</Alert>*/}
-                </Snackbar>
-            )}
+            {/*{messages.message && (*/}
+            {/*    <Snackbar*/}
+            {/*        open={open}*/}
+            {/*        TransitionComponent={Slide}*/}
+            {/*        autoHideDuration={3000}*/}
+            {/*        onClose={handleClose}*/}
+            {/*        message={messages.message}*/}
+            {/*        action={action}*/}
+            {/*    />*/}
+            {/*)}*/}
 
         </div>
     )

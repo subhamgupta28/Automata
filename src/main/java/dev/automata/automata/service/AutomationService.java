@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -144,7 +145,7 @@ public class AutomationService {
         for (Automation automation : automations) {
             var payload = mainService.getLastData(automation.getTrigger().getDeviceId());
             if (isTriggered(automation, payload)) {
-                notificationService.sendNotification("Executing automations:" + automation.getName(), "automation");
+                notificationService.sendNotification("Executing automations: " + automation.getName(), "automation");
                 executeActions(automation);
             }
         }
@@ -155,6 +156,7 @@ public class AutomationService {
         if (payload != null && isTriggered(automation, payload)) {
             automation.setIsActive(true);
 //            automationRepository.save(automation);
+            notificationService.sendNotification("Executing automations: " + automation.getName(), "automation");
             executeActions(automation);
         } else {
             automation.setIsActive(false);
@@ -165,14 +167,16 @@ public class AutomationService {
 
     private boolean isTriggered(Automation automation, Map<String, Object> payload) {
         // Check trigger conditions (e.g., time-based, state change, etc.)
+        if ("time".equals(automation.getTrigger().getType())) {
+            String triggerTime = automation.getConditions().get(0).getTime();
+            return isCurrentTime(triggerTime);
+        }
+
         String key = automation.getTrigger().getKey();
         var condition = automation.getConditions().getFirst();
         var value = payload.get(key).toString();
         var parseValue = Double.parseDouble(value);//53
-        if ("time".equals(automation.getTrigger().getType())) {
-            String triggerTime = automation.getTrigger().getValue();
-            return isCurrentTime(triggerTime);
-        }
+
         if ("state".equals(automation.getTrigger().getType())) {
             if (condition.getIsExact()) {
                 var expectedValue = condition.getValue();
@@ -195,15 +199,18 @@ public class AutomationService {
     }
 
 
-    private boolean isCurrentTime(String triggerTime) {
+    public boolean isCurrentTime(String triggerTime) {
+        // Get the current time in LocalTime (without the date part)
         LocalTime currentTime = LocalTime.now();
-
-        // Parse the trigger time into a LocalTime object
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+        // Define the formatter to parse the 12-hour format with AM/PM
+        System.err.println(triggerTime);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("h:mm:ss a");
+        // Parse the trigger time (e.g., "9:20:00 AM")
         LocalTime parsedTriggerTime = LocalTime.parse(triggerTime, formatter);
-
-        // Compare the current time with the trigger time
-        return currentTime.equals(parsedTriggerTime);
+        // Calculate the difference in minutes between current time and trigger time
+        long minutesDifference = ChronoUnit.MINUTES.between(parsedTriggerTime, currentTime);
+        // Check if the time difference is within ±5 minutes
+        return Math.abs(minutesDifference) <= 5;
     }
 
     private void executeActions(Automation automation) {
@@ -367,6 +374,7 @@ public class AutomationService {
             cond.setValueType(data.getValueType());
             cond.setValue(data.getValue());
             cond.setIsExact(data.getIsExact());
+            cond.setTime(data.getTime());
             automation.setConditions(List.of(cond));
         }
 

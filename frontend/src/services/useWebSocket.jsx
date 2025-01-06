@@ -6,7 +6,7 @@ import Stomp from 'stompjs';
 // const url = "http://localhost:8080/ws";
 
 const url = __API_MODE__ === 'serve'
-    ? 'http://raspberry.local:8010/ws'
+    ? 'http://localhost:8080/ws'
     : window.location.href + "ws";
 
 // const url = 'http://raspberry.local:8010/ws';

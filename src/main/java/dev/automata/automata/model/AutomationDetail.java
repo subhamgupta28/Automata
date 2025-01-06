@@ -116,6 +116,7 @@ public class AutomationDetail {
                 private String below;
                 private String above;
                 private String value;
+                private String time;
                 private Boolean isExact;
             }
 

@@ -1,4 +1,4 @@
-import {useState} from 'react'
+import React, {useState} from 'react'
 import './App.css'
 import Nav from "./components/Nav.jsx";
 import useWebSocket from './services/useWebSocket';
@@ -10,6 +10,7 @@ import {BrowserRouter, Route, Routes} from "react-router-dom";
 import Notifications from "./components/Notifications.jsx";
 import Devices from "./components/Devices.jsx";
 import {AppCacheProvider} from "./services/AppCacheContext.jsx";
+import {SnackbarProvider} from "notistack";
 
 
 function App() {
@@ -25,7 +26,8 @@ function App() {
         <>
             <ThemeProvider theme={darkTheme}>
                 <BrowserRouter>
-                    <Notifications/>
+
+
                     <main>
                         <header>
                             <Nav/>
@@ -37,7 +39,9 @@ function App() {
 
                             {/*<SignIn/>*/}
                             {/*<SignUp/>*/}
-
+                            <SnackbarProvider maxSnack={3} preventDuplicate>
+                                <Notifications/>
+                            </SnackbarProvider>
                             <AppCacheProvider>
                                 <Routes>
                                     <Route path="/" element={<DeviceNodes/>}/>

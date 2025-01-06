@@ -84,7 +84,7 @@ export function ActionBoard(action) {
     }, []);
     const onSave = useCallback(() => {
         const saveFlow = async (payload) => {
-            // console.log("saveFlow", automationDetail);
+            console.log("saveFlow", payload);
             await saveAutomationDetail(payload)
         }
 

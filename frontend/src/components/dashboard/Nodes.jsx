@@ -229,7 +229,7 @@ export const Device =  React.memo(({data, isConnectable})=> {
                         <div style={{gridTemplateColumns: 'repeat(2, 1fr)', display: 'grid', gap: '10px', marginTop:'10px'}}>
                             {data.value.attributes.map(attribute => (
                                 (attribute.type === "DATA|MAIN") && (
-                                    <Card style={{borderRadius: '12px',padding: '6px', display:'flex', flexDirection:'column', justifyContent: 'space-between', alignItems: 'center'}}>
+                                    <Card key={attribute.id} style={{borderRadius: '12px',padding: '6px', display:'flex', flexDirection:'column', justifyContent: 'space-between', alignItems: 'center'}}>
                                         <Typography variant='subtitle2'>{data.live[attribute["key"]]} {attribute["units"]}</Typography>
                                         <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
                                     </Card>
