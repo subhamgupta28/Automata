@@ -230,7 +230,7 @@ export const Device =  React.memo(({data, isConnectable})=> {
                             {data.value.attributes.map(attribute => (
                                 (attribute.type === "DATA|MAIN") && (
                                     <Card key={attribute.id} style={{borderRadius: '12px',padding: '6px', display:'flex', flexDirection:'column', justifyContent: 'space-between', alignItems: 'center'}}>
-                                        <Typography variant='subtitle2'>{data.live[attribute["key"]]} {attribute["units"]}</Typography>
+                                        <Typography variant='subtitle2'>{data.live && data.live[attribute["key"]]} {attribute["units"]}</Typography>
                                         <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
                                     </Card>
                                 )
