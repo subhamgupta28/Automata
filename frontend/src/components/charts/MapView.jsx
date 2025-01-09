@@ -1,9 +1,10 @@
 import {MapContainer, TileLayer, Marker, Popup, CircleMarker} from 'react-leaflet'; // Import necessary components
 import L from 'leaflet'; // Import leaflet for custom icons (if needed)
 import 'leaflet/dist/leaflet.css';
+import React from "react";
 
 
-export default function MapView({lat, lng})  {
+export const MapView = React.memo(({lat, lng}) =>  {
     if (!lat || !lng) {
         lat = 0
         lng = 0;
@@ -27,4 +28,4 @@ export default function MapView({lat, lng})  {
             </Marker>
         </MapContainer>
     );
-}
+});

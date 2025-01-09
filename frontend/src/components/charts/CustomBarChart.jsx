@@ -19,8 +19,8 @@ export default function CustomBarChart ({chartData}){
             // label: 'Showing last 8 Hours data',
             valueFormatter
         }],
-        height: 250,
-        width: 500,
+        height: 300,
+        width: 750,
         sx: {
             [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
                 transform: 'translateX(-10px)',

@@ -1,0 +1,93 @@
+db.device.aggregate([
+    {
+        // Step 1: Join with the 'dashboard' collection using $lookup
+        $lookup: {
+            from: "dashboard",                     // Join with 'dashboard' collection
+            let: { deviceId: { $toString: "$_id" } },  // Convert device _id to string for comparison
+            pipeline: [
+                {
+                    $match: {
+                        $expr: { $eq: ["$deviceId", "$$deviceId"] }  // Compare the device _id with deviceId in dashboard
+                    }
+                }
+            ],
+            as: "dashboardData"  // Alias for the result of the join
+        }
+    },
+    {
+        // Step 2: Add 'x', 'y', 'showCharts', 'showInDashboard' fields from the dashboardData
+        $addFields: {
+            dashboard: { $arrayElemAt: ["$dashboardData", 0] },  // Take the first match from dashboardData array
+            x: { $ifNull: [{ $arrayElemAt: ["$dashboardData.x", 0] }, null] },
+            y: { $ifNull: [{ $arrayElemAt: ["$dashboardData.y", 0] }, null] },
+            showCharts: { $ifNull: [{ $arrayElemAt: ["$dashboardData.showCharts", 0] }, false] },
+            showInDashboard: { $ifNull: [{ $arrayElemAt: ["$dashboardData.showInDashboard", 0] }, false] }
+        }
+    },
+    {
+        $lookup: {
+            from: "deviceCharts",
+            pipeline: [
+                {
+                    $match: { showChart: true }
+                }
+            ],
+            as: "chartAttributes"
+        }
+    },
+    {
+        $addFields: {
+            attributes: {
+                $map: {
+                    input: "$attributes",
+                    as: "attr",
+                    in: {
+                        $mergeObjects: [
+                            "$$attr",
+                            {
+                                visible: {
+                                    $in: [
+                                        "$$attr.key",
+                                        { $map: { input: "$chartAttributes", as: "chart", in: "$$chart.attributeKey" } }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    {
+        $lookup: {
+            from: "data",
+            let: { deviceId: { $toString: "$_id" } },
+            pipeline: [
+                { $match: { $expr: { $eq: ["$deviceId", "$$deviceId"] } } },
+                { $sort: { timestamp: -1 } },
+                { $limit: 1 }
+            ],
+            as: "lastData"
+        }
+    },
+    {
+        $addFields: {
+            lastData: { $arrayElemAt: ["$lastData", 0] }
+        }
+    },
+    {
+        $sort: { y: 1, x: 1 }
+    },
+    {
+        $project: {
+            _id: 1,
+            name: 1,
+            x: 1,
+            y: 1,
+            showCharts: 1,
+            showInDashboard: 1,
+            attributes: 1,
+            lastData: 1
+        }
+    }
+]);

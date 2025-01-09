@@ -5,7 +5,7 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import React from "react";
 
 
-export default function SwitchButton({value, deviceId, displayName, data, type}) {
+export const SwitchButton = React.memo(({value, deviceId, displayName, data, type}) => {
     const [on, setOn] = React.useState(value === true);
 
     React.useEffect(() => {
@@ -33,4 +33,4 @@ export default function SwitchButton({value, deviceId, displayName, data, type})
             <span style={{fontSize:'small'}} >{displayName}</span>
         </div>
     )
-}
+});

@@ -1,5 +1,5 @@
 import {debounce, Slider} from "@mui/material";
-import {useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {sendAction} from "../../services/apis.jsx";
 import {styled} from "@mui/material/styles";
 
@@ -42,7 +42,7 @@ const HomeAssistantSlider = styled(Slider)({
     },
 });
 
-export function CustomSlider({value, deviceId, displayName, data, type}) {
+export const CustomSlider = React.memo(({value, deviceId, displayName, data, type})=> {
     const [num, setNum] = useState(value ? value : 0)
 
     useEffect(() => {
@@ -73,9 +73,9 @@ export function CustomSlider({value, deviceId, displayName, data, type}) {
     }, 100);
 
     return (
-        <div>
+        <div className="nodrag">
             <HomeAssistantSlider
-                className="nodrag"
+                // className="nodrag"
                 onChange={handleChange}
                 value={num}
                 min={data.extras.min}
@@ -123,4 +123,4 @@ export function CustomSlider({value, deviceId, displayName, data, type}) {
             {/*</Typography>*/}
         </div>
     )
-}
+});

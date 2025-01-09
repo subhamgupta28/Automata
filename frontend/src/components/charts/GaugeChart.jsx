@@ -1,7 +1,8 @@
 import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
 import Typography from "@mui/material/Typography";
+import React from "react";
 
-export function GaugeChart({value, maxValue, displayName}) {
+export const GaugeChart = React.memo(({value, maxValue, displayName}) => {
     return(
         <>
             <div>
@@ -34,4 +35,4 @@ export function GaugeChart({value, maxValue, displayName}) {
             </div>
         </>
     )
-}
+});

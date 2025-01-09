@@ -1,5 +1,7 @@
 package dev.automata.automata.service;
 
+import com.mongodb.client.AggregateIterable;
+import com.mongodb.client.model.Variable;
 import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.dto.RootDto;
@@ -7,7 +9,12 @@ import dev.automata.automata.dto.ValueDto;
 import dev.automata.automata.model.*;
 import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.bson.types.ObjectId;
+import org.bson.BsonNull;
+import org.bson.Document;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.*;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +24,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
+import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
+import org.springframework.data.mongodb.core.aggregation.ObjectOperators;
+
+import static com.mongodb.client.model.Aggregates.limit;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +44,7 @@ public class MainService {
     private final DashboardRepository deviceDashboardRepository;
     private final DeviceChartsRepository dashboardChartsRepository;
     private final NotificationService notificationService;
+    private final MongoTemplate mongoTemplate;
 
     /*
      * Device: name = battery
@@ -208,13 +225,14 @@ public class MainService {
     }
 
     public List<Device> getAllDevice() {
-        var devices = deviceRepository.findAll();
+        var dashboardDevice = deviceDashboardRepository.findByShowInDashboardTrue();
+        var devices = deviceRepository.findByIdIn(dashboardDevice.stream().map(Dashboard::getDeviceId).toList());
 //        triggerBackgroundTask();
         var deviceList = new ArrayList<Device>();
         var chartAttr = dashboardChartsRepository.findByShowChartTrue();
 
         devices.forEach(device -> {
-            var dashboard = deviceDashboardRepository.findByDeviceId(device.getId()).orElse(null);
+            var dashboard = dashboardDevice.stream().filter(d->d.getDeviceId().equals(device.getId())).findFirst().orElse(null);
             if (dashboard != null) {
                 device.setX(dashboard.getX());
                 device.setY(dashboard.getY());
@@ -301,7 +319,7 @@ public class MainService {
 //        System.err.println(attr);
 //        attr.setVisible(!Boolean.parseBoolean(isVisible));
 //        attributeRepository.save(attr);
-        notificationService.sendNotification("Attribute updated and now "+ (isShow?" visible in charts":" not visible in charts"), "success");
+        notificationService.sendNotification("Attribute updated and now " + (isShow ? " visible in charts" : " not visible in charts"), "success");
         return "success";
     }
 
@@ -311,7 +329,7 @@ public class MainService {
         if (device != null) {
             device.setShowInDashboard(isShow);
             deviceDashboardRepository.save(device);
-            notificationService.sendNotification("Device is "+(isShow?" visible ":" not visible ")+"in dashboard", "success");
+            notificationService.sendNotification("Device is " + (isShow ? " visible " : " not visible ") + "in dashboard", "success");
             return "success";
         }
         notificationService.sendNotification("Something went wrong", "error");

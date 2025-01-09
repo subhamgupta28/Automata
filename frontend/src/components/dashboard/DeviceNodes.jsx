@@ -9,7 +9,8 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {getDevices} from "../../services/apis.jsx";
-import useWebSocket from "../../services/useWebSocket.jsx";
+// import useWebSocket from "../../services/useWebSocket.jsx";
+import {WebSocketProvider} from '../../services/WebSocketProvider.jsx';
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
@@ -26,8 +27,7 @@ const nodeTypes = {
 
 const DeviceNodes = () => {
     const [openBackdrop, setOpenBackdrop] = useState(false);
-    const {messages} = useWebSocket('/topic/data');
-    const {messages: data} = useWebSocket('/topic/devices');
+    // const {messages} = useWebSocket('/topic/data');
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
     const [editUi, setEditUi] = useState(false);
@@ -36,23 +36,23 @@ const DeviceNodes = () => {
         setEditUi(prev => !prev);
     }, []);
 
-    useEffect(() => {
-        setNodes((nds) =>
-            nds.map((node) => {
-                if (node.id === messages.deviceId) {
-                    let dt = node.data.value;
-                    if (messages.deviceConfig) {
-                        dt = messages.deviceConfig;
-                    }
-                    return {
-                        ...node,
-                        data: {value: dt, live: messages.data}
-                    };
-                }
-                return node;
-            }),
-        );
-    }, [messages, setNodes]);
+    // useEffect(() => {
+    //     setNodes((nds) =>
+    //         nds.map((node) => {
+    //             if (node.id === messages.deviceId) {
+    //                 let dt = node.data.value;
+    //                 if (messages.deviceConfig) {
+    //                     dt = messages.deviceConfig;
+    //                 }
+    //                 return {
+    //                     ...node,
+    //                     data: {value: dt, live: messages.data}
+    //                 };
+    //             }
+    //             return node;
+    //         }),
+    //     );
+    // }, [messages, setNodes]);
 
     useEffect(() => {
         setOpenBackdrop(true);
@@ -100,7 +100,7 @@ const DeviceNodes = () => {
                     nodes={nodes}
                     edges={edges}
                     edgeTypes={edgeTypes}
-                    // nodesDraggable={false}
+                    // nodesDraggable={editUi}
                     // onNodeClick={handleNodeClick}
                     // fitView
                     // fitViewOptions={{ nodes: [{ id: '' }] }}
@@ -136,9 +136,12 @@ const DeviceNodes = () => {
 const Dashboard = () => {
 
     return (
-        <ReactFlowProvider>
-            <DeviceNodes/>
-        </ReactFlowProvider>
+        <WebSocketProvider>
+            <ReactFlowProvider>
+                <DeviceNodes/>
+            </ReactFlowProvider>
+        </WebSocketProvider>
+
     )
 }
 

@@ -20,6 +20,7 @@ import {ActionNode, ConditionNode, TriggerNode} from "./NodeTypes.jsx";
 import CustomEdge from "./CustomEdge.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import '@xyflow/react/dist/style.css';
+import EdgeLine from "./EdgeLine.jsx";
 
 const triggerStyle = {
     padding: '10px',
@@ -204,6 +205,7 @@ export function ActionBoard(action) {
                         // isValidConnection={isValidConnection}
                         defaultViewport={defaultViewport}
                         onDrop={onDrop}
+                        // connectionLineComponent={EdgeLine}
                         className="validationflow"
                         onDragOver={onDragOver}
                         nodeTypes={{

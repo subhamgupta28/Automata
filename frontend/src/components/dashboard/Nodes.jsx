@@ -2,7 +2,6 @@ import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {Handle, Position} from "@xyflow/react";
 import {
     getChartData,
-    getDevices,
     getPieChartData,
     refreshDeviceById,
     sendAction,
@@ -15,26 +14,25 @@ import {
     Chip,
     Dialog, DialogActions,
     DialogContent,
-    DialogTitle, Grid2,
+    DialogTitle,
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import SettingsIcon from '@mui/icons-material/Settings';
 import IconButton from "@mui/material/IconButton";
 import {GaugeChart} from "../charts/GaugeChart.jsx";
 import {CustomSlider} from "../charts/CustomSlider.jsx";
-import {axisClasses} from "@mui/x-charts/ChartsAxis";
-import {BarChart} from "@mui/x-charts";
-import MapView from "../charts/MapView.jsx";
+import {MapView} from "../charts/MapView.jsx";
 import Stack from "@mui/material/Stack";
 import Checkbox from "@mui/material/Checkbox";
 import Divider from "@mui/material/Divider";
-import SwitchButton from "../charts/SwitchButton.jsx";
-import Presets from "../charts/Presets.jsx";
+import {SwitchButton} from "../charts/SwitchButton.jsx";
+import {Presets} from "../charts/Presets.jsx";
 import CustomPieChart from "../charts/CustomPieChart.jsx";
 import CustomBarChart from "../charts/CustomBarChart.jsx";
+import {useDeviceLiveData} from "../../services/WebSocketProvider.jsx";
 
 
-const CustomModal = ({ isOpen, onClose, device }) => {
+const CustomModal = ({isOpen, onClose, device}) => {
     const [attrs, setAttrs] = useState(device.attributes);
     const fetchData = async () => {
         try {
@@ -47,7 +45,7 @@ const CustomModal = ({ isOpen, onClose, device }) => {
 
     const handleAction = async (action) => {
         try {
-            await sendAction(device.id, { key: action, [action]: true, device_id: device.id, direct: true }, device.type);
+            await sendAction(device.id, {key: action, [action]: true, device_id: device.id, direct: true}, device.type);
         } catch (err) {
             // Handle action error
         }
@@ -59,10 +57,10 @@ const CustomModal = ({ isOpen, onClose, device }) => {
 
     const handleAttrUpdate = async (attribute) => {
         try {
-            const updatedAttribute = { ...attribute, visible: !attribute.visible }; // Toggle the 'visible' property
+            const updatedAttribute = {...attribute, visible: !attribute.visible}; // Toggle the 'visible' property
             await updateAttrCharts(device.id, attribute.key, updatedAttribute.visible);
             device.attributes = device.attributes.map(attr =>
-               attr.id === updatedAttribute.id ? updatedAttribute : attr
+                attr.id === updatedAttribute.id ? updatedAttribute : attr
             );
             setAttrs(device.attributes);
         } catch (err) {
@@ -73,9 +71,9 @@ const CustomModal = ({ isOpen, onClose, device }) => {
     return (
         <Dialog fullWidth maxWidth="md" onClose={onClose} open={isOpen}>
             <DialogTitle>Device Settings</DialogTitle>
-            <DialogContent style={{ overflow: 'auto'}}>
-                <Stack direction="row" divider={<Divider orientation="vertical" flexItem />} spacing={2}>
-                    <div style={{ width: '65%' }}>
+            <DialogContent style={{overflow: 'auto'}}>
+                <Stack direction="row" divider={<Divider orientation="vertical" flexItem/>} spacing={2}>
+                    <div style={{width: '65%'}}>
                         {/* make the table strike border*/}
                         <table>
                             <thead>
@@ -100,8 +98,9 @@ const CustomModal = ({ isOpen, onClose, device }) => {
                             </tbody>
                         </table>
 
-                        {switchBtn.map((btn)=>(
-                            <Button key={btn["key"]} aria-label="delete" variant="contained" style={{marginLeft:"12px", marginTop:"12px"}}
+                        {switchBtn.map((btn) => (
+                            <Button key={btn["key"]} aria-label="delete" variant="contained"
+                                    style={{marginLeft: "12px", marginTop: "12px"}}
                                     onClick={() => handleAction(btn["key"])}>
                                 {btn["displayName"]}
                             </Button>
@@ -109,9 +108,9 @@ const CustomModal = ({ isOpen, onClose, device }) => {
 
 
                     </div>
-                    <div style={{ width: '30%' }}>
+                    <div style={{width: '30%'}}>
                         <table style={{marginTop: '12px'}}>
-                        <thead>
+                            <thead>
                             <tr>
                                 <td>Attribute</td>
                                 <td>Show in charts</td>
@@ -136,8 +135,8 @@ const CustomModal = ({ isOpen, onClose, device }) => {
             </DialogContent>
             <DialogActions>
                 <Button onClick={handleReboot}>Reboot</Button>
-                <Button style={{ marginLeft: '12px' }} onClick={handleUpdate}>Update</Button>
-                <div style={{ flexGrow: 1 }} />
+                <Button style={{marginLeft: '12px'}} onClick={handleUpdate}>Update</Button>
+                <div style={{flexGrow: 1}}/>
                 <Button variant="secondary" onClick={onClose}>Close</Button>
                 <Button variant="primary" onClick={onClose}>Save Changes</Button>
             </DialogActions>
@@ -145,14 +144,16 @@ const CustomModal = ({ isOpen, onClose, device }) => {
     );
 };
 
-const DeviceItem = React.memo(({ device }) => {
+const DeviceItem = React.memo(({device}) => {
     return <li>{device.name}: {device.data}</li>;
 });
 
-export const Device =  React.memo(({data, isConnectable})=> {
+export const Device = React.memo(({id, data, isConnectable}) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [liveData, setLiveData] = useState(data.live);
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
+    const {messages} = useDeviceLiveData();
     let color;
     const gaugeData = data.value.attributes.filter((t) => t.type === "DATA|GAUGE");
     const sliderData = data.value.attributes.filter((t) => t.type === "DATA|SLIDER");
@@ -161,12 +162,21 @@ export const Device =  React.memo(({data, isConnectable})=> {
     const presets = data.value.attributes.filter((t) => t.type.startsWith("DATA|PRESET"));
     // console.log("presets", presets)
 
+    useEffect(() => {
+        if (id === messages.deviceId) {
+            setLiveData(messages.data && messages.data);
+        }
+    }, [messages]);
 
     const handleAction = (attribute) => {
         const send = async () => {
             try {
                 let act = attribute.key;
-                await sendAction(data.value.id, {"key": attribute.key, [act]: 200, "device_id": data.value.id}, data.value.type);
+                await sendAction(data.value.id, {
+                    "key": attribute.key,
+                    [act]: 200,
+                    "device_id": data.value.id
+                }, data.value.type);
             } catch (err) {
                 // console.error("Action send failed", err);
             }
@@ -182,7 +192,7 @@ export const Device =  React.memo(({data, isConnectable})=> {
 
 
     return (
-        <div className="text-updater-node" key={data.value.id} >
+        <div className="text-updater-node" key={data.value.id}>
 
             <div style={{borderRadius: '12px'}}>
                 <Card elevation={0} style={{
@@ -195,50 +205,68 @@ export const Device =  React.memo(({data, isConnectable})=> {
                 }}>
 
                     <CardContent
-                        style={{width: '200px', alignItems: 'center', paddingTop: '6px', paddingBottom: '6px', justifyContent: 'center'}}>
+                        style={{
+                            width: '200px',
+                            alignItems: 'center',
+                            paddingTop: '6px',
+                            paddingBottom: '6px',
+                            justifyContent: 'center'
+                        }}>
                         <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                             {data.value.name}
-                            {/*<SvgIcon component={icon} inheritViewBox style={{marginLeft: '8px',}}/>*/}
-                            {/*<span style={{fontSize:'x-small', color: color}} >{data.value["status"]}</span>*/}
                             <IconButton onClick={handleOpenModal} variant='text' style={{marginLeft: '8px'}}>
                                 <SettingsIcon/>
                             </IconButton>
                         </Typography>
 
-                        {/*<ChartNode/>*/}
 
-                        {map.length > 0 && data.live && (
-                            <MapView lat={data.live.LAT} lng={data.live.LONG}/>
+                        {map.length > 0 && liveData && (
+                            <MapView lat={liveData.LAT} lng={liveData.LONG}/>
                         )}
 
-                        {gaugeData && data.live && gaugeData.map((gauge) => (
-                            <GaugeChart key={gauge.key} value={data.live[gauge.key]} maxValue={gauge.extras.max}
+                        {gaugeData && liveData && gaugeData.map((gauge) => (
+                            <GaugeChart key={gauge.key} value={liveData[gauge.key]} maxValue={gauge.extras.max}
                                         displayName={gauge.displayName}/>
                         ))}
 
-                        {sliderData && data.live && sliderData.map((slide) => (
-                            <CustomSlider key={slide.key} value={data.live[slide.key]} deviceId={data.value.id} type={data.value.type} data={slide}
+                        {sliderData && liveData && sliderData.map((slide) => (
+                            <CustomSlider key={slide.key} value={liveData[slide.key]} deviceId={data.value.id}
+                                          type={data.value.type} data={slide}
                                           displayName={slide.displayName}/>
                         ))}
-                        {presets && data.live && presets.map((slide) => (
-                            <Presets key={slide.key} value={data.live} deviceId={data.value.id} type={data.value.type} data={slide}
-                                          displayName={slide.displayName}/>
+                        {presets && liveData && presets.map((slide) => (
+                            <Presets key={slide.key} value={liveData} deviceId={data.value.id} type={data.value.type}
+                                     data={slide}
+                                     displayName={slide.displayName}/>
                         ))}
 
 
-                        <div style={{gridTemplateColumns: 'repeat(2, 1fr)', display: 'grid', gap: '10px', marginTop:'10px'}}>
+                        <div style={{
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            display: 'grid',
+                            gap: '10px',
+                            marginTop: '10px'
+                        }}>
                             {data.value.attributes.map(attribute => (
                                 (attribute.type === "DATA|MAIN") && (
-                                    <Card key={attribute.id} style={{borderRadius: '12px',padding: '6px', display:'flex', flexDirection:'column', justifyContent: 'space-between', alignItems: 'center'}}>
-                                        <Typography variant='subtitle2'>{data.live && data.live[attribute["key"]]} {attribute["units"]}</Typography>
+                                    <Card key={attribute.id} style={{
+                                        borderRadius: '12px',
+                                        padding: '6px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        <Typography
+                                            variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>
                                         <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
                                     </Card>
                                 )
                             ))}
                             {switchBtn && (
                                 <div style={{display: 'flex', justifyContent: 'space-around'}}>
-                                    {data.live && switchBtn.map((slide) => (
-                                        <SwitchButton key={slide.key} value={data.live[slide.key]}
+                                    {liveData && switchBtn.map((slide) => (
+                                        <SwitchButton key={slide.key} value={liveData[slide.key]}
                                                       deviceId={data.value.id} data={slide} type={data.value.type}
                                                       displayName={slide.displayName}/>
                                     ))}
@@ -248,8 +276,14 @@ export const Device =  React.memo(({data, isConnectable})=> {
                         </div>
 
 
-                        {data.live && (
-                            <div style={{width: '100%', marginTop: '12px', display: 'flex', justifyContent:'center', alignItems: 'center'}}>
+                        {liveData && (
+                            <div style={{
+                                width: '100%',
+                                marginTop: '12px',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center'
+                            }}>
                                 {
                                     data.value.attributes.map(attribute => (
                                         (attribute.type === "ACTION|OUT") && (
@@ -271,7 +305,7 @@ export const Device =  React.memo(({data, isConnectable})=> {
                 type="source"
                 position={Position.Right}
                 id="b"
-                style={{top: 30,width: '10px', height:'10px', background: color}}
+                style={{top: 30, width: '10px', height: '10px', background: color}}
                 isConnectable={isConnectable}
             />
         </div>
@@ -280,7 +314,7 @@ export const Device =  React.memo(({data, isConnectable})=> {
 
 
 export function MainNode({data, isConnectable}) {
-    const { devices, numOfDevices, chartNodes } = data.value;
+    const {devices, numOfDevices, chartNodes} = data.value;
 
     // Filter charts from the devices
     const charts = useMemo(() =>
@@ -289,22 +323,19 @@ export function MainNode({data, isConnectable}) {
         ), [devices]);
 
 
-
-
-
     // Memoize the node and chart IDs since they don't change during render
     const nodeIds = useMemo(() =>
-        Array.from({ length: numOfDevices }, (_, i) => `main-node-${i}`), [numOfDevices]);
+        Array.from({length: numOfDevices}, (_, i) => `main-node-${i}`), [numOfDevices]);
 
     const chartIds = useMemo(() =>
-        Array.from({ length: chartNodes }, (_, i) => `chart-node-${i}`), [chartNodes]);
+        Array.from({length: chartNodes}, (_, i) => `chart-node-${i}`), [chartNodes]);
 
     // Fetch chart data when device or attribute is selected
 
 
     return (
         <div className="text-updater-node">
-            <div style={{ borderRadius: '16px' }}>
+            <div style={{borderRadius: '16px'}}>
                 <Card elevation={0} style={{
                     padding: '0px',
                     minHeight: '700px',
@@ -321,7 +352,7 @@ export function MainNode({data, isConnectable}) {
                             type="target"
                             position={Position.Right}
                             id={id}
-                            style={{ top: 10 + index * 50 }}
+                            style={{top: 10 + index * 50}}
                             isConnectable={isConnectable}
                         />
                     ))}
@@ -330,12 +361,13 @@ export function MainNode({data, isConnectable}) {
                     {/*</Typography>*/}
 
 
-                    <CardContent style={{ marginLeft: '15px', display: 'grid', marginTop: '10px',
-                        gridTemplateColumns: 'repeat(2, 1fr)', /* 4 columns */
+                    <CardContent style={{
+                        marginLeft: '15px', display: 'grid', marginTop: '10px',
+                        gridTemplateColumns: 'repeat(1, 1fr)', /* 4 columns */
                         gap: '10px', /* Space between items */
-                         }}>
+                    }}>
                         {charts.map((device, index) => (
-                            <BarChartComp key={device.id} chartDevice={device} />
+                            <BarChartComp key={device.id} chartDevice={device}/>
                         ))}
 
                     </CardContent>
@@ -345,13 +377,13 @@ export function MainNode({data, isConnectable}) {
                     {/*</Stack>*/}
 
                     {/* Render Handles for Main Nodes */}
-                    {nodeIds && nodeIds.map((id, index) => (
+                    {nodeIds.map((id, index) => (
                         <Handle
                             key={id}
                             type="target"
                             position={Position.Left}
                             id={id}
-                            style={{ top: 100 + index * 55, width: '10px', height:'10px', background: 'orange' }}
+                            style={{top: 100 + index * 55, width: '10px', height: '10px', background: '#fce02b'}}
                             isConnectable={isConnectable}
                         />
                     ))}
@@ -365,7 +397,7 @@ function BarChartComp({chartDevice}) {
     // Initialize state for the chart data and the selected device/attribute
     const [chartData, setChartData] = useState({
         dataKey: "p",
-        data: [{ p: 0 }],
+        data: [{p: 0}],
         label: "p",
         attributes: [],
         timestamps: [""],
@@ -384,10 +416,10 @@ function BarChartComp({chartDevice}) {
         const fetchChartData = async () => {
             try {
                 // console.log(visibleAttr.length)
-                if (visibleAttr.length <= 1){
+                if (visibleAttr.length <= 1) {
                     const data = await getPieChartData(chartDevice.id);
                     setChartData(data);
-                }else{
+                } else {
                     const data = await getChartData(chartDevice.id, selectedAttribute);
                     // console.log("data", data)
                     setChartData(data);
@@ -415,12 +447,12 @@ function BarChartComp({chartDevice}) {
             {
                 visibleAttr.length <= 1 ? (
                     <CustomPieChart className="nodrag" chartData={chartData}/>
-                ):(
+                ) : (
                     <CustomBarChart chartData={chartData}/>
                 )
             }
             {chartData.attributes.length > 1 && (
-                <div style={{display: 'flex', alignItems: 'center', flexDirection: 'column', width:'500px'}}>
+                <div style={{display: 'flex', alignItems: 'center', flexDirection: 'column', width: '750px'}}>
                     <Typography>Attributes</Typography>
                     <div style={{margin: '14px'}}>
                         {chartData.attributes.map((name) => (
