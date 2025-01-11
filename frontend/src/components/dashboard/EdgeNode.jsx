@@ -1,3 +1,5 @@
+import {getMainNodePos} from "../../services/apis.jsx";
+
 export const createEdges = (devices, charts) => {
     let edges = [];
     let index = 0;
@@ -35,10 +37,10 @@ export const createEdges = (devices, charts) => {
     return [...edges]
 };
 
-export const createNodes = (devices, charts) => {
+export const createNodes = (devices, charts, initX, initY) => {
 
-    const initX = 1360;
-    const initY = 120;
+    // let initX = 1360;
+    // let initY = 120;
     let index = 120;
     let deviceNodes = [];
     let chartNodes = [];
@@ -108,7 +110,7 @@ export const createNodes = (devices, charts) => {
     const mainNode = {
         id: 'main-node-1',
         type: 'mainNode',
-        position: {x: initX, y: 20}, // Adjust position as needed
+        position: {x: initX, y: initY}, // Adjust position as needed
         data: {value: {numOfDevices: devices.length, chartNodes: chartNodes.length, devices}},
     };
 

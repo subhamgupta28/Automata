@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Handle, Position} from "@xyflow/react";
 import {
     getChartData,
@@ -331,35 +331,32 @@ export function MainNode({data, isConnectable}) {
         Array.from({length: chartNodes}, (_, i) => `chart-node-${i}`), [chartNodes]);
 
     // Fetch chart data when device or attribute is selected
+    const cardRef = useRef(null);
+    const [cardHeight, setCardHeight] = useState(700);
+
+    // Dynamically update card height when the card is rendered
+    useEffect(() => {
+        if (cardRef.current) {
+            setCardHeight(cardRef.current.offsetHeight);
+        }
+    }, [cardRef]);
+
+    // Calculate top position for handles
+    const handleSpacing = cardHeight / (numOfDevices + 1); // +1 to avoid handles being on the very top or bottom
 
 
     return (
         <div className="text-updater-node">
             <div style={{borderRadius: '16px'}}>
-                <Card elevation={0} style={{
+                <Card ref={cardRef} elevation={0} style={{
                     padding: '0px',
                     minHeight: '700px',
                     // maxWidth: '95%',
                     borderRadius: '18px',
                     // backgroundColor:'transparent',
                     // backdropFilter: 'blur(1px)',
-                    boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
+                    boxShadow: 'rgb(255 255 255 / 18%) 0px 0px 50px 15px'
                 }}>
-                    {/* Render Handles for Chart Nodes */}
-                    {chartIds.map((id, index) => (
-                        <Handle
-                            key={id}
-                            type="target"
-                            position={Position.Right}
-                            id={id}
-                            style={{top: 10 + index * 50}}
-                            isConnectable={isConnectable}
-                        />
-                    ))}
-                    {/*<Typography style={{color:'white', margin: '20px'}} >*/}
-                    {/*    Device*/}
-                    {/*</Typography>*/}
-
 
                     <CardContent style={{
                         marginLeft: '15px', display: 'grid', marginTop: '10px',
@@ -383,7 +380,7 @@ export function MainNode({data, isConnectable}) {
                             type="target"
                             position={Position.Left}
                             id={id}
-                            style={{top: 100 + index * 55, width: '10px', height: '10px', background: '#fce02b'}}
+                            style={{top: handleSpacing * (index + 1), width: '10px', height: '10px', background: '#fce02b'}}
                             isConnectable={isConnectable}
                         />
                     ))}

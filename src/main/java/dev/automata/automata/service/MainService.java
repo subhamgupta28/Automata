@@ -335,4 +335,13 @@ public class MainService {
         notificationService.sendNotification("Something went wrong", "error");
         return "error";
     }
+
+    public Map<String, Object> getMainNodePos() {
+        var device = deviceDashboardRepository.findByDeviceId("main-node-1").orElse(null);
+        if (device == null) {
+            System.err.println("Device not found");
+            return Map.of("x", 1360, "y", 20);
+        }
+        return Map.of("x", device.getX(), "y", device.getY());
+    }
 }

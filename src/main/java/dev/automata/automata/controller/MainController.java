@@ -53,6 +53,11 @@ public class MainController {
         return ResponseEntity.ok("success");
     }
 
+    @GetMapping("/mainNodePos")
+    public ResponseEntity<Map<String, Object>> getMainNodePos(){
+        return ResponseEntity.ok(mainService.getMainNodePos());
+    }
+
     @GetMapping("/updatePosition/{deviceId}/{x}/{y}")
     public ResponseEntity<String> updatePosition(@PathVariable String deviceId, @PathVariable String x, @PathVariable String y) {
 

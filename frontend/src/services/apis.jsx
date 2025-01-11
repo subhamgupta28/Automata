@@ -133,6 +133,15 @@ export const saveAutomationDetail = async (payload) => {
     });
     return response.data;
 }
+export const getMainNodePos = async () => {
+    const response = await axios.get(BASE_URL + "main/mainNodePos", {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
 
 export const getNotifications = () => {
     return useGetFetch(BASE_URL + "utils/notifications");
