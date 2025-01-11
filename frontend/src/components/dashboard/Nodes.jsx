@@ -332,7 +332,7 @@ export function MainNode({data, isConnectable}) {
 
     // Fetch chart data when device or attribute is selected
     const cardRef = useRef(null);
-    const [cardHeight, setCardHeight] = useState(700);
+    const [cardHeight, setCardHeight] = useState(550);
 
     // Dynamically update card height when the card is rendered
     useEffect(() => {
@@ -350,12 +350,12 @@ export function MainNode({data, isConnectable}) {
             <div style={{borderRadius: '16px'}}>
                 <Card ref={cardRef} elevation={0} style={{
                     padding: '0px',
-                    minHeight: '700px',
+                    minHeight: '600px',
                     // maxWidth: '95%',
                     borderRadius: '18px',
                     // backgroundColor:'transparent',
                     // backdropFilter: 'blur(1px)',
-                    boxShadow: 'rgb(255 255 255 / 18%) 0px 0px 50px 15px'
+                    boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 
                     <CardContent style={{
@@ -449,7 +449,7 @@ function BarChartComp({chartDevice}) {
                 )
             }
             {chartData.attributes.length > 1 && (
-                <div style={{display: 'flex', alignItems: 'center', flexDirection: 'column', width: '750px'}}>
+                <div style={{display: 'flex', alignItems: 'center', flexDirection: 'column', width: '100%'}}>
                     <Typography>Attributes</Typography>
                     <div style={{margin: '14px'}}>
                         {chartData.attributes.map((name) => (
