@@ -5,6 +5,7 @@ import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.Attribute;
+import dev.automata.automata.model.AttributeType;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.service.AnalyticsService;
@@ -45,6 +46,11 @@ public class MainController {
     @GetMapping("pieChart/{deviceId}")
     public ResponseEntity<ChartDataDto> getPieChartData(@PathVariable String deviceId) {
         return ResponseEntity.ok(analyticsService.getPieChartData(deviceId, "day"));
+    }
+
+    @PostMapping("/saveAttributeType")
+    public ResponseEntity<AttributeType> saveAttributeType(@RequestBody AttributeType attributeType) {
+        return ResponseEntity.ok(mainService.createAttributeType(attributeType));
     }
 
     @GetMapping

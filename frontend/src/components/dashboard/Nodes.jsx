@@ -41,7 +41,7 @@ const CustomModal = ({isOpen, onClose, device}) => {
             // Handle error gracefully
         }
     };
-    const switchBtn = device.attributes.filter((t) => t.type.startsWith("MENU|BTN"));
+    const switchBtn = device.attributes.filter((t) => t.type.startsWith("ACTION|MENU|BTN"));
 
     const handleAction = async (action) => {
         try {
@@ -156,10 +156,10 @@ export const Device = React.memo(({id, data, isConnectable}) => {
     const {messages} = useDeviceLiveData();
     let color;
     const gaugeData = data.value.attributes.filter((t) => t.type === "DATA|GAUGE");
-    const sliderData = data.value.attributes.filter((t) => t.type === "DATA|SLIDER");
-    const map = data.value.attributes.filter((t) => t.type.startsWith("DATA|MAIN,MAP"));
-    const switchBtn = data.value.attributes.filter((t) => t.type.startsWith("DATA|SWITCH"));
-    const presets = data.value.attributes.filter((t) => t.type.startsWith("DATA|PRESET"));
+    const sliderData = data.value.attributes.filter((t) => t.type === "ACTION|SLIDER");
+    const map = data.value.attributes.filter((t) => t.type.startsWith("DATA|MAP"));
+    const switchBtn = data.value.attributes.filter((t) => t.type.startsWith("ACTION|SWITCH"));
+    const presets = data.value.attributes.filter((t) => t.type.startsWith("ACTION|PRESET"));
     // console.log("presets", presets)
 
     useEffect(() => {

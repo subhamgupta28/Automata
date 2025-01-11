@@ -1,7 +1,5 @@
 package dev.automata.automata.service;
 
-import com.mongodb.client.AggregateIterable;
-import com.mongodb.client.model.Variable;
 import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.dto.RootDto;
@@ -9,12 +7,7 @@ import dev.automata.automata.dto.ValueDto;
 import dev.automata.automata.model.*;
 import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.bson.BsonNull;
-import org.bson.Document;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.*;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -26,14 +19,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 
-import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
-import org.springframework.data.mongodb.core.aggregation.ObjectOperators;
-
-import static com.mongodb.client.model.Aggregates.limit;
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
-
-
 @Service
 @RequiredArgsConstructor
 public class MainService {
@@ -43,6 +28,7 @@ public class MainService {
     private final DeviceRepository deviceRepository;
     private final DashboardRepository deviceDashboardRepository;
     private final DeviceChartsRepository dashboardChartsRepository;
+    private final AttributeTypeRepository attributeTypeRepository;
     private final NotificationService notificationService;
     private final MongoTemplate mongoTemplate;
 
@@ -67,6 +53,10 @@ public class MainService {
      *         uuid = random
      *         timestamp = 1234567890
      * */
+
+    public AttributeType createAttributeType(AttributeType attributeType) {
+        return attributeTypeRepository.save(attributeType);
+    }
 
 
     public Device registerDevice(RegisterDevice registerDevice) {
