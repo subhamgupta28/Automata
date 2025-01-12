@@ -334,13 +334,6 @@ export function MainNode({data, isConnectable}) {
     const cardRef = useRef(null);
     const [cardHeight, setCardHeight] = useState(550);
 
-    // Dynamically update card height when the card is rendered
-    useEffect(() => {
-        if (cardRef.current) {
-            setCardHeight(cardRef.current.offsetHeight);
-        }
-    }, [cardRef]);
-
     // Calculate top position for handles
     const handleSpacing = cardHeight / (numOfDevices + 1); // +1 to avoid handles being on the very top or bottom
 

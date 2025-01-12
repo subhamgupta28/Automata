@@ -217,12 +217,14 @@ public class MainService {
     public List<Device> getAllDevice() {
         var dashboardDevice = deviceDashboardRepository.findByShowInDashboardTrue();
         var devices = deviceRepository.findByIdIn(dashboardDevice.stream().map(Dashboard::getDeviceId).toList());
-//        triggerBackgroundTask();
+
+        var dashboardMap = dashboardDevice.stream().collect(Collectors.toMap(Dashboard::getDeviceId, Function.identity()));
+
         var deviceList = new ArrayList<Device>();
         var chartAttr = dashboardChartsRepository.findByShowChartTrue();
 
         devices.forEach(device -> {
-            var dashboard = dashboardDevice.stream().filter(d->d.getDeviceId().equals(device.getId())).findFirst().orElse(null);
+            var dashboard = dashboardMap.get(device.getId());
             if (dashboard != null) {
                 device.setX(dashboard.getX());
                 device.setY(dashboard.getY());

@@ -225,7 +225,7 @@ export function ActionBoard(action) {
                             </Panel>
                         )}
                         <Panel position="bottom-right" style={{marginBottom: '50px'}}>
-                            <Button variant='outlined' onClick={onRestore}>Restore</Button>
+                            {/*<Button variant='outlined' onClick={onRestore}>Restore</Button>*/}
                             <Button variant='outlined' onClick={onSave} style={{marginLeft: '10px'}}>Save</Button>
                         </Panel>
                     </ReactFlow>
