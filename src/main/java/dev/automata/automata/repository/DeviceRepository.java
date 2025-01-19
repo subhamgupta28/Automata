@@ -17,4 +17,6 @@ public interface DeviceRepository extends MongoRepository<Device, String> {
     List<Device> findByMacAddr(String macAddr);
 
     List<Device> findByIdIn(Collection<String> ids);
+
+    Device findByName(String name);
 }

@@ -336,4 +336,8 @@ public class MainService {
         }
         return Map.of("x", device.getX(), "y", device.getY());
     }
+
+    public Device getDeviceByName(String name) {
+        return deviceRepository.findByName(name);
+    }
 }
