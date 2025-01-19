@@ -42,6 +42,7 @@ const CustomModal = ({isOpen, onClose, device}) => {
         }
     };
     const switchBtn = device.attributes.filter((t) => t.type.startsWith("ACTION|MENU|BTN"));
+    const sliderData = device.attributes.filter((t) => t.type === "ACTION|MENU|SLIDER");
 
     const handleAction = async (action) => {
         try {
@@ -105,6 +106,13 @@ const CustomModal = ({isOpen, onClose, device}) => {
                                 {btn["displayName"]}
                             </Button>
                         ))}
+                        <div style={{width: '50%'}}>
+                            {sliderData && sliderData.map((slide) => (
+                                <CustomSlider key={slide.key} value={0} deviceId={device.id}
+                                              type={device.type} data={slide}
+                                              displayName={slide.displayName}/>
+                            ))}
+                        </div>
 
 
                     </div>
