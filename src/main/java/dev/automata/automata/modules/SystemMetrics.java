@@ -76,9 +76,12 @@ public class SystemMetrics {
         mainService.registerDevice(device);
     }
 
+    @Scheduled(fixedRate = 5000)
+    public void save() {
+        mainService.saveData(deviceId, getData());
+    }
 
-    @Scheduled(fixedRate = 10000)
-    public void getInfo() {
+    private HashMap<String, Object> getData() {
         try {
             // Get CPU frequency
             String cpuFreq = getCpuFrequency();
@@ -95,25 +98,32 @@ public class SystemMetrics {
             String uptime = getUptime();
             System.out.println("System Uptime: " + uptime);
 
-            var data =  new HashMap<String, Object>();
+            var data = new HashMap<String, Object>();
             data.put("cpu_temp", cpuTemp);
             data.put("ram_usage", ramUsage);
             data.put("uptime", uptime);
             data.put("cpu_freq", cpuFreq);
+            data.put("device_id", deviceId);
 
-            var map = new HashMap<String, Object>();
-            map.put("deviceId", deviceId);
-            map.put("data", data);
-
-            messagingTemplate.convertAndSend("/topic/data", map);
+            return data;
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return null;
+    }
+
+
+    @Scheduled(fixedRate = 10000)
+    public void getInfo() {
+        var map = new HashMap<String, Object>();
+        map.put("deviceId", deviceId);
+        map.put("data", getData());
+        messagingTemplate.convertAndSend("/topic/data", map);
     }
 
     private static String getUptime() throws Exception {
         String command = "uptime -p"; // Get the uptime in a human-readable format
-        return executeCommand(command).replace("up", "").replace("days","d").replace("hours","h").replace("minutes","m");
+        return executeCommand(command).replace("up", "").replace("days", "d").replace("hours", "h").replace("minutes", "m");
     }
 
     private static String getCpuFrequency() throws Exception {
@@ -138,7 +148,7 @@ public class SystemMetrics {
         // Parse the result and extract total and used memory
         if (result != null && !result.isEmpty()) {
             String[] parts = result.split("\\s+");
-            return "T: " + parts[1] + ", U: " + parts[2]; // Extract total and used memory
+            return parts[2].replace("Gi", "") + " - " + parts[1].replace("Gi", ""); // Extract total and used memory
         }
         return "N/A";
     }
@@ -174,7 +184,7 @@ public class SystemMetrics {
         var device = mainService.getDeviceByName("System");
         if (device == null) {
             registerSystemMetrics();
-        }else {
+        } else {
             deviceId = device.getId();
         }
 

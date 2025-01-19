@@ -228,7 +228,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                         </Typography>
 
 
-                        {map.length > 0 && liveData && (
+                        {map && liveData && (
                             <MapView lat={liveData.LAT} lng={liveData.LONG}/>
                         )}
 
