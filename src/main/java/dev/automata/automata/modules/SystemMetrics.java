@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
@@ -112,18 +113,34 @@ public class SystemMetrics {
 
     private static String getUptime() throws Exception {
         String command = "uptime -p"; // Get the uptime in a human-readable format
-        return executeCommand(command);
+        return executeCommand(command).replace("up", "").replace("days","d").replace("hours","h").replace("minutes","m");
     }
 
     private static String getCpuFrequency() throws Exception {
-        String command = "lscpu | grep 'CPU MHz'"; // You can change this to get more detailed info if necessary
-        return executeCommand(command);
+        String filePath = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq";
+        BufferedReader reader = new BufferedReader(new FileReader(filePath));
+        String line = reader.readLine();
+        reader.close();
+
+        if (line != null) {
+            int currentFreqKHz = Integer.parseInt(line.trim());
+            // Convert kHz to MHz and return the value
+            return String.format("%.2f", currentFreqKHz / 1000.0); // MHz
+        }
+        return "N/A";
     }
 
     // Method to get RAM usage
     private static String getRamUsage() throws Exception {
         String command = "free -h | grep Mem"; // Get memory usage
-        return executeCommand(command);
+        String result = executeCommand(command);
+
+        // Parse the result and extract total and used memory
+        if (result != null && !result.isEmpty()) {
+            String[] parts = result.split("\\s+");
+            return "T: " + parts[1] + ", U: " + parts[2]; // Extract total and used memory
+        }
+        return "N/A";
     }
 
     // Method to get CPU temperature
