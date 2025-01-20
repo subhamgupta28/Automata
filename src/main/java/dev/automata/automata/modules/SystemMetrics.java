@@ -41,7 +41,7 @@ public class SystemMetrics {
                                         .key("cpu_temp")
                                         .displayName("CPU Temp")
                                         .type("DATA|MAIN")
-                                        .units("")
+                                        .units("°C")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
@@ -92,7 +92,7 @@ public class SystemMetrics {
             System.out.println("RAM Usage: " + ramUsage);
 
             // Get CPU temperature
-            String cpuTemp = getCpuTemperature();
+            var cpuTemp = getCpuTemperature();
             System.out.println("CPU Temperature: " + cpuTemp);
 
             String uptime = getUptime();
@@ -154,15 +154,15 @@ public class SystemMetrics {
     }
 
     // Method to get CPU temperature
-    private static String getCpuTemperature() throws Exception {
+    private static double getCpuTemperature() throws Exception {
         String command = "cat /sys/class/thermal/thermal_zone0/temp"; // Read CPU temperature in millidegrees Celsius
         String result = executeCommand(command);
         if (result != null) {
             // Convert the millidegrees to degrees Celsius
             int tempInMilliCelsius = Integer.parseInt(result.trim());
-            return (tempInMilliCelsius / 1000.0) + " °C";
+            return (tempInMilliCelsius / 1000.0);
         }
-        return "N/A";
+        return 0;
     }
 
     // Method to execute a command and return the output
@@ -180,7 +180,7 @@ public class SystemMetrics {
     @EventListener
     public void handleApplicationReadyEvent(ApplicationReadyEvent event) {
         System.err.println("ready...");
-        registerSystemMetrics();
+//        registerSystemMetrics();
         var device = mainService.getDeviceByName("System");
         if (device == null) {
             registerSystemMetrics();
