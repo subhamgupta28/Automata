@@ -107,7 +107,7 @@ public class SystemMetrics {
 
             return data;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("System Metrics Exception");
         }
         return null;
     }

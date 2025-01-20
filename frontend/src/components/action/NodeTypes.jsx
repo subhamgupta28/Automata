@@ -355,10 +355,9 @@ const ConditionNode = ({id, data, isConnectable}) => {
         below: '0',
         above: '0',
         value: '0',
-        time: '2022-04-17T15:30',
+        time: '2:20:05 AM',
         isExact: false
     };
-
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
     const [triggerData, setTriggerData] = useState({})
     const [condition, setCondition] = useState(conditionData.condition)
@@ -390,6 +389,7 @@ const ConditionNode = ({id, data, isConnectable}) => {
         };
         setTriggerData(triggerData);
         setType(triggerData.type);
+
     }, [nodesData]);
 
     useEffect(() => {
@@ -402,7 +402,7 @@ const ConditionNode = ({id, data, isConnectable}) => {
                 above: above,
                 value: conditionValue,
                 isExact: isRange,
-                time: time.toDate().toLocaleTimeString()
+                time: time.format()
             }
         })
     }, [condition, conditionValue, below, above, isRange, time]);
@@ -418,8 +418,10 @@ const ConditionNode = ({id, data, isConnectable}) => {
         } else if (select === 'below') {
             setBelow(e.target.value);
         } else if (select === 'time') {
-            console.log("time", time.toDate().toLocaleTimeString() );
             setTime(e);
+
+            console.log("time", time.format());
+
         }
     }
 
@@ -447,7 +449,7 @@ const ConditionNode = ({id, data, isConnectable}) => {
                         Run automation at specific time of the day
                     </Typography>
                     <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <MobileTimePicker value={time} onChange={(e) => handleChange(e, 'time')}/>
+                        <MobileTimePicker format="hh:mm:ss A" value={time} onChange={(e) => handleChange(e, 'time')}/>
                     </LocalizationProvider>
 
                 </div>

@@ -20,7 +20,9 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -199,17 +201,11 @@ public class AutomationService {
     }
 
 
-    public boolean isCurrentTime(String triggerTime) {
-        // Get the current time in LocalTime (without the date part)
-        LocalTime currentTime = LocalTime.now();
-        // Define the formatter to parse the 12-hour format with AM/PM
-        System.err.println(triggerTime);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("h:mm:ss a");
-        // Parse the trigger time (e.g., "9:20:00 AM")
-        LocalTime parsedTriggerTime = LocalTime.parse(triggerTime, formatter);
-        // Calculate the difference in minutes between current time and trigger time
+    private boolean isCurrentTime(String triggerTime) {
+        ZonedDateTime currentTime = ZonedDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+        ZonedDateTime parsedTriggerTime = ZonedDateTime.parse(triggerTime, formatter);
         long minutesDifference = ChronoUnit.MINUTES.between(parsedTriggerTime, currentTime);
-        // Check if the time difference is within ±5 minutes
         return Math.abs(minutesDifference) <= 5;
     }
 
