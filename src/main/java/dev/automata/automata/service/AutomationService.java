@@ -205,10 +205,15 @@ public class AutomationService {
         ZonedDateTime currentTime = ZonedDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
         ZonedDateTime parsedTriggerTime = ZonedDateTime.parse(triggerTime, formatter);
-        long minutesDifference = ChronoUnit.MINUTES.between(parsedTriggerTime, currentTime);
+
+        // Extract only the LocalTime part (ignoring the date and zone)
+        LocalTime currentLocalTime = currentTime.toLocalTime();
+        LocalTime triggerLocalTime = parsedTriggerTime.toLocalTime();
+
+        // Calculate the difference in minutes
+        long minutesDifference = ChronoUnit.MINUTES.between(triggerLocalTime, currentLocalTime);
         return Math.abs(minutesDifference) <= 5;
     }
-
     private void executeActions(Automation automation) {
         for (Automation.Action action : automation.getActions()) {
             // Execute each action (e.g., call a service, turn on a device)
