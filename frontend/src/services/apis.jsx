@@ -29,7 +29,15 @@ export const updatePosition = async (deviceId, x, y) => {
     });
     return response.data;
 }
-
+export const getDashboardDevices = async () => {
+    const response = await axios.get(BASE_URL + "main/dashboard", {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
 export const getDevices = async () => {
     const response = await axios.get(BASE_URL + "main/devices", {
         headers: {

@@ -8,7 +8,7 @@ import {
     useNodesState, useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import {getDevices, getMainNodePos} from "../../services/apis.jsx";
+import {getDashboardDevices, getMainNodePos} from "../../services/apis.jsx";
 // import useWebSocket from "../../services/useWebSocket.jsx";
 import {WebSocketProvider} from '../../services/WebSocketProvider.jsx';
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
@@ -59,7 +59,7 @@ const DeviceNodes = () => {
         const fetchData = async () => {
             try {
                 const pos = await getMainNodePos();
-                const devices = await getDevices();
+                const devices = await getDashboardDevices();
                 const dev = devices.filter((d) => d.showInDashboard === true);
                 setNodes(createNodes(dev, [], pos.x, pos.y));
                 setEdges(createEdges(dev, []));

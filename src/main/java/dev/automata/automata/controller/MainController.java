@@ -95,7 +95,11 @@ public class MainController {
         return ResponseEntity.ok(mainService.showInDashboard(deviceId, isVisible));
     }
 
+    @GetMapping(value = "/dashboard")
+    public ResponseEntity<List<Device>> getDashboardDevices() {
 
+        return ResponseEntity.ok(mainService.getDashboardDevices());
+    }
     @GetMapping(value = "/devices")
     public ResponseEntity<List<Device>> getAllDevices() {
 

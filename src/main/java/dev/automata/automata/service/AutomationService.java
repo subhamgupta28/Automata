@@ -63,18 +63,7 @@ public class AutomationService {
 
     public String handleAction(String deviceId, Map<String, Object> payload, String deviceType) {
         var map = new HashMap<String, Object>();
-        var deviceState = deviceActionStateRepository.findById(deviceId).orElse(null);
-        var finalDeviceState = DeviceActionState.builder()
-                .deviceId(deviceId)
-                .deviceType(deviceType);
-        if (deviceState != null) {
-            var data = deviceState.getPayload();
-            data.putAll(payload);
-            finalDeviceState.payload(data);
-        } else {
-            finalDeviceState.payload(payload);
-        }
-        deviceActionStateRepository.save(finalDeviceState.build());
+
 
         if (deviceType.equals("WLED")) {
             var res = handleWLED(deviceId, payload);
@@ -107,11 +96,24 @@ public class AutomationService {
 //        messagingTemplate.convertAndSend("/topic/action/" + action.getConsumerDeviceId(), map);
         notificationService.sendNotification("Action applied", "success");
         System.err.println("Action sent!" + map);
+//        var deviceState = deviceActionStateRepository.findById(deviceId).orElse(null);
+//        var finalDeviceState = DeviceActionState.builder()
+//                .deviceId(deviceId)
+//                .deviceType(deviceType);
+//        if (deviceState != null) {
+//            var data = deviceState.getPayload();
+//            data.putAll(payload);
+//            finalDeviceState.payload(data);
+//        } else {
+//            finalDeviceState.payload(payload);
+//        }
+//        deviceActionStateRepository.save(finalDeviceState.build());
         return "Action successfully sent!";
     }
 
     private String handleWLED(String deviceId, Map<String, Object> payload) {
         var device = deviceRepository.findById(deviceId).orElse(null);
+        var deviceState = deviceActionStateRepository.findById(deviceId).orElse(null);
         String result = "Not found";
         if (device != null) {
             var wled = new Wled(device.getAccessUrl());
@@ -124,7 +126,7 @@ public class AutomationService {
                     default -> "No action found for key: " + key;
                 };
                 System.err.println(result);
-                var data = wled.getInfo(deviceId);
+                var data = wled.getInfo(deviceId, deviceState);
                 mainService.saveData(deviceId, data);
                 System.err.println(data);
                 var map = new HashMap<String, Object>();

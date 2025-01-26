@@ -1,17 +1,13 @@
 package dev.automata.automata.modules;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import dev.automata.automata.model.DeviceActionState;
 import org.springframework.web.client.RestTemplate;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,13 +15,15 @@ import java.util.Map;
 public class Wled {
     private final String ipAddress;
     private final RestTemplate restTemplate;
+    private static final HashMap<String, Object> lastState = new HashMap<>();
+
 
     public Wled(String ipAddress) {
         this.ipAddress = ipAddress + "/win";
         restTemplate = new RestTemplate();
     }
 
-    public Map<String, Object> getInfo(String deviceId) {
+    public Map<String, Object> getInfo(String deviceId, DeviceActionState deviceState) {
         var res = restTemplate.getForObject(ipAddress, String.class);
         if (res != null) {
             try {
@@ -42,21 +40,19 @@ public class Wled {
 
                 boolean onOff = getTagValue(doc, "ac") > 0;
                 int bright = getTagValue(doc, "ac");
-                int preset = getTagValue(doc, "ps");
 
-                var map =  new HashMap<String, Object>();
-                map.put("onOff", onOff);
-                map.put("bright", bright);
-                map.put("preset", preset);
-                map.put("device_id", deviceId);
-                return map;
+                lastState.putAll(deviceState.getPayload());
+                lastState.put("onOff", onOff);
+                lastState.put("bright", bright);
+                lastState.put("device_id", deviceId);
+                return lastState;
                 // Get the root element
             } catch (Exception e) {
-                e.printStackTrace();
+                e.printStackTrace(System.err);
             }
 
         }
-        return null;
+        return lastState;
     }
     private int getTagValue(Document doc, String tagName) {
         NodeList nodeList = doc.getElementsByTagName(tagName);
@@ -66,6 +62,7 @@ public class Wled {
         return -1; // Return null if the tag is not found
     }
     public String powerOnOff(boolean on) {
+        lastState.put("onOff", on);
         var res = restTemplate.getForObject(ipAddress + "&T=2", String.class);
         if (res != null) {
             var bht = res.split(">")[3].replace("</ac", "");
@@ -75,6 +72,7 @@ public class Wled {
     }
 
     public String setBrightness(int brightness) {
+        lastState.put("bright", brightness);
         var res = restTemplate.getForObject(ipAddress + "&A=" + brightness, String.class);
         if (res != null) {
             var bht = res.split(">")[3].replace("</ac", "");
@@ -84,6 +82,7 @@ public class Wled {
     }
 
     public String setPresets(int presets) {
+        lastState.put("presets", presets);
         var res = restTemplate.getForObject(ipAddress + "&PL=" + presets, String.class);
         if (res != null) {
             var bht = res.split(">")[41].replace("</ps", "");

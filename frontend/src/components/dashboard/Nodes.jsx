@@ -252,13 +252,13 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                         <div style={{
                             gridTemplateColumns: 'repeat(2, 1fr)',
                             display: 'grid',
-                            gap: '10px',
+                            gap: '4px',
                             marginTop: '10px'
                         }}>
                             {data.value.attributes.map(attribute => (
                                 (attribute.type === "DATA|MAIN") && (
-                                    <Card key={attribute.id} style={{
-                                        borderRadius: '12px',
+                                    <Card key={attribute.id} elevation={4} style={{
+                                        borderRadius: '8px',
                                         padding: '6px',
                                         display: 'flex',
                                         flexDirection: 'column',
@@ -313,7 +313,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                 type="source"
                 position={Position.Right}
                 id="b"
-                style={{top: 30, width: '10px', height: '10px', background: color}}
+                style={{top: 30, width: '4px', height: '30px',borderRadius:'0px 10px 10px 0px', background: color}}
                 isConnectable={isConnectable}
             />
         </div>

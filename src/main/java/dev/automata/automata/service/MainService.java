@@ -215,6 +215,40 @@ public class MainService {
     }
 
     public List<Device> getAllDevice() {
+        var devices = deviceRepository.findAll();
+        var chartAttr = dashboardChartsRepository.findAll();
+        var dashboardDevice = deviceDashboardRepository.findAll();
+        var dashboardMap = dashboardDevice.stream().collect(Collectors.toMap(Dashboard::getDeviceId, Function.identity()));
+
+        var deviceList = new ArrayList<Device>();
+        devices.forEach(device -> {
+            var dashboard = dashboardMap.get(device.getId());
+            if (dashboard != null) {
+                device.setX(dashboard.getX());
+                device.setY(dashboard.getY());
+                device.setShowCharts(dashboard.isShowCharts());
+                device.setShowInDashboard(dashboard.isShowInDashboard());
+            }
+            getDeviceAttributes(chartAttr, deviceList, device);
+        });
+        return deviceList;
+    }
+
+    private void getDeviceAttributes(List<DeviceCharts> chartAttr, ArrayList<Device> deviceList, Device device) {
+        var newAttrs = new ArrayList<Attribute>();
+        var attributes = device.getAttributes();
+        attributes.forEach(a -> {
+            var at = chartAttr.stream().filter(c -> c.getAttributeKey().equals(a.getKey())).findFirst();
+            a.setVisible(at.isPresent());
+            newAttrs.add(a);
+        });
+        device.setAttributes(newAttrs);
+        var lastData = getLastData(device.getId());
+        device.setLastData(lastData);
+        deviceList.add(device);
+    }
+
+    public List<Device> getDashboardDevices() {
         var dashboardDevice = deviceDashboardRepository.findByShowInDashboardTrue();
         var devices = deviceRepository.findByIdIn(dashboardDevice.stream().map(Dashboard::getDeviceId).toList());
 
@@ -232,17 +266,7 @@ public class MainService {
                 device.setShowInDashboard(dashboard.isShowInDashboard());
             }
 
-            var newAttrs = new ArrayList<Attribute>();
-            var attributes = device.getAttributes();
-            attributes.forEach(a -> {
-                var at = chartAttr.stream().filter(c -> c.getAttributeKey().equals(a.getKey())).findFirst();
-                a.setVisible(at.isPresent());
-                newAttrs.add(a);
-            });
-            device.setAttributes(newAttrs);
-            var lastData = getLastData(device.getId());
-            device.setLastData(lastData);
-            deviceList.add(device);
+            getDeviceAttributes(chartAttr, deviceList, device);
         });
         deviceList.sort(Comparator.comparingDouble(Device::getY).thenComparingDouble(Device::getX));
 
