@@ -16,6 +16,7 @@ import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -76,9 +77,13 @@ public class SystemMetrics {
         mainService.registerDevice(device);
     }
 
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRate = 360000)
     public void save() {
-        mainService.saveData(deviceId, getData());
+        var data = getData();
+        if (!Objects.requireNonNull(data).isEmpty()){
+            mainService.saveData(deviceId, data);
+        }
+
     }
 
     private HashMap<String, Object> getData() {
@@ -113,17 +118,21 @@ public class SystemMetrics {
     }
 
 
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 5000)
     public void getInfo() {
-        var map = new HashMap<String, Object>();
-        map.put("deviceId", deviceId);
-        map.put("data", getData());
-        messagingTemplate.convertAndSend("/topic/data", map);
+        var data = getData();
+        if (!Objects.requireNonNull(data).isEmpty()){
+            var map = new HashMap<String, Object>();
+            map.put("deviceId", deviceId);
+            map.put("data", data);
+            messagingTemplate.convertAndSend("/topic/data", map);
+        }
+
     }
 
     private static String getUptime() throws Exception {
         String command = "uptime -p"; // Get the uptime in a human-readable format
-        return executeCommand(command).replace("up", "").replace("days", "d").replace("hours", "h").replace("minutes", "m");
+        return executeCommand(command).replace("up", "").replace("day", "d").replace("days", "d").replace("hours", "h").replace("minutes", "m");
     }
 
     private static String getCpuFrequency() throws Exception {

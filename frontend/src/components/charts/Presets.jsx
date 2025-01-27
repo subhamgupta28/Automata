@@ -3,6 +3,7 @@ import Avatar from "@mui/material/Avatar";
 import React from "react";
 import {sendAction} from "../../services/apis.jsx";
 import {deepOrange} from "@mui/material/colors";
+import Typography from "@mui/material/Typography";
 
 
 export const Presets = React.memo(({data, type, value, deviceId, displayName}) => {
@@ -21,8 +22,7 @@ export const Presets = React.memo(({data, type, value, deviceId, displayName}) =
         }
     };
     return (
-        <div style={{display:'flex', alignItems: 'center', flexDirection: 'column'}}>
-            {displayName}
+        <div style={{display:'flex', alignItems: 'center', flexDirection: 'column',marginTop:'4px'}}>
             <div>
                 {Object.values(data.extras).map((ex) => (
                     <IconButton key={ex} onClick={()=>send(ex)}>
@@ -30,6 +30,9 @@ export const Presets = React.memo(({data, type, value, deviceId, displayName}) =
                     </IconButton>
                 ))}
             </div>
+            <Typography style={{marginTop:'4px'}}>
+                {displayName}
+            </Typography>
         </div>
     )
 });
