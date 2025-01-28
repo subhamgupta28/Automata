@@ -228,17 +228,19 @@ public class AutomationService {
 
             var payload = new HashMap<String, Object>();
             var data = action.getData();
-            switch (data) {
-                case "true":
-                    payload.put(action.getKey(), true);
-                    break;
-                case "false":
-                    payload.put(action.getKey(), false);
-                default:
-                    payload.put(action.getKey(), action.getData());
-            }
+//            switch (data) {
+//                case "true":
+//                    payload.put(action.getKey(), true);
+//                    break;
+//                case "false":
+//                    payload.put(action.getKey(), false);
+//                default:
+//                    payload.put(action.getKey(), action.getData());
+//            }
+            payload.put(action.getKey(), action.getData());
 
             payload.put("key", action.getKey());
+            System.err.println("Payload "+payload);
 
             if (device.getType().equals("WLED")) {
                 handleWLED(action.getDeviceId(), payload);

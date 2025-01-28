@@ -209,7 +209,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     marginLeft: '2px',
                     marginRight: '2px',
                     padding: '4px',
-                    boxShadow: 'rgb(255 255 255 / 6%) 0px 0px 50px 15px'
+                    boxShadow: 'rgb(255 235 85 / 8%) 0px 0px 50px 15px'
                 }}>
 
                     <CardContent

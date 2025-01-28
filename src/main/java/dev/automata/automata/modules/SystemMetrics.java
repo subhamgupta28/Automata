@@ -121,7 +121,7 @@ public class SystemMetrics {
     @Scheduled(fixedRate = 5000)
     public void getInfo() {
         var data = getData();
-        if (!Objects.requireNonNull(data).isEmpty()){
+        if (data != null){
             var map = new HashMap<String, Object>();
             map.put("deviceId", deviceId);
             map.put("data", data);
@@ -132,7 +132,7 @@ public class SystemMetrics {
 
     private static String getUptime() throws Exception {
         String command = "uptime -p"; // Get the uptime in a human-readable format
-        return executeCommand(command).replace("up", "").replace("day", "d").replace("days", "d").replace("hours", "h").replace("minutes", "m");
+        return executeCommand(command).replace("up", "").replace("days ", "d").replace("day ", "d").replace("hours ", "h").replace("minutes ", "m");
     }
 
     private static String getCpuFrequency() throws Exception {
