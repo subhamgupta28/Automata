@@ -173,8 +173,9 @@ export const Device = React.memo(({id, data, isConnectable}) => {
 
     useEffect(() => {
         if (id === messages.deviceId) {
-            setLiveData(messages.data && messages.data);
-            console.log(messages.ack)
+            if (messages.data)
+                setLiveData(messages.data);
+
             setActionAck(messages.ack);
         }
     }, [messages]);
@@ -231,7 +232,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                         </Typography>
 
                         {actionAck && actionAck.command === 'reboot' && (
-                            <Card elevation={4} style={{ padding:'8px' }}>
+                            <Card elevation={4} style={{borderRadius: '8px', padding: '8px'}}>
                                 <Typography>Rebooting...</Typography>
                                 <LinearProgress>
                                 </LinearProgress>
@@ -323,7 +324,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                 type="source"
                 position={Position.Right}
                 id="b"
-                style={{top: 30, width: '4px', height: '30px',borderRadius:'0px 10px 10px 0px', background: color}}
+                style={{top: 30, width: '4px', height: '30px', borderRadius: '0px 10px 10px 0px', background: color}}
                 isConnectable={isConnectable}
             />
         </div>
@@ -391,7 +392,12 @@ export function MainNode({data, isConnectable}) {
                             type="target"
                             position={Position.Left}
                             id={id}
-                            style={{top: handleSpacing * (index + 1), width: '10px', height: '10px', background: '#fce02b'}}
+                            style={{
+                                top: handleSpacing * (index + 1),
+                                width: '10px',
+                                height: '10px',
+                                background: '#fce02b'
+                            }}
                             isConnectable={isConnectable}
                         />
                     ))}
