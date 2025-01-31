@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Set;
+
 @Service
 @AllArgsConstructor
 public class RedisService {
@@ -24,7 +26,10 @@ public class RedisService {
     }
 
     public void clearAutomationCache() {
-        var list = redisTemplate;
+        Set<String> keys = redisTemplate.keys("*"); // Get all keys
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys); // Delete all keys
+        }
     }
 
 }

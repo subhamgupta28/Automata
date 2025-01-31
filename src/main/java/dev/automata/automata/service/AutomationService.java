@@ -215,7 +215,7 @@ public class AutomationService {
 
         // Calculate the difference in minutes
         long minutesDifference = ChronoUnit.MINUTES.between(triggerLocalTime, currentLocalTime);
-        return Math.abs(minutesDifference) <= 5;
+        return Math.abs(minutesDifference) <= 2;
     }
     private void executeActions(Automation automation) {
         for (Automation.Action action : automation.getActions()) {
@@ -302,7 +302,7 @@ public class AutomationService {
     private void updateRedisStorage() {
         System.err.println("Updating redis");
 
-
+        redisService.clearAutomationCache();
         var automations = automationRepository.findAll();
         automations.forEach(a -> {
             System.err.println(a);
@@ -312,7 +312,7 @@ public class AutomationService {
                     .isActive(false)
                     .lastUpdate(new Date())
                     .build();
-            redisService.setAutomationCache(a.getTrigger().getDeviceId(), automationCache);
+            redisService.setAutomationCache(a.getId(), automationCache);
 
 
         });
