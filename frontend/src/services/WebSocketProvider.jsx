@@ -4,7 +4,7 @@ import SockJS from "sockjs-client";
 import Stomp from "stompjs";
 
 const url = __API_MODE__ === 'serve'
-    ? 'http://raspberry.local:8010/ws'
+    ? 'http://localhost:8080/ws'
     : window.location.href + "ws";
 
 const topic = "/topic/data";

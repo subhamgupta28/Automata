@@ -59,22 +59,20 @@ export function ActionBoard(action) {
     const {screenToFlowPosition} = useReactFlow();
     const [type, setType] = useDnD();
     const [rfInstance, setRfInstance] = useState(null);
-
+    const fetchData = async () => {
+        try {
+            // const res = await getDevices();
+            // setDevices(devices);
+            const data = await getActions();
+            setAutomations(data)
+            // const {nodes, edges} = createNodes(data)
+            // setNodes(nodes); // Create nodes including the main node
+            // setEdges(edges); // Create edges connecting devices to the main node
+        } catch (err) {
+            console.error("Failed to fetch devices:", err);
+        }
+    };
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // const res = await getDevices();
-                // setDevices(devices);
-                const data = await getActions();
-                setAutomations(data)
-                // const {nodes, edges} = createNodes(data)
-                // setNodes(nodes); // Create nodes including the main node
-                // setEdges(edges); // Create edges connecting devices to the main node
-            } catch (err) {
-                console.error("Failed to fetch devices:", err);
-            }
-        };
-
         fetchData();
     }, []);
 
@@ -86,13 +84,14 @@ export function ActionBoard(action) {
     const onSave = useCallback(() => {
         const saveFlow = async (payload) => {
             console.log("saveFlow", payload);
-            await saveAutomationDetail(payload)
+            await saveAutomationDetail(payload);
+            fetchData();
         }
 
         if (rfInstance) {
             const flow = rfInstance.toObject();
-            // console.log("detail", automationDetail)
-            saveFlow({...flow, id: automationDetail.id});
+            console.log("detail", automationDetail)
+            saveFlow({...flow, id: automationDetail.id ||''});
             // console.log("flow", flow)
             localStorage.setItem("flow", JSON.stringify(flow));
         }
@@ -153,9 +152,19 @@ export function ActionBoard(action) {
         const detail = await getAutomationDetail(a.id);
         console.log("detail", detail);
         setAutomationDetail(detail);
+        setNodes(n=> []);
+        setEdges(e=> []);
         setNodes(detail.nodes || []);
         setEdges(detail.edges || []);
+        id = detail.nodes.length + 1;
+    }
 
+    const clearBoard = () => {
+        setSelectedAutomation({});
+        setAutomationDetail({})
+        setNodes(n=> []);
+        setEdges(e=> []);
+        fetchData();
     }
 
     const onNodesChange = useCallback(
@@ -214,11 +223,12 @@ export function ActionBoard(action) {
                             condition: ConditionNode,
                         }}
                     >
-                        {selectedAutomation.id && (
+                        {selectedAutomation && selectedAutomation.id && (
                             <Panel position="bottom-left" style={{marginBottom: '50px'}}>
-                                <Card variant='outlined' style={{padding:'10px'}}>
+                                <Card variant='outlined' style={{padding: '10px'}}>
                                     <Typography variant="body2" color="textSecondary">
-                                        Enabled: <Switch defaultChecked size="small" checked={selectedAutomation.isEnabled}
+                                        Enabled: <Switch defaultChecked size="small"
+                                                         checked={selectedAutomation.isEnabled}
                                                          onChange={handleDisableAutomation}/>
                                     </Typography>
                                 </Card>
@@ -227,6 +237,7 @@ export function ActionBoard(action) {
                         <Panel position="bottom-right" style={{marginBottom: '50px'}}>
                             {/*<Button variant='outlined' onClick={onRestore}>Restore</Button>*/}
                             <Button variant='outlined' onClick={onSave} style={{marginLeft: '10px'}}>Save</Button>
+                            <Button variant='outlined' onClick={clearBoard} style={{marginLeft: '10px'}}>Clear</Button>
                         </Panel>
                     </ReactFlow>
                 </div>

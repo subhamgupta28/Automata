@@ -78,6 +78,7 @@ public class AutomationService {
 //        Automation action = actionRepository.findByProducerDeviceIdAndProducerKey(deviceId, payload.get("key").toString());
         if (payload.get("direct") != null) {
             map.put(payload.get("key").toString(), payload.get(payload.get("key").toString()).toString());
+            map.put("key", payload.get("key").toString());
             System.err.println("direct = " + map);
             messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
             notificationService.sendNotification("Action applied", "success");
@@ -406,5 +407,29 @@ public class AutomationService {
             notificationService.sendNotification("Automation updated", "success");
         }
         return "success";
+    }
+
+    public String ackAction(String deviceId, Map<String, Object> payload) {
+        var ack = payload.get("actionAck");
+        var map = new HashMap<String, Object>();
+        if (ack!=null) {
+            map.put("deviceId", deviceId);
+            map.put("ack", payload);
+        }
+        messagingTemplate.convertAndSend("/topic/data", map);
+        return "success";
+    }
+
+    public String rebootAllDevices() {
+        var devices = deviceRepository.findAll();
+        for (var device : devices) {
+            var deviceId = device.getId();
+            var map = new HashMap<String, Object>();
+            map.put("deviceId", deviceId);
+            map.put("reboot", true);
+            map.put("key", "reboot");
+            messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
+        }
+        return null;
     }
 }

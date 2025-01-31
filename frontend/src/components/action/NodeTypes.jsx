@@ -40,7 +40,7 @@ const conditionStyle = {
 
 // Custom Trigger Node
 const TriggerNode = ({id, data, isConnectable}) => {
-    const triggerData = data.triggerData ? data.triggerData : {
+    const triggerData = data.triggerData || {
         key: '',
         value: '',
         name: '',
@@ -56,6 +56,13 @@ const TriggerNode = ({id, data, isConnectable}) => {
     const [type, setType] = useState(triggerData.type);
     // const [triggerData, setTriggerData] = useState({key: data.triggerData.key});
     useEffect(() => {
+        let td = data.triggerData;
+        if (td) {
+            setName(td.name);
+            setValue(td.value);
+            setKey(td.key);
+            setType(td.type);
+        }
         if (devices) {
             if (data.triggerData && data.triggerData.deviceId) {
                 const device = devices.filter((d) => d.id === data.triggerData.deviceId);
@@ -64,7 +71,7 @@ const TriggerNode = ({id, data, isConnectable}) => {
                 setSelectedDevice(devices[0]);
             }
         }
-    }, [devices])
+    }, [devices, data.triggerData])
 
     useEffect(() => {
         updateNodeData(id, {
@@ -224,7 +231,7 @@ const TriggerNode = ({id, data, isConnectable}) => {
 // Custom Action Node
 const ActionNode = ({id, data, isConnectable}) => {
     const {updateNodeData, setEdges, setNodes} = useReactFlow();
-    const actionData = data.actionData ? data.actionData : {
+    let actionData = data.actionData || {
         key: '',
         data: '',
         name: '',
@@ -242,6 +249,13 @@ const ActionNode = ({id, data, isConnectable}) => {
     });
 
     useEffect(() => {
+        const ad = data.actionData;
+        if (ad){
+            setName(ad.name);
+            setValue(ad.data);
+            setKey(ad.key);
+        }
+
         if (devices) {
             if (actionData.deviceId) {
                 const device = devices.filter((d) => d.id === actionData.deviceId);
@@ -250,7 +264,7 @@ const ActionNode = ({id, data, isConnectable}) => {
                 setSelectedDevice(devices[0]);
             }
         }
-    }, [data.value, devices])
+    }, [data.value, devices, data.actionData])
     const handleTriggerKey = (e, select) => {
         if (select === 'name') {
             setName(e.target.value);
@@ -349,7 +363,7 @@ const ActionNode = ({id, data, isConnectable}) => {
 
 // Custom Condition Node
 const ConditionNode = ({id, data, isConnectable}) => {
-    const conditionData = data.conditionData ? data.conditionData : {
+    const conditionData = data.conditionData || {
         condition: 'numeric',
         valueType: 'int',
         below: '0',
@@ -379,6 +393,20 @@ const ConditionNode = ({id, data, isConnectable}) => {
         setNodes((nodes) => nodes.filter((node) => node.id !== nodeId)); // Remove the node
         setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     }
+    useEffect(() => {
+        let cd = data.conditionData;
+        if (cd) {
+            setCondition(cd.condition);
+            setAbove(cd.above);
+            setBelow(cd.below);
+            setIsRange(cd.isExact);
+            setConditionValue(cd.value);
+            setTime(dayjs(cd.time));
+            setType(cd.type);
+        }
+
+
+    }, [data.conditionData])
     useEffect(() => {
         const triggerData = nodesData.length > 0 && nodesData[0].data.triggerData ? nodesData[0].data.triggerData : {
             key: '',

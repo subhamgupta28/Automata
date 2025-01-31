@@ -11,10 +11,10 @@ import {
     Button,
     Card,
     CardContent,
-    Chip,
+    Chip, CircularProgress,
     Dialog, DialogActions,
     DialogContent,
-    DialogTitle,
+    DialogTitle, LinearProgress,
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -158,6 +158,7 @@ const DeviceItem = React.memo(({device}) => {
 
 export const Device = React.memo(({id, data, isConnectable}) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [actionAck, setActionAck] = useState({});
     const [liveData, setLiveData] = useState(data.live);
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
@@ -173,6 +174,8 @@ export const Device = React.memo(({id, data, isConnectable}) => {
     useEffect(() => {
         if (id === messages.deviceId) {
             setLiveData(messages.data && messages.data);
+            console.log(messages.ack)
+            setActionAck(messages.ack);
         }
     }, [messages]);
 
@@ -227,6 +230,13 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                             </IconButton>
                         </Typography>
 
+                        {actionAck && actionAck.command === 'reboot' && (
+                            <Card elevation={4} style={{ padding:'8px' }}>
+                                <Typography>Rebooting...</Typography>
+                                <LinearProgress>
+                                </LinearProgress>
+                            </Card>
+                        )}
 
                         {map.length > 0 && liveData && (
                             <MapView lat={liveData.LAT} lng={liveData.LONG}/>

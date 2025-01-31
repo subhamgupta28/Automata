@@ -14,7 +14,7 @@ import {WebSocketProvider} from '../../services/WebSocketProvider.jsx';
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
-import {Backdrop, Card, CircularProgress, Fab} from "@mui/material";
+import {Backdrop, Button, Card, CircularProgress, Fab} from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import NodeInspector from "./NodeInspector.jsx";
 import Typography from "@mui/material/Typography";
@@ -118,10 +118,11 @@ const DeviceNodes = () => {
                             </Typography>
                         </Panel>
                     )}
-                    <Fab color="primary" aria-label="add" onClick={handleEdit}
-                         style={{position: 'absolute', bottom: '50px', right: '14px'}}>
-                        <EditIcon/>
-                    </Fab>
+
+                    <Panel position="bottom-right" style={{marginBottom: '30px'}}>
+                        <Button variant='outlined' onClick={handleEdit} style={{marginLeft: '10px'}}> <EditIcon/> Edit</Button>
+                        <Button variant='outlined' style={{marginLeft: '10px'}}>Actions</Button>
+                    </Panel>
                     {editUi && <NodeInspector/>}
                 </ReactFlow>
             <Backdrop

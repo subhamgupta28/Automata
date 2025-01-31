@@ -95,7 +95,7 @@ function Nav() {
                             Home
                         </NavLink>
                         <NavLink style={{marginLeft:'14px', color: 'white', display: 'block'}} to="/actions" end>
-                            Actions
+                            Automation
                         </NavLink>
                         <NavLink style={{marginLeft:'14px', color: 'white', display: 'block'}} to="/devices" end>
                             Devices

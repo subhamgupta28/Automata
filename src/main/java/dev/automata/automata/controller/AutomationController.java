@@ -8,12 +8,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -98,6 +100,23 @@ public class AutomationController {
             return "Device Id not found";
         }
         return actionService.handleAction(deviceId, payload, "");
+    }
+
+    @GetMapping("/rebootAllDevices")
+    public ResponseEntity<String> rebootAllDevices() {
+        return ResponseEntity.ok(actionService.rebootAllDevices());
+    }
+
+    @MessageMapping("/ackAction")
+    public String ackAction(
+            @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
+    ){
+        System.err.println("got acknowledge message: " + payload);
+        String deviceId = payload.get("device_id").toString();
+        if (deviceId.isEmpty() || deviceId.equals("null")) {
+            System.err.println("Device Id not found");
+        }
+        return actionService.ackAction(deviceId, payload);
     }
 
     @PostMapping("/saveAutomationDetail")

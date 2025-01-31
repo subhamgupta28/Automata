@@ -113,6 +113,15 @@ export const sendAction = async (deviceId, payload, deviceType) => {
     });
     return response.data;
 }
+export const rebootAllDevices = async () => {
+    const response = await axios.get(BASE_URL + "action/rebootAllDevices", {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
 export const notificationAction = async (action, payload) => {
     const response = await axios.post(BASE_URL + "utils/action/" + action, payload, {
         headers: {
