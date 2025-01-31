@@ -430,6 +430,7 @@ public class AutomationService {
             map.put("key", "reboot");
             messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
         }
+        notificationService.sendNotification("Rebooting All Devices", "success");
         return null;
     }
 }

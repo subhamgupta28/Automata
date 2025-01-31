@@ -24,13 +24,10 @@ export default function NodeInspector() {
     }
 
     return (
-        <div className="react-flow__devtools">
-            <Panel position="bottom-right" style={{marginBottom: '120px'}}>
-                <Fab color="primary" aria-label="add" onClick={handleUpdate}>
-                    <SaveIcon/>
-                </Fab>
-                {/*<Button className="nodrag" onClick={handleUpdate}>Save</Button>*/}
-            </Panel>
+        <div>
+            <Button variant='outlined' color="primary" style={{marginLeft: '10px'}} aria-label="add" onClick={handleUpdate}>
+                <SaveIcon/> Save
+            </Button>
             <ViewportPortal>
                 <div className="react-flow__devtools-nodeinspector">
                     {nodes.map((node) => {

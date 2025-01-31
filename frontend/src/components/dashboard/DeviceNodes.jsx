@@ -8,7 +8,7 @@ import {
     useNodesState, useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import {getDashboardDevices, getMainNodePos} from "../../services/apis.jsx";
+import {getDashboardDevices, getMainNodePos, rebootAllDevices} from "../../services/apis.jsx";
 // import useWebSocket from "../../services/useWebSocket.jsx";
 import {WebSocketProvider} from '../../services/WebSocketProvider.jsx';
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
@@ -31,10 +31,15 @@ const DeviceNodes = () => {
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
     const [editUi, setEditUi] = useState(false);
+    const [actionMenu, setActionMenu] = useState(false);
     const { fitView } = useReactFlow();
     const handleEdit = useCallback(() => {
         setEditUi(prev => !prev);
     }, []);
+
+    const handleReboot = async () => {
+        await rebootAllDevices();
+    }
 
     // useEffect(() => {
     //     setNodes((nds) =>
@@ -119,11 +124,15 @@ const DeviceNodes = () => {
                         </Panel>
                     )}
 
-                    <Panel position="bottom-right" style={{marginBottom: '30px'}}>
+                    <Panel position="bottom-right" style={{marginBottom: '30px', display:'flex'}}>
+                        {editUi && <NodeInspector/>}
+                        {actionMenu && <div>
+                            <Button variant='outlined' onClick={handleReboot} style={{marginLeft: '10px'}}>Reboot</Button>
+                        </div>}
                         <Button variant='outlined' onClick={handleEdit} style={{marginLeft: '10px'}}> <EditIcon/> Edit</Button>
-                        <Button variant='outlined' style={{marginLeft: '10px'}}>Actions</Button>
+                        <Button variant='outlined' onClick={()=> setActionMenu(a=> !a)} style={{marginLeft: '10px'}}>Actions</Button>
                     </Panel>
-                    {editUi && <NodeInspector/>}
+
                 </ReactFlow>
             <Backdrop
                 sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
