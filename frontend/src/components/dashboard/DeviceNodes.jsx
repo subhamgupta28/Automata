@@ -95,7 +95,8 @@ const DeviceNodes = () => {
 
     const handleNodeClick = useCallback(
         (_, node) => {
-            fitView({ nodes: [node], duration: 150, maxZoom:1 });
+            if (node.id === 'main-node-1')
+            fitView({ nodes: [node], duration: 550, maxZoom:0.6 });
         },
             [fitView],
     );
@@ -107,7 +108,7 @@ const DeviceNodes = () => {
                     edges={edges}
                     edgeTypes={edgeTypes}
                     // nodesDraggable={editUi}
-                    // onNodeClick={handleNodeClick}
+                    onNodeClick={handleNodeClick}
                     // fitView
                     // fitViewOptions={{ nodes: [{ id: '' }] }}
                     onNodesChange={onNodesChange}

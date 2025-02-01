@@ -118,7 +118,7 @@ public class AnalyticsService {
     private Date getStartDate(String period) {
         LocalDateTime now = LocalDateTime.now();
         if ("day".equalsIgnoreCase(period)) {
-            return Date.from(now.minusHours(7).atZone(ZoneId.systemDefault()).withMinute(0).withSecond(0).toInstant());
+            return Date.from(now.minusHours(24).atZone(ZoneId.systemDefault()).withMinute(0).withSecond(0).toInstant());
         }
         // More cases for "week", "month", etc., can be handled here
         return Date.from(now.atZone(ZoneId.systemDefault()).withHour(0).withMinute(0).withSecond(0).toInstant());

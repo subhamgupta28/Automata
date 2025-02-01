@@ -30,6 +30,8 @@ import {Presets} from "../charts/Presets.jsx";
 import CustomPieChart from "../charts/CustomPieChart.jsx";
 import CustomBarChart from "../charts/CustomBarChart.jsx";
 import {useDeviceLiveData} from "../../services/WebSocketProvider.jsx";
+import {Line} from "react-chartjs-2";
+import CustomLineChart from "../charts/CustomLineChart.jsx";
 
 
 const CustomModal = ({isOpen, onClose, device}) => {
@@ -152,9 +154,6 @@ const CustomModal = ({isOpen, onClose, device}) => {
     );
 };
 
-const DeviceItem = React.memo(({device}) => {
-    return <li>{device.name}: {device.data}</li>;
-});
 
 export const Device = React.memo(({id, data, isConnectable}) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -175,7 +174,6 @@ export const Device = React.memo(({id, data, isConnectable}) => {
         if (id === messages.deviceId) {
             if (messages.data)
                 setLiveData(messages.data);
-
             setActionAck(messages.ack);
         }
     }, [messages]);
@@ -239,6 +237,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                             </Card>
                         )}
 
+
                         {map.length > 0 && liveData && (
                             <MapView lat={liveData.LAT} lng={liveData.LONG}/>
                         )}
@@ -294,7 +293,6 @@ export const Device = React.memo(({id, data, isConnectable}) => {
 
                         </div>
 
-
                         {liveData && (
                             <div style={{
                                 width: '100%',
@@ -315,6 +313,8 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                 }
                             </div>
                         )}
+
+
                     </CardContent>
                 </Card>
 
@@ -459,8 +459,9 @@ function BarChartComp({chartDevice}) {
         <div>
             {chartDevice.name}
             {
-                visibleAttr.length <= 1 ? (
-                    <CustomPieChart className="nodrag" chartData={chartData}/>
+                visibleAttr.length > 1 ? (
+                        <CustomLineChart className="nodrag" chartData={chartData}/>
+                    // <CustomPieChart className="nodrag" chartData={chartData}/>
                 ) : (
                     <CustomBarChart chartData={chartData}/>
                 )

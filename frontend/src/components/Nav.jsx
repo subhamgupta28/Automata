@@ -8,7 +8,7 @@ import AdbIcon from '@mui/icons-material/Adb';
 import {useEffect} from "react";
 import {getDevices, getNotifications, getServerTime} from "../services/apis.jsx";
 import {NavLink} from "react-router-dom";
-import {Alert, Menu, MenuItem} from "@mui/material";
+import {Alert, Button, Menu, MenuItem, useColorScheme} from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import MenuIcon from '@mui/icons-material/NotificationImportant';
 
@@ -19,6 +19,7 @@ function Nav() {
     const [anchorElNav, setAnchorElNav] = React.useState(null);
     const [anchorElUser, setAnchorElUser] = React.useState(null);
     const {data: notifications, error} = getNotifications();
+    // const {mode, setMode} = useColorScheme();
     const [time, setTime] = React.useState(Date());
     const date = new Date();
     const formattedDateTime = date.toLocaleString('en-US', {
@@ -30,6 +31,12 @@ function Nav() {
         second: '2-digit',
         hour12: true // Use 12-hour format with AM/PM
     });
+    // if (!mode) {
+    //     return null;
+    // }
+    // const handleModeChange = () => {
+    //     setMode((prev) => prev === 'light' ? 'dark' : 'dark')
+    // }
 
 
     const handleOpenNavMenu = (event) => {
@@ -48,11 +55,10 @@ function Nav() {
     };
 
 
-
     return (
-        <AppBar  elevation={0} style={{backgroundColor:'transparent', backdropFilter: 'blur(1px)'}}>
+        <AppBar elevation={0} style={{backgroundColor: 'transparent', backdropFilter: 'blur(1px)'}}>
             <Container maxWidth="xl">
-                <Toolbar disableGutters variant="dense" >
+                <Toolbar disableGutters variant="dense">
                     <AdbIcon sx={{display: {xs: 'none', md: 'flex'}, mr: 1}}/>
                     <Typography
                         variant="h6"
@@ -94,10 +100,10 @@ function Nav() {
                         <NavLink style={{color: 'white', display: 'block'}} to="/" end>
                             Home
                         </NavLink>
-                        <NavLink style={{marginLeft:'14px', color: 'white', display: 'block'}} to="/actions" end>
+                        <NavLink style={{marginLeft: '14px', color: 'white', display: 'block'}} to="/actions" end>
                             Automation
                         </NavLink>
-                        <NavLink style={{marginLeft:'14px', color: 'white', display: 'block'}} to="/devices" end>
+                        <NavLink style={{marginLeft: '14px', color: 'white', display: 'block'}} to="/devices" end>
                             Devices
                         </NavLink>
                     </Box>
@@ -106,6 +112,16 @@ function Nav() {
                         {/*>*/}
                         {/*    {time}*/}
                         {/*</Typography>*/}
+                        {/*<Button*/}
+                        {/*    size="small"*/}
+                        {/*    aria-label="account of current user"*/}
+                        {/*    aria-controls="menu-appbar"*/}
+                        {/*    aria-haspopup="true"*/}
+                        {/*    onClick={handleModeChange}*/}
+                        {/*    color="inherit"*/}
+                        {/*>*/}
+                        {/*    Mode*/}
+                        {/*</Button>*/}
                         <IconButton
                             size="large"
                             aria-label="account of current user"
@@ -114,10 +130,10 @@ function Nav() {
                             onClick={handleOpenUserMenu}
                             color="inherit"
                         >
-                            <MenuIcon />
+                            <MenuIcon/>
                         </IconButton>
                         <Menu
-                            sx={{ mt: '45px' }}
+                            sx={{mt: '45px'}}
                             id="menu-appbar"
                             anchorEl={anchorElUser}
                             anchorOrigin={{

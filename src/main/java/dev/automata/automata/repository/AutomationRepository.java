@@ -8,4 +8,6 @@ import java.util.List;
 public interface AutomationRepository extends MongoRepository<Automation, String> {
 
     List<Automation> findByIsEnabledTrue();
+
+    List<Automation> findByTrigger_DeviceId(String deviceId);
 }

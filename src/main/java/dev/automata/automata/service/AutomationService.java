@@ -84,10 +84,13 @@ public class AutomationService {
             notificationService.sendNotification("Action applied", "success");
             return "No saved action found but sent directly";
         }
-        var automationCache = redisService.getAutomationCache(deviceId);
-        if (automationCache != null && !payload.isEmpty()) {
+
+        var automations = automationRepository.findByTrigger_DeviceId(deviceId);
+//        var automationCache = redisService.getAutomationCache(deviceId);
+        if (automations != null && !payload.isEmpty()) {
 //            System.err.println("Found Automation for " + deviceId);
-            checkAndExecuteSingleAutomation(automationCache.getAutomation(), payload);
+            for (var a : automations)
+                checkAndExecuteSingleAutomation(a, payload);
         }
 
 //        System.err.println(action);
@@ -217,10 +220,11 @@ public class AutomationService {
         long minutesDifference = ChronoUnit.MINUTES.between(triggerLocalTime, currentLocalTime);
         return Math.abs(minutesDifference) <= 2;
     }
+
     private void executeActions(Automation automation) {
         for (Automation.Action action : automation.getActions()) {
             // Execute each action (e.g., call a service, turn on a device)
-            if (action.getIsEnabled() != null && !action.getIsEnabled()){
+            if (action.getIsEnabled() != null && !action.getIsEnabled()) {
                 continue;
             }
             var device = mainService.getDevice(action.getDeviceId());
@@ -241,7 +245,7 @@ public class AutomationService {
             payload.put(action.getKey(), action.getData());
 
             payload.put("key", action.getKey());
-            System.err.println("Payload "+payload);
+            System.err.println("Payload " + payload);
 
             if (device.getType().equals("WLED")) {
                 handleWLED(action.getDeviceId(), payload);
@@ -401,7 +405,7 @@ public class AutomationService {
 
     public String disableAutomation(String id, Boolean enabled) {
         var aut = automationRepository.findById(id).orElse(null);
-        if (aut!=null){
+        if (aut != null) {
             aut.setIsEnabled(enabled);
             automationRepository.save(aut);
             notificationService.sendNotification("Automation updated", "success");
@@ -412,7 +416,7 @@ public class AutomationService {
     public String ackAction(String deviceId, Map<String, Object> payload) {
         var ack = payload.get("actionAck");
         var map = new HashMap<String, Object>();
-        if (ack!=null) {
+        if (ack != null) {
             map.put("deviceId", deviceId);
             map.put("ack", payload);
         }
