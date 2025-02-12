@@ -16,7 +16,7 @@ export const useDeviceLiveData = () => {
 };
 
 // WebSocket provider component
-export const WebSocketProvider = ({ children }) => {
+export const DeviceDataProvider = ({ children }) => {
     const [messages, setMessages] = useState({ device_id: "", deviceConfig: {} });
     const stompClientRef = useRef(null);
 

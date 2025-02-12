@@ -29,7 +29,7 @@ import {SwitchButton} from "../charts/SwitchButton.jsx";
 import {Presets} from "../charts/Presets.jsx";
 import CustomPieChart from "../charts/CustomPieChart.jsx";
 import CustomBarChart from "../charts/CustomBarChart.jsx";
-import {useDeviceLiveData} from "../../services/WebSocketProvider.jsx";
+import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {Line} from "react-chartjs-2";
 import CustomLineChart from "../charts/CustomLineChart.jsx";
 

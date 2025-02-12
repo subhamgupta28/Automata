@@ -10,7 +10,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import {getDashboardDevices, getMainNodePos, rebootAllDevices} from "../../services/apis.jsx";
 // import useWebSocket from "../../services/useWebSocket.jsx";
-import {WebSocketProvider} from '../../services/WebSocketProvider.jsx';
+import {DeviceDataProvider} from '../../services/DeviceDataProvider.jsx';
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
@@ -148,11 +148,11 @@ const DeviceNodes = () => {
 const Dashboard = () => {
 
     return (
-        <WebSocketProvider>
+        <DeviceDataProvider>
             <ReactFlowProvider>
                 <DeviceNodes/>
             </ReactFlowProvider>
-        </WebSocketProvider>
+        </DeviceDataProvider>
 
     )
 }
