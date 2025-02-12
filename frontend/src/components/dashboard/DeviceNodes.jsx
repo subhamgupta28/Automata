@@ -108,7 +108,7 @@ const DeviceNodes = () => {
                     edges={edges}
                     edgeTypes={edgeTypes}
                     // nodesDraggable={editUi}
-                    onNodeClick={handleNodeClick}
+                    // onNodeClick={handleNodeClick}
                     // fitView
                     // fitViewOptions={{ nodes: [{ id: '' }] }}
                     onNodesChange={onNodesChange}

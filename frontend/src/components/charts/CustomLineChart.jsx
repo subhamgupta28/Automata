@@ -28,7 +28,7 @@ export default function CustomLineChart({chartData}) {
         <div>
             <ChartContainer
                 width={650}
-                height={300}
+                height={250}
                 series={[{type: 'line', data: list}]}
                 xAxis={[{scaleType: 'point', data: chartData.timestamps}]}
                 sx={{
