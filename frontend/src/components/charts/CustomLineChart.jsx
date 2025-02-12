@@ -9,26 +9,17 @@ import {
 
 export default function CustomLineChart({chartData}) {
     const list = [];
-    console.log(chartData);
-    const values = chartData.data.map((c)=>{
-
-        list.push(c[chartData.dataKey]);
-    });
-    const pData = [1400, 2398, 4800, 3908, 4800, 3800, 4300];
-    const xLabels = [
-        'Page A',
-        'Page B',
-        'Page C',
-        'Page D',
-        'Page E',
-        'Page F',
-        'Page G',
-    ];
+    console.log("chartData", chartData);
+    if (chartData.data)
+        chartData.data.map((c) => {
+            list.push(c[chartData.dataKey]);
+        });
+    console.log("chartData l", list);
     return (
         <div>
             <ChartContainer
-                width={650}
-                height={250}
+                width={550}
+                height={230}
                 series={[{type: 'line', data: list}]}
                 xAxis={[{scaleType: 'point', data: chartData.timestamps}]}
                 sx={{
@@ -38,7 +29,7 @@ export default function CustomLineChart({chartData}) {
                     },
                     [`& .${markElementClasses.root}`]: {
                         stroke: '#8884d8',
-                        scale: '0.6',
+                        scale: '0.8',
                         fill: '#fff',
                         strokeWidth: 2,
                     },

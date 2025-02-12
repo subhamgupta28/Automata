@@ -5,7 +5,7 @@ import {
     getPieChartData,
     refreshDeviceById,
     sendAction,
-    updateAttrCharts
+    updateAttrCharts, updateShowCharts
 } from "../../services/apis.jsx";
 import {
     Button,
@@ -36,6 +36,7 @@ import CustomLineChart from "../charts/CustomLineChart.jsx";
 
 const CustomModal = ({isOpen, onClose, device}) => {
     const [attrs, setAttrs] = useState(device.attributes);
+    const [showCharts, setShowCharts] = useState(device.showCharts);
     const fetchData = async () => {
         try {
             await refreshDeviceById(device.id);
@@ -57,6 +58,12 @@ const CustomModal = ({isOpen, onClose, device}) => {
     const handleReboot = () => handleAction("reboot");
 
     const handleUpdate = () => fetchData();
+
+    const handleShowCharts = async (e) => {
+      console.log("Show Charts", e.target.checked);
+      await updateShowCharts(device.id, e.target.checked);
+      setShowCharts(!e.target.checked);
+    }
 
     const handleAttrUpdate = async (attribute) => {
         try {
@@ -97,6 +104,15 @@ const CustomModal = ({isOpen, onClose, device}) => {
                             <tr>
                                 <td>Update Interval</td>
                                 <td>{device.updateInterval}</td>
+                            </tr>
+                            <tr>
+                                <td>Show Charts</td>
+                                <td>
+                                    <Checkbox
+                                        checked={showCharts}
+                                        onChange={handleShowCharts}
+                                    />
+                                </td>
                             </tr>
                             </tbody>
                         </table>
@@ -336,6 +352,7 @@ export function MainNode({data, isConnectable}) {
     const {devices, numOfDevices, chartNodes} = data.value;
 
     // Filter charts from the devices
+    // console.log("devices", devices)
     const charts = useMemo(() =>
         devices.filter(device =>
             device.showCharts === true
@@ -372,10 +389,10 @@ export function MainNode({data, isConnectable}) {
 
                     <CardContent style={{
                         marginLeft: '15px', display: 'grid', marginTop: '10px',
-                        gridTemplateColumns: 'repeat(1, 1fr)', /* 4 columns */
+                        gridTemplateColumns: 'repeat(2, 1fr)', /* 4 columns */
                         gap: '10px', /* Space between items */
                     }}>
-                        {charts.map((device, index) => (
+                        {charts && charts.map((device, index) => (
                             <BarChartComp key={device.id} chartDevice={device}/>
                         ))}
 
@@ -420,9 +437,9 @@ function BarChartComp({chartDevice}) {
 
     const visibleAttr = chartDevice?.attributes.filter(attr => attr.visible === true);
 
-    // console.log("visibleAttr", visibleAttr)
+    console.log("visibleAttr", visibleAttr, chartDevice.name)
     // const [deviceId, setDeviceId] = useState(0);
-    const [selectedAttribute, setAttribute] = useState(visibleAttr[0]?.key || "");
+    const [selectedAttribute, setAttribute] = useState( visibleAttr[0]?.key || "");
     // const [chartDevice, setChartDevice] = useState(chartDevice?.id || "");
     // const [deviceName, setDeviceName] = useState(chartDevice?.name || "");
 
@@ -456,11 +473,11 @@ function BarChartComp({chartDevice}) {
 
 
     return (
-        <div>
+        <div className="nodrag">
             {chartDevice.name}
             {
-                visibleAttr.length > 1 ? (
-                        <CustomLineChart className="nodrag" chartData={chartData}/>
+                visibleAttr && visibleAttr.length > 0 ? (
+                        <CustomLineChart  chartData={chartData}/>
                     // <CustomPieChart className="nodrag" chartData={chartData}/>
                 ) : (
                     <CustomBarChart chartData={chartData}/>

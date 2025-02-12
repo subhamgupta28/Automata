@@ -127,6 +127,11 @@ public class MainController {
         return ResponseEntity.ok(mainService.getLastData(deviceId));
     }
 
+    @GetMapping("/showCharts/{deviceId}/{isVisible}")
+    public ResponseEntity<String> showCharts(@PathVariable String deviceId, @PathVariable String isVisible) {
+        return ResponseEntity.ok(mainService.showCharts(deviceId, isVisible));
+    }
+
     @PostMapping("/register")
     public ResponseEntity<Device> registerDevice(
             @RequestBody RegisterDevice registerDevice

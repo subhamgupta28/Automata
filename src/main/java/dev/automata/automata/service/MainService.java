@@ -238,7 +238,7 @@ public class MainService {
         var newAttrs = new ArrayList<Attribute>();
         var attributes = device.getAttributes();
         attributes.forEach(a -> {
-            var at = chartAttr.stream().filter(c -> c.getAttributeKey().equals(a.getKey())).findFirst();
+            var at = chartAttr.stream().filter(c -> c.getDeviceId().equals(device.getId()) && c.getAttributeKey().equals(a.getKey())).findFirst();
             a.setVisible(at.isPresent());
             newAttrs.add(a);
         });
@@ -363,5 +363,18 @@ public class MainService {
 
     public Device getDeviceByName(String name) {
         return deviceRepository.findByName(name);
+    }
+
+    public String showCharts(String deviceId, String isVisible) {
+        var isShow = Boolean.parseBoolean(isVisible);
+        var device = deviceDashboardRepository.findByDeviceId(deviceId).orElse(null);
+        if (device != null) {
+            device.setShowCharts(isShow);
+            deviceDashboardRepository.save(device);
+            notificationService.sendNotification("Device is " + (isShow ? " visible " : " not visible ") + "in charts", "success");
+            return "success";
+        }
+
+        return "error";
     }
 }
