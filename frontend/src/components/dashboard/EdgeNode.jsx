@@ -11,7 +11,7 @@ export const createEdges = (devices, charts) => {
             target: 'main-node-1',
             // type: 'animatedSvg',// The ID of the device node
             targetHandle: 'main-node-' + index,       // Source handle ID if applicable
-            animated: true,
+            // animated: true,
             style: {stroke: '#ffa500', strokeWidth: '3px'}
         })
         index++;
