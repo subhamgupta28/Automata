@@ -8,7 +8,7 @@ WORKDIR /app
 COPY target/Automata-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose the port the app runs on
-EXPOSE 8080
+EXPOSE 8081
 
 # Run the Spring Boot application
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
