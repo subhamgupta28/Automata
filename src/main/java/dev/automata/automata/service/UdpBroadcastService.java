@@ -10,11 +10,11 @@ import java.net.InetAddress;
 @Service
 public class UdpBroadcastService {
 
-    private static final String BROADCAST_IP = "255.255.255.255"; // Broadcast to all devices
+    private static final String BROADCAST_IP = "192.168.1.255"; // Broadcast to all devices
     private static final int UDP_PORT = 12345;
     private static final String MESSAGE = "Hello from Raspberry Pi";
 
-    @Scheduled(fixedRate = 3000) // Broadcast every 5 seconds
+    @Scheduled(fixedRate = 30000) // Broadcast every 5 seconds
     public void broadcastUdpMessage() {
         try (DatagramSocket socket = new DatagramSocket()) {
             socket.setBroadcast(true);
