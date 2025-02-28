@@ -34,7 +34,7 @@ import {Line} from "react-chartjs-2";
 import CustomLineChart from "../charts/CustomLineChart.jsx";
 
 
-const CustomModal = ({isOpen, onClose, device}) => {
+const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
     const [attrs, setAttrs] = useState(device.attributes);
     const [showCharts, setShowCharts] = useState(device.showCharts);
     const fetchData = async () => {
@@ -131,6 +131,33 @@ const CustomModal = ({isOpen, onClose, device}) => {
                                               displayName={slide.displayName}/>
                             ))}
                         </div>
+                        {/*<div style={{*/}
+                        {/*    gridTemplateColumns: 'repeat(2, 1fr)',*/}
+                        {/*    display: 'grid',*/}
+                        {/*    gap: '4px',*/}
+                        {/*    marginTop: '10px'*/}
+                        {/*}}>*/}
+                        {/*    {device.attributes.map(attribute => (*/}
+                        {/*        (attribute.type === "DATA|MAIN") && (*/}
+                        {/*            <Card key={attribute.id} elevation={4} style={{*/}
+                        {/*                borderRadius: '8px',*/}
+                        {/*                padding: '6px',*/}
+                        {/*                display: 'flex',*/}
+                        {/*                flexDirection: 'column',*/}
+                        {/*                justifyContent: 'space-between',*/}
+                        {/*                alignItems: 'center'*/}
+                        {/*            }}>*/}
+                        {/*                <Typography*/}
+                        {/*                    variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>*/}
+                        {/*                <Typography variant="subtitle2">{attribute["displayName"]}</Typography>*/}
+                        {/*            </Card>*/}
+                        {/*        )*/}
+                        {/*    ))}*/}
+                        {/*</div>*/}
+
+                        {map.length > 0 && liveData && (
+                            <MapView lat={liveData.LAT} lng={liveData.LONG} h={300} w='auto'/>
+                        )}
 
 
                     </div>
@@ -255,7 +282,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
 
 
                         {map.length > 0 && liveData && (
-                            <MapView lat={liveData.LAT} lng={liveData.LONG}/>
+                            <MapView lat={liveData.LAT} lng={liveData.LONG} h='280px' w='200px'/>
                         )}
 
                         {gaugeData && liveData && gaugeData.map((gauge) => (
@@ -334,7 +361,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     </CardContent>
                 </Card>
 
-                <CustomModal isOpen={isModalOpen} onClose={handleCloseModal} device={data.value}/>
+                <CustomModal map={map} isOpen={isModalOpen} liveData={liveData} onClose={handleCloseModal} device={data.value}/>
             </div>
             <Handle
                 type="source"
@@ -389,7 +416,7 @@ export function MainNode({data, isConnectable}) {
 
                     <CardContent style={{
                         marginLeft: '15px', display: 'grid', marginTop: '10px',
-                        gridTemplateColumns: 'repeat(2, 1fr)', /* 4 columns */
+                        gridTemplateColumns: 'repeat(1, 1fr)', /* 4 columns */
                         gap: '10px', /* Space between items */
                     }}>
                         {charts && charts.map((device, index) => (

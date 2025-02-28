@@ -3,7 +3,7 @@ import {useEffect, useState} from "react";
 
 
 const BASE_URL = __API_MODE__ === 'serve'
-    ? 'http://localhost:8080/api/v1/' // Local API server for development
+    ? 'http://localhost:8010/api/v1/' // Local API server for development
     : window.location.href + "api/v1/";
 
 // const BROWSER_URL = window.location.href;

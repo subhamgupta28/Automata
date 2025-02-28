@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import React from "react";
 
 
-export const MapView = React.memo(({lat, lng}) =>  {
+export const MapView = React.memo(({lat, lng, h, w}) =>  {
     if (!lat || !lng) {
         lat = 0
         lng = 0;
@@ -19,7 +19,7 @@ export const MapView = React.memo(({lat, lng}) =>  {
 
     return (
 
-        <MapContainer className="nodrag" center={position} zoom={zoom} layers={googleSat} style={{ height: '280px', width: '200px', borderRadius:'8px' }}>
+        <MapContainer className="nodrag" center={position} zoom={zoom} layers={googleSat} style={{ height: h, width: w, borderRadius:'8px' }}>
             {/*<TileLayer*/}
             {/*    url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" // TileLayer URL (OSM)*/}
             {/*/>*/}
