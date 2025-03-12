@@ -19,6 +19,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -426,12 +427,14 @@ public class AutomationService {
 
     public String rebootAllDevices() {
         var devices = deviceRepository.findAll();
+        RestTemplate restTemplate = new RestTemplate();
         for (var device : devices) {
             var deviceId = device.getId();
             var map = new HashMap<String, Object>();
             map.put("deviceId", deviceId);
             map.put("reboot", true);
             map.put("key", "reboot");
+            var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
             messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
         }
         notificationService.sendNotification("Rebooting All Devices", "success");
