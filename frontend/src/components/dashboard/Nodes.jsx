@@ -125,39 +125,45 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                             </Button>
                         ))}
                         <div style={{width: '50%'}}>
-                            {sliderData && sliderData.map((slide) => (
-                                <CustomSlider key={slide.key} value={0} deviceId={device.id}
+                            {sliderData && liveData && sliderData.map((slide) => (
+                                <CustomSlider key={slide.key} value={liveData[slide.key]} deviceId={device.id}
                                               type={device.type} data={slide}
                                               displayName={slide.displayName}/>
                             ))}
                         </div>
-                        {/*<div style={{*/}
-                        {/*    gridTemplateColumns: 'repeat(2, 1fr)',*/}
-                        {/*    display: 'grid',*/}
-                        {/*    gap: '4px',*/}
-                        {/*    marginTop: '10px'*/}
-                        {/*}}>*/}
-                        {/*    {device.attributes.map(attribute => (*/}
-                        {/*        (attribute.type === "DATA|MAIN") && (*/}
-                        {/*            <Card key={attribute.id} elevation={4} style={{*/}
-                        {/*                borderRadius: '8px',*/}
-                        {/*                padding: '6px',*/}
-                        {/*                display: 'flex',*/}
-                        {/*                flexDirection: 'column',*/}
-                        {/*                justifyContent: 'space-between',*/}
-                        {/*                alignItems: 'center'*/}
-                        {/*            }}>*/}
-                        {/*                <Typography*/}
-                        {/*                    variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>*/}
-                        {/*                <Typography variant="subtitle2">{attribute["displayName"]}</Typography>*/}
-                        {/*            </Card>*/}
-                        {/*        )*/}
-                        {/*    ))}*/}
-                        {/*</div>*/}
-
                         {map.length > 0 && liveData && (
                             <MapView lat={liveData.LAT} lng={liveData.LONG} h={300} w='auto'/>
                         )}
+                        Aux Data
+                        {liveData && (
+                            <div style={{
+                                width: '70%',
+                                gridTemplateColumns: 'repeat(3, 1fr)',
+                                display: 'grid',
+                                gap: '4px',
+                                marginTop: '10px'
+                            }}>
+
+                                {device.attributes.map(attribute => (
+                                    (attribute.type !== "DATA|MAIN") && (
+                                        <Card key={attribute.id} elevation={0} style={{
+                                            borderRadius: '8px',
+                                            padding: '6px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                        }}>
+                                            <Typography
+                                                variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>
+                                            <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
+                                        </Card>
+                                    )
+                                ))}
+                            </div>
+                        )}
+
+
 
 
                     </div>
