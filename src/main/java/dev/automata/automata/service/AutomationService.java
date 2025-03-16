@@ -434,16 +434,15 @@ public class AutomationService {
             map.put("deviceId", deviceId);
             map.put("reboot", true);
             map.put("key", "reboot");
+            messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
+
             try{
-                if (device.getStatus() == Status.ONLINE){
-                    var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
-                    System.err.println(res);
-                }
+                var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
+                System.err.println(res);
             } catch (Exception e) {
                 System.err.println(e.getMessage());
             }
 
-            messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
         }
         notificationService.sendNotification("Rebooting All Devices", "success");
         return null;

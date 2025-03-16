@@ -14,7 +14,7 @@ public class UdpBroadcastService {
     private static final int UDP_PORT = 12345;
     private static final String MESSAGE = "Hello from Raspberry Pi";
 
-    @Scheduled(fixedRate = 30000) // Broadcast every 5 seconds
+//    @Scheduled(fixedRate = 30000) // Broadcast every 5 seconds
     public void broadcastUdpMessage() {
         try (DatagramSocket socket = new DatagramSocket()) {
             socket.setBroadcast(true);

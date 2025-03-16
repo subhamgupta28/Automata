@@ -254,7 +254,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     marginLeft: '2px',
                     marginRight: '2px',
                     padding: '4px',
-                    boxShadow: 'rgb(255 235 85 / 8%) 0px 0px 50px 15px'
+                    boxShadow: 'rgb(255 255 255 / 4%) 0px 0px 50px 15px'
                 }}>
 
                     <CardContent
@@ -273,7 +273,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                         </Typography>
 
                         {actionAck && actionAck.command === 'reboot' && (
-                            <Card elevation={4} style={{borderRadius: '8px', padding: '8px'}}>
+                            <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
                                 <Typography>Rebooting...</Typography>
                                 <LinearProgress>
                                 </LinearProgress>
@@ -503,7 +503,7 @@ function BarChartComp({chartDevice}) {
         <div className="nodrag">
             {chartDevice.name}
             {
-                visibleAttr && visibleAttr.length > 0 ? (
+                visibleAttr && visibleAttr.length < 0 ? (
                         <CustomLineChart  chartData={chartData}/>
                     // <CustomPieChart className="nodrag" chartData={chartData}/>
                 ) : (
@@ -513,7 +513,7 @@ function BarChartComp({chartDevice}) {
             {chartData.attributes.length > 1 && (
                 <div style={{display: 'flex', alignItems: 'center', flexDirection: 'column', width: '100%'}}>
                     <Typography>Attributes</Typography>
-                    <div style={{margin: '14px'}}>
+                    <div style={{margin: '2px'}}>
                         {chartData.attributes.map((name) => (
                             <Chip
                                 key={name}
