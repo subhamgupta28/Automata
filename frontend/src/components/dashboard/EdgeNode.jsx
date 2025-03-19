@@ -105,7 +105,7 @@ export const createNodes = (devices, charts, initX, initY) => {
         index += 540
     })
 
-    console.log("deviceNodes", deviceNodes);
+    // console.log("deviceNodes", deviceNodes);
 
     const mainNode = {
         id: 'main-node-1',

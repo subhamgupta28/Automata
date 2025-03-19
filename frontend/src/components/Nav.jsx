@@ -106,6 +106,9 @@ function Nav() {
                         <NavLink style={{marginLeft: '14px', color: 'white', display: 'block'}} to="/devices" end>
                             Devices
                         </NavLink>
+                        <NavLink style={{marginLeft: '14px', color: 'white', display: 'block'}} to="/mob" end>
+                            Mobile View
+                        </NavLink>
                     </Box>
                     <Box>
                         {/*<Typography style={{marginRight: "10px"}}*/}

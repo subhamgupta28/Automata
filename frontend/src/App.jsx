@@ -11,6 +11,7 @@ import Notifications from "./components/Notifications.jsx";
 import Devices from "./components/Devices.jsx";
 import {AppCacheProvider} from "./services/AppCacheContext.jsx";
 import {SnackbarProvider} from "notistack";
+import MobileView from "./components/dashboard/MobileView.jsx";
 
 
 function App() {
@@ -47,6 +48,7 @@ function App() {
                                     <Route path="/" element={<DeviceNodes/>}/>
                                     <Route path="actions" element={<ActionBoard/>}/>
                                     <Route path="devices" element={<Devices/>}/>
+                                    <Route path="mob" element={<MobileView/>}/>
                                 </Routes>
                             </AppCacheProvider>
 

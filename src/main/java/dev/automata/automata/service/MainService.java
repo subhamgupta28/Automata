@@ -346,10 +346,19 @@ public class MainService {
             device.setShowInDashboard(isShow);
             deviceDashboardRepository.save(device);
             notificationService.sendNotification("Device is " + (isShow ? " visible " : " not visible ") + "in dashboard", "success");
-            return "success";
+        }else{
+            var dashboard = Dashboard.builder()
+                    .showInDashboard(isShow)
+                    .deviceId(deviceId)
+                    .x(10)
+                    .y(20)
+                    .showCharts(false)
+                    .build();
+            deviceDashboardRepository.save(dashboard);
+            notificationService.sendNotification("New device set", "success");
         }
-        notificationService.sendNotification("Something went wrong", "error");
-        return "error";
+        return "success";
+
     }
 
     public Map<String, Object> getMainNodePos() {
