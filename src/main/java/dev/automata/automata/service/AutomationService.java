@@ -139,6 +139,7 @@ public class AutomationService {
                 map.put("data", data);
                 messagingTemplate.convertAndSend("/topic/data", map);
             } catch (Exception e) {
+                System.out.println(e);
                 return "Error";
             }
         }
