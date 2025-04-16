@@ -68,6 +68,7 @@ public class MainService {
                 .name(registerDevice.getName())
                 .updateInterval(registerDevice.getUpdateInterval())
                 .sleep(registerDevice.getSleep())
+                .host(registerDevice.getHost())
                 .type(registerDevice.getType())
                 .macAddr(registerDevice.getMacAddr())
                 .accessUrl(registerDevice.getAccessUrl())
