@@ -438,7 +438,7 @@ public class AutomationService {
             messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
 
             try{
-                var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
+                var res = restTemplate.getForObject(device.getHost()+ ".local/restart", String.class);
                 System.err.println(res);
             } catch (Exception e) {
                 System.err.println(e.getMessage());
