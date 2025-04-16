@@ -32,6 +32,7 @@ import CustomBarChart from "../charts/CustomBarChart.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {Line} from "react-chartjs-2";
 import CustomLineChart from "../charts/CustomLineChart.jsx";
+import ChartDetail from "../charts/ChartDetail.jsx";
 
 
 const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
@@ -95,7 +96,7 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                             <tbody>
                             <tr>
                                 <td>Access URL</td>
-                                <td>{device.accessUrl}</td>
+                                <td><a href={"http://"+device.host+".local"} target="_blank">{device.host}.local</a></td>
                             </tr>
                             <tr>
                                 <td>Mac Address</td>
@@ -137,8 +138,8 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                         Aux Data
                         {liveData && (
                             <div style={{
-                                width: '70%',
-                                gridTemplateColumns: 'repeat(3, 1fr)',
+                                // width: '8%',
+                                gridTemplateColumns: 'repeat(4, 1fr)',
                                 display: 'grid',
                                 gap: '4px',
                                 marginTop: '10px'

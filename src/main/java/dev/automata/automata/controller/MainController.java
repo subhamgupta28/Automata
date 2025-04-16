@@ -43,6 +43,12 @@ public class MainController {
     public ResponseEntity<ChartDataDto> getChartData(@PathVariable String deviceId, @PathVariable String attribute) {
         return ResponseEntity.ok(analyticsService.getChartData2(deviceId, attribute, "day"));
     }
+
+    @GetMapping("chartDetail/{deviceId}")
+    public ResponseEntity<ChartDataDto> getChartDetail(@PathVariable String deviceId) {
+        return ResponseEntity.ok(analyticsService.getChartDetail(deviceId));
+    }
+
     @GetMapping("pieChart/{deviceId}")
     public ResponseEntity<ChartDataDto> getPieChartData(@PathVariable String deviceId) {
         return ResponseEntity.ok(analyticsService.getPieChartData(deviceId, "day"));

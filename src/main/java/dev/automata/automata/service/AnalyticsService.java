@@ -13,6 +13,8 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.DateOperators;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -28,6 +30,47 @@ public class AnalyticsService {
     private final AttributeRepository attributeRepository;
     private final DeviceChartsRepository deviceChartsRepository;
     private final MongoTemplate mongoTemplate;
+
+    public ChartDataDto getChartDetail(String deviceId) {
+        ChartDataDto chartDataDto = initializeChartDataDto(deviceId, "last12hours");
+
+        List<Attribute> filteredAttributes = getFilteredAttributes(deviceId);
+        chartDataDto.setAttributes(filteredAttributes.stream().map(Attribute::getKey).collect(Collectors.toList()));
+
+        System.err.println(filteredAttributes);
+
+        var endDate = new Date(); // now
+        var startDate = Date.from(Instant.now().minus(Duration.ofHours(8)));
+
+        var match = match(where("deviceId").is(deviceId).and("updateDate").gte(startDate).lte(endDate));
+
+        var list = filteredAttributes.stream().map(Attribute::getKey).toList();
+
+        var project = project("updateDate")
+                .and(DateOperators.dateOf("updateDate").toString("%m-%d %H:%M:%S").withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))).as("dateDay")
+                .andExclude( "_id");
+//                .and(DateOperators.dateOf("updateDate").toString("%m-%d %H:%M").withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))).as("dateShow");
+
+        for (var i : filteredAttributes) {
+            project = project.andExpression("toDouble(data." + i.getKey() + ")").as(i.getKey());;
+        }
+
+        var group = group("dateDay")
+                .count().as("count")
+                .max("dateShow").as("endOfDay")
+                .min("dateShow").as("startOfDay");
+
+        var sort = sort(Sort.by(Sort.Order.asc("startOfDay")));
+
+        Aggregation aggregation = newAggregation(match, project, sort);
+        var res = mongoTemplate.aggregate(aggregation, "data", Object.class).getMappedResults();
+
+        System.err.println(res);
+        chartDataDto.setData(res);
+
+        return chartDataDto;
+    }
+
 
     public ChartDataDto getChartData2(String deviceId, String attributeKey, String period) {
         // Initialize ChartData
