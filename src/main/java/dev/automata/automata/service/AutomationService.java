@@ -80,12 +80,12 @@ public class AutomationService {
             var device = deviceRepository.findById(deviceId).orElse(null);
             RestTemplate restTemplate = new RestTemplate();
             try{
-                var res = restTemplate.getForObject(device.getHost()+ ".local/restart", String.class);
+                var res = restTemplate.getForObject("http://"+device.getHost()+ ".local/restart", String.class);
                 System.err.println(res);
             } catch (Exception e) {
                 System.err.println(e.getMessage());
             }
-            return "Rebooting device";
+//            return "Rebooting device";
         }
 
 //        Automation action = actionRepository.findByProducerDeviceIdAndProducerKey(deviceId, payload.get("key").toString());
