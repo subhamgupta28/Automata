@@ -85,7 +85,7 @@ public class AutomationService {
             } catch (Exception e) {
                 System.err.println(e.getMessage());
             }
-//            return "Rebooting device";
+            return "Rebooting device";
         }
 
 //        Automation action = actionRepository.findByProducerDeviceIdAndProducerKey(deviceId, payload.get("key").toString());
