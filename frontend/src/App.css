@@ -1,1 +1,76 @@
-@import "./sass/style.scss";
+.card-glow-container {
+    --start: 0;
+    position: relative;
+    border-radius: 14px;
+}
+
+.card-glow-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    border: 2px solid transparent;
+    background: var(--gradient);
+    background-attachment: fixed;
+    mask: linear-gradient(#0000, #0000),
+    conic-gradient(
+            from calc((var(--start) - 22) * 1deg),
+            #ffffff1f 0deg,
+            white,
+            #ffffff00 100deg
+    );
+    mask-composite: intersect;
+    mask-clip: padding-box, border-box;
+    opacity: 0;
+    transition: 0.5s ease;
+    pointer-events: none;
+}
+
+.card-glow-container:hover::before {
+    opacity: 0.6;
+}
+
+.card-glow {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    filter: blur(24px);
+    opacity: 0;
+    transition: 1s ease;
+}
+:root {
+    --gradient: conic-gradient(
+            from 90deg at 50% 50%,
+            rgb(252, 225, 43),
+            rgba(200, 200, 200, 1),
+            rgba(180, 180, 180, 1),
+            rgba(252, 225, 43, 1),
+            rgba(180, 180, 180, 1),
+            rgba(200, 200, 200, 1),
+            rgba(252, 225, 43, 1)
+    );
+}
+
+.card-glow::before {
+    content: '';
+    position: absolute;
+    inset: 1%;
+    border-radius: 14px;
+    border: 8px solid transparent;
+    background: var(--gradient);
+    background-attachment: fixed;
+    mask: linear-gradient(#0000, #0000),
+    conic-gradient(
+            from calc((var(--start) - 22) * 1deg),
+            #ffffff1f 0deg,
+            white,
+            #ffffff00 100deg
+    );
+    mask-composite: intersect;
+    mask-clip: padding-box, border-box;
+}
+
+.card-glow-container:hover .card-glow {
+    opacity: 1;
+}

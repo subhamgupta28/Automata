@@ -1,5 +1,6 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Handle, Position} from "@xyflow/react";
+import '/src/App.css'
 import {
     getChartData,
     getPieChartData,
@@ -61,9 +62,9 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
     const handleUpdate = () => fetchData();
 
     const handleShowCharts = async (e) => {
-      console.log("Show Charts", e.target.checked);
-      await updateShowCharts(device.id, e.target.checked);
-      setShowCharts(!e.target.checked);
+        console.log("Show Charts", e.target.checked);
+        await updateShowCharts(device.id, e.target.checked);
+        setShowCharts(!e.target.checked);
     }
 
     const handleAttrUpdate = async (attribute) => {
@@ -96,7 +97,8 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                             <tbody>
                             <tr>
                                 <td>Access URL</td>
-                                <td><a href={"http://"+device.host+".local"} target="_blank">{device.host}.local</a></td>
+                                <td><a href={"http://" + device.host + ".local"} target="_blank">{device.host}.local</a>
+                                </td>
                             </tr>
                             <tr>
                                 <td>Mac Address</td>
@@ -165,8 +167,6 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                         )}
 
 
-
-
                     </div>
                     <div style={{width: '30%'}}>
                         <table style={{marginTop: '12px'}}>
@@ -204,7 +204,24 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
     );
 };
 
+const useCardGlowEffect = (cardRef) => {
+    useEffect(() => {
+        const card = cardRef.current;
+        if (!card) return;
 
+        const handleMouseMove = (e) => {
+            const rect = card.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left - rect.width / 2;
+            const mouseY = e.clientY - rect.top - rect.height / 2;
+            let angle = Math.atan2(mouseY, mouseX) * (180 / Math.PI);
+            angle = (angle + 360) % 360;
+            card.style.setProperty('--start', angle + 60);
+        };
+
+        card.addEventListener('mousemove', handleMouseMove);
+        return () => card.removeEventListener('mousemove', handleMouseMove);
+    }, [cardRef]);
+};
 export const Device = React.memo(({id, data, isConnectable}) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [actionAck, setActionAck] = useState({});
@@ -219,6 +236,8 @@ export const Device = React.memo(({id, data, isConnectable}) => {
     const switchBtn = data.value.attributes.filter((t) => t.type.startsWith("ACTION|SWITCH"));
     const presets = data.value.attributes.filter((t) => t.type.startsWith("ACTION|PRESET"));
     // console.log("presets", presets)
+    const cardRef = useRef(null);
+    useCardGlowEffect(cardRef);
 
     useEffect(() => {
         if (id === messages.deviceId) {
@@ -252,139 +271,149 @@ export const Device = React.memo(({id, data, isConnectable}) => {
 
 
     return (
-        <div className="text-updater-node" key={data.value.id}>
+        <div className="card-glow-container text-updater-node" ref={cardRef} key={data.value.id}>
+            <div className="card-glow"></div>
+                <div style={{borderRadius: '12px'}}>
+                    <Card elevation={0} style={{
+                        display: 'flex',
+                        borderRadius: '12px',
+                        marginLeft: '2px',
+                        marginRight: '2px',
+                        padding: '4px',
+                        boxShadow: 'rgb(255 255 255 / 4%) 0px 0px 50px 15px'
+                    }}>
 
-            <div style={{borderRadius: '12px'}}>
-                <Card elevation={0} style={{
-                    display: 'flex',
-                    borderRadius: '12px',
-                    marginLeft: '2px',
-                    marginRight: '2px',
-                    padding: '4px',
-                    boxShadow: 'rgb(255 255 255 / 4%) 0px 0px 50px 15px'
-                }}>
+                        <CardContent
+                            style={{
+                                width: '200px',
+                                alignItems: 'center',
+                                paddingTop: '6px',
+                                paddingBottom: '6px',
+                                justifyContent: 'center'
+                            }}>
+                            <Typography
+                                style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                {data.value.name}
+                                <IconButton onClick={handleOpenModal} variant='text' style={{marginLeft: '8px'}}>
+                                    <SettingsIcon/>
+                                </IconButton>
+                            </Typography>
 
-                    <CardContent
-                        style={{
-                            width: '200px',
-                            alignItems: 'center',
-                            paddingTop: '6px',
-                            paddingBottom: '6px',
-                            justifyContent: 'center'
-                        }}>
-                        <Typography style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                            {data.value.name}
-                            <IconButton onClick={handleOpenModal} variant='text' style={{marginLeft: '8px'}}>
-                                <SettingsIcon/>
-                            </IconButton>
-                        </Typography>
-
-                        {actionAck && actionAck.command === 'reboot' && (
-                            <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
-                                <Typography>Rebooting...</Typography>
-                                <LinearProgress>
-                                </LinearProgress>
-                            </Card>
-                        )}
-
-
-                        {map.length > 0 && liveData && (
-                            <MapView lat={liveData.LAT} lng={liveData.LONG} h='280px' w='200px'/>
-                        )}
-
-                        {gaugeData && liveData && gaugeData.map((gauge) => (
-                            <GaugeChart key={gauge.key} value={liveData[gauge.key]} maxValue={gauge.extras.max}
-                                        displayName={gauge.displayName}/>
-                        ))}
-
-                        {sliderData && liveData && sliderData.map((slide) => (
-                            <CustomSlider key={slide.key} value={liveData[slide.key]} deviceId={data.value.id}
-                                          type={data.value.type} data={slide}
-                                          displayName={slide.displayName}/>
-                        ))}
-                        {presets && liveData && presets.map((slide) => (
-                            <Presets key={slide.key} value={liveData} deviceId={data.value.id} type={data.value.type}
-                                     data={slide}
-                                     displayName={slide.displayName}/>
-                        ))}
+                            {actionAck && actionAck.command === 'reboot' && (
+                                <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
+                                    <Typography>Rebooting...</Typography>
+                                    <LinearProgress>
+                                    </LinearProgress>
+                                </Card>
+                            )}
 
 
-                        <div style={{
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            display: 'grid',
-                            gap: '4px',
-                            marginTop: '10px'
-                        }}>
-                            {data.value.attributes.map(attribute => (
-                                (attribute.type === "DATA|MAIN") && (
-                                    <Card key={attribute.id} elevation={4} style={{
-                                        borderRadius: '8px',
-                                        padding: '6px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
-                                    }}>
-                                        <Typography
-                                            variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>
-                                        <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
-                                    </Card>
-                                )
+                            {map.length > 0 && liveData && (
+                                <MapView lat={liveData.LAT} lng={liveData.LONG} h='280px' w='200px'/>
+                            )}
+
+                            {gaugeData && liveData && gaugeData.map((gauge) => (
+                                <GaugeChart key={gauge.key} value={liveData[gauge.key]} maxValue={gauge.extras.max}
+                                            displayName={gauge.displayName}/>
                             ))}
-                            {switchBtn && (
-                                <div style={{display: 'flex', justifyContent: 'space-around'}}>
-                                    {liveData && switchBtn.map((slide) => (
-                                        <SwitchButton key={slide.key} value={liveData[slide.key]}
-                                                      deviceId={data.value.id} data={slide} type={data.value.type}
-                                                      displayName={slide.displayName}/>
-                                    ))}
+
+                            {sliderData && liveData && sliderData.map((slide) => (
+                                <CustomSlider key={slide.key} value={liveData[slide.key]} deviceId={data.value.id}
+                                              type={data.value.type} data={slide}
+                                              displayName={slide.displayName}/>
+                            ))}
+                            {presets && liveData && presets.map((slide) => (
+                                <Presets key={slide.key} value={liveData} deviceId={data.value.id}
+                                         type={data.value.type}
+                                         data={slide}
+                                         displayName={slide.displayName}/>
+                            ))}
+
+
+                            <div style={{
+                                gridTemplateColumns: 'repeat(2, 1fr)',
+                                display: 'grid',
+                                gap: '4px',
+                                marginTop: '10px'
+                            }}>
+                                {data.value.attributes.map(attribute => (
+                                    (attribute.type === "DATA|MAIN") && (
+                                        <Card key={attribute.id} elevation={4} style={{
+                                            borderRadius: '8px',
+                                            padding: '6px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                        }}>
+                                            <Typography
+                                                variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>
+                                            <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
+                                        </Card>
+                                    )
+                                ))}
+                                {switchBtn && (
+                                    <div style={{display: 'flex', justifyContent: 'space-around'}}>
+                                        {liveData && switchBtn.map((slide) => (
+                                            <SwitchButton key={slide.key} value={liveData[slide.key]}
+                                                          deviceId={data.value.id} data={slide} type={data.value.type}
+                                                          displayName={slide.displayName}/>
+                                        ))}
+                                    </div>
+                                )}
+
+                            </div>
+
+                            {liveData && (
+                                <div style={{
+                                    width: '100%',
+                                    marginTop: '12px',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center'
+                                }}>
+                                    {
+                                        data.value.attributes.map(attribute => (
+                                            (attribute.type === "ACTION|OUT") && (
+                                                <Button key={attribute.id} aria-label="delete"
+                                                        onClick={() => handleAction(attribute)}>
+                                                    {attribute["displayName"]}
+                                                </Button>
+                                            )
+                                        ))
+                                    }
                                 </div>
                             )}
 
-                        </div>
 
-                        {liveData && (
-                            <div style={{
-                                width: '100%',
-                                marginTop: '12px',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center'
-                            }}>
-                                {
-                                    data.value.attributes.map(attribute => (
-                                        (attribute.type === "ACTION|OUT") && (
-                                            <Button key={attribute.id} aria-label="delete"
-                                                    onClick={() => handleAction(attribute)}>
-                                                {attribute["displayName"]}
-                                            </Button>
-                                        )
-                                    ))
-                                }
-                            </div>
-                        )}
+                        </CardContent>
+                    </Card>
 
-
-                    </CardContent>
-                </Card>
-
-                <CustomModal map={map} isOpen={isModalOpen} liveData={liveData} onClose={handleCloseModal} device={data.value}/>
+                    <CustomModal map={map} isOpen={isModalOpen} liveData={liveData} onClose={handleCloseModal}
+                                 device={data.value}/>
+                </div>
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    id="b"
+                    style={{
+                        top: 30,
+                        width: '4px',
+                        height: '30px',
+                        borderRadius: '0px 10px 10px 0px',
+                        background: color
+                    }}
+                    isConnectable={isConnectable}
+                />
             </div>
-            <Handle
-                type="source"
-                position={Position.Right}
-                id="b"
-                style={{top: 30, width: '4px', height: '30px', borderRadius: '0px 10px 10px 0px', background: color}}
-                isConnectable={isConnectable}
-            />
-        </div>
     );
 });
 
 
 export function MainNode({data, isConnectable}) {
     const {devices, numOfDevices, chartNodes} = data.value;
-
+    const boxRef = useRef(null);
+    useCardGlowEffect(boxRef);
     // Filter charts from the devices
     // console.log("devices", devices)
     const charts = useMemo(() =>
@@ -409,7 +438,8 @@ export function MainNode({data, isConnectable}) {
 
 
     return (
-        <div className="text-updater-node">
+        <div className="text-updater-node card-glow-container" ref={boxRef}>
+            <div className="card-glow"></div>
             <div style={{borderRadius: '16px'}}>
                 <Card ref={cardRef} elevation={0} style={{
                     padding: '0px',
@@ -473,7 +503,7 @@ function BarChartComp({chartDevice}) {
 
     console.log("visibleAttr", visibleAttr, chartDevice.name)
     // const [deviceId, setDeviceId] = useState(0);
-    const [selectedAttribute, setAttribute] = useState( visibleAttr[0]?.key || "");
+    const [selectedAttribute, setAttribute] = useState(visibleAttr[0]?.key || "");
     // const [chartDevice, setChartDevice] = useState(chartDevice?.id || "");
     // const [deviceName, setDeviceName] = useState(chartDevice?.name || "");
 
@@ -511,7 +541,7 @@ function BarChartComp({chartDevice}) {
             {chartDevice.name}
             {
                 visibleAttr && visibleAttr.length < 0 ? (
-                        <CustomLineChart  chartData={chartData}/>
+                    <CustomLineChart chartData={chartData}/>
                     // <CustomPieChart className="nodrag" chartData={chartData}/>
                 ) : (
                     <CustomBarChart chartData={chartData}/>

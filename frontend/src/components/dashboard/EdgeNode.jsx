@@ -89,7 +89,7 @@ export const createNodes = (devices, charts, initX, initY) => {
         deviceNodes.push({
             id: device.id,
             type: 'deviceNode',
-            position: {x: device.x, y:  device.y},
+            position: {x: device.x, y: device.y},
             data: {value: device, live: {...device.lastData}},
         });
     })

@@ -91,7 +91,7 @@ const DeviceNodes = () => {
         [setEdges],
     );
 
-    const defaultViewport = useMemo(() => ({x: 0, y: 70, zoom: 0.70}), []);
+    const defaultViewport = useMemo(() => ({x: 0, y: 70, zoom: 0.65}), []);
 
     const handleNodeClick = useCallback(
         (_, node) => {
@@ -128,10 +128,10 @@ const DeviceNodes = () => {
                     <Panel position="bottom-right" style={{marginBottom: '30px', display:'flex'}}>
                         {editUi && <NodeInspector/>}
                         {actionMenu && <div>
-                            <Button variant='outlined' onClick={handleReboot} style={{marginLeft: '10px'}}>Reboot</Button>
+                            <Button variant='outlined' size='small' onClick={handleReboot} style={{marginLeft: '10px'}}>Reboot</Button>
                         </div>}
-                        <Button variant='outlined' onClick={handleEdit} style={{marginLeft: '10px'}}> <EditIcon/> Edit</Button>
-                        <Button variant='outlined' onClick={()=> setActionMenu(a=> !a)} style={{marginLeft: '10px'}}>Actions</Button>
+                        <Button variant='outlined' size='small' onClick={handleEdit} style={{marginLeft: '10px'}}> <EditIcon/> Edit</Button>
+                        <Button variant='outlined' size='small' onClick={()=> setActionMenu(a=> !a)} style={{marginLeft: '10px'}}>Actions</Button>
                     </Panel>
 
                 </ReactFlow>
