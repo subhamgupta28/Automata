@@ -42,13 +42,13 @@
 :root {
     --gradient: conic-gradient(
             from 90deg at 50% 50%,
-            rgb(252, 225, 43),
-            rgba(200, 200, 200, 1),
-            rgba(180, 180, 180, 1),
+            rgb(255, 224, 0),
+            rgb(255, 255, 255),
+            rgb(150, 46, 229),
             rgba(252, 225, 43, 1),
-            rgba(180, 180, 180, 1),
-            rgba(200, 200, 200, 1),
-            rgba(252, 225, 43, 1)
+            rgb(150, 46, 229),
+            rgb(255, 255, 255),
+            rgb(255, 224, 0)
     );
 }
 
@@ -57,7 +57,7 @@
     position: absolute;
     inset: 1%;
     border-radius: 14px;
-    border: 8px solid transparent;
+    border: 10px solid transparent;
     background: var(--gradient);
     background-attachment: fixed;
     mask: linear-gradient(#0000, #0000),

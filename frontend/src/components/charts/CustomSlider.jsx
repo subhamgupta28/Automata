@@ -12,12 +12,12 @@ const HomeAssistantSlider = styled(Slider)({
     marginBottom: 1,
     '& .MuiSlider-rail': {
         opacity: 0.2, // Make the rail more subtle
-        backgroundColor: '#b9b9b9', // Light grey color for the rail
+        backgroundColor: '#d7d7d7', // Light grey color for the rail
     },
     '& .MuiSlider-track': {
         border: 'none', // Remove the track's border
         // paddingRight:'4px',
-        backgroundColor: '#b9b9b9', // Use the blue color for the active track
+        backgroundColor: '#d7d7d7', // Use the blue color for the active track
     },
     '& .MuiSlider-markLabel': {
         top: 55
@@ -26,7 +26,7 @@ const HomeAssistantSlider = styled(Slider)({
         display: 'none'
     },
     '& .MuiSlider-thumb': {
-        backgroundColor: '#ffffff', // White thumb, matching the Home Assistant style
+        backgroundColor: '#ff832a', // White thumb, matching the Home Assistant style
         // border: '2px solid orange', // Blue border around the thumb
         height: 25,
         width: 6,
@@ -38,7 +38,7 @@ const HomeAssistantSlider = styled(Slider)({
             backgroundColor: 'white', // Change thumb color when hovered
         },
         '&:active': {
-            backgroundColor: '#b9b9b9', // Darker blue when active
+            backgroundColor: '#fce02b', // Darker blue when active
         },
     },
 });

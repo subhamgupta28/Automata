@@ -62,7 +62,7 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
     const handleUpdate = () => fetchData();
 
     const handleShowCharts = async (e) => {
-        console.log("Show Charts", e.target.checked);
+        // console.log("Show Charts", e.target.checked);
         await updateShowCharts(device.id, e.target.checked);
         setShowCharts(!e.target.checked);
     }
@@ -501,7 +501,7 @@ function BarChartComp({chartDevice}) {
 
     const visibleAttr = chartDevice?.attributes.filter(attr => attr.visible === true);
 
-    console.log("visibleAttr", visibleAttr, chartDevice.name)
+    // console.log("visibleAttr", visibleAttr, chartDevice.name)
     // const [deviceId, setDeviceId] = useState(0);
     const [selectedAttribute, setAttribute] = useState(visibleAttr[0]?.key || "");
     // const [chartDevice, setChartDevice] = useState(chartDevice?.id || "");

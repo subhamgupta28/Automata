@@ -10,7 +10,7 @@ export const darkTheme = createTheme({
             main: '#962ee5', // Secondary blue for highlights
         },
         background: {
-            default: '#6e6e6e', // Dark background for the main canvas
+            default: '#181818', // Dark background for the main canvas
             // paper: '#1c1c1c', // Slightly lighter background for cards and paper
         },
         text: {
