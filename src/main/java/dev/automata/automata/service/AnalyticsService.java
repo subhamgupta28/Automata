@@ -11,6 +11,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.DateOperators;
+import org.springframework.data.mongodb.core.aggregation.GroupOperation;
+import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -31,45 +33,72 @@ public class AnalyticsService {
     private final DeviceChartsRepository deviceChartsRepository;
     private final MongoTemplate mongoTemplate;
 
-    public ChartDataDto getChartDetail(String deviceId) {
-        ChartDataDto chartDataDto = initializeChartDataDto(deviceId, "last12hours");
+    public ChartDataDto getChartDetail(String deviceId, String range) {
+        ChartDataDto chartDataDto = initializeChartDataDto(deviceId, range);
 
         List<Attribute> filteredAttributes = getFilteredAttributes(deviceId);
         chartDataDto.setAttributes(filteredAttributes.stream().map(Attribute::getKey).collect(Collectors.toList()));
 
-        System.err.println(filteredAttributes);
+        Duration duration = switch (range.toLowerCase()) {
+            case "hour" -> Duration.ofHours(1);
+            case "day" -> Duration.ofDays(1);
+            case "week" -> Duration.ofDays(7);
+            default -> Duration.ofHours(8); // fallback
+        };
 
         var endDate = new Date(); // now
-        var startDate = Date.from(Instant.now().minus(Duration.ofHours(8)));
+        var startDate = Date.from(Instant.now().minus(duration));
 
         var match = match(where("deviceId").is(deviceId).and("updateDate").gte(startDate).lte(endDate));
 
         var list = filteredAttributes.stream().map(Attribute::getKey).toList();
 
+        // Format for date grouping (hourly)
+        var dateFormat = (range.equalsIgnoreCase("day") || range.equalsIgnoreCase("week"))
+                ? "%m-%d %H:00"  // Group by hour
+                : "%m-%d %H:%M"; // Otherwise, show minute resolution
+
+        var dateProjection = DateOperators.dateOf("updateDate")
+                .toString(dateFormat)
+                .withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"));
+
         var project = project("updateDate")
-                .and(DateOperators.dateOf("updateDate").toString("%m-%d %H:%M:%S").withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))).as("dateDay")
-                .andExclude( "_id");
-//                .and(DateOperators.dateOf("updateDate").toString("%m-%d %H:%M").withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))).as("dateShow");
+                .and(dateProjection).as("dateDay")
+                .andExclude("_id");
 
         for (var i : filteredAttributes) {
-            project = project.andExpression("toDouble(data." + i.getKey() + ")").as(i.getKey());;
+            project = project.andExpression("toDouble(data." + i.getKey() + ")").as(i.getKey());
         }
 
-        var group = group("dateDay")
-                .count().as("count")
-                .max("dateShow").as("endOfDay")
-                .min("dateShow").as("startOfDay");
+        var sort = sort(Sort.by(Sort.Order.asc("updateDate")));
 
-        var sort = sort(Sort.by(Sort.Order.asc("startOfDay")));
+        Aggregation aggregation;
 
-        Aggregation aggregation = newAggregation(match, project, sort);
+        if (range.equalsIgnoreCase("day") || range.equalsIgnoreCase("week")) {
+            // Group stage to average values by hour
+            GroupOperation group = group("dateDay");
+            for (var attr : filteredAttributes) {
+                group = group.avg(attr.getKey()).as(attr.getKey());
+            }
+
+            // Re-project to flatten "_id" back to "dateDay"
+            ProjectionOperation regroupProject = project()
+                    .and("_id").as("dateDay");
+            for (var attr : filteredAttributes) {
+                regroupProject = regroupProject.andInclude(attr.getKey());
+            }
+
+            aggregation = newAggregation(match, project, sort, group, regroupProject, sort(Sort.by("dateDay")));
+        } else {
+            aggregation = newAggregation(match, project, sort);
+        }
+
         var res = mongoTemplate.aggregate(aggregation, "data", Object.class).getMappedResults();
-
-        System.err.println(res);
         chartDataDto.setData(res);
-
         return chartDataDto;
     }
+
+
 
 
     public ChartDataDto getChartData2(String deviceId, String attributeKey, String period) {

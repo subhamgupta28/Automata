@@ -15,4 +15,6 @@ public interface DashboardRepository extends MongoRepository<Dashboard, String> 
     List<Dashboard> findByDeviceIdIn(List<String> ids);
 
     List<Dashboard> findByShowInDashboardTrue();
+
+    List<Dashboard> findByAnalyticsTrue();
 }

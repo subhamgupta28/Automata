@@ -12,6 +12,7 @@ import {AppCacheProvider} from "./services/AppCacheContext.jsx";
 import {SnackbarProvider} from "notistack";
 import MobileView from "./components/dashboard/MobileView.jsx";
 import AnalyticsView from "./components/dashboard/AnalyticsView.jsx";
+import Exp from "./components/dashboard/Exp.jsx";
 
 
 function App() {
@@ -50,6 +51,7 @@ function App() {
                                     <Route path="devices" element={<Devices/>}/>
                                     <Route path="mob" element={<MobileView/>}/>
                                     <Route path="analytics" element={<AnalyticsView/>}/>
+                                    <Route path="exp" element={<Exp/>}/>
                                 </Routes>
                             </AppCacheProvider>
 

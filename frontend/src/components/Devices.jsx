@@ -1,94 +1,58 @@
 import React, {useEffect, useState} from 'react';
-import {Card, CardContent, Typography, Grid2, Chip, Divider, CardActions, Switch, Snackbar} from '@mui/material';
+import {
+    Card,
+    CardContent,
+    Typography,
+    Chip,
+    Divider,
+    CardActions,
+    Switch,
+    Snackbar,
+    CircularProgress, Backdrop
+} from '@mui/material';
 import {getDevices, updateShowInDashboard} from "../services/apis.jsx";
+import { styled } from '@mui/material/styles';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
 
 
-const DeviceCard = ({device}) => {
-    const [showInDashboard, setShowInDashboard] = useState(device.showInDashboard);
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+    [`&.${tableCellClasses.head}`]: {
+        backgroundColor: theme.palette.common.black,
+        color: theme.palette.common.white,
+    },
+    [`&.${tableCellClasses.body}`]: {
+        fontSize: 14,
+    },
+}));
 
-    const handleChange = (event) => {
-        const fetchData = async () => {
-            try {
-                const devices = await updateShowInDashboard(device.id, event.target.checked);
+const StyledTableRow = styled(TableRow)(({ theme }) => ({
+    '&:nth-of-type(odd)': {
+        backgroundColor: theme.palette.action.hover,
+    },
+    // hide last border
+    '&:last-child td, &:last-child th': {
+        border: 0,
+    },
+}));
 
-            } catch (err) {
-                console.error("Failed to fetch devices:", err);
-            }
-        };
-
-        fetchData();
-        setShowInDashboard(event.target.checked);
-
-    };
-
-
-    return (
-        <Grid2 item xs={12} sm={2} md={6} lg={2}>
-            <Card style={{
-                marginBottom: '20px',
-                width: '250px',
-                boxShadow: '0 0 10px 0 rgba(0,0,0,0.2)',
-                borderRadius: '12px',
-            }}>
-                <CardContent>
-                    <Typography variant="h6" sx={{fontWeight: 'bold', color: 'primary.main'}}>
-                        {device.name}
-                        <Chip
-                            label={device.status}
-                            size='small'
-                            sx={{
-                                color: device.status === 'ONLINE' ? 'success.main' : 'error.main',
-                                // color: 'white',
-                                marginLeft: '10px'
-                            }}
-                        />
-
-                    </Typography>
-
-                    <Typography variant="body2" color="textSecondary">
-                        Show In Dashboard: <Switch defaultChecked size="small" checked={showInDashboard}
-                                             onChange={handleChange}/>
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                        Access URL: <a href={device.accessUrl} target="_blank"
-                                       rel="noopener noreferrer">{device.accessUrl}</a>
-                    </Typography>
-                    <Divider sx={{margin: '16px 0'}}/>
-
-                    {/*{device.attributes.map((attribute) => (*/}
-                    {/*    <div key={attribute.id} sx={{marginBottom: 2}}>*/}
-                    {/*        <Typography variant="body2" color="textPrimary">*/}
-                    {/*            <strong>{attribute.displayName}</strong>: {attribute.key} ({attribute.units})*/}
-                    {/*        </Typography>*/}
-                    {/*    </div>*/}
-                    {/*))}*/}
-
-                    {/*<Divider sx={{ margin: '16px 0' }} />*/}
-
-
-                </CardContent>
-            </Card>
-        </Grid2>
-    );
-};
-const DeviceList = ({devices}) => {
-    return (
-        <div style={{ padding: '20px'}}>
-            <Grid2 container spacing={1}>
-                {devices.map((device) => (
-                    <DeviceCard key={device.id} device={device}/>
-                ))}
-            </Grid2>
-        </div>
-    );
-};
 export default function Devices() {
     const [devicesData, setDevicesData] = useState([]);
+    const [showInDashboard, setShowInDashboard] = useState(false);
+    const [openBackdrop, setOpenBackdrop] = useState(false);
+
     useEffect(() => {
+        setOpenBackdrop(true)
         const fetchData = async () => {
             try {
                 const devices = await getDevices();
                 setDevicesData(devices);
+                setOpenBackdrop(false)
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
             }
@@ -96,11 +60,86 @@ export default function Devices() {
 
         fetchData();
     }, []);
-    return (
-        <div style={{paddingTop: '60px'}}>
-            {/*<Action/>*/}
 
-            <DeviceList devices={devicesData}/>
+    const handleChange = (device, checked) => {
+        const fetchData = async () => {
+            try {
+                const devices = await updateShowInDashboard(device.id, checked);
+
+            } catch (err) {
+                console.error("Failed to fetch devices:", err);
+            }
+        };
+
+        fetchData();
+        // setShowInDashboard(checked);
+
+    };
+
+    return (
+        <div style={{paddingTop: '60px', paddingLeft: '40px', paddingRight: '40px'}}>
+            {/*<Action/>*/}
+            <TableContainer component={Paper}>
+                <Table sx={{ minWidth: 700 }} aria-label="customized table">
+                    <TableHead>
+                        <TableRow>
+                            <StyledTableCell>Device Name</StyledTableCell>
+                            <StyledTableCell align="right">Status</StyledTableCell>
+                            <StyledTableCell align="right">Show In Dashboard</StyledTableCell>
+                            <StyledTableCell align="right">Show Charts</StyledTableCell>
+                            <StyledTableCell align="right">Access URL:</StyledTableCell>
+                            <StyledTableCell align="right">Host</StyledTableCell>
+                            <StyledTableCell align="right">Update Interval(Min.)</StyledTableCell>
+                            <StyledTableCell align="right">Type</StyledTableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {devicesData.map((device) => (
+                            <StyledTableRow key={device.id}>
+                                <StyledTableCell component="th" scope="row">
+                                    {device.name}
+                                </StyledTableCell>
+                                <StyledTableCell align="right">
+                                    <Chip
+                                        label={device.status}
+                                        size='small'
+                                        sx={{
+                                            color: device.status === 'ONLINE' ? 'success.main' : 'error.main',
+                                            // color: 'white',
+                                            marginLeft: '10px'
+                                        }}
+                                    />
+                                </StyledTableCell>
+
+                                <StyledTableCell align="right">
+                                    <Switch defaultChecked size="small" checked={device.showInDashboard}
+                                            onChange={(e)=>handleChange(device, e.target.checked)}/>
+                                </StyledTableCell>
+                                <StyledTableCell align="right">
+                                    <Switch defaultChecked size="small" checked={device.showCharts}/>
+                                </StyledTableCell>
+                                <StyledTableCell align="right">
+                                    <a href={device.accessUrl} target="_blank"
+                                                                  rel="noopener noreferrer">{device.accessUrl}</a>
+                                </StyledTableCell>
+                                <StyledTableCell align="right">
+                                    <a href={'http://'+device.host+'.local'} target="_blank"
+                                       rel="noopener noreferrer">{device.host}</a>
+                                </StyledTableCell>
+                                <StyledTableCell align="right">{device.updateInterval/1000/60} </StyledTableCell>
+                                <StyledTableCell align="right">{device.type} </StyledTableCell>
+                            </StyledTableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+            <Backdrop
+                sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
+                open={openBackdrop}
+            >
+                <CircularProgress color="inherit"/>
+            </Backdrop>
+            {/*<DeviceList devices={devicesData}/>*/}
         </div>
     )
 }

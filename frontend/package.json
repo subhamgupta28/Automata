@@ -13,8 +13,8 @@
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.1.5",
-    "@mui/material": "^6.1.5",
-    "@mui/x-charts": "^7.22.0",
+    "@mui/material": "^7.0.2",
+    "@mui/x-charts": "^8.0.0",
     "@mui/x-date-pickers": "^7.23.3",
     "@popperjs/core": "^2.11.8",
     "@xyflow/react": "^12.3.1",
@@ -30,6 +30,7 @@
     "react-dom": "^18.3.1",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^7.0.2",
+    "recharts": "^2.15.3",
     "sockjs-client": "^1.6.1",
     "stompjs": "^2.3.3"
   },
@@ -44,6 +45,6 @@
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
     "sass": "^1.79.4",
-    "vite": "^5.4.1"
+    "vite": "6.2.6"
   }
 }

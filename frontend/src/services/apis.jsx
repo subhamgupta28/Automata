@@ -47,8 +47,8 @@ export const getDevices = async () => {
     });
     return response.data;
 }
-export const getDetailChartData = async (deviceId) => {
-    const response = await axios.get(BASE_URL + "main/chartDetail/" + deviceId, {
+export const getDetailChartData = async (deviceId, range = 'day') => {
+    const response = await axios.get(BASE_URL + "main/chartDetail/" + deviceId+ "/" + range, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization

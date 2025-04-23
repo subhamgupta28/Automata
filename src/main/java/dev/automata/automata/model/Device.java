@@ -32,6 +32,7 @@ public class Device {
     private Map<String, Object> lastData;
     private boolean showCharts;
     private boolean showInDashboard;
+    private boolean analytics;
     private double x;
     private double y;
     private List<Attribute> attributes = new ArrayList<>();

@@ -227,6 +227,7 @@ public class MainService {
             if (dashboard != null) {
                 device.setX(dashboard.getX());
                 device.setY(dashboard.getY());
+                device.setAnalytics(dashboard.isAnalytics());
                 device.setShowCharts(dashboard.isShowCharts());
                 device.setShowInDashboard(dashboard.isShowInDashboard());
             }
@@ -263,6 +264,7 @@ public class MainService {
             if (dashboard != null) {
                 device.setX(dashboard.getX());
                 device.setY(dashboard.getY());
+                device.setAnalytics(dashboard.isAnalytics());
                 device.setShowCharts(dashboard.isShowCharts());
                 device.setShowInDashboard(dashboard.isShowInDashboard());
             }

@@ -106,9 +106,9 @@ function Nav() {
                         <NavLink style={{marginLeft: '14px', color: 'white', display: 'block'}} to="/devices" end>
                             Devices
                         </NavLink>
-                        <NavLink style={{marginLeft: '14px', color: 'white', display: 'block'}} to="/mob" end>
-                            Mobile View
-                        </NavLink>
+                        {/*<NavLink style={{marginLeft: '14px', color: 'white', display: 'block'}} to="/mob" end>*/}
+                        {/*    Mobile View*/}
+                        {/*</NavLink>*/}
                         <NavLink style={{marginLeft: '14px', color: 'white', display: 'block'}} to="/analytics" end>
                             Analytics
                         </NavLink>
