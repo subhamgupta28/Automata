@@ -28,12 +28,9 @@ import Checkbox from "@mui/material/Checkbox";
 import Divider from "@mui/material/Divider";
 import {SwitchButton} from "../charts/SwitchButton.jsx";
 import {Presets} from "../charts/Presets.jsx";
-import CustomPieChart from "../charts/CustomPieChart.jsx";
 import CustomBarChart from "../charts/CustomBarChart.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
-import {Line} from "react-chartjs-2";
 import CustomLineChart from "../charts/CustomLineChart.jsx";
-import ChartDetail from "../charts/ChartDetail.jsx";
 
 
 const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
