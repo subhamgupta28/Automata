@@ -11,7 +11,7 @@ import {
 
 export default function Exp() {
     const [filename, setFilename] = useState("src/main.cpp");
-        const [code, `setCode`] = useState("");
+        const [code, setCode] = useState("");
     const [loading, setLoading] = useState(false);
     const [output, setOutput] = useState("");
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
