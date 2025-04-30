@@ -112,6 +112,9 @@ function Nav() {
                         <NavLink style={{marginLeft: '14px', color: 'white', display: 'block'}} to="/analytics" end>
                             Analytics
                         </NavLink>
+                        <NavLink style={{marginLeft: '14px', color: 'white', display: 'block'}} to="/configure" end>
+                            Configure
+                        </NavLink>
                     </Box>
                     <Box>
                         {/*<Typography style={{marginRight: "10px"}}*/}

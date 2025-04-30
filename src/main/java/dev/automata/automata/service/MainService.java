@@ -9,6 +9,7 @@ import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -29,6 +30,7 @@ public class MainService {
     private final DashboardRepository deviceDashboardRepository;
     private final DeviceChartsRepository dashboardChartsRepository;
     private final AttributeTypeRepository attributeTypeRepository;
+    private final WiFiDetailsRepository wiFiDetailsRepository;
     private final NotificationService notificationService;
     private final MongoTemplate mongoTemplate;
 
@@ -349,7 +351,7 @@ public class MainService {
             device.setShowInDashboard(isShow);
             deviceDashboardRepository.save(device);
             notificationService.sendNotification("Device is " + (isShow ? " visible " : " not visible ") + "in dashboard", "success");
-        }else{
+        } else {
             var dashboard = Dashboard.builder()
                     .showInDashboard(isShow)
                     .deviceId(deviceId)
@@ -389,4 +391,33 @@ public class MainService {
 
         return "error";
     }
+
+//    @Scheduled(fixedDelay = 6000)
+    public void testWifi(){
+        var det = WiFiDetails.builder()
+                .ssid("Ganda6969")
+                .password("mohit@12345")
+                .type("public").build();
+        wiFiDetailsRepository.save(det);
+    }
+
+    public Map<String, String> getWiFiList() {
+        Map<String, String> map = new HashMap<>();
+
+        List<WiFiDetails> list = wiFiDetailsRepository.findAll();
+
+        for (int i = 0; i < 3; i++) {
+            if (i < list.size()) {
+                WiFiDetails wifi = list.get(i);
+                map.put("wn" + (i + 1), wifi.getSsid());
+                map.put("wp" + (i + 1), wifi.getPassword());
+            } else {
+                map.put("wn" + (i + 1), "");
+                map.put("wp" + (i + 1), "");
+            }
+        }
+
+        return map;
+    }
+
 }

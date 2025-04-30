@@ -449,8 +449,8 @@ export function MainNode({data, isConnectable}) {
                 }}>
 
                     <CardContent style={{
-                        marginLeft: '15px', display: 'grid', marginTop: '10px',
-                        marginRight: '25px',
+                        marginLeft: '10px', display: 'grid', marginTop: '15px',
+                        marginRight: '50px',
                         gridTemplateColumns: 'repeat(1, 1fr)', /* 4 columns */
                         gap: '10px', /* Space between items */
                     }}>

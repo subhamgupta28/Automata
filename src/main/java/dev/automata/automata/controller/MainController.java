@@ -38,6 +38,10 @@ public class MainController {
     private final NotificationService notificationService;
 //    private final KafkaTemplate<String, String> kafkaTemplate;
 
+    @PostMapping("wifiList")
+    public ResponseEntity<?> getWiFiList(){
+        return ResponseEntity.ok(mainService.getWiFiList());
+    }
 
     @GetMapping("chart/{deviceId}/{attribute}")
     public ResponseEntity<ChartDataDto> getChartData(@PathVariable String deviceId, @PathVariable String attribute) {
