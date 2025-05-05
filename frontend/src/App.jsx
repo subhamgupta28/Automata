@@ -14,6 +14,7 @@ import MobileView from "./components/dashboard/MobileView.jsx";
 import AnalyticsView from "./components/dashboard/AnalyticsView.jsx";
 import Exp from "./components/dashboard/Exp.jsx";
 import {ConfigurationView} from "./components/dashboard/ConfigurationView.jsx";
+import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
 
 
 function App() {
@@ -27,35 +28,36 @@ function App() {
     // };
     return (
         <>
+            {/*<SideDrawer/>*/}
             <ThemeProvider theme={darkTheme}>
                 <BrowserRouter>
 
 
                     <main>
                         <header>
-                            <Nav/>
+                            {/*<Nav/>*/}
                         </header>
 
                         <section>
                             {/*<DndTest/>*/}
                             {/*<ActionBoard/>*/}
-
+                            <SideDrawer/>
                             {/*<SignIn/>*/}
                             {/*<SignUp/>*/}
                             <SnackbarProvider maxSnack={3} preventDuplicate>
                                 <Notifications/>
                             </SnackbarProvider>
-                            <AppCacheProvider>
-                                <Routes>
-                                    <Route path="/" element={<DeviceNodes/>}/>
-                                    <Route path="actions" element={<ActionBoard/>}/>
-                                    <Route path="devices" element={<Devices/>}/>
-                                    <Route path="mob" element={<MobileView/>}/>
-                                    <Route path="analytics" element={<AnalyticsView/>}/>
-                                    <Route path="exp" element={<Exp/>}/>
-                                    <Route path="configure" element={<ConfigurationView/>}/>
-                                </Routes>
-                            </AppCacheProvider>
+                            {/*<AppCacheProvider>*/}
+                            {/*    <Routes>*/}
+                            {/*        <Route path="/" element={<DeviceNodes/>}/>*/}
+                            {/*        <Route path="actions" element={<ActionBoard/>}/>*/}
+                            {/*        <Route path="devices" element={<Devices/>}/>*/}
+                            {/*        <Route path="mob" element={<MobileView/>}/>*/}
+                            {/*        <Route path="analytics" element={<AnalyticsView/>}/>*/}
+                            {/*        <Route path="exp" element={<SideDrawer/>}/>*/}
+                            {/*        <Route path="configure" element={<ConfigurationView/>}/>*/}
+                            {/*    </Routes>*/}
+                            {/*</AppCacheProvider>*/}
 
 
 

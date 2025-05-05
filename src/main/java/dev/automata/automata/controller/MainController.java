@@ -43,6 +43,12 @@ public class MainController {
         return ResponseEntity.ok(mainService.getWiFiList());
     }
 
+    @PostMapping("saveWiFiList")
+    public ResponseEntity<?> saveWiFiList(@RequestBody Map<String, String> body) {
+
+        return ResponseEntity.ok(mainService.saveWiFiList(body));
+    }
+
     @GetMapping("chart/{deviceId}/{attribute}")
     public ResponseEntity<ChartDataDto> getChartData(@PathVariable String deviceId, @PathVariable String attribute) {
         return ResponseEntity.ok(analyticsService.getChartData2(deviceId, attribute, "day"));

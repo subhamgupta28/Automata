@@ -46,15 +46,15 @@ const conditionStyle = {
 let id = 0;
 const getId = (type) => `node_${type}_${id++}`;
 
-export function ActionBoard(action) {
+export function ActionBoard() {
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    // const [isModalOpen, setIsModalOpen] = useState(false);
     const [automations, setAutomations] = useState([]);
     const [selectedAutomation, setSelectedAutomation] = useState({});
     const [automationDetail, setAutomationDetail] = useState({});
-    const {devices, loading, error} = useCachedDevices();
-    const handleCloseModal = () => setIsModalOpen(false);
+    // const {devices, loading, error} = useCachedDevices();
+    // const handleCloseModal = () => setIsModalOpen(false);
     const reactFlowWrapper = useRef(null);
     const {screenToFlowPosition} = useReactFlow();
     const [type, setType] = useDnD();
@@ -241,8 +241,8 @@ export function ActionBoard(action) {
                         </Panel>
                     </ReactFlow>
                 </div>
-                <div style={{width: '20%', height: '90dvh', marginTop: '50px'}}>
-                    <Card style={{height: '100%', margin: '10px'}}>
+                <div style={{width: '20%', height: '100dvh'}}>
+                    <Card style={{height: '100%', padding: '6px'}}>
                         <CardContent>
                             <Typography variant="h6" component="div">
                                 Automation Playground
@@ -268,7 +268,7 @@ export function ActionBoard(action) {
                                     Saved Automations
                                 </Typography>
                                 {automations.map(a => (
-                                    <Card variant='outlined' style={{padding: '10px', marginTop: '10px'}} key={a.id}>
+                                    <Card variant='outlined' style={{padding: '6px', marginTop: '8px'}} key={a.id}>
                                         {a.name}
                                         <Button size='small' onClick={() => openAutomation(a)}>
                                             Open

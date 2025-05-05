@@ -392,8 +392,8 @@ public class MainService {
         return "error";
     }
 
-//    @Scheduled(fixedDelay = 6000)
-    public void testWifi(){
+    //    @Scheduled(fixedDelay = 6000)
+    public void testWifi() {
         var det = WiFiDetails.builder()
                 .ssid("Ganda6969")
                 .password("mohit@12345")
@@ -420,4 +420,20 @@ public class MainService {
         return map;
     }
 
+    public Object saveWiFiList(Map<String, String> body) {
+        var list = new ArrayList<WiFiDetails>();
+        for (int i = 1; i <= 3; i++) {
+            String ssid = body.get("wn" + i);
+            String password = body.get("wp" + i);
+
+            list.add(WiFiDetails.builder()
+                            .ssid(ssid)
+                            .password(password)
+                            .type("public")
+                    .build());
+            // save each to DB — upsert logic recommended
+        }
+        wiFiDetailsRepository.saveAll(list);
+        return "success";
+    }
 }

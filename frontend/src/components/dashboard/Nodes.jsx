@@ -277,12 +277,12 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                         marginLeft: '2px',
                         marginRight: '2px',
                         padding: '4px',
-                        boxShadow: 'rgb(255 255 255 / 4%) 0px 0px 50px 15px'
+                        boxShadow: 'rgb(255 155 55 / 4%) 0px 0px 50px 15px'
                     }}>
 
                         <CardContent
                             style={{
-                                width: '200px',
+                                width: '240px',
                                 alignItems: 'center',
                                 paddingTop: '6px',
                                 paddingBottom: '6px',
@@ -445,7 +445,7 @@ export function MainNode({data, isConnectable}) {
                     borderRadius: '18px',
                     // backgroundColor:'transparent',
                     // backdropFilter: 'blur(1px)',
-                    boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
+                    boxShadow: 'rgb(255 155 55 / 8%) 0px 0px 50px 15px'
                 }}>
 
                     <CardContent style={{

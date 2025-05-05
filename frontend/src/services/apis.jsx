@@ -20,6 +20,16 @@ export const getActions = async () => {
     return response.data;
 }
 
+export const getWiFiDetails = async () => {
+    const response = await axios.post(BASE_URL + "main/wifiList", {},{
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
+
 export const updatePosition = async (deviceId, x, y) => {
     const response = await axios.get(BASE_URL + "main/updatePosition/" + deviceId + "/" + x + "/" + y, {
         headers: {
@@ -125,6 +135,15 @@ export const refreshDeviceById = async (deviceId) => {
 }
 export const sendAction = async (deviceId, payload, deviceType) => {
     const response = await axios.post(BASE_URL + "action/sendAction/" + deviceId + "/" + deviceType, payload, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
+export const saveWiFiList = async (payload) => {
+    const response = await axios.post(BASE_URL + "main/saveWiFiList" , payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization

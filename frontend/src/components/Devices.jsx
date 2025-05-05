@@ -77,9 +77,9 @@ export default function Devices() {
     };
 
     return (
-        <div style={{paddingTop: '60px', paddingLeft: '40px', paddingRight: '40px'}}>
+        <div style={{paddingTop: '20px', paddingLeft: '40px', paddingRight: '40px'}}>
             {/*<Action/>*/}
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} style={{borderRadius:'10px'}}>
                 <Table sx={{ minWidth: 700 }} aria-label="customized table">
                     <TableHead>
                         <TableRow>
