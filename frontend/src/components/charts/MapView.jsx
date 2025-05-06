@@ -19,7 +19,7 @@ export const MapView = React.memo(({lat, lng, h, w}) =>  {
 
     return (
 
-        <MapContainer className="nodrag" center={position} zoom={zoom} layers={googleSat} style={{ height: h, width: w, borderRadius:'8px' }}>
+        <MapContainer className="nodrag" center={position} zoom={zoom} layers={googleSat} style={{ height: h, width: w, borderRadius:'8px', marginTop:'10px' }}>
             {/*<TileLayer*/}
             {/*    url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" // TileLayer URL (OSM)*/}
             {/*/>*/}

@@ -11,7 +11,7 @@ import {
 import {
     Button,
     Card,
-    CardContent,
+    CardContent, CardHeader,
     Chip, CircularProgress,
     Dialog, DialogActions,
     DialogContent,
@@ -270,139 +270,151 @@ export const Device = React.memo(({id, data, isConnectable}) => {
     return (
         <div className="card-glow-container text-updater-node" ref={cardRef} key={data.value.id}>
             <div className="card-glow"></div>
-                <div style={{borderRadius: '12px'}}>
-                    <Card elevation={0} style={{
-                        display: 'flex',
-                        borderRadius: '12px',
-                        marginLeft: '2px',
-                        marginRight: '2px',
-                        padding: '4px',
-                        boxShadow: 'rgb(255 155 55 / 4%) 0px 0px 50px 15px'
-                    }}>
+            <div style={{borderRadius: '12px', backgroundColor: 'transparent', backdropFilter: 'blur(7px)'}}>
+                <Card elevation={0} style={{
+                    // display: 'flex',
+                    borderRadius: '12px',
+                    // marginLeft: '2px',
+                    // marginRight: '2px',
+                    // padding: '4px',
+                    backgroundColor: 'transparent',
+                    boxShadow: 'rgb(255 225 43 / 6%) 0px 0px 50px 15px'
+                }}>
 
-                        <CardContent
+                    <Card elevation={1}
+                          style={{height: '40px', width: '100%', margin: '0px', borderRadius: '10px 10px 0px 0px'}}>
+                        <Typography
                             style={{
-                                width: '240px',
+                                display: 'flex',
                                 alignItems: 'center',
-                                paddingTop: '6px',
-                                paddingBottom: '6px',
-                                justifyContent: 'center'
+                                justifyContent: 'space-between',
+                                marginLeft: '18px',
+                                fontWeight: 'bold',
+                                marginRight: '10px'
                             }}>
-                            <Typography
-                                style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-                                {data.value.name}
-                                <IconButton onClick={handleOpenModal} variant='text' style={{marginLeft: '8px'}}>
-                                    <SettingsIcon/>
-                                </IconButton>
-                            </Typography>
+                            {data.value.name}
+                            <IconButton onClick={handleOpenModal} variant='text' style={{marginLeft: '8px'}}>
+                                <SettingsIcon/>
+                            </IconButton>
+                        </Typography>
+                    </Card>
+                    <CardContent
+                        style={{
+                            width: '240px',
+                            alignItems: 'center',
+                            paddingTop: '6px',
+                            paddingBottom: '6px',
+                            justifyContent: 'center'
+                        }}>
 
-                            {actionAck && actionAck.command === 'reboot' && (
-                                <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
-                                    <Typography>Rebooting...</Typography>
-                                    <LinearProgress>
-                                    </LinearProgress>
-                                </Card>
-                            )}
+
+                        {actionAck && actionAck.command === 'reboot' && (
+                            <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
+                                <Typography>Rebooting...</Typography>
+                                <LinearProgress>
+                                </LinearProgress>
+                            </Card>
+                        )}
 
 
-                            {map.length > 0 && liveData && (
-                                <MapView lat={liveData.LAT} lng={liveData.LONG} h='280px' w='200px'/>
-                            )}
+                        {map.length > 0 && liveData && (
+                            <MapView lat={liveData.LAT} lng={liveData.LONG} h='280px' w='200px'/>
+                        )}
 
-                            {gaugeData && liveData && gaugeData.map((gauge) => (
-                                <GaugeChart key={gauge.key} value={liveData[gauge.key]} maxValue={gauge.extras.max}
-                                            displayName={gauge.displayName}/>
+                        {gaugeData && liveData && gaugeData.map((gauge) => (
+                            <GaugeChart key={gauge.key} value={liveData[gauge.key]} maxValue={gauge.extras.max}
+                                        displayName={gauge.displayName}/>
+                        ))}
+
+                        {sliderData && liveData && sliderData.map((slide) => (
+                            <CustomSlider key={slide.key} value={liveData[slide.key]} deviceId={data.value.id}
+                                          type={data.value.type} data={slide}
+                                          displayName={slide.displayName}/>
+                        ))}
+                        {presets && liveData && presets.map((slide) => (
+                            <Presets key={slide.key} value={liveData} deviceId={data.value.id}
+                                     type={data.value.type}
+                                     data={slide}
+                                     displayName={slide.displayName}/>
+                        ))}
+
+
+                        <div style={{
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            display: 'grid',
+                            gap: '4px',
+                            marginTop: '10px'
+                        }}>
+                            {data.value.attributes.map(attribute => (
+                                (attribute.type === "DATA|MAIN") && (
+                                    <Card key={attribute.id} elevation={4} style={{
+                                        borderRadius: '8px',
+                                        padding: '6px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        <Typography
+                                            variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>
+                                        <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
+                                    </Card>
+                                )
                             ))}
-
-                            {sliderData && liveData && sliderData.map((slide) => (
-                                <CustomSlider key={slide.key} value={liveData[slide.key]} deviceId={data.value.id}
-                                              type={data.value.type} data={slide}
-                                              displayName={slide.displayName}/>
-                            ))}
-                            {presets && liveData && presets.map((slide) => (
-                                <Presets key={slide.key} value={liveData} deviceId={data.value.id}
-                                         type={data.value.type}
-                                         data={slide}
-                                         displayName={slide.displayName}/>
-                            ))}
-
-
-                            <div style={{
-                                gridTemplateColumns: 'repeat(2, 1fr)',
-                                display: 'grid',
-                                gap: '4px',
-                                marginTop: '10px'
-                            }}>
-                                {data.value.attributes.map(attribute => (
-                                    (attribute.type === "DATA|MAIN") && (
-                                        <Card key={attribute.id} elevation={4} style={{
-                                            borderRadius: '8px',
-                                            padding: '6px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center'
-                                        }}>
-                                            <Typography
-                                                variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>
-                                            <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
-                                        </Card>
-                                    )
-                                ))}
-                                {switchBtn && (
-                                    <div style={{display: 'flex', justifyContent: 'space-around'}}>
-                                        {liveData && switchBtn.map((slide) => (
-                                            <SwitchButton key={slide.key} value={liveData[slide.key]}
-                                                          deviceId={data.value.id} data={slide} type={data.value.type}
-                                                          displayName={slide.displayName}/>
-                                        ))}
-                                    </div>
-                                )}
-
-                            </div>
-
-                            {liveData && (
-                                <div style={{
-                                    width: '100%',
-                                    marginTop: '12px',
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignItems: 'center'
-                                }}>
-                                    {
-                                        data.value.attributes.map(attribute => (
-                                            (attribute.type === "ACTION|OUT") && (
-                                                <Button key={attribute.id} aria-label="delete"
-                                                        onClick={() => handleAction(attribute)}>
-                                                    {attribute["displayName"]}
-                                                </Button>
-                                            )
-                                        ))
-                                    }
+                            {switchBtn && (
+                                <div style={{display: 'flex', justifyContent: 'space-around'}}>
+                                    {liveData && switchBtn.map((slide) => (
+                                        <SwitchButton key={slide.key} value={liveData[slide.key]}
+                                                      deviceId={data.value.id} data={slide} type={data.value.type}
+                                                      displayName={slide.displayName}/>
+                                    ))}
                                 </div>
                             )}
 
+                        </div>
 
-                        </CardContent>
-                    </Card>
+                        {liveData && (
+                            <div style={{
+                                width: '100%',
+                                marginTop: '12px',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center'
+                            }}>
+                                {
+                                    data.value.attributes.map(attribute => (
+                                        (attribute.type === "ACTION|OUT") && (
+                                            <Button key={attribute.id} aria-label="delete"
+                                                    onClick={() => handleAction(attribute)}>
+                                                {attribute["displayName"]}
+                                            </Button>
+                                        )
+                                    ))
+                                }
+                            </div>
+                        )}
 
-                    <CustomModal map={map} isOpen={isModalOpen} liveData={liveData} onClose={handleCloseModal}
-                                 device={data.value}/>
-                </div>
-                <Handle
-                    type="source"
-                    position={Position.Right}
-                    id="b"
-                    style={{
-                        top: 30,
-                        width: '4px',
-                        height: '30px',
-                        borderRadius: '0px 10px 10px 0px',
-                        background: color
-                    }}
-                    isConnectable={isConnectable}
-                />
+
+                    </CardContent>
+                </Card>
+
+                <CustomModal map={map} isOpen={isModalOpen} liveData={liveData} onClose={handleCloseModal}
+                             device={data.value}/>
             </div>
+            <Handle
+                type="source"
+                position={Position.Right}
+                id="b"
+                style={{
+                    top: 30,
+                    width: '4px',
+                    height: '30px',
+                    borderRadius: '0px 10px 10px 0px',
+                    background: color
+                }}
+                isConnectable={isConnectable}
+            />
+        </div>
     );
 });
 
@@ -437,15 +449,18 @@ export function MainNode({data, isConnectable}) {
     return (
         <div className="text-updater-node card-glow-container" ref={boxRef}>
             <div className="card-glow"></div>
-            <div style={{borderRadius: '16px'}}>
+            <div style={{
+                borderRadius: '16px',
+                backgroundColor:'transparent',
+                backdropFilter: 'blur(8px)',
+            }}>
                 <Card ref={cardRef} elevation={0} style={{
                     padding: '0px',
                     minHeight: '600px',
                     // maxWidth: '95%',
                     borderRadius: '18px',
-                    // backgroundColor:'transparent',
-                    // backdropFilter: 'blur(1px)',
-                    boxShadow: 'rgb(255 155 55 / 8%) 0px 0px 50px 15px'
+                    backgroundColor:'transparent',
+                    boxShadow: 'rgb(255 225 43 / 6%) 0px 0px 50px 15px'
                 }}>
 
                     <CardContent style={{

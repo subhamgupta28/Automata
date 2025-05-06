@@ -38,6 +38,96 @@ const conditionStyle = {
     border: '2px solid #FFEB3B',
 };
 
+const ValueReaderNode = ({ id, data, isConnectable }) => {
+    const { updateNodeData, setNodes, setEdges } = useReactFlow();
+    const [selectedDevice, setSelectedDevice] = useState({});
+    const [selectedKey, setSelectedKey] = useState('');
+    const [valueName, setValueName] = useState('');
+    const { devices } = useCachedDevices();
+
+    useEffect(() => {
+        if (devices) {
+            const device = devices.find(d => d.id === data?.deviceId) || devices[0];
+            setSelectedDevice(device);
+            setSelectedKey(data?.key || '');
+            setValueName(data?.name || '');
+        }
+    }, [devices, data]);
+
+    useEffect(() => {
+        updateNodeData(id, {
+            valueReaderData: {
+                deviceId: selectedDevice.id,
+                key: selectedKey,
+                name: valueName
+            }
+        });
+    }, [selectedDevice, selectedKey, valueName]);
+
+    const handleDeviceChange = (e) => {
+        const device = devices.find(d => d.id === e.target.value);
+        setSelectedDevice(device);
+    };
+
+    const deleteNode = () => {
+        setNodes(nodes => nodes.filter(n => n.id !== id));
+        setEdges(edges => edges.filter(e => e.source !== id && e.target !== id));
+    };
+
+    return (
+        <Card style={{ ...conditionStyle, border: '2px solid #9C27B0' }}>
+            <Handle
+                type="source"
+                position={Position.Right}
+                id="val-out"
+                style={{ width: 18, height: 18, background: '#9C27B0' }}
+                isConnectable={isConnectable}
+            />
+            <IconButton onClick={deleteNode} style={{ position: 'absolute', top: 0, right: 0 }}>
+                <DeleteIcon />
+            </IconButton>
+            <Typography variant="body2" sx={{ marginTop: 3 }}>Read value from a device</Typography>
+            <TextField
+                size="small"
+                label="Name"
+                fullWidth
+                value={valueName}
+                onChange={(e) => setValueName(e.target.value)}
+                sx={{ marginTop: 2 }}
+            />
+            <FormControl fullWidth className="nodrag" sx={{ marginTop: 2 }}>
+                <InputLabel>Device</InputLabel>
+                <Select
+                    size="small"
+                    variant="outlined"
+                    value={selectedDevice?.id || ''}
+                    label="Device"
+                    onChange={handleDeviceChange}
+                 >
+                    {devices && devices.map(device => (
+                        <MenuItem key={device.id} value={device.id}>{device.name}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+            <FormControl fullWidth className="nodrag" sx={{ marginTop: 2 }}>
+                <InputLabel>Attribute</InputLabel>
+                <Select
+                    size="small"
+                    variant="outlined"
+                    value={selectedKey}
+                    label="Attribute"
+                    onChange={(e) => setSelectedKey(e.target.value)}
+                >
+                    {selectedDevice?.attributes?.map(attr => (
+                        <MenuItem key={attr.id} value={attr.key}>{attr.displayName}</MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+        </Card>
+    );
+};
+
+
 // Custom Trigger Node
 const TriggerNode = ({id, data, isConnectable}) => {
     const triggerData = data.triggerData || {
@@ -556,4 +646,4 @@ const ConditionNode = ({id, data, isConnectable}) => {
         </Card>
     );
 };
-export {TriggerNode, ActionNode, ConditionNode};
+export {TriggerNode, ActionNode, ConditionNode, ValueReaderNode};

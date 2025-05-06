@@ -16,7 +16,7 @@ import {
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import {ActionNode, ConditionNode, TriggerNode} from "./NodeTypes.jsx";
+import {ActionNode, ConditionNode, TriggerNode, ValueReaderNode} from "./NodeTypes.jsx";
 import CustomEdge from "./CustomEdge.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import '@xyflow/react/dist/style.css';
@@ -42,7 +42,12 @@ const conditionStyle = {
     width: '220px',
     border: '2px solid #FFEB3B',
 };
-
+const valueReaderStyle = {
+    padding: '10px',
+    borderRadius: '5px',
+    width: '220px',
+    border: '2px solid #9C27B0', // Purple tone
+};
 let id = 0;
 const getId = (type) => `node_${type}_${id++}`;
 
@@ -221,6 +226,7 @@ export function ActionBoard() {
                             trigger: TriggerNode,
                             action: ActionNode,
                             condition: ConditionNode,
+                            valueReader: ValueReaderNode,
                         }}
                     >
                         {selectedAutomation && selectedAutomation.id && (
@@ -262,6 +268,11 @@ export function ActionBoard() {
                                  onDragStart={(event) => onDragStart(event, 'action')}
                                  draggable>
                                 Add Action
+                            </div>
+                            <div style={{...valueReaderStyle, marginTop: '10px'}}
+                                 onDragStart={(event) => onDragStart(event, 'valueReader')}
+                                 draggable>
+                                Add Value Reader
                             </div>
                             <div style={{overflow: 'auto'}}>
                                 <Typography>

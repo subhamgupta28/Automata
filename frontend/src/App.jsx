@@ -1,4 +1,4 @@
-import React, {useState} from 'react'
+import React, {useEffect, useRef, useState} from 'react'
 // import './App.css'
 import Nav from "./components/Nav.jsx";
 import DeviceNodes from "./components/dashboard/DeviceNodes.jsx";
@@ -15,13 +15,25 @@ import AnalyticsView from "./components/dashboard/AnalyticsView.jsx";
 import Exp from "./components/dashboard/Exp.jsx";
 import {ConfigurationView} from "./components/dashboard/ConfigurationView.jsx";
 import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
-
+import DOTS from 'vanta/dist/vanta.dots.min.js'
 
 function App() {
     // const { messages, sendMessage } = useWebSocket('/topic/update');
     const [input, setInput] = useState('');
 
-
+    const [vantaEffect, setVantaEffect] = useState(null)
+    const myRef = useRef(null)
+    useEffect(() => {
+        // if (!vantaEffect) {
+        //     setVantaEffect(DOTS({
+        //         el: myRef.current,
+        //         showLines: false
+        //     }))
+        // }
+        return () => {
+            if (vantaEffect) vantaEffect.destroy()
+        }
+    }, [vantaEffect])
     // const handleSend = () => {
     //     sendMessage('/app/send', input);
     //     setInput('');
@@ -33,14 +45,17 @@ function App() {
                 <BrowserRouter>
 
 
-                    <main>
+                    <main >
                         <header>
                             {/*<Nav/>*/}
                         </header>
 
-                        <section>
+                        <section >
                             {/*<DndTest/>*/}
                             {/*<ActionBoard/>*/}
+                            {/*<div ref={myRef} style={{height:'200px', width:'100px'}}>*/}
+
+                            {/*</div>*/}
                             <SideDrawer/>
                             {/*<SignIn/>*/}
                             {/*<SignUp/>*/}

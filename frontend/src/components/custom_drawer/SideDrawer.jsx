@@ -179,6 +179,7 @@ export default function SideDrawer() {
                                     {
                                         minHeight: 48,
                                         borderRadius: 2,
+                                        borderColor:'red',
                                         margin: 1,
                                         px: 2.5,
                                     },
