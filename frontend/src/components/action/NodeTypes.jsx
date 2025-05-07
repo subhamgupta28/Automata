@@ -46,15 +46,21 @@ const ValueReaderNode = ({ id, data, isConnectable }) => {
     const { devices } = useCachedDevices();
 
     useEffect(() => {
+        const dt = data.valueReaderData;
+        console.log("dt", dt)
+        if (dt){
+            setSelectedKey(dt?.key);
+            setValueName(dt?.name);
+        }
         if (devices) {
             const device = devices.find(d => d.id === data?.deviceId) || devices[0];
             setSelectedDevice(device);
-            setSelectedKey(data?.key || '');
-            setValueName(data?.name || '');
         }
-    }, [devices, data]);
+    }, [devices, data.valueReaderData]);
 
     useEffect(() => {
+        console.log("key", selectedKey);
+        console.log("name", valueName)
         updateNodeData(id, {
             valueReaderData: {
                 deviceId: selectedDevice.id,
@@ -79,10 +85,16 @@ const ValueReaderNode = ({ id, data, isConnectable }) => {
             <Handle
                 type="source"
                 position={Position.Right}
-                id="val-out"
-                style={{ width: 18, height: 18, background: '#9C27B0' }}
+                id="b"
+                style={{ width: 18, height: 18, background: '#9C27B0'}}
                 isConnectable={isConnectable}
             />
+            <AddIcon style={{
+                background: '#9C27B0', top: '50%',
+                right: 0,
+                transform: 'translate(50%, -50%)'
+            }} className='react-flow__handle'/>
+
             <IconButton onClick={deleteNode} style={{ position: 'absolute', top: 0, right: 0 }}>
                 <DeleteIcon />
             </IconButton>

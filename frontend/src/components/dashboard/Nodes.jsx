@@ -270,19 +270,22 @@ export const Device = React.memo(({id, data, isConnectable}) => {
     return (
         <div className="card-glow-container text-updater-node" ref={cardRef} key={data.value.id}>
             <div className="card-glow"></div>
-            <div style={{borderRadius: '12px', backgroundColor: 'transparent', backdropFilter: 'blur(7px)'}}>
-                <Card elevation={0} style={{
+            <div style={{
+                borderRadius: '12px',
+                backgroundColor: 'transparent',
+                backdropFilter: 'blur(7px)'}}>
+                <Card elevation={0} variant="outlined" style={{
                     // display: 'flex',
                     borderRadius: '12px',
                     // marginLeft: '2px',
                     // marginRight: '2px',
                     // padding: '4px',
                     backgroundColor: 'transparent',
-                    boxShadow: 'rgb(255 225 43 / 6%) 0px 0px 50px 15px'
+                    boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
                     <Card elevation={1}
-                          style={{height: '40px', width: '100%', margin: '0px', borderRadius: '10px 10px 0px 0px'}}>
+                          style={{ padding:'4px', width: '100%', margin: '0px', borderRadius: '10px 10px 0px 0px'}}>
                         <Typography
                             style={{
                                 display: 'flex',
@@ -451,16 +454,16 @@ export function MainNode({data, isConnectable}) {
             <div className="card-glow"></div>
             <div style={{
                 borderRadius: '16px',
-                backgroundColor:'transparent',
+                backgroundColor: 'transparent',
                 backdropFilter: 'blur(8px)',
             }}>
-                <Card ref={cardRef} elevation={0} style={{
+                <Card variant="outlined" ref={cardRef} elevation={0} style={{
                     padding: '0px',
                     minHeight: '600px',
                     // maxWidth: '95%',
                     borderRadius: '18px',
-                    backgroundColor:'transparent',
-                    boxShadow: 'rgb(255 225 43 / 6%) 0px 0px 50px 15px'
+                    backgroundColor: 'transparent',
+                    boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 
                     <CardContent style={{

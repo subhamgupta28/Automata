@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { styled, useTheme } from '@mui/material/styles';
+import {styled, useTheme} from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import MuiDrawer from '@mui/material/Drawer';
 import List from '@mui/material/List';
@@ -29,6 +29,9 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import AdbIcon from "@mui/icons-material/Adb";
+import Notifications from "../Notifications.jsx";
+import {SnackbarProvider} from "notistack";
+import {Card} from "@mui/material";
 
 const drawerWidth = 200;
 
@@ -53,7 +56,7 @@ const closedMixin = (theme) => ({
     },
 });
 
-const DrawerHeader = styled('div')(({ theme }) => ({
+const DrawerHeader = styled('div')(({theme}) => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'flex-end',
@@ -63,22 +66,22 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 }));
 
 
-const Drawer = styled(MuiDrawer, { shouldForwardProp: (prop) => prop !== 'open' })(
-    ({ theme }) => ({
+const Drawer = styled(MuiDrawer, {shouldForwardProp: (prop) => prop !== 'open'})(
+    ({theme}) => ({
         width: drawerWidth,
         flexShrink: 0,
         whiteSpace: 'nowrap',
         boxSizing: 'border-box',
         variants: [
             {
-                props: ({ open }) => open,
+                props: ({open}) => open,
                 style: {
                     ...openedMixin(theme),
                     '& .MuiDrawer-paper': openedMixin(theme),
                 },
             },
             {
-                props: ({ open }) => !open,
+                props: ({open}) => !open,
                 style: {
                     ...closedMixin(theme),
                     '& .MuiDrawer-paper': closedMixin(theme),
@@ -94,28 +97,28 @@ export default function SideDrawer() {
 
     const listItems = [
         {
-            name:'Home',
-            url:'',
+            name: 'Home',
+            url: '',
             icon: <HomeIcon/>
         },
         {
-            name:'Devices',
-            url:'/devices',
-            icon: <DeveloperBoardIcon/>
-        },
-        {
-            name:'Automations',
-            url:'/actions',
+            name: 'Automations',
+            url: '/actions',
             icon: <AutoAwesomeIcon/>
         },
         {
-            name:'Configure',
-            url:'/configure',
+            name: 'Devices',
+            url: '/devices',
+            icon: <DeveloperBoardIcon/>
+        },
+        {
+            name: 'Configure',
+            url: '/configure',
             icon: <SettingsIcon/>
         },
         {
-            name:'Analytics',
-            url:'/analytics',
+            name: 'Analytics',
+            url: '/analytics',
             icon: <AssessmentIcon/>
         },
     ];
@@ -128,48 +131,27 @@ export default function SideDrawer() {
     };
 
     const handleDrawerClose = () => {
-        setOpen(s=>!s);
+        setOpen(s => !s);
     };
 
     return (
-        <Box sx={{ display: 'flex' }}>
-            <CssBaseline />
+        <Box sx={{display: 'flex'}}>
+            <CssBaseline/>
 
-            <Drawer variant="permanent" open={open} elevation={0} style={{backgroundColor: 'transparent', backdropFilter: 'blur(1px)', height:'100dvh'}}>
+            <Drawer variant="permanent" open={open} elevation={0}
+                    style={{backgroundColor: 'transparent', backdropFilter: 'blur(1px)', height: '100dvh'}}>
                 <DrawerHeader>
                     {/*<IconButton onClick={handleDrawerClose}>*/}
                     {/*   <MenuIcon />*/}
                     {/*</IconButton>*/}
                     <IconButton onClick={handleDrawerClose}>
-                        {open ? <ChevronLeftIcon /> : <MenuIcon />}
+                        {open ? <ChevronLeftIcon/> : <MenuIcon/>}
                     </IconButton>
                 </DrawerHeader>
-                <Divider />
-                {/*<ListItem style={{height:'50px',padding:'10px'}}>*/}
-                {/*    <ListItemIcon>*/}
-                {/*        <AdbIcon sx={{display: {xs: 'none', md: 'flex'}}}/>*/}
-                {/*    </ListItemIcon>*/}
-                {/*    <Typography*/}
-                {/*        variant="h6"*/}
-                {/*        noWrap*/}
-                {/*        component="a"*/}
-                {/*        href="/"*/}
-                {/*        sx={{*/}
-
-                {/*            display: {xs: 'none', md: 'flex'},*/}
-                {/*            fontFamily: 'monospace',*/}
-                {/*            fontWeight: 700,*/}
-                {/*            letterSpacing: '.3rem',*/}
-                {/*            color: 'inherit',*/}
-                {/*            textDecoration: 'none',*/}
-                {/*        }}*/}
-                {/*    >*/}
-                {/*        Automata*/}
-                {/*    </Typography>*/}
-                {/*</ListItem>*/}
+                <Divider/>
                 <List>
                     {listItems.map((item, index) => (
-                        <ListItem key={item.name} disablePadding sx={{ display: 'block' }}>
+                        <ListItem key={item.name} disablePadding sx={{display: 'block'}}>
                             <ListItemButton
                                 selected={selectedIndex === index}
                                 onClick={(event) => handleListItemClick(event, index)}
@@ -179,7 +161,7 @@ export default function SideDrawer() {
                                     {
                                         minHeight: 48,
                                         borderRadius: 2,
-                                        borderColor:'red',
+                                        borderColor: 'red',
                                         margin: 1,
                                         px: 2.5,
                                     },
@@ -225,10 +207,42 @@ export default function SideDrawer() {
                         </ListItem>
                     ))}
                 </List>
-                <Divider />
+                <Divider/>
             </Drawer>
-            <Box component="main" sx={{ flexGrow: 1 }}>
+            <Box component="main" sx={{flexGrow: 1}}>
 
+                <Card
+                    elevation={10}
+                    sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
+                    style={{
+                        marginLeft: "10px",
+                        position: 'absolute',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        padding:'4px',
+                        borderRadius: '0px 0px 10px 10px'
+                    }}
+                >
+                    <AdbIcon sx={{display: {xs: 'none', md: 'flex'}}}/>
+                    <Typography
+                        variant="h6"
+                        noWrap
+                        component="a"
+                        href="/"
+                        sx={{
+
+                            display: {xs: 'none', md: 'flex'},
+                            fontFamily: 'monospace',
+                            fontWeight: 700,
+                            letterSpacing: '.3rem',
+                            color: 'inherit',
+                            textDecoration: 'none',
+                        }}
+                    >
+                        Automata
+                    </Typography>
+                </Card>
 
                 <AppCacheProvider>
                     <Routes>
@@ -241,7 +255,9 @@ export default function SideDrawer() {
                         <Route path="configure" element={<ConfigurationView/>}/>
                     </Routes>
                 </AppCacheProvider>
-
+                <SnackbarProvider maxSnack={3} preventDuplicate>
+                    <Notifications/>
+                </SnackbarProvider>
             </Box>
         </Box>
     );

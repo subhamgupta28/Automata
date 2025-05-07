@@ -26,7 +26,7 @@ const HomeAssistantSlider = styled(Slider)({
         display: 'none'
     },
     '& .MuiSlider-thumb': {
-        backgroundColor: '#ff832a', // White thumb, matching the Home Assistant style
+        backgroundColor: '#ffa041', // White thumb, matching the Home Assistant style
         // border: '2px solid orange', // Blue border around the thumb
         height: 25,
         width: 6,

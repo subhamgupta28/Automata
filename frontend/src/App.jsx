@@ -59,9 +59,7 @@ function App() {
                             <SideDrawer/>
                             {/*<SignIn/>*/}
                             {/*<SignUp/>*/}
-                            <SnackbarProvider maxSnack={3} preventDuplicate>
-                                <Notifications/>
-                            </SnackbarProvider>
+
                             {/*<AppCacheProvider>*/}
                             {/*    <Routes>*/}
                             {/*        <Route path="/" element={<DeviceNodes/>}/>*/}
