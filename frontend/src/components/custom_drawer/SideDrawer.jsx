@@ -50,7 +50,7 @@ const closedMixin = (theme) => ({
         duration: theme.transitions.duration.leavingScreen,
     }),
     overflowX: 'hidden',
-    width: `calc(${theme.spacing(7)} + 1px)`,
+    width: `calc(${theme.spacing(5)} + 1px)`,
     [theme.breakpoints.up('sm')]: {
         width: `calc(${theme.spacing(8)} + 1px)`,
     },
@@ -159,7 +159,7 @@ export default function SideDrawer() {
                                 to={item.url}
                                 sx={[
                                     {
-                                        minHeight: 48,
+                                        // minHeight: 48,
                                         borderRadius: 2,
                                         borderColor: 'red',
                                         margin: 1,
@@ -213,6 +213,7 @@ export default function SideDrawer() {
 
                 <Card
                     elevation={10}
+                    variant="outlined"
                     sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
                     style={{
                         marginLeft: "10px",
@@ -220,11 +221,13 @@ export default function SideDrawer() {
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        padding:'4px',
+                        padding:'1px 2px 2px 1px',
+                        backgroundColor: 'rgba(200, 200, 200, 0.0)',
+                        backdropFilter: 'blur(4px)',
                         borderRadius: '0px 0px 10px 10px'
                     }}
                 >
-                    <AdbIcon sx={{display: {xs: 'none', md: 'flex'}}}/>
+                    <AdbIcon sx={{display: { md: 'flex'}}}/>
                     <Typography
                         variant="h6"
                         noWrap
@@ -232,7 +235,7 @@ export default function SideDrawer() {
                         href="/"
                         sx={{
 
-                            display: {xs: 'none', md: 'flex'},
+                            display: { md: 'flex'},
                             fontFamily: 'monospace',
                             fontWeight: 700,
                             letterSpacing: '.3rem',

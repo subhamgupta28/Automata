@@ -105,7 +105,7 @@ const DeviceNodes = () => {
     return (
         <div style={{height: '100dvh'}} >
             <ReactFlow
-                // colorMode="dark"
+                colorMode="dark"
                 nodes={nodes}
                 edges={edges}
                 edgeTypes={edgeTypes}
