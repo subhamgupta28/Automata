@@ -80,6 +80,7 @@ public class AutomationService {
             var device = deviceRepository.findById(deviceId).orElse(null);
             RestTemplate restTemplate = new RestTemplate();
             try{
+                assert device != null;
                 var res = restTemplate.getForObject("http://"+device.getHost()+ ".local/restart", String.class);
                 System.err.println(res);
             } catch (Exception e) {
@@ -338,11 +339,11 @@ public class AutomationService {
     }
 
     public String saveAutomationDetail(AutomationDetail automationDetail) {
-        var automation = new Automation();
-        automation.setIsEnabled(true);
-        automation.setIsActive(false);
-        if (automationDetail.getId() != null) {
-            automation.setId(automationDetail.getId());
+        var automation = Automation.builder();
+        automation.isEnabled(true);
+        automation.isActive(false);
+        if (automationDetail.getId() != null && !automationDetail.getId().isEmpty() ) {
+            automation.id(automationDetail.getId());
         }
 
         var trigger = automationDetail.getNodes().stream().filter(t -> {
@@ -358,8 +359,8 @@ public class AutomationService {
             trig.setKey(triggerData.getKey());
             trig.setDeviceId(triggerData.getDeviceId());
             trig.setValue(triggerData.getValue());
-            automation.setTrigger(trig);
-            automation.setName(triggerData.getName());
+            automation.trigger(trig);
+            automation.name(triggerData.getName());
         }
 
         var actions = automationDetail.getNodes().stream().filter(t -> {
@@ -379,7 +380,7 @@ public class AutomationService {
                 action1.setDeviceId(data.getDeviceId());
                 list.add(action1);
             }
-            automation.setActions(list);
+            automation.actions(list);
 
         }
 
@@ -399,13 +400,13 @@ public class AutomationService {
             cond.setValue(data.getValue());
             cond.setIsExact(data.getIsExact());
             cond.setTime(data.getTime());
-            automation.setConditions(List.of(cond));
+            automation.conditions(List.of(cond));
         }
 
-        System.err.println(automation.getId());
+        System.err.println(automation);
         System.err.println(automationDetail.getId());
 
-        var res = automationRepository.save(automation);
+        var res = automationRepository.save(automation.build());
         automationDetail.setId(res.getId());
         automationDetailRepository.save(automationDetail);
         notificationService.sendNotification("Automation saved successfully", "success");

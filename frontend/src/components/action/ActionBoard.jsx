@@ -21,6 +21,10 @@ import CustomEdge from "./CustomEdge.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import '@xyflow/react/dist/style.css';
 import EdgeLine from "./EdgeLine.jsx";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemText from "@mui/material/ListItemText";
+import ListItemButton from "@mui/material/ListItemButton";
 
 const triggerStyle = {
     padding: '10px',
@@ -247,49 +251,63 @@ export function ActionBoard() {
                         </Panel>
                     </ReactFlow>
                 </div>
-                <div style={{width: '20%', height: '100dvh'}}>
-                    <Card style={{height: '100%', padding: '6px'}}>
-                        <CardContent>
+                <div style={{ width: '20%', height: '100dvh' }}>
+                    <Card style={{ height: '100%', padding: '6px', display: 'flex', flexDirection: 'column' }}>
+                        <CardContent style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                             <Typography variant="h6" component="div">
                                 Automation Playground
                             </Typography>
-                            <Typography gutterBottom sx={{color: 'text.secondary', fontSize: 14}}>
+                            <Typography gutterBottom sx={{ color: 'text.secondary', fontSize: 14 }}>
                                 Drag and drop nodes to create automations.
                             </Typography>
-                            <div style={triggerStyle} onDragStart={(event) => onDragStart(event, 'trigger')}
-                                 draggable>
+                            <div style={triggerStyle} onDragStart={(event) => onDragStart(event, 'trigger')} draggable>
                                 Add Trigger
                             </div>
-                            <div style={{...conditionStyle, marginTop: '10px'}}
-                                 onDragStart={(event) => onDragStart(event, 'condition')} draggable>
+                            <div
+                                style={{ ...conditionStyle, marginTop: '10px' }}
+                                onDragStart={(event) => onDragStart(event, 'condition')}
+                                draggable
+                            >
                                 Add Condition
                             </div>
-                            <div style={{...actionStyle, marginTop: '10px'}}
-                                 onDragStart={(event) => onDragStart(event, 'action')}
-                                 draggable>
+                            <div
+                                style={{ ...actionStyle, marginTop: '10px' }}
+                                onDragStart={(event) => onDragStart(event, 'action')}
+                                draggable
+                            >
                                 Add Action
                             </div>
-                            <div style={{...valueReaderStyle, marginTop: '10px'}}
-                                 onDragStart={(event) => onDragStart(event, 'valueReader')}
-                                 draggable>
+                            <div
+                                style={{ ...valueReaderStyle, marginTop: '10px' }}
+                                onDragStart={(event) => onDragStart(event, 'valueReader')}
+                                draggable
+                            >
                                 Add Value Reader
                             </div>
-                            <div style={{overflow: 'auto'}}>
-                                <Typography>
-                                    Saved Automations
-                                </Typography>
-                                {automations.map(a => (
-                                    <Card variant='outlined' style={{padding: '6px', marginTop: '8px'}} key={a.id}>
-                                        {a.name}
-                                        <Button size='small' onClick={() => openAutomation(a)}>
-                                            Open
-                                        </Button>
-                                    </Card>
-                                ))}
+
+                            {/* Scrollable list container */}
+                            <div style={{ flex: 1, overflow: 'auto', marginTop: '16px' }}>
+                                <Typography>Saved Automations</Typography>
+                                <List>
+                                    {automations.map((a) => (
+                                        <ListItem
+                                            variant="outlined"
+                                            component={Card}
+                                            style={{ padding: '6px', marginTop: '8px' }}
+                                            key={a.id}
+                                        >
+                                            <ListItemText>{a.name}</ListItemText>
+                                            <Button size="small" onClick={() => openAutomation(a)}>
+                                                Open
+                                            </Button>
+                                        </ListItem>
+                                    ))}
+                                </List>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
+
             </Stack>
 
         </div>

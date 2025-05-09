@@ -37,7 +37,7 @@ export default function ChartDetail({ deviceId, name }) {
     }));
 
     return (
-        <Card elevation={3} sx={{ borderRadius: 3,  }}>
+        <Card elevation={1} sx={{ borderRadius: 3,  }}>
             <CardContent>
                 <Box
                     display="flex"

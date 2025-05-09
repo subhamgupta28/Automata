@@ -60,7 +60,7 @@ const DrawerHeader = styled('div')(({theme}) => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    padding: theme.spacing(0, 1),
+    padding: theme.spacing(0, 1.5),
     // necessary for content to be below app bar
     ...theme.mixins.toolbar,
 }));
@@ -139,7 +139,7 @@ export default function SideDrawer() {
             <CssBaseline/>
 
             <Drawer variant="permanent" open={open} elevation={0}
-                    style={{backgroundColor: 'transparent', backdropFilter: 'blur(1px)', height: '100dvh'}}>
+                    style={{backgroundColor: 'rgba(255, 255, 255, 0.0)', backdropFilter: 'blur(1px)', height: '100dvh'}}>
                 <DrawerHeader>
                     {/*<IconButton onClick={handleDrawerClose}>*/}
                     {/*   <MenuIcon />*/}
@@ -148,7 +148,7 @@ export default function SideDrawer() {
                         {open ? <ChevronLeftIcon/> : <MenuIcon/>}
                     </IconButton>
                 </DrawerHeader>
-                <Divider/>
+                {/*<Divider/>*/}
                 <List>
                     {listItems.map((item, index) => (
                         <ListItem key={item.name} disablePadding sx={{display: 'block'}}>
@@ -207,7 +207,7 @@ export default function SideDrawer() {
                         </ListItem>
                     ))}
                 </List>
-                <Divider/>
+                {/*<Divider/>*/}
             </Drawer>
             <Box component="main" sx={{flexGrow: 1}}>
 

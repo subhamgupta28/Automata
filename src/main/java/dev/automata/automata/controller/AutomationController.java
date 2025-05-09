@@ -27,7 +27,7 @@ public class AutomationController {
     private final AutomationService actionService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    @GetMapping
+//    @GetMapping
     public ResponseEntity<Automation> createAction() {
         var trigger = new Automation.Trigger();
         trigger.setType("periodic");

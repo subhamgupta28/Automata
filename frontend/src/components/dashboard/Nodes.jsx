@@ -79,12 +79,15 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
 
     return (
         <Dialog fullWidth maxWidth="md" onClose={onClose} open={isOpen}
-                style={{
-                    backgroundColor: 'rgba(200, 200, 200, 0.0)',
+                PaperProps={{
+                    sx: {
+                        backgroundColor: 'rgba(255, 255, 255, 0.0)',
+                        backdropFilter: 'blur(8px)',
+                    }
                 }}
         >
             <DialogTitle>Device Settings</DialogTitle>
-            <DialogContent style={{overflow: 'auto', backgroundColor: 'rgba(200, 200, 200, 0.0)',}}>
+            <DialogContent style={{overflow: 'auto',}}>
                 <Stack direction="row" divider={<Divider orientation="vertical" flexItem/>} spacing={2}>
                     <div style={{width: '65%'}}>
                         {/* make the table strike border*/}
