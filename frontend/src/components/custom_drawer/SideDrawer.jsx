@@ -32,6 +32,12 @@ import AdbIcon from "@mui/icons-material/Adb";
 import Notifications from "../Notifications.jsx";
 import {SnackbarProvider} from "notistack";
 import {Card} from "@mui/material";
+import Exp from "../dashboard/Exp.jsx";
+import {DeviceDataProvider} from "../../services/DeviceDataProvider.jsx";
+import SignUp from "../auth/SignUp.jsx";
+import SignIn from "../auth/SignIn.jsx";
+import PrivateRoute from "../auth/PrivateRoute.jsx";
+import {AuthProvider} from "../auth/AuthContext.jsx";
 
 const drawerWidth = 200;
 
@@ -139,7 +145,11 @@ export default function SideDrawer() {
             <CssBaseline/>
 
             <Drawer variant="permanent" open={open} elevation={0}
-                    style={{backgroundColor: 'rgba(255, 255, 255, 0.0)', backdropFilter: 'blur(1px)', height: '100dvh'}}>
+                    style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.0)',
+                        backdropFilter: 'blur(1px)',
+                        height: '100dvh'
+                    }}>
                 <DrawerHeader>
                     {/*<IconButton onClick={handleDrawerClose}>*/}
                     {/*   <MenuIcon />*/}
@@ -221,13 +231,13 @@ export default function SideDrawer() {
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        padding:'1px 2px 2px 1px',
+                        padding: '1px 2px 2px 1px',
                         backgroundColor: 'rgba(200, 200, 200, 0.0)',
                         backdropFilter: 'blur(4px)',
                         borderRadius: '0px 0px 10px 10px'
                     }}
                 >
-                    <AdbIcon sx={{display: { md: 'flex'}}}/>
+                    <AdbIcon sx={{display: {md: 'flex'}}}/>
                     <Typography
                         variant="h6"
                         noWrap
@@ -235,7 +245,7 @@ export default function SideDrawer() {
                         href="/"
                         sx={{
 
-                            display: { md: 'flex'},
+                            display: {md: 'flex'},
                             fontFamily: 'monospace',
                             fontWeight: 700,
                             letterSpacing: '.3rem',
@@ -247,17 +257,24 @@ export default function SideDrawer() {
                     </Typography>
                 </Card>
 
-                <AppCacheProvider>
-                    <Routes>
-                        <Route path="/" element={<DeviceNodes/>}/>
-                        <Route path="actions" element={<ActionBoard/>}/>
-                        <Route path="devices" element={<Devices/>}/>
-                        <Route path="mob" element={<MobileView/>}/>
-                        <Route path="analytics" element={<AnalyticsView/>}/>
-                        {/*<Route path="exp" element={<SideDrawer/>}/>*/}
-                        <Route path="configure" element={<ConfigurationView/>}/>
-                    </Routes>
-                </AppCacheProvider>
+                <AuthProvider>
+                    <AppCacheProvider>
+                        <DeviceDataProvider>
+                            <Routes>
+                                <Route path="/" element={<DeviceNodes/>}/>
+                                <Route path="actions" element={<ActionBoard/>}/>
+                                <Route path="devices" element={<Devices/>}/>
+                                <Route path="mob" element={<MobileView/>}/>
+                                <Route path="analytics" element={<AnalyticsView/>}/>
+                                {/*<Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>*/}
+                                <Route path="exp" element={<Exp/>}/>
+                                <Route path="signup" element={<SignUp/>}/>
+                                <Route path="signin" element={<SignIn/>}/>
+                                <Route path="configure" element={<ConfigurationView/>}/>
+                            </Routes>
+                        </DeviceDataProvider>
+                    </AppCacheProvider>
+                </AuthProvider>
                 <SnackbarProvider maxSnack={3} preventDuplicate>
                     <Notifications/>
                 </SnackbarProvider>

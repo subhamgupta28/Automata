@@ -328,7 +328,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
 
 
                         {map.length > 0 && liveData && (
-                            <MapView lat={liveData.LAT} lng={liveData.LONG} h='280px' w='200px'/>
+                            <MapView lat={liveData.LAT} lng={liveData.LONG} h='280px' w='210px'/>
                         )}
 
                         {gaugeData && liveData && gaugeData.map((gauge) => (

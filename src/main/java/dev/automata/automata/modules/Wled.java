@@ -48,7 +48,7 @@ public class Wled {
                 return lastState;
                 // Get the root element
             } catch (Exception e) {
-                e.printStackTrace(System.err);
+                System.err.println(e);
             }
 
         }

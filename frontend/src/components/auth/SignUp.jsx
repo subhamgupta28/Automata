@@ -178,10 +178,6 @@ export default function SignUp(props) {
                                 color={passwordError ? 'error' : 'primary'}
                             />
                         </FormControl>
-                        <FormControlLabel
-                            control={<Checkbox value="allowExtraEmails" color="primary"/>}
-                            label="I want to receive updates via email."
-                        />
                         <Button
                             type="submit"
                             fullWidth
@@ -194,7 +190,7 @@ export default function SignUp(props) {
                             Already have an account?{' '}
                             <span>
                                 <Link
-                                    href="/material-ui/getting-started/templates/sign-in/"
+                                    href="/signin"
                                     variant="body2"
                                     sx={{alignSelf: 'center'}}
                                 >
@@ -203,10 +199,6 @@ export default function SignUp(props) {
                             </span>
                         </Typography>
                     </Box>
-                    <Divider>
-                        <Typography sx={{color: 'text.secondary'}}>or</Typography>
-                    </Divider>
-
                 </Card>
             </SignUpContainer>
         </div>

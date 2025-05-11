@@ -84,6 +84,7 @@ export default function SignIn(props) {
             email: data.get('email'),
             password: data.get('password'),
         });
+
     };
 
     const validateInputs = () => {
@@ -200,7 +201,7 @@ export default function SignIn(props) {
                             Don&apos;t have an account?{' '}
                             <span>
                 <Link
-                    href="/material-ui/getting-started/templates/sign-in/"
+                    href="/signup"
                     variant="body2"
                     sx={{alignSelf: 'center'}}
                 >

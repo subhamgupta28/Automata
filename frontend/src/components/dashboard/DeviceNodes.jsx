@@ -136,16 +136,18 @@ const DeviceNodes = () => {
                 {/*    <Menu/>*/}
                 {/*</Panel>*/}
 
-                <Panel position="bottom-right" style={{marginBottom: '30px', display: 'flex'}}>
-                    {editUi && <NodeInspector/>}
-                    {actionMenu && <div>
-                        <Button variant='outlined' size='small' onClick={handleReboot}
-                                style={{marginLeft: '10px'}}>Reboot</Button>
-                    </div>}
-                    <Button variant='outlined' size='small' onClick={handleEdit} style={{marginLeft: '10px'}}>
-                        <EditIcon/> Edit</Button>
-                    <Button variant='outlined' size='small' onClick={() => setActionMenu(a => !a)}
-                            style={{marginLeft: '10px'}}>Actions</Button>
+                <Panel position="bottom-right" style={{marginRight: '30px', display: 'flex'}}>
+                    <Card elevation={3} style={{padding:'10px'}}>
+                        {editUi && <NodeInspector/>}
+                        {actionMenu && <div>
+                            <Button variant='outlined' size='small' onClick={handleReboot}
+                                    style={{marginLeft: '10px'}}>Reboot</Button>
+                        </div>}
+                        <Button variant='outlined' size='small' onClick={handleEdit} style={{marginLeft: '10px'}}>
+                            <EditIcon/> Edit</Button>
+                        <Button variant='outlined' size='small' onClick={() => setActionMenu(a => !a)}
+                                style={{marginLeft: '10px'}}>Actions</Button>
+                    </Card>
                 </Panel>
 
             </ReactFlow>
@@ -188,11 +190,11 @@ const Menu = () => {
 const Dashboard = () => {
 
     return (
-        <DeviceDataProvider>
+        // <DeviceDataProvider>
             <ReactFlowProvider>
                 <DeviceNodes/>
             </ReactFlowProvider>
-        </DeviceDataProvider>
+        // </DeviceDataProvider>
 
     )
 }
