@@ -34,7 +34,7 @@ export default function CustomBarChart ({chartData}){
             //     return item.value?.toString();
             // }}
                   colors={['#b9b9b9']}
-                  xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps }]}
+                  xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps, zoom: true }]}
                   borderRadius={10}
                   {...chartSetting}
         />

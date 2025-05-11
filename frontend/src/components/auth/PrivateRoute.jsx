@@ -6,9 +6,8 @@ import {useAuth} from "./AuthContext.jsx";
 
 // Protected route component
 const PrivateRoute = ({ element }) => {
-    const { user } = useAuth();
-
-    if (!user) {
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (!storedUser) {
         return <Navigate to="/signin" />;
     }
 

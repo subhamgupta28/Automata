@@ -1,6 +1,6 @@
-import { LineChart, lineElementClasses } from "@mui/x-charts";
-import React, { useEffect, useState, useRef } from "react";
-import { getDetailChartData } from "../../services/apis.jsx";
+import {LineChart, lineElementClasses} from "@mui/x-charts";
+import React, {useEffect, useState, useRef} from "react";
+import {getDetailChartData} from "../../services/apis.jsx";
 import {
     Card,
     CardContent,
@@ -14,20 +14,20 @@ import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 
 const gradientColors = [
     ['#42a5f5', '#ffffff'],
-    ['#66bb6a', '#ffffff'],
-    ['#ffa726', '#ffffff'],
-    ['#ab47bc', '#ffffff'],
-    ['#ff6a00', '#ffffff'],
-    ['#006fff', '#ffffff'],
-    ['#84fd49', '#ffffff'],
-    ['#935050', '#ffffff'],
+    ['#2ca02c', '#ffffff'],
+    ['#ff7f0e', '#ffffff'],
+    ['#d62728', '#ffffff'],
+    ['#bcbd22', '#ffffff'],
+    ['#17becf', '#ffffff'],
+    ['#7f7f7f', '#ffffff'],
+    ['#17becf', '#ffffff'],
 ];
 
-export default function ChartDetail({ deviceId, name }) {
+export default function ChartDetail({deviceId, name}) {
     const [data, setData] = useState([]);
     const [attributes, setAttributes] = useState([]);
     const [range, setRange] = useState("day");
-    const { messages } = useDeviceLiveData();
+    const {messages} = useDeviceLiveData();
     const dataRef = useRef([]);
 
     useEffect(() => {
@@ -37,23 +37,34 @@ export default function ChartDetail({ deviceId, name }) {
             dataRef.current = d.data;
             setAttributes(d.attributes);
         };
-        fetchChartData();
+        if (range !== "live")
+            fetchChartData();
     }, [deviceId, range]);
 
     // Listen for live updates
     useEffect(() => {
-        if (messages.deviceId === deviceId && messages.data) {
-            const timestamp = new Date().toISOString(); // Or whatever time format you want
+        if (range === "live"){
+            if (messages.deviceId === deviceId && messages.data) {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                const ss = String(now.getSeconds()).padStart(2, '0');
 
-            const newEntry = {
-                dateDay: timestamp,
-                ...messages.data
-            };
+                const formattedTimestamp = `${dd} ${mm}:${ss}`;
 
-            const updatedData = [...dataRef.current, newEntry].slice(-50); // Keep last 50 points
-            dataRef.current = updatedData;
-            setData(updatedData);
+                const newEntry = {
+                    dateDay: formattedTimestamp,
+                    ...messages.data
+                };
+
+
+                const updatedData = [...dataRef.current, newEntry].slice(-10); // Keep last 50 points
+                dataRef.current = updatedData;
+                setData(updatedData);
+            }
         }
+
     }, [messages, deviceId]);
 
     const xLabels = data.map((item) => item.dateDay);
@@ -67,7 +78,7 @@ export default function ChartDetail({ deviceId, name }) {
     }));
 
     return (
-        <Card elevation={1} sx={{ borderRadius: 3 }}>
+        <Card elevation={1} sx={{borderRadius: 3}}>
             <CardContent>
                 <Box
                     display="flex"
@@ -80,7 +91,7 @@ export default function ChartDetail({ deviceId, name }) {
                         variant="h6"
                         sx={{
                             fontWeight: 600,
-                            color: "#90caf9",
+                            // color: "#90caf9",
                             mb: 2,
                         }}
                     >
@@ -97,14 +108,15 @@ export default function ChartDetail({ deviceId, name }) {
                         <ToggleButton value="hour">Hour</ToggleButton>
                         <ToggleButton value="day">Day</ToggleButton>
                         <ToggleButton value="week">Week</ToggleButton>
+                        <ToggleButton value="live">Live</ToggleButton>
                     </ToggleButtonGroup>
                 </Box>
 
                 <LineChart
                     height={300}
                     series={series}
-                    yAxis={[{ position: 'none' }]}
-                    xAxis={[{ scaleType: "band", data: xLabels }]}
+                    yAxis={[{position: 'none'}]}
+                    xAxis={[{scaleType: "band", data: xLabels}]}
                     sx={{
                         [`& .${lineElementClasses.root}`]: {
                             strokeWidth: 2,
@@ -127,8 +139,8 @@ export default function ChartDetail({ deviceId, name }) {
                                     x2="0%"
                                     y2="100%"
                                 >
-                                    <stop offset="0%" stopColor={start} stopOpacity="0.6" />
-                                    <stop offset="100%" stopColor={end} stopOpacity="0" />
+                                    <stop offset="0%" stopColor={start} stopOpacity="0.6"/>
+                                    <stop offset="100%" stopColor={end} stopOpacity="0"/>
                                 </linearGradient>
                             );
                         })}

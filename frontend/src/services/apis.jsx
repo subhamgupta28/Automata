@@ -247,3 +247,24 @@ function useGetFetch(url) {
 
     return {data, error}
 }
+
+
+export const signInReq = async (payload) => {
+    const response = await axios.post(BASE_URL + "auth/authenticate", payload, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
+
+export const signUpReq = async (payload) => {
+    const response = await axios.post(BASE_URL + "auth/register", payload, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}

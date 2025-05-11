@@ -252,8 +252,8 @@ export function ActionBoard() {
                     </ReactFlow>
                 </div>
                 <div style={{ width: '20%', height: '100dvh' }}>
-                    <Card style={{ height: '100%', padding: '6px', display: 'flex', flexDirection: 'column' }}>
-                        <CardContent style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <Card style={{ height: '100%',  display: 'flex', flexDirection: 'column' }}>
+                        <CardContent style={{ flex: 1,padding: '6px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                             <Typography variant="h6" component="div">
                                 Automation Playground
                             </Typography>
@@ -286,7 +286,7 @@ export function ActionBoard() {
                             </div>
 
                             {/* Scrollable list container */}
-                            <div style={{ flex: 1, overflow: 'auto', marginTop: '16px' }}>
+                            <div style={{ flex: 1, overflow: 'auto', marginTop: '16px',padding:'10px' }}>
                                 <Typography>Saved Automations</Typography>
                                 <List>
                                     {automations.map((a) => (

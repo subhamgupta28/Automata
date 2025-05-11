@@ -261,16 +261,18 @@ export default function SideDrawer() {
                     <AppCacheProvider>
                         <DeviceDataProvider>
                             <Routes>
+                                {/*open*/}
                                 <Route path="/" element={<DeviceNodes/>}/>
-                                <Route path="actions" element={<ActionBoard/>}/>
-                                <Route path="devices" element={<Devices/>}/>
                                 <Route path="mob" element={<MobileView/>}/>
-                                <Route path="analytics" element={<AnalyticsView/>}/>
-                                {/*<Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>*/}
                                 <Route path="exp" element={<Exp/>}/>
+                                <Route path="analytics" element={<AnalyticsView/>}/>
                                 <Route path="signup" element={<SignUp/>}/>
                                 <Route path="signin" element={<SignIn/>}/>
-                                <Route path="configure" element={<ConfigurationView/>}/>
+                                {/*protected*/}
+                                <Route path="actions" element={<PrivateRoute element={<ActionBoard/>}/>}/>
+                                <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>
+                                <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>
+                                <Route path="configure" element={<PrivateRoute element={<ConfigurationView/>}/>}/>
                             </Routes>
                         </DeviceDataProvider>
                     </AppCacheProvider>

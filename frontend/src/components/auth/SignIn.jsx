@@ -12,12 +12,13 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
-import {styled} from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import ForgotPassword from './ForgotPassword';
+import { signInReq } from '../../services/apis.jsx';
+import { useAuth } from './AuthContext.jsx';
+import {useNavigate} from "react-router-dom";
 
-
-
-const Card = styled(MuiCard)(({theme}) => ({
+const Card = styled(MuiCard)(({ theme }) => ({
     display: 'flex',
     flexDirection: 'column',
     alignSelf: 'center',
@@ -36,7 +37,7 @@ const Card = styled(MuiCard)(({theme}) => ({
     }),
 }));
 
-const SignInContainer = styled(Stack)(({theme}) => ({
+const SignInContainer = styled(Stack)(({ theme }) => ({
     height: 'calc((1 - var(--template-frame-height, 0)) * 100dvh)',
     minHeight: '100%',
     padding: theme.spacing(2),
@@ -60,12 +61,15 @@ const SignInContainer = styled(Stack)(({theme}) => ({
 }));
 
 export default function SignIn(props) {
+    const [email, setEmail] = React.useState('');
+    const [password, setPassword] = React.useState('');
     const [emailError, setEmailError] = React.useState(false);
     const [emailErrorMessage, setEmailErrorMessage] = React.useState('');
     const [passwordError, setPasswordError] = React.useState(false);
     const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
     const [open, setOpen] = React.useState(false);
-
+    const { login } = useAuth();
+    const navigate = useNavigate();
     const handleClickOpen = () => {
         setOpen(true);
     };
@@ -74,26 +78,10 @@ export default function SignIn(props) {
         setOpen(false);
     };
 
-    const handleSubmit = (event) => {
-        if (emailError || passwordError) {
-            event.preventDefault();
-            return;
-        }
-        const data = new FormData(event.currentTarget);
-        console.log({
-            email: data.get('email'),
-            password: data.get('password'),
-        });
-
-    };
-
     const validateInputs = () => {
-        const email = document.getElementById('email');
-        const password = document.getElementById('password');
-
         let isValid = true;
 
-        if (!email.value || !/\S+@\S+\.\S+/.test(email.value)) {
+        if (!email || !/\S+@\S+\.\S+/.test(email)) {
             setEmailError(true);
             setEmailErrorMessage('Please enter a valid email address.');
             isValid = false;
@@ -102,7 +90,7 @@ export default function SignIn(props) {
             setEmailErrorMessage('');
         }
 
-        if (!password.value || password.value.length < 6) {
+        if (!password || password.length < 6) {
             setPasswordError(true);
             setPasswordErrorMessage('Password must be at least 6 characters long.');
             isValid = false;
@@ -114,16 +102,37 @@ export default function SignIn(props) {
         return isValid;
     };
 
+    const handleSubmit = (event) => {
+        event.preventDefault();
+
+        if (!validateInputs()) return;
+
+        const req = async () => {
+            try {
+                const res = await signInReq({ email, password });
+                login(res);
+                localStorage.setItem('user', JSON.stringify(res));
+                navigate("/")
+            } catch (error) {
+                console.error('Login failed:', error);
+                setPasswordError(true);
+                setPasswordErrorMessage('Invalid email or password.');
+            }
+        };
+
+        req();
+    };
+
     return (
         <div {...props}>
-            <CssBaseline enableColorScheme/>
+            <CssBaseline enableColorScheme />
             <SignInContainer direction="column" justifyContent="space-between">
-                <div sx={{position: 'fixed', top: '1rem', right: '1rem'}}/>
+                <div sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
                 <Card variant="outlined">
                     <Typography
                         component="h1"
                         variant="h4"
-                        sx={{width: '100%', fontSize: 'clamp(2rem, 10vw, 2.15rem)'}}
+                        sx={{ width: '100%', fontSize: 'clamp(2rem, 10vw, 2.15rem)' }}
                     >
                         Sign in
                     </Typography>
@@ -146,25 +155,26 @@ export default function SignIn(props) {
                                 id="email"
                                 type="email"
                                 name="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 placeholder="your@email.com"
                                 autoComplete="email"
                                 autoFocus
                                 required
                                 fullWidth
                                 variant="outlined"
-                                color={emailError ? 'error' : 'primary'}
-                                sx={{ariaLabel: 'email'}}
+                                inputProps={{ 'aria-label': 'email' }}
                             />
                         </FormControl>
                         <FormControl>
-                            <Box sx={{display: 'flex', justifyContent: 'space-between'}}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <FormLabel htmlFor="password">Password</FormLabel>
                                 <Link
                                     component="button"
                                     type="button"
                                     onClick={handleClickOpen}
                                     variant="body2"
-                                    sx={{alignSelf: 'baseline'}}
+                                    sx={{ alignSelf: 'baseline' }}
                                 >
                                     Forgot your password?
                                 </Link>
@@ -176,35 +186,27 @@ export default function SignIn(props) {
                                 placeholder="••••••"
                                 type="password"
                                 id="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
                                 autoComplete="current-password"
-                                autoFocus
                                 required
                                 fullWidth
                                 variant="outlined"
-                                color={passwordError ? 'error' : 'primary'}
+                                inputProps={{ 'aria-label': 'password' }}
                             />
                         </FormControl>
                         <FormControlLabel
-                            control={<Checkbox value="remember" color="primary"/>}
+                            control={<Checkbox value="remember" color="primary" />}
                             label="Remember me"
                         />
-                        <ForgotPassword open={open} handleClose={handleClose}/>
-                        <Button
-                            type="submit"
-                            fullWidth
-                            variant="contained"
-                            onClick={validateInputs}
-                        >
+                        <ForgotPassword open={open} handleClose={handleClose} />
+                        <Button type="submit" fullWidth variant="contained">
                             Sign in
                         </Button>
-                        <Typography sx={{textAlign: 'center'}}>
+                        <Typography sx={{ textAlign: 'center' }}>
                             Don&apos;t have an account?{' '}
                             <span>
-                <Link
-                    href="/signup"
-                    variant="body2"
-                    sx={{alignSelf: 'center'}}
-                >
+                <Link href="/signup" variant="body2" sx={{ alignSelf: 'center' }}>
                   Sign up
                 </Link>
               </span>

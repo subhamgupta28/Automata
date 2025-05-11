@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
     // Check for stored user on mount
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem('user'));
+        console.log("user",storedUser)
         if (storedUser) {
             setUser(storedUser);
         }

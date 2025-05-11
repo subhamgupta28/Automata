@@ -43,23 +43,6 @@ const DeviceNodes = () => {
         await rebootAllDevices();
     }
 
-    // useEffect(() => {
-    //     setNodes((nds) =>
-    //         nds.map((node) => {
-    //             if (node.id === messages.deviceId) {
-    //                 let dt = node.data.value;
-    //                 if (messages.deviceConfig) {
-    //                     dt = messages.deviceConfig;
-    //                 }
-    //                 return {
-    //                     ...node,
-    //                     data: {value: dt, live: messages.data}
-    //                 };
-    //             }
-    //             return node;
-    //         }),
-    //     );
-    // }, [messages, setNodes]);
 
     useEffect(() => {
         setOpenBackdrop(true);
@@ -137,17 +120,15 @@ const DeviceNodes = () => {
                 {/*</Panel>*/}
 
                 <Panel position="bottom-right" style={{marginRight: '30px', display: 'flex'}}>
-                    <Card elevation={3} style={{padding:'10px'}}>
-                        {editUi && <NodeInspector/>}
-                        {actionMenu && <div>
-                            <Button variant='outlined' size='small' onClick={handleReboot}
-                                    style={{marginLeft: '10px'}}>Reboot</Button>
-                        </div>}
-                        <Button variant='outlined' size='small' onClick={handleEdit} style={{marginLeft: '10px'}}>
-                            <EditIcon/> Edit</Button>
-                        <Button variant='outlined' size='small' onClick={() => setActionMenu(a => !a)}
-                                style={{marginLeft: '10px'}}>Actions</Button>
-                    </Card>
+                    {editUi && <NodeInspector/>}
+                    {actionMenu && <div>
+                        <Button variant='outlined' size='small' onClick={handleReboot}
+                                style={{marginLeft: '10px'}}>Reboot</Button>
+                    </div>}
+                    <Button variant='outlined' size='small' onClick={handleEdit} style={{marginLeft: '10px'}}>
+                        <EditIcon/> Edit</Button>
+                    <Button variant='outlined' size='small' onClick={() => setActionMenu(a => !a)}
+                            style={{marginLeft: '10px'}}>Actions</Button>
                 </Panel>
 
             </ReactFlow>
