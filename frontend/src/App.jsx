@@ -4,6 +4,7 @@ import {ThemeProvider} from "@mui/material/styles";
 import {darkTheme, lightTheme} from "./Theme.jsx";
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
+import {AuthProvider} from "./components/auth/AuthContext.jsx";
 
 function App() {
     // const { messages, sendMessage } = useWebSocket('/topic/update');
@@ -32,7 +33,7 @@ function App() {
             <ThemeProvider theme={darkTheme}>
                 <BrowserRouter>
 
-
+                    <AuthProvider>
                     <main >
                         <header>
                             {/*<Nav/>*/}
@@ -66,6 +67,7 @@ function App() {
                         </section>
 
                     </main>
+                    </AuthProvider>
                 </BrowserRouter>
             </ThemeProvider>
         </>

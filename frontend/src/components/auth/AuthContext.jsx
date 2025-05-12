@@ -6,7 +6,7 @@ const AuthContext = createContext();
 
 // Create a provider for authentication context
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState({});
 
     // Check for stored user on mount
     useEffect(() => {
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        setUser(null);
+        setUser({});
         localStorage.removeItem('user');
     };
 

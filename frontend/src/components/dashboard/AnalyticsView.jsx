@@ -38,7 +38,7 @@ export default function AnalyticsView() {
             }}
         >
 
-                <Grid container spacing={1} style={{ height:'100dvh', padding:'40px 15px'}}>
+                <Grid container spacing={1} style={{ height:'100dvh', padding:'40px 15px', overflow:'auto'}}>
                     {devices.map((device) => (
                         <Grid size={6} xs={12} md={6} lg={6} key={device.id}>
                             <ChartDetail deviceId={device.id} name={device.name}/>
