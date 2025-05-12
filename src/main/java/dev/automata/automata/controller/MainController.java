@@ -39,7 +39,7 @@ public class MainController {
 //    private final KafkaTemplate<String, String> kafkaTemplate;
 
     @PostMapping("wifiList")
-    public ResponseEntity<?> getWiFiList(){
+    public ResponseEntity<?> getWiFiList() {
         return ResponseEntity.ok(mainService.getWiFiList());
     }
 
@@ -76,7 +76,7 @@ public class MainController {
     }
 
     @GetMapping("/mainNodePos")
-    public ResponseEntity<Map<String, Object>> getMainNodePos(){
+    public ResponseEntity<Map<String, Object>> getMainNodePos() {
         return ResponseEntity.ok(mainService.getMainNodePos());
     }
 
@@ -116,6 +116,7 @@ public class MainController {
 
         return ResponseEntity.ok(mainService.getDashboardDevices());
     }
+
     @GetMapping(value = "/devices")
     public ResponseEntity<List<Device>> getAllDevices() {
 
@@ -193,6 +194,7 @@ public class MainController {
 
 
     // for saving data from devices
+    @PostMapping("sendData")
     @MessageMapping("/sendData")
     public Map<String, Object> addUser(
             @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
@@ -216,6 +218,18 @@ public class MainController {
     }
 
     // for getting live data from devices
+    @PostMapping("sendLiveData")
+    public ResponseEntity<Map<String, Object>> httpSendLiveData(
+            @RequestBody Map<String, Object> payload
+    ) {
+        System.err.println("got live data via http" + payload);
+        String deviceId = payload.get("device_id").toString();
+        if (deviceId.isEmpty() || deviceId.equals("null")) {
+            System.err.println("No device found");
+        }
+        return ResponseEntity.ok(getStringObjectMap(payload, null, deviceId));
+    }
+
     @MessageMapping("/sendLiveData")
     public Map<String, Object> sendLiveData(
             @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
@@ -223,7 +237,7 @@ public class MainController {
 //        System.err.println("got live message: " + payload);
         String deviceId = payload.get("device_id").toString();
         if (deviceId.isEmpty() || deviceId.equals("null")) {
-            return payload;
+            System.err.println("No device found");
         }
 //        var event  = new LiveEvent();
 //        event.setPayload(payload);

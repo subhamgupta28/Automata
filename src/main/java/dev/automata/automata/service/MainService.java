@@ -34,6 +34,7 @@ public class MainService {
     private final NotificationService notificationService;
     private final MongoTemplate mongoTemplate;
 
+
     /*
      * Device: name = battery
      *         type = sensor
@@ -106,6 +107,23 @@ public class MainService {
 
 
         var savedDevice = deviceRepository.save(device);
+
+        var dashboard = deviceDashboardRepository.findByDeviceId(device.getId());
+        if (dashboard.isEmpty()) {
+            System.err.println("Device is in dashboard" + device.getId());
+            var dash = Dashboard.builder()
+                    .deviceId(device.getId())
+                    .analytics(false)
+                    .x(50)
+                    .y(50)
+                    .showCharts(false)
+                    .showInDashboard(true)
+                    .build();
+
+            deviceDashboardRepository.save(dash);
+        }else
+            System.err.println("Device is not in dashboard" + device.getId());
+
 
         registerDevice.getAttributes().forEach(a -> {
             a.setDeviceId(savedDevice.getId());
@@ -427,9 +445,9 @@ public class MainService {
             String password = body.get("wp" + i);
 
             list.add(WiFiDetails.builder()
-                            .ssid(ssid)
-                            .password(password)
-                            .type("public")
+                    .ssid(ssid)
+                    .password(password)
+                    .type("public")
                     .build());
             // save each to DB — upsert logic recommended
         }
