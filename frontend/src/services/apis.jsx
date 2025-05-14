@@ -10,11 +10,17 @@ const BASE_URL = __API_MODE__ === 'serve'
 // const BASE_URL = apiUrl+'api/v1/';
 // const BASE_URL = 'http://localhost:8080/api/v1/';
 
+const getToken = ()=>{
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    return storedUser.access_token;
+}
+
 export const getActions = async () => {
     const response = await axios.get(BASE_URL + "action/getAction", {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -24,6 +30,7 @@ export const getWiFiDetails = async () => {
     const response = await axios.post(BASE_URL + "main/wifiList", {},{
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
+            'Authorization':'Bearer '+getToken()
             // Add any other headers if needed, e.g., Authorization
         },
     });
@@ -35,6 +42,7 @@ export const updatePosition = async (deviceId, x, y) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -44,6 +52,7 @@ export const getDashboardDevices = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -53,6 +62,7 @@ export const getDevices = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -62,6 +72,7 @@ export const getDetailChartData = async (deviceId, range = 'day') => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -71,6 +82,7 @@ export const getPieChartData = async (deviceId) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -80,6 +92,7 @@ export const getChartData = async (deviceId, attribute) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -89,6 +102,7 @@ export const updateAttrCharts = async (deviceId, attribute, isVisible) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -99,6 +113,7 @@ export const updateShowCharts = async (deviceId, isVisible) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -109,6 +124,7 @@ export const updateShowInDashboard = async (deviceId, isVisible) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -119,6 +135,7 @@ export const disableAutomation = async (id, isEnabled) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -129,6 +146,7 @@ export const refreshDeviceById = async (deviceId) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -138,6 +156,7 @@ export const sendAction = async (deviceId, payload, deviceType) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -147,6 +166,7 @@ export const saveWiFiList = async (payload) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -156,6 +176,7 @@ export const rebootAllDevices = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -165,6 +186,7 @@ export const notificationAction = async (action, payload) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -175,6 +197,7 @@ export const getAutomationDetail = async (id) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -184,6 +207,7 @@ export const saveAutomationDetail = async (payload) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -193,6 +217,7 @@ export const getMainNodePos = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
@@ -211,6 +236,7 @@ export const getServerTime = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
+            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;

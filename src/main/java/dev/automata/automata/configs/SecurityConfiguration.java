@@ -41,10 +41,19 @@ public class SecurityConfiguration {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
 
-    private static final String[] WHITE_LIST_URL = {"/api/v1/auth/**",
-            "/api/v1/**",
-            "/**",
-          };
+    private static final String[] WHITE_LIST_URL = {
+            "/api/v1/auth/**",
+            "/assets/**",
+            "/index.html",
+            "/favicon.ico",
+            "/logo.svg",
+            "/vite.svg",
+            "/marker-icon-2x.png",
+            "/marker-shadow.png",
+            "/", // for root
+            "/ws/**"
+    };
+
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final LogoutHandler logoutHandler;
 
