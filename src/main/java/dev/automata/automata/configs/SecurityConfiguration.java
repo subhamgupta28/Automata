@@ -51,7 +51,9 @@ public class SecurityConfiguration {
             "/marker-icon-2x.png",
             "/marker-shadow.png",
             "/", // for root
-            "/ws/**"
+            "/ws/**",
+            "/api/v1/main/register/**",
+            "/api/v1/action/sendAction/**",
     };
 
     private final JwtAuthenticationFilter jwtAuthFilter;
