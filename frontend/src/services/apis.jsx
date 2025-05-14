@@ -1,36 +1,31 @@
-import axios from 'axios';
 import {useEffect, useState} from "react";
+import api from "./CustomAxios.jsx";
 
 
-const BASE_URL = __API_MODE__ === 'serve'
-    ? 'http://localhost:8010/api/v1/' // Local API server for development
-    : window.location.href + "api/v1/";
+
 
 // const BROWSER_URL = window.location.href;
 // const BASE_URL = apiUrl+'api/v1/';
 // const BASE_URL = 'http://localhost:8080/api/v1/';
 
-const getToken = ()=>{
-    const storedUser = JSON.parse(localStorage.getItem('user'));
-    return storedUser.access_token;
-}
+
 
 export const getActions = async () => {
-    const response = await axios.get(BASE_URL + "action/getAction", {
+    const response = await api.get("action/getAction", {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 
 export const getWiFiDetails = async () => {
-    const response = await axios.post(BASE_URL + "main/wifiList", {},{
+    const response = await api.post("main/wifiList", {},{
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
-            'Authorization':'Bearer '+getToken()
+            
             // Add any other headers if needed, e.g., Authorization
         },
     });
@@ -38,205 +33,199 @@ export const getWiFiDetails = async () => {
 }
 
 export const updatePosition = async (deviceId, x, y) => {
-    const response = await axios.get(BASE_URL + "main/updatePosition/" + deviceId + "/" + x + "/" + y, {
+    const response = await api.get("main/updatePosition/" + deviceId + "/" + x + "/" + y, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 export const getDashboardDevices = async () => {
-    const response = await axios.get(BASE_URL + "main/dashboard", {
+    const response = await api.get("main/dashboard", {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 export const getDevices = async () => {
-    const response = await axios.get(BASE_URL + "main/devices", {
+    const response = await api.get("main/devices", {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 export const getDetailChartData = async (deviceId, range = 'day') => {
-    const response = await axios.get(BASE_URL + "main/chartDetail/" + deviceId+ "/" + range, {
+    const response = await api.get("main/chartDetail/" + deviceId+ "/" + range, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 export const getPieChartData = async (deviceId) => {
-    const response = await axios.get(BASE_URL + "main/pieChart/" + deviceId, {
+    const response = await api.get("main/pieChart/" + deviceId, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
 }
 export const getChartData = async (deviceId, attribute) => {
-    const response = await axios.get(BASE_URL + "main/chart/" + deviceId + "/" + attribute, {
+    const response = await api.get("main/chart/" + deviceId + "/" + attribute, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
 }
 export const updateAttrCharts = async (deviceId, attribute, isVisible) => {
-    const response = await axios.get(BASE_URL + "main/attrCharts/" + deviceId + "/" + attribute + "/" + isVisible, {
+    const response = await api.get("main/attrCharts/" + deviceId + "/" + attribute + "/" + isVisible, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
 }
 
 export const updateShowCharts = async (deviceId, isVisible) => {
-    const response = await axios.get(BASE_URL + "main/showCharts/" + deviceId + "/" + isVisible, {
+    const response = await api.get("main/showCharts/" + deviceId + "/" + isVisible, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
 }
 
 export const updateShowInDashboard = async (deviceId, isVisible) => {
-    const response = await axios.get(BASE_URL + "main/showInDashboard/" + deviceId + "/" + isVisible, {
+    const response = await api.get("main/showInDashboard/" + deviceId + "/" + isVisible, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
 }
 
 export const disableAutomation = async (id, isEnabled) => {
-    const response = await axios.get(BASE_URL + "action/disable/" + id + "/" + isEnabled, {
+    const response = await api.get("action/disable/" + id + "/" + isEnabled, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
         },
     });
     return response.data;
 }
 
 export const refreshDeviceById = async (deviceId) => {
-    const response = await axios.get(BASE_URL + "main/update/" + deviceId, {
+    const response = await api.get("main/update/" + deviceId, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 export const sendAction = async (deviceId, payload, deviceType) => {
-    const response = await axios.post(BASE_URL + "action/sendAction/" + deviceId + "/" + deviceType, payload, {
+    const response = await api.post("action/sendAction/" + deviceId + "/" + deviceType, payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 export const saveWiFiList = async (payload) => {
-    const response = await axios.post(BASE_URL + "main/saveWiFiList" , payload, {
+    const response = await api.post("main/saveWiFiList" , payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 export const rebootAllDevices = async () => {
-    const response = await axios.get(BASE_URL + "action/rebootAllDevices", {
+    const response = await api.get("action/rebootAllDevices", {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 export const notificationAction = async (action, payload) => {
-    const response = await axios.post(BASE_URL + "utils/action/" + action, payload, {
+    const response = await api.post("utils/action/" + action, payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 
 export const getAutomationDetail = async (id) => {
-    const response = await axios.get(BASE_URL + "action/getAutomationDetail/" + id, {
+    const response = await api.get("action/getAutomationDetail/" + id, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 export const saveAutomationDetail = async (payload) => {
-    const response = await axios.post(BASE_URL + "action/saveAutomationDetail", payload, {
+    const response = await api.post("action/saveAutomationDetail", payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 export const getMainNodePos = async () => {
-    const response = await axios.get(BASE_URL + "main/mainNodePos", {
+    const response = await api.get("main/mainNodePos", {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
 }
 
 export const getNotifications = () => {
-    return useGetFetch(BASE_URL + "utils/notifications");
+    return useGetFetch("utils/notifications");
 }
 
 export const getDataByDeviceId = async (deviceId) => {
-    return useGetFetch(BASE_URL + 'main/data/' + deviceId);
+    return useGetFetch('main/data/' + deviceId);
 }
 
 export const getServerTime = async () => {
-    const response = await axios.get(BASE_URL + 'main/time', {
+    const response = await api.get('main/time', {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            'Authorization':'Bearer '+getToken()
+            
         },
     });
     return response.data;
@@ -244,7 +233,7 @@ export const getServerTime = async () => {
 
 
 export const getLastDataByDeviceId = async (deviceId) => {
-    const response = await axios.get(BASE_URL + 'main/lastData/' + deviceId, {
+    const response = await api.get('main/lastData/' + deviceId, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
@@ -260,7 +249,7 @@ function useGetFetch(url) {
     useEffect(() => {
         setData(null);
         const fetch = async () => {
-            const response = await axios.get(url, {
+            const response = await api.get(url, {
                 headers: {
                     'Content-Type': 'application/json', // Specify the content type if necessary
                     // Add any other headers if needed, e.g., Authorization
@@ -276,7 +265,7 @@ function useGetFetch(url) {
 
 
 export const signInReq = async (payload) => {
-    const response = await axios.post(BASE_URL + "auth/authenticate", payload, {
+    const response = await api.post("auth/authenticate", payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
@@ -286,7 +275,7 @@ export const signInReq = async (payload) => {
 }
 
 export const signUpReq = async (payload) => {
-    const response = await axios.post(BASE_URL + "auth/register", payload, {
+    const response = await api.post("auth/register", payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
