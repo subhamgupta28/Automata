@@ -9,9 +9,9 @@ export const createEdges = (devices, charts) => {
             id: `edge-${device.id}`, // Unique edge ID
             source: `${device.id}`,     // The ID of the main node
             target: 'main-node-1',
-            // type: 'animatedSvg',// The ID of the device node
+            type: 'animatedSvg',// The ID of the device node
             targetHandle: 'main-node-' + index,       // Source handle ID if applicable
-            // animated: true,
+            animated: true,
             style: {stroke: '#fff', strokeWidth: '2px'}
         })
         index++;

@@ -41,7 +41,7 @@ export default function OptionsMenu() {
                     display: 'flex',
                 }}
             >
-                <Avatar>{user.firstName[0].toUpperCase()}</Avatar>
+                <Avatar>{user?.firstName[0]?.toUpperCase()}</Avatar>
             </MenuButton>
             <Menu
                 anchorEl={anchorEl}
