@@ -13,6 +13,7 @@ import MenuButton from './MenuButton';
 import Box from "@mui/material/Box";
 import Avatar from "@mui/material/Avatar";
 import {useAuth} from "../auth/AuthContext.jsx";
+import isEmpty from "../../utils/Helper.jsx";
 
 const MenuItem = styled(MuiMenuItem)({
     margin: '2px 0',
@@ -41,7 +42,7 @@ export default function OptionsMenu() {
                     display: 'flex',
                 }}
             >
-                <Avatar>{user?.firstName[0]?.toUpperCase()}</Avatar>
+                <Avatar>{!isEmpty(user) && user?.firstName[0]?.toUpperCase()}</Avatar>
             </MenuButton>
             <Menu
                 anchorEl={anchorEl}

@@ -5,24 +5,37 @@ import {darkTheme, lightTheme} from "./Theme.jsx";
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
 import {AuthProvider} from "./components/auth/AuthContext.jsx";
+import useWebSocket from "./services/useWebSocket.jsx";
 
+function getBreathingClass(alertLevel) {
+    switch (alertLevel) {
+        case 'critical':
+            return 'breathing-red';
+        case 'warning':
+            return 'breathing-yellow';
+        case 'normal':
+            return 'breathing-green';
+        default:
+            return '';
+    }
+}
 function App() {
     // const { messages, sendMessage } = useWebSocket('/topic/update');
-    const [input, setInput] = useState('');
+    const {messages, sendMessage} = useWebSocket('/topic/notification');
+    const [alertLevel, setAlertLevel] = useState('');
 
-    const [vantaEffect, setVantaEffect] = useState(null)
-    const myRef = useRef(null)
     useEffect(() => {
-        // if (!vantaEffect) {
-        //     setVantaEffect(DOTS({
-        //         el: myRef.current,
-        //         showLines: false
-        //     }))
-        // }
-        return () => {
-            if (vantaEffect) vantaEffect.destroy()
+        if (messages.severity)
+            setAlertLevel(messages.severity)
+
+        if (alertLevel && alertLevel !== 'normal') {
+            const timer = setTimeout(() => {
+                setAlertLevel(''); // or 'normal' if you prefer
+            }, 20000); // 20 seconds
+
+            return () => clearTimeout(timer); // clear on unmount/change
         }
-    }, [vantaEffect])
+    }, [messages, alertLevel]);
     // const handleSend = () => {
     //     sendMessage('/app/send', input);
     //     setInput('');
@@ -34,11 +47,10 @@ function App() {
                 <BrowserRouter>
 
                     <AuthProvider>
-                    <main style={{background:'#303030'}}>
+                    <main className={getBreathingClass(alertLevel)} style={{background:'#303030'}}>
                         <header>
                             {/*<Nav/>*/}
                         </header>
-
                         <section >
                             {/*<DndTest/>*/}
                             {/*<ActionBoard/>*/}

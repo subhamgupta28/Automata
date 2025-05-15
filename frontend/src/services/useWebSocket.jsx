@@ -9,7 +9,7 @@ const url = __API_MODE__ === 'serve'
     ? 'http://raspberry.local:8010/ws'
     : window.location.href + "ws";
 
-// const url = 'http://raspberry.local:8010/ws';
+// const url = 'http://localhost:8010/ws';
 
 const useWebSocket = (topic) => {
     const [messages, setMessages] = useState({ device_id: "" });

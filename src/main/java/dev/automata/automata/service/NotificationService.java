@@ -49,4 +49,9 @@ public class NotificationService {
 
         return "success";
     }
+
+    public String test(String type) {
+        sendNotification("Test", type);
+        return "success";
+    }
 }

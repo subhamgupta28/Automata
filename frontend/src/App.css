@@ -74,3 +74,54 @@
 .card-glow-container:hover .card-glow {
     opacity: 1;
 }
+/* glowing effect*/
+
+@keyframes breathing-y {
+    0%, 100% {
+        box-shadow: inset 0 0 5px rgb(255, 224, 0);
+    }
+    50% {
+        box-shadow: inset 0 0 35px rgb(255, 224, 0);
+    }
+}
+
+.breathing-yellow {
+    width: 100%;
+    height: 100%;
+    /*position: absolute;*/
+    z-index: 1;
+    animation: breathing-y 3s linear infinite;
+}
+
+@keyframes breathing-r {
+    0%, 100% {
+        box-shadow: inset 0 0 5px red;
+    }
+    50% {
+        box-shadow: inset 0 0 35px red;
+    }
+}
+
+.breathing-red {
+    width: 100%;
+    height: 100%;
+    /*position: absolute;*/
+    z-index: 1;
+    animation: breathing-r 3s linear infinite;
+}
+
+@keyframes breathing-g {
+    0%, 100% {
+        box-shadow: inset 0 0 5px #84fd49;
+    }
+    50% {
+        box-shadow: inset 0 0 35px #84fd49;
+    }
+}
+
+.breathing-green {
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    animation: breathing-g 3s linear infinite;
+}

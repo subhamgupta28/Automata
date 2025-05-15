@@ -17,6 +17,11 @@ public class UtilityController {
 
     private final NotificationService notificationService;
 
+    @GetMapping("test/{type}")
+    public ResponseEntity<?> testNotify(@PathVariable String type){
+        return ResponseEntity.ok(notificationService.test(type));
+    }
+
     @GetMapping("/notifications")
     public ResponseEntity<List<Notification>> getLastFiveNotifications() {
         return ResponseEntity.ok(notificationService.getLastFiveNotifications());

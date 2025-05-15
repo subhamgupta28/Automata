@@ -43,6 +43,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import Avatar from "@mui/material/Avatar";
 import OptionsMenu from "./OptionsMenu.jsx";
+import isEmpty from "../../utils/Helper.jsx";
 
 const drawerWidth = 200;
 
@@ -101,14 +102,7 @@ const Drawer = styled(Card, {shouldForwardProp: (prop) => prop !== 'open'})(
         ],
     }),
 );
-function isEmpty(obj) {
-    for (const prop in obj) {
-        if (Object.hasOwn(obj, prop)) {
-            return false;
-        }
-    }
-    return true;
-}
+
 
 
 export default function SideDrawer() {
