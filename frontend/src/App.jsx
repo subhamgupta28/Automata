@@ -25,17 +25,20 @@ function App() {
     const [alertLevel, setAlertLevel] = useState('');
 
     useEffect(() => {
-        if (messages.severity)
-            setAlertLevel(messages.severity)
+        if (messages.severity) {
+            setAlertLevel(messages.severity);
+        }
+    }, [messages]);
 
+    useEffect(() => {
         if (alertLevel && alertLevel !== 'normal') {
             const timer = setTimeout(() => {
-                setAlertLevel(''); // or 'normal' if you prefer
-            }, 20000); // 20 seconds
+                setAlertLevel('');
+            }, 20000);
 
-            return () => clearTimeout(timer); // clear on unmount/change
+            return () => clearTimeout(timer);
         }
-    }, [messages, alertLevel]);
+    }, [alertLevel]);
     // const handleSend = () => {
     //     sendMessage('/app/send', input);
     //     setInput('');
