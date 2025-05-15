@@ -29,7 +29,7 @@ export default function AnalyticsView() {
     return (
         <Box
             sx={{
-                backgroundColor: theme.palette.background.default,
+                // backgroundColor: theme.palette.background.default,
                 minHeight: "100vh",
                 // padding: 1,
                 // paddingRight:2,
@@ -38,7 +38,7 @@ export default function AnalyticsView() {
             }}
         >
 
-                <Grid container spacing={1} style={{ height:'100dvh', padding:'40px 15px', overflow:'auto'}}>
+                <Grid container spacing={1} style={{ height:'100dvh', padding:'50px 15px', overflow:'auto'}}>
                     {devices.map((device) => (
                         <Grid size={6} xs={12} md={6} lg={6} key={device.id}>
                             <ChartDetail deviceId={device.id} name={device.name}/>

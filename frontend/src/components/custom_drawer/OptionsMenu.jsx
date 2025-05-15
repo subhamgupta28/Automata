@@ -10,6 +10,9 @@ import ListItemIcon, { listItemIconClasses } from '@mui/material/ListItemIcon';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import MenuButton from './MenuButton';
+import Box from "@mui/material/Box";
+import Avatar from "@mui/material/Avatar";
+import {useAuth} from "../auth/AuthContext.jsx";
 
 const MenuItem = styled(MuiMenuItem)({
     margin: '2px 0',
@@ -18,20 +21,27 @@ const MenuItem = styled(MuiMenuItem)({
 export default function OptionsMenu() {
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
+    const { user, logout } = useAuth();
     const handleClick = (event) => {
         setAnchorEl(event.currentTarget);
     };
-    const handleClose = () => {
+    const handleClose = (e) => {
+        setAnchorEl(null);
+    };
+    const handleLogout = (e) => {
+        logout()
         setAnchorEl(null);
     };
     return (
-        <React.Fragment>
+        <div style={{display:'flex',  justifyContent:'center', margin:'10px'}}>
             <MenuButton
                 aria-label="Open menu"
                 onClick={handleClick}
-                sx={{ borderColor: 'transparent' }}
+                sx={{ borderColor: 'transparent',
+                    display: 'flex',
+                }}
             >
-                <MoreVertRoundedIcon />
+                <Avatar>{user.firstName[0].toUpperCase()}</Avatar>
             </MenuButton>
             <Menu
                 anchorEl={anchorEl}
@@ -53,14 +63,15 @@ export default function OptionsMenu() {
                     },
                 }}
             >
-                <MenuItem onClick={handleClose}>Profile</MenuItem>
-                <MenuItem onClick={handleClose}>My account</MenuItem>
+                <MenuItem onClick={handleClose}>More Coming Soon</MenuItem>
+                {/*<MenuItem onClick={handleClose}>My account</MenuItem>*/}
                 <Divider />
-                <MenuItem onClick={handleClose}>Add another account</MenuItem>
-                <MenuItem onClick={handleClose}>Settings</MenuItem>
+                {/*<MenuItem onClick={handleClose}>Add another account</MenuItem>*/}
+                {/*<MenuItem onClick={handleClose}>Settings</MenuItem>*/}
                 <Divider />
                 <MenuItem
-                    onClick={handleClose}
+                    onClick={handleLogout}
+                    id="logout"
                     sx={{
                         [`& .${listItemIconClasses.root}`]: {
                             ml: 'auto',
@@ -74,6 +85,6 @@ export default function OptionsMenu() {
                     </ListItemIcon>
                 </MenuItem>
             </Menu>
-        </React.Fragment>
+        </div>
     );
 }

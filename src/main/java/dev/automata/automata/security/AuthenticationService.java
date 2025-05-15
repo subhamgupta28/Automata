@@ -59,6 +59,10 @@ public class AuthenticationService {
         var refreshToken = jwtService.generateRefreshToken(user);
         return AuthenticationResponse.builder()
                 .accessToken(jwtToken)
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
+                .userId(user.getId())
                 .refreshToken(refreshToken)
                 .build();
     }

@@ -34,7 +34,7 @@ function App() {
                 <BrowserRouter>
 
                     <AuthProvider>
-                    <main >
+                    <main style={{background:'#303030'}}>
                         <header>
                             {/*<Nav/>*/}
                         </header>

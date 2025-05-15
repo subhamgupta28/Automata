@@ -86,12 +86,12 @@ const DeviceNodes = () => {
         [fitView],
     );
     return (
-        <div style={{height: '100dvh', backgroundColor:'grey'}} >
+        <div style={{height: '100dvh', padding:'10px 10px 10px 0px'}} >
             <ReactFlow
                 colorMode="dark"
                 nodes={nodes}
                 edges={edges}
-                style={{backgroundColor:'#212121'}}
+                style={{borderRadius:'12px'}}
                 edgeTypes={edgeTypes}
                 // nodesDraggable={editUi}
                 // onNodeClick={handleNodeClick}

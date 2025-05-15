@@ -100,7 +100,7 @@ export function ActionBoard() {
         if (rfInstance) {
             const flow = rfInstance.toObject();
             console.log("detail", automationDetail)
-            saveFlow({...flow, id: automationDetail.id ||''});
+            saveFlow({...flow, id: automationDetail.id || ''});
             // console.log("flow", flow)
             localStorage.setItem("flow", JSON.stringify(flow));
         }
@@ -161,8 +161,8 @@ export function ActionBoard() {
         const detail = await getAutomationDetail(a.id);
         console.log("detail", detail);
         setAutomationDetail(detail);
-        setNodes(n=> []);
-        setEdges(e=> []);
+        setNodes(n => []);
+        setEdges(e => []);
         setNodes(detail.nodes || []);
         setEdges(detail.edges || []);
         id = detail.nodes.length + 1;
@@ -171,8 +171,8 @@ export function ActionBoard() {
     const clearBoard = () => {
         setSelectedAutomation({});
         setAutomationDetail({})
-        setNodes(n=> []);
-        setEdges(e=> []);
+        setNodes(n => []);
+        setEdges(e => []);
         fetchData();
     }
 
@@ -207,9 +207,12 @@ export function ActionBoard() {
     };
     return (
         <div>
-            <Stack direction="row" divider={<Divider orientation="vertical" flexItem/>}>
-                <div style={{width: '80%', height: '100dvh'}} className="reactflow-wrapper" ref={reactFlowWrapper}>
+            <Stack direction="row">
+                <div style={{width: '80%', height: '100dvh', borderRadius:'10px', padding:'10px 10px 10px 0px'}} className="reactflow-wrapper" ref={reactFlowWrapper}>
                     <ReactFlow
+                        style={{
+                            borderRadius:'12px'
+                        }}
                         colorMode="dark"
                         nodes={nodes}
                         edges={edges}
@@ -234,66 +237,81 @@ export function ActionBoard() {
                         }}
                     >
                         {selectedAutomation && selectedAutomation.id && (
-                            <Panel position="bottom-left" style={{marginBottom: '50px'}}>
-                                <Card variant='outlined' style={{padding: '10px'}}>
-                                    <Typography variant="body2" color="textSecondary">
-                                        Enabled: <Switch defaultChecked size="small"
-                                                         checked={selectedAutomation.isEnabled}
-                                                         onChange={handleDisableAutomation}/>
-                                    </Typography>
-                                </Card>
+                            <Panel position="bottom-left" style={{marginBottom: '20px'}}>
+                                <Typography variant="body2" color="textSecondary">
+                                    Enabled: <Switch defaultChecked size="small"
+                                                     checked={selectedAutomation.isEnabled}
+                                                     onChange={handleDisableAutomation}/>
+                                </Typography>
                             </Panel>
                         )}
-                        <Panel position="bottom-right" style={{marginBottom: '50px'}}>
+                        <Panel position="bottom-right" style={{marginBottom: '20px'}}>
                             {/*<Button variant='outlined' onClick={onRestore}>Restore</Button>*/}
-                            <Button variant='outlined' onClick={onSave} style={{marginLeft: '10px'}}>Save</Button>
-                            <Button variant='outlined' onClick={clearBoard} style={{marginLeft: '10px'}}>Clear</Button>
+                            <Button size="small" variant='outlined' onClick={onSave} style={{marginLeft: '10px'}}>Save</Button>
+                            <Button size="small" variant='outlined' onClick={clearBoard} style={{marginLeft: '10px'}}>Clear</Button>
                         </Panel>
                     </ReactFlow>
                 </div>
-                <div style={{ width: '20%', height: '100dvh' }}>
-                    <Card style={{ height: '100%',  display: 'flex', flexDirection: 'column' }}>
-                        <CardContent style={{ flex: 1,padding: '6px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{width: '20%', height: '100dvh'}}>
+                    <Card style={{height: '97dvh', display: 'flex', flexDirection: 'column',  margin:'10px 10px 10px 0px', borderRadius:'12px'}}>
+                        <CardContent style={{
+                            flex: 1,
+                            padding: '6px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'hidden',
+
+                        }}>
                             <Typography variant="h6" component="div">
                                 Automation Playground
                             </Typography>
-                            <Typography gutterBottom sx={{ color: 'text.secondary', fontSize: 14 }}>
+                            <Typography gutterBottom sx={{color: 'text.secondary', fontSize: 14}}>
                                 Drag and drop nodes to create automations.
                             </Typography>
-                            <div style={triggerStyle} onDragStart={(event) => onDragStart(event, 'trigger')} draggable>
-                                Add Trigger
-                            </div>
-                            <div
-                                style={{ ...conditionStyle, marginTop: '10px' }}
-                                onDragStart={(event) => onDragStart(event, 'condition')}
-                                draggable
-                            >
-                                Add Condition
-                            </div>
-                            <div
-                                style={{ ...actionStyle, marginTop: '10px' }}
-                                onDragStart={(event) => onDragStart(event, 'action')}
-                                draggable
-                            >
-                                Add Action
-                            </div>
-                            <div
-                                style={{ ...valueReaderStyle, marginTop: '10px' }}
-                                onDragStart={(event) => onDragStart(event, 'valueReader')}
-                                draggable
-                            >
-                                Add Value Reader
-                            </div>
+                            <div style={{
+                                padding:'10px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems:'center'
+                            }}>
 
+
+
+                                <div style={triggerStyle} onDragStart={(event) => onDragStart(event, 'trigger')}
+                                     draggable>
+                                    Add Trigger
+                                </div>
+                                <div
+                                    style={{...conditionStyle, marginTop: '10px'}}
+                                    onDragStart={(event) => onDragStart(event, 'condition')}
+                                    draggable
+                                >
+                                    Add Condition
+                                </div>
+                                <div
+                                    style={{...actionStyle, marginTop: '10px'}}
+                                    onDragStart={(event) => onDragStart(event, 'action')}
+                                    draggable
+                                >
+                                    Add Action
+                                </div>
+                                <div
+                                    style={{...valueReaderStyle, marginTop: '10px'}}
+                                    onDragStart={(event) => onDragStart(event, 'valueReader')}
+                                    draggable
+                                >
+                                    Add Value Reader
+                                </div>
+                            </div>
                             {/* Scrollable list container */}
-                            <div style={{ flex: 1, overflow: 'auto', marginTop: '16px',padding:'10px' }}>
+                            <div style={{flex: 1, overflow: 'auto', marginTop: '16px', padding: '10px'}}>
                                 <Typography>Saved Automations</Typography>
                                 <List>
                                     {automations.map((a) => (
                                         <ListItem
                                             variant="outlined"
                                             component={Card}
-                                            style={{ padding: '6px', marginTop: '8px' }}
+                                            style={{padding: '6px', marginTop: '8px'}}
                                             key={a.id}
                                         >
                                             <ListItemText>{a.name}</ListItemText>

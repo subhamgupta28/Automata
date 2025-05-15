@@ -41,6 +41,8 @@ import {AuthProvider, useAuth} from "../auth/AuthContext.jsx";
 import LoginIcon from '@mui/icons-material/Login';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import Avatar from "@mui/material/Avatar";
+import OptionsMenu from "./OptionsMenu.jsx";
 
 const drawerWidth = 200;
 
@@ -116,11 +118,12 @@ export default function SideDrawer() {
 
     const publicItems = [
         { name: 'Home', url: '/', icon: <HomeIcon /> },
-        { name: 'Analytics', url: '/analytics', icon: <AssessmentIcon /> },
+
     ];
 
     const authItems = [
         { name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon /> },
+        { name: 'Analytics', url: '/analytics', icon: <AssessmentIcon /> },
         { name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon /> },
         { name: 'Configure', url: '/configure', icon: <SettingsIcon /> },
     ];
@@ -131,7 +134,7 @@ export default function SideDrawer() {
             { name: 'Sign Up', url: '/signup', icon: <PersonAddIcon /> },
         ]
         : [
-            { name: 'Logout', action: () => logout(), icon: <LogoutIcon /> },
+            // { name: 'Logout', action: () => logout(), icon: <LogoutIcon /> },
         ];
 
     const renderListItem = (item) => (
@@ -198,25 +201,29 @@ export default function SideDrawer() {
                             // position:'absolute',
                             // zIndex:'1',
                             margin:'10px',
-                            borderRadius:'12px'
+                            borderRadius:'10px'
                         }}>
-                    <DrawerHeader>
-                        {/*<IconButton onClick={handleDrawerClose}>*/}
-                        {/*   <MenuIcon />*/}
-                        {/*</IconButton>*/}
-                        <IconButton onClick={handleDrawerClose}>
-                            {open ? <ChevronLeftIcon/> : <MenuIcon/>}
-                        </IconButton>
-                    </DrawerHeader>
-                    {/*<Divider/>*/}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <DrawerHeader>
+                            <IconButton onClick={handleDrawerClose}>
+                                {open ? <ChevronLeftIcon /> : <MenuIcon />}
+                            </IconButton>
+                        </DrawerHeader>
 
-                    <List>
-                        {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
-                    </List>
+                        <List sx={{ flexGrow: 1 }}>
+                            {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
+                        </List>
+
+                        {/* Avatar at the bottom */}
+                        {!isEmpty(user)&&(
+                            <OptionsMenu />
+                        )}
+
+                    </Box>
 
                     {/*<Divider/>*/}
                 </Drawer>
-                <Box component="main" sx={{flexGrow: 1}}>
+                <Box component="main" sx={{flexGrow: 1, }}>
 
                     <Card
                         elevation={10}
