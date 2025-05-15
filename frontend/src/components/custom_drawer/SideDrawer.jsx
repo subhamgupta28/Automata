@@ -59,7 +59,7 @@ const closedMixin = (theme) => ({
         duration: theme.transitions.duration.leavingScreen,
     }),
     overflowX: 'hidden',
-    width: `calc(${theme.spacing(5)} + 1px)`,
+    width: `calc(${theme.spacing(7)} + 1px)`,
     [theme.breakpoints.up('sm')]: {
         width: `calc(${theme.spacing(8)} + 1px)`,
     },
@@ -192,9 +192,13 @@ export default function SideDrawer() {
 
                 <Drawer variant="permanent" open={open} elevation={4}
                         style={{
-                            backgroundColor: 'rgba(255, 255, 255, 0.01)',
-                            backdropFilter: 'blur(1px)',
-                            height: '100dvh'
+                            // backgroundColor: 'rgba(255, 255, 255, 0.01)',
+                            // backdropFilter: 'blur(1px)',
+                            // height: '96dvh',
+                            // position:'absolute',
+                            // zIndex:'1',
+                            margin:'10px',
+                            borderRadius:'12px'
                         }}>
                     <DrawerHeader>
                         {/*<IconButton onClick={handleDrawerClose}>*/}

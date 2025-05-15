@@ -121,7 +121,7 @@ const Item = styled(Paper)(({ theme }) => ({
 export function ConfigurationView(){
 
     return(
-        <div style={{paddingTop: '10px', paddingRight:'12px', paddingLeft:'12px'}}>
+        <div style={{paddingTop: '10px', paddingRight:'12px', paddingLeft:'12px', height:'100dvh'}}>
             <Grid container spacing={1}>
                 <Grid size={6}>
                     <WiFiSettings/>
