@@ -32,12 +32,12 @@ const useWebSocket = (topic) => {
 
         }, (error) => {
             console.warn("WebSocket connection error:", error);
-            attemptReconnect();
+            // attemptReconnect();
         });
 
         client.onclose = () => {
             console.warn("WebSocket closed");
-            attemptReconnect();
+            // attemptReconnect();
         };
     };
 

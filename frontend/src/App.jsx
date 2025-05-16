@@ -23,28 +23,26 @@ function App() {
     // const { messages, sendMessage } = useWebSocket('/topic/update');
     const {messages, sendMessage} = useWebSocket('/topic/alert');
     const [alertLevel, setAlertLevel] = useState('');
-    const [lastAlertTimestamp, setLastAlertTimestamp] = useState(null);
 
     useEffect(() => {
-        if (messages.severity && messages.severity !== alertLevel) {
+        if (messages.severity) {
             setAlertLevel(messages.severity);
-            setLastAlertTimestamp(Date.now());
         }
     }, [messages]);
 
     useEffect(() => {
         if (alertLevel && alertLevel !== 'normal') {
             const timer = setTimeout(() => {
-                // Only clear if no new alert came in the meantime
-                if (Date.now() - lastAlertTimestamp >= 20000) {
-                    setAlertLevel('');
-                }
+                setAlertLevel('');
             }, 20000);
 
             return () => clearTimeout(timer);
         }
-    }, [alertLevel, lastAlertTimestamp]);
-
+    }, [alertLevel]);
+    // const handleSend = () => {
+    //     sendMessage('/app/send', input);
+    //     setInput('');
+    // };
     return (
         <>
             {/*<SideDrawer/>*/}
