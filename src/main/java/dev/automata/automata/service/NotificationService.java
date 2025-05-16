@@ -61,7 +61,7 @@ public class NotificationService {
     }
 
     public String test(String type) {
-        sendNotification("Test", type);
+        sendAlert("Test", type);
         return "success";
     }
 }
