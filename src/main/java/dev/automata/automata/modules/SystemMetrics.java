@@ -33,7 +33,7 @@ public class SystemMetrics {
                 .reboot(false)
                 .macAddr("")
                 .accessUrl("http://raspberry.local:8010")
-                .type("")
+                .type("System")
                 .status(Status.ONLINE)
                 .updateInterval(190000L)
                 .attributes(
@@ -66,6 +66,14 @@ public class SystemMetrics {
                                         .key("uptime")
                                         .displayName("Uptime")
                                         .type("DATA|MAIN")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("alert")
+                                        .displayName("Alert")
+                                        .type("ACTION|IN")
                                         .units("")
                                         .extras(new HashMap<>())
                                         .visible(true)

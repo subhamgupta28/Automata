@@ -58,6 +58,18 @@ public class AutomationService {
             notifyBasedOnResult(result);
             return result;
         }
+        System.err.println("Received action");
+        System.err.println("Device Type: "+deviceType);
+        System.err.println("Payload: "+payload);
+
+        if ("System".equals(deviceType)){
+            var key = payload.get("key").toString();
+            var data = payload.get(key).toString();
+            if (payload.get("key").equals("alert")){
+                notificationService.sendNotification("", data);
+            }
+            return "success";
+        }
 
         if ("reboot".equals(payload.get("key"))) {
             return rebootDevice(deviceId);
@@ -143,6 +155,7 @@ public class AutomationService {
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
         if (payload != null && isTriggered(automation, payload)) {
             automation.setIsActive(true);
+            System.err.println("Executing automations: " + automation.getName());
             notificationService.sendNotification("Executing automations: " + automation.getName(), "automation");
             executeActions(automation);
         } else {
@@ -189,7 +202,13 @@ public class AutomationService {
                     "key", action.getKey()
             );
 
-            if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
+            System.err.println(action);
+            if ("System".equals(action.getName())){
+                if (action.getKey().equals("alert")){
+                    notificationService.sendNotification("test", action.getData());
+                }
+            }
+            else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
                 handleWLED(action.getDeviceId(), new HashMap<>(payload));
             } else {
                 messagingTemplate.convertAndSend("/topic/action/" + action.getDeviceId(), payload);

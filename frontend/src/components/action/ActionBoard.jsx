@@ -16,7 +16,6 @@ import {
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import {ActionNode, ConditionNode, TriggerNode, ValueReaderNode} from "./NodeTypes.jsx";
 import CustomEdge from "./CustomEdge.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import '@xyflow/react/dist/style.css';
@@ -25,6 +24,10 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import ListItemButton from "@mui/material/ListItemButton";
+import {TriggerNode} from "./TriggerNode.jsx";
+import {ActionNode} from "./ActionNode.jsx";
+import {ConditionNode} from "./ConditionNode.jsx";
+import {ValueReaderNode} from "./ValueReaderNode.jsx";
 
 const triggerStyle = {
     padding: '10px',
