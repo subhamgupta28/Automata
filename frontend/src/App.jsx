@@ -26,6 +26,7 @@ function App() {
 
     useEffect(() => {
         if (messages.severity) {
+            console.log("msg", messages.severity)
             setAlertLevel(messages.severity);
         }
     }, [messages]);
