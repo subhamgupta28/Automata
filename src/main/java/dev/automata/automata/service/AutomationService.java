@@ -156,7 +156,7 @@ public class AutomationService {
         if (payload != null && isTriggered(automation, payload)) {
             automation.setIsActive(true);
             System.err.println("Executing automations: " + automation.getName());
-            notificationService.sendNotification("Executing automations: " + automation.getName(), "automation");
+//            notificationService.sendNotification("Executing automations: " + automation.getName(), "automation");
             executeActions(automation);
         } else {
             automation.setIsActive(false);
@@ -205,7 +205,7 @@ public class AutomationService {
             System.err.println(action);
             if ("System".equals(action.getName())){
                 if (action.getKey().equals("alert")){
-                    notificationService.sendNotification("test", action.getData());
+                    notificationService.sendNotification("Alert: "+action.getData().toUpperCase(Locale.ROOT), action.getData());
                 }
             }
             else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {

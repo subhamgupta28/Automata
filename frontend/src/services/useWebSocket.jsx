@@ -14,33 +14,63 @@ const url = __API_MODE__ === 'serve'
 const useWebSocket = (topic) => {
     const [messages, setMessages] = useState({ device_id: "" });
     const stompClientRef = useRef(null);
+    const reconnectTimeoutRef = useRef(null);
 
-    useEffect(() => {
+    const connect = () => {
         const socket = new SockJS(url);
         const client = Stomp.over(socket);
 
-        client.debug = () => {};
-        // console.log(client)
+        client.debug = () => {}; // Disable logging
 
         client.connect({}, (frame) => {
+            console.log("WebSocket connected:", frame);
+            stompClientRef.current = client;
+
             client.subscribe(topic, (message) => {
                 setMessages(JSON.parse(message.body));
             });
+
+        }, (error) => {
+            console.warn("WebSocket connection error:", error);
+            attemptReconnect();
         });
 
-        stompClientRef.current = client;
+        client.onclose = () => {
+            console.warn("WebSocket closed");
+            attemptReconnect();
+        };
+    };
+
+    const attemptReconnect = (delay = 3000) => {
+        if (reconnectTimeoutRef.current) return; // Prevent multiple timers
+
+        reconnectTimeoutRef.current = setTimeout(() => {
+            console.log("Attempting WebSocket reconnect...");
+            connect();
+            reconnectTimeoutRef.current = null;
+        }, delay);
+    };
+
+    useEffect(() => {
+        connect();
 
         return () => {
-            if (stompClientRef.current.connected){
-                console.log("websocket disconnected")
-                stompClientRef.current.disconnect();
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+            }
+            if (stompClientRef.current?.connected) {
+                stompClientRef.current.disconnect(() => {
+                    console.log("WebSocket disconnected cleanly");
+                });
             }
         };
-    }, [url, topic]);
+    }, [topic]);
 
     const sendMessage = (destination, message) => {
-        if (stompClientRef.current) {
+        if (stompClientRef.current?.connected) {
             stompClientRef.current.send(destination, {}, message);
+        } else {
+            console.warn("WebSocket not connected. Message not sent.");
         }
     };
 
