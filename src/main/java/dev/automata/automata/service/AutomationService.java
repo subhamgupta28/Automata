@@ -216,6 +216,11 @@ public class AutomationService {
         }
     }
 
+//    @Scheduled(fixedRate = 60*1000)
+//    public void test(){
+//        notificationService.sendAlert("Alert: ", "critical");
+//    }
+
     @EventListener
     public void onCustomEvent(LiveEvent event) {
         var payload = event.getPayload();
