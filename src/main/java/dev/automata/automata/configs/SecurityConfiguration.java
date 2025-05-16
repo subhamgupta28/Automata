@@ -52,6 +52,10 @@ public class SecurityConfiguration {
             "/marker-shadow.png",
             "/", // for root
             "/ws/**",
+            "/app/**",
+            "/topic/**",
+            "/queue/**",
+            "/user/**",
             "/api/v1/main/register/**",
             "/api/v1/action/sendAction/**",
             "/api/v1/utils/test/**"
