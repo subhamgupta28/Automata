@@ -21,7 +21,7 @@ function getBreathingClass(alertLevel) {
 }
 function App() {
     // const { messages, sendMessage } = useWebSocket('/topic/update');
-    const {messages, sendMessage} = useWebSocket('/topic/notification');
+    const {messages, sendMessage} = useWebSocket('/topic/alert');
     const [alertLevel, setAlertLevel] = useState('');
 
     useEffect(() => {

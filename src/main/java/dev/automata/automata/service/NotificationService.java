@@ -20,6 +20,16 @@ public class NotificationService {
     private final AutomationRepository automationRepository;
 //    private final AutomationService automationService;
 
+    public void sendAlert(String message, String severity) {
+        Notification notification = Notification.builder()
+                .message(message)
+                .severity(severity)
+                .timestamp(new Date())
+                .build();
+//        var notify = notificationRepository.save(notification);
+        messagingTemplate.convertAndSend("/topic/alert", notification);
+    }
+
     public void sendNotification(String message, String severity) {
         Notification notification = Notification.builder()
                 .message(message)

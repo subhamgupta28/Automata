@@ -205,7 +205,7 @@ public class AutomationService {
             System.err.println(action);
             if ("System".equals(action.getName())){
                 if (action.getKey().equals("alert")){
-                    notificationService.sendNotification("Alert: "+action.getData().toUpperCase(Locale.ROOT), action.getData());
+                    notificationService.sendAlert("Alert: "+action.getData().toUpperCase(Locale.ROOT), action.getData());
                 }
             }
             else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
