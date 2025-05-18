@@ -52,7 +52,7 @@ export const ActionNode= ({id, data, isConnectable}) => {
     }, [data.value, devices, data.actionData])
     const handleTriggerKey = (e, select) => {
         if (select === 'name') {
-            setName(e.target.value);
+            // setName(e.target.value);
         } else if (select === 'data') {
             setValue(e.target.value);
         } else if (select === 'key') {
@@ -64,6 +64,7 @@ export const ActionNode= ({id, data, isConnectable}) => {
     const selectDevice = (e) => {
         const {name, value} = e.target;
         let dev = devices.filter((d) => d.id === value)[0];
+        setName(()=>selectedDevice.name);
         setSelectedDevice(dev);
     }
 
