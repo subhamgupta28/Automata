@@ -14,12 +14,13 @@ import Box from "@mui/material/Box";
 import Avatar from "@mui/material/Avatar";
 import {useAuth} from "../auth/AuthContext.jsx";
 import isEmpty from "../../utils/Helper.jsx";
+import Typography from "@mui/material/Typography";
 
 const MenuItem = styled(MuiMenuItem)({
     margin: '2px 0',
 });
 
-export default function OptionsMenu() {
+export default function OptionsMenu({drawerOpen}) {
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
     const { user, logout } = useAuth();
@@ -34,7 +35,11 @@ export default function OptionsMenu() {
         setAnchorEl(null);
     };
     return (
-        <div style={{display:'flex',  justifyContent:'center', margin:'10px'}}>
+        <div style={{
+            display:'flex',
+            justifyContent: drawerOpen ? 'initial' : 'center',
+            alignItems:'center',
+            margin:'10px'}}>
             <MenuButton
                 aria-label="Open menu"
                 onClick={handleClick}
@@ -44,6 +49,11 @@ export default function OptionsMenu() {
             >
                 <Avatar>{!isEmpty(user) && user?.firstName[0]?.toUpperCase()}</Avatar>
             </MenuButton>
+            {drawerOpen && (
+                <Typography style={{width:'100%', marginLeft:'10px'}}>
+                    {user?.firstName}
+                </Typography>
+            )}
             <Menu
                 anchorEl={anchorEl}
                 id="menu"

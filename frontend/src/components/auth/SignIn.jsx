@@ -23,6 +23,7 @@ const Card = styled(MuiCard)(({ theme }) => ({
     flexDirection: 'column',
     alignSelf: 'center',
     width: '100%',
+    borderRadius: '12px',
     padding: theme.spacing(4),
     gap: theme.spacing(2),
     margin: 'auto',
@@ -127,8 +128,8 @@ export default function SignIn(props) {
         <div {...props}>
             <CssBaseline enableColorScheme />
             <SignInContainer direction="column" justifyContent="space-between">
-                <div sx={{ position: 'fixed', top: '1rem', right: '1rem' }} />
-                <Card variant="outlined">
+
+                <Card>
                     <Typography
                         component="h1"
                         variant="h4"

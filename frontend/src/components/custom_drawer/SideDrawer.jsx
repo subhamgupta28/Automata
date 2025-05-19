@@ -210,7 +210,7 @@ export default function SideDrawer() {
 
                         {/* Avatar at the bottom */}
                         {!isEmpty(user)&&(
-                            <OptionsMenu />
+                            <OptionsMenu drawerOpen={open}/>
                         )}
 
                     </Box>
