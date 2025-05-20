@@ -11,8 +11,8 @@ import {
 import {
     Button,
     Card,
-    CardContent, CardHeader,
-    Chip, CircularProgress,
+    CardContent,
+    Chip,
     Dialog, DialogActions,
     DialogContent,
     DialogTitle, LinearProgress,
@@ -226,57 +226,83 @@ const useCardGlowEffect = (cardRef) => {
         return () => card.removeEventListener('mousemove', handleMouseMove);
     }, [cardRef]);
 };
-export const Device = React.memo(({id, data, isConnectable}) => {
+
+export const Device = React.memo(({ id, data, isConnectable }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [actionAck, setActionAck] = useState({});
     const [liveData, setLiveData] = useState(data.live);
-    const handleOpenModal = () => setIsModalOpen(true);
-    const handleCloseModal = () => setIsModalOpen(false);
-    const {messages} = useDeviceLiveData();
-    let color;
-    const gaugeData = data.value.attributes.filter((t) => t.type === "DATA|GAUGE");
-    const sliderData = data.value.attributes.filter((t) => t.type === "ACTION|SLIDER");
-    const map = data.value.attributes.filter((t) => t.type.startsWith("DATA|MAP"));
-    const switchBtn = data.value.attributes.filter((t) => t.type.startsWith("ACTION|SWITCH"));
-    const presets = data.value.attributes.filter((t) => t.type.startsWith("ACTION|PRESET"));
-    // console.log("presets", presets)
+    const { messages } = useDeviceLiveData();
     const cardRef = useRef(null);
     useCardGlowEffect(cardRef);
 
     useEffect(() => {
         if (id === messages.deviceId) {
-            if (messages.data)
-                setLiveData(messages.data);
+            if (messages.data) setLiveData(messages.data);
             setActionAck(messages.ack);
         }
-    }, [messages]);
+    }, [messages, id]);
 
-    const handleAction = (attribute) => {
-        const send = async () => {
-            try {
-                let act = attribute.key;
-                await sendAction(data.value.id, {
-                    "key": attribute.key,
-                    [act]: 200,
-                    "device_id": data.value.id
-                }, data.value.type);
-            } catch (err) {
-                // console.error("Action send failed", err);
-            }
+    const handleOpenModal = () => setIsModalOpen(true);
+    const handleCloseModal = () => setIsModalOpen(false);
+
+    const handleAction = async (attribute) => {
+        try {
+            const act = attribute.key;
+            await sendAction(data.value.id, {
+                key: act,
+                [act]: 200,
+                device_id: data.value.id,
+            }, data.value.type);
+        } catch (err) {
+            // Handle error if needed
+        }
+    };
+
+    const {
+        attributes,
+        name,
+        status,
+        id: deviceId,
+        type: deviceType,
+    } = data.value;
+
+    const {
+        gaugeData,
+        sliderData,
+        mapData,
+        switchButtons,
+        presetButtons,
+        mainData,
+        actionOutButtons,
+    } = useMemo(() => {
+        const grouped = {
+            gaugeData: [],
+            sliderData: [],
+            mapData: [],
+            switchButtons: [],
+            presetButtons: [],
+            mainData: [],
+            actionOutButtons: [],
         };
-        send();
-    }
-    if (data.value["status"])
-        if (data.value.status === 'ONLINE') {
-            color = "#84fd49"; // Icon for connected
 
-        } else
-            color = "#ff0000"; // Default icon
+        for (const attr of attributes) {
+            if (attr.type === 'DATA|GAUGE') grouped.gaugeData.push(attr);
+            else if (attr.type === 'ACTION|SLIDER') grouped.sliderData.push(attr);
+            else if (attr.type.startsWith('DATA|MAP')) grouped.mapData.push(attr);
+            else if (attr.type.startsWith('ACTION|SWITCH')) grouped.switchButtons.push(attr);
+            else if (attr.type.startsWith('ACTION|PRESET')) grouped.presetButtons.push(attr);
+            else if (attr.type === 'DATA|MAIN') grouped.mainData.push(attr);
+            else if (attr.type === 'ACTION|OUT') grouped.actionOutButtons.push(attr);
+        }
 
+        return grouped;
+    }, [attributes]);
+
+    const connectionColor = status === 'ONLINE' ? '#84fd49' : '#ff0000';
 
     return (
-        <div className="card-glow-container text-updater-node" ref={cardRef} key={data.value.id}>
-            <div className="card-glow"></div>
+        <div className="card-glow-container text-updater-node" ref={cardRef} key={deviceId}>
+            <div className="card-glow" />
             <div style={{
                 borderRadius: '12px',
                 backgroundColor: 'transparent',
@@ -302,10 +328,11 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                 marginLeft: '18px',
                                 fontWeight: 'bold',
                                 marginRight: '10px'
-                            }}>
-                            {data.value.name}
-                            <IconButton onClick={handleOpenModal} variant='text' style={{marginLeft: '8px'}}>
-                                <SettingsIcon/>
+                            }}
+                        >
+                            {name}
+                            <IconButton onClick={handleOpenModal} style={{ marginLeft: '8px' }}>
+                                <SettingsIcon />
                             </IconButton>
                         </Typography>
                     </Card>
@@ -314,41 +341,45 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                             width: '240px',
                             alignItems: 'center',
                             paddingTop: '6px',
-                            paddingBottom: '6px',
+                            paddingBottom: '16px',
                             justifyContent: 'center'
                         }}>
-
-
-                        {actionAck && actionAck.command === 'reboot' && (
+                        {actionAck?.command === 'reboot' && (
                             <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
                                 <Typography>Rebooting...</Typography>
-                                <LinearProgress>
-                                </LinearProgress>
+                                <LinearProgress/>
                             </Card>
                         )}
 
-
-                        {map.length > 0 && liveData && (
-                            <MapView lat={liveData.LAT} lng={liveData.LONG} h='280px' w='210px'/>
+                        {mapData.length > 0 && liveData && (
+                            <MapView lat={liveData.LAT} lng={liveData.LONG} h="280px" w="210px" />
                         )}
 
-                        {gaugeData && liveData && gaugeData.map((gauge) => (
-                            <GaugeChart key={gauge.key} value={liveData[gauge.key]} maxValue={gauge.extras.max}
-                                        displayName={gauge.displayName}/>
+                        {gaugeData.map((g) => (
+                            <GaugeChart key={g.key} value={liveData?.[g.key]} maxValue={g.extras?.max} displayName={g.displayName} />
                         ))}
 
-                        {sliderData && liveData && sliderData.map((slide) => (
-                            <CustomSlider key={slide.key} value={liveData[slide.key]} deviceId={data.value.id}
-                                          type={data.value.type} data={slide}
-                                          displayName={slide.displayName}/>
-                        ))}
-                        {presets && liveData && presets.map((slide) => (
-                            <Presets key={slide.key} value={liveData} deviceId={data.value.id}
-                                     type={data.value.type}
-                                     data={slide}
-                                     displayName={slide.displayName}/>
+                        {sliderData.map((s) => (
+                            <CustomSlider
+                                key={s.key}
+                                value={liveData?.[s.key]}
+                                deviceId={deviceId}
+                                type={deviceType}
+                                data={s}
+                                displayName={s.displayName}
+                            />
                         ))}
 
+                        {presetButtons.map((p) => (
+                            <Presets
+                                key={p.key}
+                                value={liveData}
+                                deviceId={deviceId}
+                                type={deviceType}
+                                data={p}
+                                displayName={p.displayName}
+                            />
+                        ))}
 
                         <div style={{
                             gridTemplateColumns: 'repeat(2, 1fr)',
@@ -356,62 +387,71 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                             gap: '4px',
                             marginTop: '10px'
                         }}>
-                            {data.value.attributes.map(attribute => (
-                                (attribute.type === "DATA|MAIN") && (
-                                    <Card key={attribute.id} elevation={4} style={{
+                            {mainData.map((m) => (
+                                <Card
+                                    key={m.id}
+                                    elevation={4}
+                                    style={{
                                         borderRadius: '8px',
                                         padding: '6px',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: 'space-between',
                                         alignItems: 'center'
-                                    }}>
-                                        <Typography
-                                            variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>
-                                        <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
-                                    </Card>
-                                )
+                                    }}
+                                >
+                                    <Typography variant="subtitle2">
+                                        {liveData?.[m.key]} {m.units}
+                                    </Typography>
+                                    <Typography variant="subtitle2">{m.displayName}</Typography>
+                                </Card>
                             ))}
-                            {switchBtn && (
-                                <div style={{display: 'flex', justifyContent: 'space-around'}}>
-                                    {liveData && switchBtn.map((slide) => (
-                                        <SwitchButton key={slide.key} value={liveData[slide.key]}
-                                                      deviceId={data.value.id} data={slide} type={data.value.type}
-                                                      displayName={slide.displayName}/>
+                            {switchButtons.length > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                                    {switchButtons.map((s) => (
+                                        <SwitchButton
+                                            key={s.key}
+                                            value={liveData?.[s.key]}
+                                            deviceId={deviceId}
+                                            data={s}
+                                            type={deviceType}
+                                            displayName={s.displayName}
+                                        />
                                     ))}
                                 </div>
                             )}
-
                         </div>
 
-                        {liveData && (
+
+
+                        {actionOutButtons.length > 0 && (
                             <div style={{
-                                width: '100%',
-                                marginTop: '12px',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center'
-                            }}>
-                                {
-                                    data.value.attributes.map(attribute => (
-                                        (attribute.type === "ACTION|OUT") && (
-                                            <Button key={attribute.id} aria-label="delete"
-                                                    onClick={() => handleAction(attribute)}>
-                                                {attribute["displayName"]}
-                                            </Button>
-                                        )
-                                    ))
-                                }
+                                    width: '100%',
+                                    marginTop: '12px',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center'
+                                }}
+                            >
+                                {actionOutButtons.map((a) => (
+                                    <Button key={a.id} onClick={() => handleAction(a)}>
+                                        {a.displayName}
+                                    </Button>
+                                ))}
                             </div>
                         )}
-
-
                     </CardContent>
                 </Card>
 
-                <CustomModal map={map} isOpen={isModalOpen} liveData={liveData} onClose={handleCloseModal}
-                             device={data.value}/>
+                <CustomModal
+                    map={mapData}
+                    isOpen={isModalOpen}
+                    liveData={liveData}
+                    onClose={handleCloseModal}
+                    device={data.value}
+                />
             </div>
+
             <Handle
                 type="source"
                 position={Position.Right}
@@ -421,13 +461,14 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     width: '4px',
                     height: '30px',
                     borderRadius: '0px 10px 10px 0px',
-                    background: color
+                    background: connectionColor,
                 }}
                 isConnectable={isConnectable}
             />
         </div>
     );
 });
+
 
 
 export function MainNode({data, isConnectable}) {

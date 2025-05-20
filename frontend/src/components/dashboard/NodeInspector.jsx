@@ -5,7 +5,7 @@ import {
 } from '@xyflow/react';
 import Button from "@mui/material/Button";
 import {updatePosition} from "../../services/apis.jsx";
-import {Card, Fab} from "@mui/material";
+import {Card} from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import React from "react";
 
@@ -25,7 +25,7 @@ export default function NodeInspector() {
 
     return (
         <div>
-            <Button variant='outlined' color="primary" style={{marginLeft: '10px'}} aria-label="add" onClick={handleUpdate}>
+            <Button size="small" variant='outlined' color="primary" style={{marginLeft: '10px'}} aria-label="add" onClick={handleUpdate}>
                 <SaveIcon/> Save
             </Button>
             <ViewportPortal>

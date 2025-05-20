@@ -1,18 +1,14 @@
 import * as React from 'react';
-import {styled, useTheme} from '@mui/material/styles';
+import {styled} from '@mui/material/styles';
 import Box from '@mui/material/Box';
-import MuiDrawer from '@mui/material/Drawer';
 import List from '@mui/material/List';
 import CssBaseline from '@mui/material/CssBaseline';
-import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import MenuIcon from '@mui/icons-material/Menu';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import InboxIcon from '@mui/icons-material/MoveToInbox';
-import MailIcon from '@mui/icons-material/Mail';
 import {NavLink, Route, Routes} from "react-router-dom";
 import DeviceNodes from "../dashboard/DeviceNodes.jsx";
 import Devices from "../Devices.jsx";
@@ -39,11 +35,10 @@ import SignIn from "../auth/SignIn.jsx";
 import PrivateRoute from "../auth/PrivateRoute.jsx";
 import {AuthProvider, useAuth} from "../auth/AuthContext.jsx";
 import LoginIcon from '@mui/icons-material/Login';
-import LogoutIcon from '@mui/icons-material/Logout';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import Avatar from "@mui/material/Avatar";
 import OptionsMenu from "./OptionsMenu.jsx";
 import isEmpty from "../../utils/Helper.jsx";
+import Welcome from "../Welcome.jsx";
 
 const drawerWidth = 200;
 
@@ -104,35 +99,34 @@ const Drawer = styled(Card, {shouldForwardProp: (prop) => prop !== 'open'})(
 );
 
 
-
 export default function SideDrawer() {
     const [open, setOpen] = React.useState(false);
     const [selectedIndex, setSelectedIndex] = React.useState("/");
-    const { user, logout } = useAuth();
+    const {user, logout} = useAuth();
 
     const publicItems = [
-        { name: 'Home', url: '/', icon: <HomeIcon /> },
+        {name: 'Home', url: '/', icon: <HomeIcon/>},
 
     ];
 
     const authItems = [
-        { name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon /> },
-        { name: 'Analytics', url: '/analytics', icon: <AssessmentIcon /> },
-        { name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon /> },
-        { name: 'Configure', url: '/configure', icon: <SettingsIcon /> },
+        {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
+        {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
+        {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
+        {name: 'Configure', url: '/configure', icon: <SettingsIcon/>},
     ];
 
     const authActions = isEmpty(user)
         ? [
-            { name: 'Sign In', url: '/signin', icon: <LoginIcon /> },
-            { name: 'Sign Up', url: '/signup', icon: <PersonAddIcon /> },
+            {name: 'Sign In', url: '/signin', icon: <LoginIcon/>},
+            {name: 'Sign Up', url: '/signup', icon: <PersonAddIcon/>},
         ]
         : [
             // { name: 'Logout', action: () => logout(), icon: <LogoutIcon /> },
         ];
 
     const renderListItem = (item) => (
-        <ListItem key={item.name} disablePadding sx={{ display: 'block' }}>
+        <ListItem key={item.name} disablePadding sx={{display: 'block'}}>
             {item.url ? (
                 <ListItemButton
                     selected={selectedIndex === item.url}
@@ -146,10 +140,10 @@ export default function SideDrawer() {
                         justifyContent: open ? 'initial' : 'center',
                     }}
                 >
-                    <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', mr: open ? 3 : 'auto' }}>
+                    <ListItemIcon sx={{minWidth: 0, justifyContent: 'center', mr: open ? 3 : 'auto'}}>
                         {item.icon}
                     </ListItemIcon>
-                    <ListItemText primary={item.name} sx={{ opacity: open ? 1 : 0 }} />
+                    <ListItemText primary={item.name} sx={{opacity: open ? 1 : 0}}/>
                 </ListItemButton>
             ) : (
                 <ListItemButton
@@ -161,10 +155,10 @@ export default function SideDrawer() {
                         justifyContent: open ? 'initial' : 'center',
                     }}
                 >
-                    <ListItemIcon sx={{ minWidth: 0, justifyContent: 'center', mr: open ? 3 : 'auto' }}>
+                    <ListItemIcon sx={{minWidth: 0, justifyContent: 'center', mr: open ? 3 : 'auto'}}>
                         {item.icon}
                     </ListItemIcon>
-                    <ListItemText primary={item.name} sx={{ opacity: open ? 1 : 0 }} />
+                    <ListItemText primary={item.name} sx={{opacity: open ? 1 : 0}}/>
                 </ListItemButton>
             )}
         </ListItem>
@@ -187,97 +181,98 @@ export default function SideDrawer() {
             <CssBaseline/>
 
 
-                <Drawer variant="permanent" open={open} elevation={4}
-                        style={{
-                            // backgroundColor: 'rgba(255, 255, 255, 0.01)',
-                            // backdropFilter: 'blur(1px)',
-                            // height: '96dvh',
-                            // position:'absolute',
-                            // zIndex:'1',
-                            margin:'10px',
-                            borderRadius:'10px'
-                        }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                        <DrawerHeader>
-                            <IconButton onClick={handleDrawerClose}>
-                                {open ? <ChevronLeftIcon /> : <MenuIcon />}
-                            </IconButton>
-                        </DrawerHeader>
+            <Drawer variant="permanent" open={open} elevation={4}
+                    style={{
+                        // backgroundColor: 'rgba(255, 255, 255, 0.01)',
+                        // backdropFilter: 'blur(1px)',
+                        // height: '96dvh',
+                        // position:'absolute',
+                        // zIndex:'1',
+                        margin: '10px',
+                        borderRadius: '10px'
+                    }}>
+                <Box sx={{display: 'flex', flexDirection: 'column', height: '100%'}}>
+                    <DrawerHeader>
+                        <IconButton onClick={handleDrawerClose}>
+                            {open ? <ChevronLeftIcon/> : <MenuIcon/>}
+                        </IconButton>
+                    </DrawerHeader>
 
-                        <List sx={{ flexGrow: 1 }}>
-                            {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
-                        </List>
+                    <List sx={{flexGrow: 1}}>
+                        {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
+                    </List>
 
-                        {/* Avatar at the bottom */}
-                        {!isEmpty(user)&&(
-                            <OptionsMenu drawerOpen={open}/>
-                        )}
+                    {/* Avatar at the bottom */}
+                    {!isEmpty(user) && (
+                        <OptionsMenu drawerOpen={open}/>
+                    )}
 
-                    </Box>
+                </Box>
 
-                    {/*<Divider/>*/}
-                </Drawer>
-                <Box component="main" sx={{flexGrow: 1, }}>
+                {/*<Divider/>*/}
+            </Drawer>
+            <Box component="main" sx={{flexGrow: 1,}}>
 
-                    <Card
-                        elevation={10}
-                        variant="outlined"
-                        sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
-                        style={{
-                            marginLeft: "10px",
-                            position: 'absolute',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            padding: '1px 2px 2px 1px',
-                            backgroundColor: 'rgba(200, 200, 200, 0.0)',
-                            backdropFilter: 'blur(4px)',
-                            borderRadius: '0px 0px 10px 10px'
+                <Card
+                    elevation={10}
+                    variant="outlined"
+                    sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
+                    style={{
+                        marginLeft: "10px",
+                        position: 'absolute',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        padding: '1px 2px 2px 1px',
+                        backgroundColor: 'rgba(200, 200, 200, 0.0)',
+                        backdropFilter: 'blur(4px)',
+                        borderRadius: '0px 0px 10px 10px'
+                    }}
+                >
+                    <AdbIcon sx={{display: {md: 'flex'}}}/>
+                    <Typography
+                        variant="h6"
+                        noWrap
+                        component="a"
+                        href="/"
+                        sx={{
+
+                            display: {md: 'flex'},
+                            fontFamily: 'monospace',
+                            fontWeight: 700,
+                            letterSpacing: '.3rem',
+                            color: 'inherit',
+                            textDecoration: 'none',
                         }}
                     >
-                        <AdbIcon sx={{display: {md: 'flex'}}}/>
-                        <Typography
-                            variant="h6"
-                            noWrap
-                            component="a"
-                            href="/"
-                            sx={{
+                        Automata
+                    </Typography>
+                </Card>
 
-                                display: {md: 'flex'},
-                                fontFamily: 'monospace',
-                                fontWeight: 700,
-                                letterSpacing: '.3rem',
-                                color: 'inherit',
-                                textDecoration: 'none',
-                            }}
-                        >
-                            Automata
-                        </Typography>
-                    </Card>
+                <AppCacheProvider>
+                    <DeviceDataProvider>
+                        <Routes>
+                            {/*open*/}
+                            <Route path="welcome" element={<Welcome/>}/>
+                            <Route path="/" element={<DeviceNodes/>}/>
+                            <Route path="mob" element={<MobileView/>}/>
+                            <Route path="exp" element={<Exp/>}/>
+                            <Route path="signup" element={<SignUp/>}/>
+                            <Route path="signin" element={<SignIn/>}/>
+                            {/*protected*/}
+                            <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
+                            <Route path="actions" element={<PrivateRoute element={<ActionBoard/>}/>}/>
+                            <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>
+                            <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>
+                            <Route path="configure" element={<PrivateRoute element={<ConfigurationView/>}/>}/>
+                        </Routes>
+                    </DeviceDataProvider>
+                </AppCacheProvider>
 
-                        <AppCacheProvider>
-                            <DeviceDataProvider>
-                                <Routes>
-                                    {/*open*/}
-                                    <Route path="/" element={<DeviceNodes/>}/>
-                                    <Route path="mob" element={<MobileView/>}/>
-                                    <Route path="exp" element={<Exp/>}/>
-                                    <Route path="analytics" element={<AnalyticsView/>}/>
-                                    <Route path="signup" element={<SignUp/>}/>
-                                    <Route path="signin" element={<SignIn/>}/>
-                                    {/*protected*/}
-                                    <Route path="actions" element={<PrivateRoute element={<ActionBoard/>}/>}/>
-                                    <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>
-                                    <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>
-                                    <Route path="configure" element={<PrivateRoute element={<ConfigurationView/>}/>}/>
-                                </Routes>
-                            </DeviceDataProvider>
-                        </AppCacheProvider>
-
-                        <SnackbarProvider maxSnack={3} preventDuplicate>
-                            <Notifications/>
-                        </SnackbarProvider>
-                </Box>
+                <SnackbarProvider maxSnack={3} preventDuplicate>
+                    <Notifications/>
+                </SnackbarProvider>
+            </Box>
         </Box>
-);
+    );
 }

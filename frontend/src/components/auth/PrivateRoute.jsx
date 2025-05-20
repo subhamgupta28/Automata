@@ -1,8 +1,6 @@
 // src/components/PrivateRoute.js
 import React from 'react';
-import {Route, NavLink, Navigate} from 'react-router-dom';
-import {useAuth} from "./AuthContext.jsx";
-
+import {Navigate} from 'react-router-dom';
 
 // Protected route component
 const PrivateRoute = ({ element }) => {

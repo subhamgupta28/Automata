@@ -10,16 +10,13 @@ import {
 import '@xyflow/react/dist/style.css';
 import {getDashboardDevices, getMainNodePos, rebootAllDevices} from "../../services/apis.jsx";
 // import useWebSocket from "../../services/useWebSocket.jsx";
-import {DeviceDataProvider} from '../../services/DeviceDataProvider.jsx';
+
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
-import {Backdrop, Button, Card, CircularProgress, Fab} from "@mui/material";
+import {Backdrop, Button, CircularProgress} from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
-import LayersIcon from '@mui/icons-material/Layers';
 import NodeInspector from "./NodeInspector.jsx";
-import Typography from "@mui/material/Typography";
-import AddIcon from "@mui/icons-material/Add";
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {
@@ -80,8 +77,8 @@ const DeviceNodes = () => {
 
     const handleNodeClick = useCallback(
         (_, node) => {
-            if (node.id === 'main-node-1')
-                fitView({nodes: [node], duration: 550, maxZoom: 0.6});
+            // if (node.id === 'main-node-1')
+                fitView({nodes: [node], duration: 750, maxZoom: 0.8});
         },
         [fitView],
     );
@@ -103,22 +100,6 @@ const DeviceNodes = () => {
                 defaultViewport={defaultViewport}
                 nodeTypes={nodeTypes}
             >
-                {/*{editUi && (*/}
-                {/*    <Panel position="bottom-center" style={{marginBottom: '10px'}}>*/}
-                {/*        <Typography variant="body" component="div">*/}
-                {/*            Click on any node and use the arrow keys or drag with mouse to move the nodes.*/}
-                {/*        </Typography>*/}
-                {/*    </Panel>*/}
-                {/*)}*/}
-                {/*<Panel style={{*/}
-                {/*    height: '100dvh',*/}
-                {/*    display: 'flex',*/}
-                {/*    justifyContent: 'center',*/}
-                {/*    alignItems: 'center',*/}
-                {/*    flexWrap: 'wrap'*/}
-                {/*}} position="top-left">*/}
-                {/*    <Menu/>*/}
-                {/*</Panel>*/}
 
                 <Panel position="bottom-right" style={{marginRight: '30px', display: 'flex'}}>
                     {editUi && <NodeInspector/>}
@@ -142,32 +123,6 @@ const DeviceNodes = () => {
         </div>
     );
 };
-
-const Menu = () => {
-
-    return (
-        <div style={{
-            height: '60%',
-            padding: '12px',
-            borderRadius: '50px',
-            flexDirection: 'column',
-            display: 'flex',
-            backgroundColor: 'transparent',
-            backdropFilter: 'blur(1px)'
-
-        }}>
-            <Fab size="small" color="primary" aria-label="add" style={{marginTop:'10px'}}>
-                <EditIcon/>
-            </Fab>
-            <Fab size="small" color="secondary" aria-label="add" style={{marginTop:'10px'}}>
-                <LayersIcon/>
-            </Fab>
-            <Fab size="small" color="primary" aria-label="add" style={{marginTop:'10px'}}>
-                <AddIcon/>
-            </Fab>
-        </div>
-    )
-}
 
 const Dashboard = () => {
 
