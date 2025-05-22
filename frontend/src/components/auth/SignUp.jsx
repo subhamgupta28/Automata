@@ -61,7 +61,8 @@ const SignUpContainer = styled(Stack)(({ theme }) => ({
 }));
 
 export default function SignUp(props) {
-    const [name, setName] = React.useState('');
+    const [firstName, setFirstName] = React.useState('');
+    const [lastName, setLastName] = React.useState('');
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const navigate = useNavigate();
@@ -75,8 +76,15 @@ export default function SignUp(props) {
         let valid = true;
 
         // Validate name
-        if (!name.trim()) {
-            setNameError('Name is required.');
+        if (!firstName.trim()) {
+            setNameError('First name is required.');
+            valid = false;
+        } else {
+            setNameError('');
+        }
+
+        if (!lastName.trim()) {
+            setNameError('Last name is required.');
             valid = false;
         } else {
             setNameError('');
@@ -101,7 +109,7 @@ export default function SignUp(props) {
         if (!valid) return;
 
         try {
-            const res = await signUpReq({ name, email, password });
+            const res = await signUpReq({ firstName, lastName, email, password });
             console.log('Signup successful', res);
             navigate("/signin")
             // Optionally redirect or show success message here
@@ -129,16 +137,31 @@ export default function SignUp(props) {
                         sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
                     >
                         <FormControl>
-                            <FormLabel htmlFor="name">Full name</FormLabel>
+                            <FormLabel htmlFor="name">First name</FormLabel>
                             <TextField
-                                autoComplete="name"
-                                name="name"
+                                autoComplete="firstName"
+                                name="firstName"
                                 required
                                 fullWidth
-                                id="name"
-                                placeholder="Jon Snow"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
+                                id="firstName"
+                                placeholder="Jon"
+                                value={firstName}
+                                onChange={(e) => setFirstName(e.target.value)}
+                                error={Boolean(nameError)}
+                                helperText={nameError}
+                            />
+                        </FormControl>
+                        <FormControl>
+                            <FormLabel htmlFor="lastName">Last name</FormLabel>
+                            <TextField
+                                autoComplete="lastName"
+                                name="lastName"
+                                required
+                                fullWidth
+                                id="lastName"
+                                placeholder="Snow"
+                                value={lastName}
+                                onChange={(e) => setLastName(e.target.value)}
                                 error={Boolean(nameError)}
                                 helperText={nameError}
                             />
