@@ -1,8 +1,9 @@
-import React from "react";
+import React, {useMemo} from "react";
 import { BarChart } from '@mui/x-charts/BarChart';
 import { Grid, Paper } from '@mui/material';
 import AccessAlarms from "@mui/icons-material/AccessAlarms";
 import CottageOutlinedIcon from "@mui/icons-material/CottageOutlined";
+import {axisClasses} from "@mui/x-charts/ChartsAxis";
 
 
 const Exp = () => {
@@ -18,28 +19,38 @@ export default Exp;
 
 
 const CustomGrid = () => {
-    const items = [
-        "Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7","Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7"
-    ];
-
-    const oddItems = items.filter((_, index) => index % 2 === 0); // Items 1, 3, 5, ...
-    const evenItems = items.filter((_, index) => index % 2 !== 0); // Items 2, 4, 6, ...
-
-    return (
-        <Grid container spacing={2} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 1fr)' }}>
-            {/* First Row (Odd-indexed items) */}
-            {oddItems.map((item, index) => (
-                <Grid item xs={6} key={index}>
-                    <Paper style={{ padding: 20 }}>{item}</Paper>
-                </Grid>
-            ))}
-
-            {/* Second Row (Even-indexed items) */}
-            {/*{evenItems.map((item, index) => (*/}
-            {/*    <Grid item xs={6} key={index}>*/}
-            {/*        <Paper style={{ padding: 20 }}>{item}</Paper>*/}
-            {/*    </Grid>*/}
-            {/*))}*/}
-        </Grid>
-    );
+    const valueFormatter = (value) => {
+        return `${value} ${chartData.unit}`;
+    };
+    const chartSetting = useMemo(() => ({
+        yAxis: [
+            {
+                label: chartData.label,
+            },
+        ],
+        series: [{
+            dataKey: chartData.dataKey,
+            // label: 'Showing last 8 Hours data',
+            valueFormatter
+        }],
+        height: 300,
+        width: 800,
+        sx: {
+            [`& .${axisClasses.directionY} .${axisClasses.label}`]: {
+                transform: 'translateX(-10px)',
+            },
+        },
+    }), [chartData]);
+    return(
+        <BarChart className="nodrag"
+                  dataset={chartData.data}
+            // barLabel={(item, context) => {
+            //     return item.value?.toString();
+            // }}
+                  colors={['#b9b9b9']}
+                  xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps, zoom: true }]}
+                  borderRadius={10}
+                  {...chartSetting}
+        />
+    )
 };

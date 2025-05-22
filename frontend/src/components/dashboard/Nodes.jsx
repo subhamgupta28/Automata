@@ -623,8 +623,8 @@ function BarChartComp({chartDevice}) {
                                 clickable
                                 onClick={() => handleAttribute(name)}
                                 style={{margin: '4px'}}
-                                label={name}
-                                // color="info"
+                                label={name.toUpperCase()}
+                                // color="primary"
                             />
                         ))}
                     </div>

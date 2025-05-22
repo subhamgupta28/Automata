@@ -1,6 +1,6 @@
 import React, {useMemo} from "react";
 import {axisClasses} from "@mui/x-charts/ChartsAxis";
-import {BarChart} from "@mui/x-charts";
+import {BarChart, lineElementClasses} from "@mui/x-charts";
 
 
 export default function CustomBarChart ({chartData}){
@@ -17,6 +17,7 @@ export default function CustomBarChart ({chartData}){
         series: [{
             dataKey: chartData.dataKey,
             // label: 'Showing last 8 Hours data',
+            color: `url(#Gradient1)`,
             valueFormatter
         }],
         height: 300,
@@ -35,9 +36,22 @@ export default function CustomBarChart ({chartData}){
             // }}
                   colors={['#b9b9b9']}
                   xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps, zoom: true }]}
-                  borderRadius={10}
+                  borderRadius={6}
                   {...chartSetting}
-        />
+        >
+            <defs>
+                <linearGradient
+                    id={`Gradient1`}
+                    x1="0%"
+                    y1="0%"
+                    x2="0%"
+                    y2="100%"
+                >
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6"/>
+                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0"/>
+                </linearGradient>
+            </defs>
+        </BarChart>
     )
 
 }

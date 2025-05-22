@@ -54,9 +54,16 @@ public class AnalyticsService {
         var list = filteredAttributes.stream().map(Attribute::getKey).toList();
 
         // Format for date grouping (hourly)
-        var dateFormat = (range.equalsIgnoreCase("day") || range.equalsIgnoreCase("week"))
-                ? "%m-%d %H:00"  // Group by hour
-                : "%m-%d %H:%M"; // Otherwise, show minute resolution
+//        var dateFormat = (range.equalsIgnoreCase("day") || range.equalsIgnoreCase("week"))
+//                ? "%H:00"  // Group by hour
+//                : "%H:%M"; // Otherwise, show minute resolution
+
+        var dateFormat = switch (range){
+            case "day" -> "%H";
+            case "week" -> "%m-%d %H";
+            case "hour" -> "%H:%M";
+            default -> "";
+        };
 
         var dateProjection = DateOperators.dateOf("updateDate")
                 .toString(dateFormat)
