@@ -214,7 +214,11 @@ export function ActionBoard() {
                 <div style={{width: '80%', height: '100dvh', borderRadius:'10px', padding:'10px 10px 10px 0px'}} className="reactflow-wrapper" ref={reactFlowWrapper}>
                     <ReactFlow
                         style={{
-                            borderRadius:'12px'
+                            borderRadius:'10px',
+                            backgroundColor: 'transparent',
+                            borderColor: 'grey',
+                            borderWidth:'1px',
+                            borderStyle:'dashed',
                         }}
                         colorMode="dark"
                         nodes={nodes}
@@ -256,7 +260,17 @@ export function ActionBoard() {
                     </ReactFlow>
                 </div>
                 <div style={{width: '20%', height: '100dvh'}}>
-                    <Card style={{height: '97dvh', display: 'flex', flexDirection: 'column',  margin:'10px 10px 10px 0px', borderRadius:'12px'}}>
+                    <Card style={{
+                        height: '97dvh',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        margin:'10px 10px 10px 0px',
+                        borderRadius:'10px',
+                        backgroundColor: 'transparent',
+                        borderColor: 'grey',
+                        borderWidth:'1px',
+                        borderStyle:'dashed',
+                    }}>
                         <CardContent style={{
                             flex: 1,
                             padding: '6px',

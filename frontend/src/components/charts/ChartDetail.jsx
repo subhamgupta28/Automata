@@ -51,7 +51,7 @@ export default function ChartDetail({deviceId, name}) {
                 const mm = String(now.getMinutes()).padStart(2, '0');
                 const ss = String(now.getSeconds()).padStart(2, '0');
 
-                const formattedTimestamp = `${dd} ${mm}:${ss}`;
+                const formattedTimestamp = `${mm}:${ss}`;
 
                 const newEntry = {
                     dateDay: formattedTimestamp,
@@ -78,7 +78,13 @@ export default function ChartDetail({deviceId, name}) {
     }));
 
     return (
-        <Card elevation={1} sx={{borderRadius: 3}}>
+        <Card elevation={1} style={{
+            borderRadius:'10px',
+            backgroundColor: 'transparent',
+            borderColor: 'grey',
+            borderWidth:'1px',
+            borderStyle:'dashed',
+        }}>
             <CardContent>
                 <Box
                     display="flex"

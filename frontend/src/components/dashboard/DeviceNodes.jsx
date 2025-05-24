@@ -78,17 +78,20 @@ const DeviceNodes = () => {
     const handleNodeClick = useCallback(
         (_, node) => {
             // if (node.id === 'main-node-1')
-                fitView({nodes: [node], duration: 750, maxZoom: 0.8});
+            fitView({nodes: [node], duration: 750, maxZoom: 0.8});
         },
         [fitView],
     );
     return (
-        <div style={{height: '100dvh', padding:'10px 10px 10px 0px'}} >
+        <div style={{height: '100dvh', padding: '10px 10px 10px 0px'}}>
             <ReactFlow
                 colorMode="dark"
                 nodes={nodes}
                 edges={edges}
-                style={{borderRadius:'12px'}}
+                style={{
+                    borderRadius: '12px',
+                    backgroundColor: 'transparent'
+                }}
                 edgeTypes={edgeTypes}
                 // nodesDraggable={editUi}
                 // onNodeClick={handleNodeClick}
@@ -128,9 +131,9 @@ const Dashboard = () => {
 
     return (
         // <DeviceDataProvider>
-            <ReactFlowProvider>
-                <DeviceNodes/>
-            </ReactFlowProvider>
+        <ReactFlowProvider>
+            <DeviceNodes/>
+        </ReactFlowProvider>
         // </DeviceDataProvider>
 
     )

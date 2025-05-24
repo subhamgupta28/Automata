@@ -315,7 +315,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                     // marginRight: '2px',
                     // padding: '4px',
                     backgroundColor: 'transparent',
-                    // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
+                    boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
                     <Card elevation={1}
@@ -503,15 +503,16 @@ export function MainNode({data, isConnectable}) {
             <div className="card-glow"></div>
             <div style={{
                 borderRadius: '16px',
-                backgroundColor: 'transparent',
+                // backgroundColor: 'transparent',
                 backdropFilter: 'blur(8px)',
             }}>
                 <Card variant="outlined" ref={cardRef} elevation={0} style={{
                     padding: '0px',
                     minHeight: '600px',
+                    // borderColor:'rgb(255 155 100 / 8%)',
                     // maxWidth: '95%',
-                    borderRadius: '18px',
-                    backgroundColor: 'transparent',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgb(0 0 0 / 28%)',
                     // boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 
