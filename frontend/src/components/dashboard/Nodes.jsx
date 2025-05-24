@@ -314,8 +314,8 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                     // marginLeft: '2px',
                     // marginRight: '2px',
                     // padding: '4px',
-                    backgroundColor: 'transparent',
-                    boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
+                    backgroundColor: 'rgb(255 225 255 / 6%)',
+                    // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
                     <Card elevation={1}
@@ -512,7 +512,7 @@ export function MainNode({data, isConnectable}) {
                     // borderColor:'rgb(255 155 100 / 8%)',
                     // maxWidth: '95%',
                     borderRadius: '12px',
-                    backgroundColor: 'rgb(0 0 0 / 28%)',
+                    backgroundColor: 'rgb(255 225 255 / 6%)',
                     // boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 
