@@ -319,7 +319,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                 }}>
 
                     <Card elevation={1}
-                          style={{ padding:'4px', width: '100%', margin: '0px', borderRadius: '10px 10px 0px 0px'}}>
+                          style={{ padding:'4px', width: '100%', margin: '0px', borderRadius: '12px 12px 0px 0px'}}>
                         <Typography
                             style={{
                                 display: 'flex',

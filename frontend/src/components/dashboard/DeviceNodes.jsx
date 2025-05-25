@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useState, useMemo} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Panel,
+    applyNodeChanges, Background, Controls, Panel,
     ReactFlow, ReactFlowProvider,
     useEdgesState,
     useNodesState, useReactFlow
@@ -17,6 +17,7 @@ import {createEdges, createNodes} from "./EdgeNode.jsx";
 import {Backdrop, Button, CircularProgress} from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import NodeInspector from "./NodeInspector.jsx";
+import {ZoomSlider} from "./ZoomSlider.jsx";
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {
@@ -115,8 +116,10 @@ const DeviceNodes = () => {
                     <Button variant='outlined' size='small' onClick={() => setActionMenu(a => !a)}
                             style={{marginLeft: '10px'}}>Actions</Button>
                 </Panel>
-
+                <ZoomSlider position="bottom-left"/>
+                {/*<Background />*/}
             </ReactFlow>
+
             <Backdrop
                 sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
                 open={openBackdrop}
