@@ -314,12 +314,12 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                     // marginLeft: '2px',
                     // marginRight: '2px',
                     // padding: '4px',
-                    backgroundColor: 'rgb(255 225 255 / 6%)',
+                    backgroundColor: 'rgb(0 0 0 / 16%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
                     <Card elevation={1}
-                          style={{ padding:'4px', width: '100%', margin: '0px', borderRadius: '12px 12px 0px 0px'}}>
+                          style={{ padding:'2px', width: '100%', margin: '0px', borderRadius: '12px 12px 0px 0px'}}>
                         <Typography
                             style={{
                                 display: 'flex',
@@ -340,8 +340,8 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                         style={{
                             width: '240px',
                             alignItems: 'center',
-                            paddingTop: '6px',
-                            paddingBottom: '16px',
+                            padding: '14px',
+                            // paddingBottom: '16px',
                             justifyContent: 'center'
                         }}>
                         {actionAck?.command === 'reboot' && (
@@ -384,13 +384,13 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                         <div style={{
                             gridTemplateColumns: 'repeat(2, 1fr)',
                             display: 'grid',
-                            gap: '4px',
+                            gap: '6px',
                             marginTop: '10px'
                         }}>
                             {mainData.map((m) => (
                                 <Card
                                     key={m.id}
-                                    elevation={4}
+                                    elevation={1}
                                     style={{
                                         borderRadius: '8px',
                                         padding: '6px',
@@ -400,7 +400,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                                         alignItems: 'center'
                                     }}
                                 >
-                                    <Typography variant="subtitle2">
+                                    <Typography variant="subtitle2" color="primary">
                                         {liveData?.[m.key]} {m.units}
                                     </Typography>
                                     <Typography variant="subtitle2">{m.displayName}</Typography>
@@ -512,7 +512,7 @@ export function MainNode({data, isConnectable}) {
                     // borderColor:'rgb(255 155 100 / 8%)',
                     // maxWidth: '95%',
                     borderRadius: '12px',
-                    backgroundColor: 'rgb(255 225 255 / 6%)',
+                    backgroundColor: 'rgb(0 0 0 / 16%)',
                     // boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 

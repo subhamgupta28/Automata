@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState, useMemo} from 'react';
+import React, {useCallback, useEffect, useState, useMemo, useRef} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
@@ -18,6 +18,7 @@ import {Backdrop, Button, CircularProgress} from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import NodeInspector from "./NodeInspector.jsx";
 import {ZoomSlider} from "./ZoomSlider.jsx";
+import ContextMenu from "./ContextMenu.jsx";
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {
@@ -32,6 +33,8 @@ const DeviceNodes = () => {
     const [edges, setEdges] = useEdgesState([]);
     const [editUi, setEditUi] = useState(false);
     const [actionMenu, setActionMenu] = useState(false);
+    const [menu, setMenu] = useState(null);
+    const ref = useRef(null);
     const {fitView} = useReactFlow();
     const handleEdit = useCallback(() => {
         setEditUi(prev => !prev);
@@ -83,9 +86,34 @@ const DeviceNodes = () => {
         },
         [fitView],
     );
+
+
+    const onNodeContextMenu = useCallback(
+        (event, node) => {
+            // Prevent native context menu from showing
+            event.preventDefault();
+
+            // Calculate position of the context menu. We want to make sure it
+            // doesn't get positioned off-screen.
+            const pane = ref.current.getBoundingClientRect();
+            setMenu({
+                id: node.id,
+                top: event.clientY < pane.height - 200 && event.clientY,
+                left: event.clientX < pane.width - 200 && event.clientX,
+                right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
+                bottom:
+                    event.clientY >= pane.height - 200 && pane.height - event.clientY,
+            });
+        },
+        [setMenu],
+    );
+
+    // Close the context menu if it's open whenever the window is clicked.
+    const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
     return (
         <div style={{height: '100dvh', padding: '10px 10px 10px 0px'}}>
             <ReactFlow
+                ref={ref}
                 colorMode="dark"
                 nodes={nodes}
                 edges={edges}
@@ -98,6 +126,8 @@ const DeviceNodes = () => {
                 // onNodeClick={handleNodeClick}
                 // fitView
                 // fitViewOptions={{ nodes: [{ id: '' }] }}
+                onPaneClick={onPaneClick}
+                onNodeContextMenu={onNodeContextMenu}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
@@ -117,7 +147,7 @@ const DeviceNodes = () => {
                             style={{marginLeft: '10px'}}>Actions</Button>
                 </Panel>
                 <ZoomSlider position="bottom-left"/>
-                {/*<Background />*/}
+                {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
             </ReactFlow>
 
             <Backdrop
