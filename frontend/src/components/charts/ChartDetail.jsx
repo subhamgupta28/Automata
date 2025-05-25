@@ -119,7 +119,7 @@ export default function ChartDetail({deviceId, name}) {
                 </Box>
 
                 <LineChart
-                    height={300}
+                    height={400}
                     series={series}
                     yAxis={[{position: 'none'}]}
                     xAxis={[{scaleType: "band", data: xLabels}]}
@@ -145,7 +145,7 @@ export default function ChartDetail({deviceId, name}) {
                                     x2="0%"
                                     y2="100%"
                                 >
-                                    <stop offset="0%" stopColor={start} stopOpacity="0.6"/>
+                                    <stop offset="0%" stopColor={start} stopOpacity="0.8"/>
                                     <stop offset="100%" stopColor={end} stopOpacity="0"/>
                                 </linearGradient>
                             );

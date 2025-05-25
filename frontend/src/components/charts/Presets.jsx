@@ -7,7 +7,7 @@ import Typography from "@mui/material/Typography";
 
 
 export const Presets = React.memo(({data, type, value, deviceId, displayName}) => {
-    console.log("preset", value)
+    // console.log("preset", value)
     const send = async (e) => {
         try {
             let act = data.key;

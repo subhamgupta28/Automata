@@ -46,7 +46,7 @@ export const DeviceDataProvider = ({ children }) => {
         };
     };
 
-    const attemptReconnect = (delay = 3000) => {
+    const attemptReconnect = (delay = 6000) => {
         if (reconnectTimeoutRef.current) return;
 
         reconnectTimeoutRef.current = setTimeout(() => {

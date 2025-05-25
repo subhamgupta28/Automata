@@ -7,17 +7,17 @@ import {styled} from "@mui/material/styles";
 const HomeAssistantSlider = styled(Slider)({
     color: 'orange', // Blue color like Home Assistant slider
     height: 35, // Adjust the height of the slider bar
-    borderRadius: 8,
+    borderRadius: 6,
     padding: '15px 0',
     marginBottom: 1,
     '& .MuiSlider-rail': {
         opacity: 0.2, // Make the rail more subtle
-        backgroundColor: '#d7d7d7', // Light grey color for the rail
+        backgroundColor: '#fff', // Light grey color for the rail
     },
     '& .MuiSlider-track': {
         border: 'none', // Remove the track's border
         // paddingRight:'4px',
-        backgroundColor: '#d7d7d7', // Use the blue color for the active track
+        backgroundColor: '#ffffff', // Use the blue color for the active track
     },
     '& .MuiSlider-markLabel': {
         top: 55

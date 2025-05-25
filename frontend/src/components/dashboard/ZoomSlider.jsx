@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, {forwardRef} from "react";
 
 import {
     Panel,
@@ -12,11 +12,11 @@ import RemoveTwoToneIcon from '@mui/icons-material/RemoveTwoTone';
 import FullscreenTwoToneIcon from '@mui/icons-material/FullscreenTwoTone';
 import IconButton from "@mui/material/IconButton";
 
-export const ZoomSlider = forwardRef(({ ...props }) => {
-    const { zoom } = useViewport();
-    const { zoomTo, zoomIn, zoomOut, fitView } = useReactFlow();
+export const ZoomSlider = forwardRef(({...props}) => {
+    const {zoom} = useViewport();
+    const {zoomTo, zoomIn, zoomOut, fitView} = useReactFlow();
 
-    const { minZoom, maxZoom } = useStore(
+    const {minZoom, maxZoom} = useStore(
         (state) => ({
             minZoom: state.minZoom,
             maxZoom: state.maxZoom,
@@ -29,40 +29,48 @@ export const ZoomSlider = forwardRef(({ ...props }) => {
     };
     return (
         <Panel
-            style={{display:'flex', flexDirection:'row', alignItems:'center', justifyContent:'center'}}
+            style={{
+                display: 'flex',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgb(200 200 200 / 16%)',
+                padding:'2px',
+                borderRadius:'6px'
+            }}
             {...props}
         >
             <IconButton
                 size="small"
-                onClick={() => zoomOut({ duration: 300 })}
+                onClick={() => zoomOut({duration: 300})}
             >
-                <RemoveTwoToneIcon />
+                <RemoveTwoToneIcon/>
             </IconButton>
             <Slider
                 value={zoom}
                 min={minZoom}
                 step={0.1}
                 max={maxZoom}
-                style={{width:'100px', marginLeft:'10px', marginRight:'10px'}}
+                style={{width: '100px', marginLeft: '10px', marginRight: '10px'}}
                 onChange={handleChange}
             />
             <IconButton
                 size="small"
-                onClick={() => zoomIn({ duration: 300 })}
+                onClick={() => zoomIn({duration: 300})}
             >
-                <AddTwoToneIcon />
+                <AddTwoToneIcon/>
             </IconButton>
             <Button
                 size="small"
-                onClick={() => zoomTo(1, { duration: 300 })}
+                onClick={() => zoomTo(1, {duration: 300})}
             >
                 {(100 * zoom).toFixed(0)}%
             </Button>
             <IconButton
                 size="small"
-                onClick={() => fitView({ duration: 300 })}
+                onClick={() => fitView({duration: 300})}
             >
-                <FullscreenTwoToneIcon />
+                <FullscreenTwoToneIcon/>
             </IconButton>
         </Panel>
     );

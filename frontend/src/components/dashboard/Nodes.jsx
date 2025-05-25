@@ -306,7 +306,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
             <div style={{
                 borderRadius: '12px',
                 backgroundColor: 'transparent',
-                backdropFilter: 'blur(7px)'
+                backdropFilter: 'blur(4px)'
             }}>
                 <Card elevation={0} variant="outlined" style={{
                     // display: 'flex',
@@ -314,7 +314,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                     // marginLeft: '2px',
                     // marginRight: '2px',
                     // padding: '4px',
-                    backgroundColor: 'rgb(0 0 0 / 16%)',
+                    backgroundColor: 'rgb(255 255 255 / 6%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
@@ -341,7 +341,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                             width: '240px',
                             alignItems: 'center',
                             padding: '14px',
-                            // paddingBottom: '16px',
+                            paddingBottom: '16px',
                             justifyContent: 'center'
                         }}>
                         {actionAck?.command === 'reboot' && (
@@ -443,13 +443,15 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                     </CardContent>
                 </Card>
 
-                <CustomModal
-                    map={mapData}
-                    isOpen={isModalOpen}
-                    liveData={liveData}
-                    onClose={handleCloseModal}
-                    device={data.value}
-                />
+                {isModalOpen && (
+                    <CustomModal
+                        map={mapData}
+                        isOpen={isModalOpen}
+                        liveData={liveData}
+                        onClose={handleCloseModal}
+                        device={data.value}
+                    />
+                )}
             </div>
 
             <Handle

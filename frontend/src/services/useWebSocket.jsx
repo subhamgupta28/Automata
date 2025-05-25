@@ -41,7 +41,7 @@ const useWebSocket = (topic) => {
         };
     };
 
-    const attemptReconnect = (delay = 3000) => {
+    const attemptReconnect = (delay = 6000) => {
         if (reconnectTimeoutRef.current) return; // Prevent multiple timers
 
         reconnectTimeoutRef.current = setTimeout(() => {

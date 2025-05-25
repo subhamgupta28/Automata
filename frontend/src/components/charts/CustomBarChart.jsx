@@ -34,7 +34,7 @@ export default function CustomBarChart ({chartData}){
             // barLabel={(item, context) => {
             //     return item.value?.toString();
             // }}
-                  colors={['#b9b9b9']}
+                  colors={['#e5e5e5']}
                   xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps, zoom: true }]}
                   borderRadius={6}
                   {...chartSetting}
@@ -47,7 +47,7 @@ export default function CustomBarChart ({chartData}){
                     x2="0%"
                     y2="100%"
                 >
-                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6"/>
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.8"/>
                     <stop offset="100%" stopColor="#ffffff" stopOpacity="0"/>
                 </linearGradient>
             </defs>

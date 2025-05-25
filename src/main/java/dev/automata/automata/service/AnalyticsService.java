@@ -211,8 +211,8 @@ public class AnalyticsService {
     private List<Object> executeAggregation(String deviceId, Date startDate, Date endDate, String attributeKey) {
         var match = match(where("deviceId").is(deviceId).and("updateDate").gte(startDate).lte(endDate));
         var project = project("deviceId", "data", "updateDate")
-                .and(DateOperators.dateOf("updateDate").toString("%m-%d %H").withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))).as("dateDay")
-                .and(DateOperators.dateOf("updateDate").toString("%m-%d %H:%M").withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))).as("dateShow")
+                .and(DateOperators.dateOf("updateDate").toString("%d %H").withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))).as("dateDay")
+                .and(DateOperators.dateOf("updateDate").toString("%H:%M").withTimezone(DateOperators.Timezone.valueOf("Asia/Calcutta"))).as("dateShow")
                 .andExpression("toDouble(data." + attributeKey + ")").as("t" + attributeKey);
 
         var group = group("dateDay")
