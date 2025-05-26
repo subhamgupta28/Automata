@@ -26,16 +26,16 @@ const HomeAssistantSlider = styled(Slider)({
         display: 'none'
     },
     '& .MuiSlider-thumb': {
-        backgroundColor: '#ffa041', // White thumb, matching the Home Assistant style
+        backgroundColor: '#d0d0d0', // White thumb, matching the Home Assistant style
         // border: '2px solid orange', // Blue border around the thumb
-        height: 25,
-        width: 6,
-        left: '50%',
+        height: 45,
+        width: 10,
+        // left: '50%',
         borderRadius: '4px',
         // marginLeft: '6px',
-        transform: 'translate(-150%, -50%)',
+        transform: 'translate(-60%, -50%)',
         '&:hover': {
-            backgroundColor: 'white', // Change thumb color when hovered
+            backgroundColor: '#fce02b', // Change thumb color when hovered
         },
         '&:active': {
             backgroundColor: '#fce02b', // Darker blue when active
