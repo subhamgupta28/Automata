@@ -89,6 +89,10 @@ public class AuthenticationService {
                 var authResponse = AuthenticationResponse.builder()
                         .accessToken(accessToken)
                         .refreshToken(refreshToken)
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .email(user.getEmail())
+                        .userId(user.getId())
                         .build();
                 new ObjectMapper().writeValue(response.getOutputStream(), authResponse);
             }
