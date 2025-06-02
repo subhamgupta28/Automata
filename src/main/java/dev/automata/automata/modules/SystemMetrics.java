@@ -31,6 +31,7 @@ public class SystemMetrics {
                 .name("System")
                 .sleep(false)
                 .reboot(false)
+                .host("raspberry.local")
                 .macAddr("")
                 .accessUrl("http://raspberry.local:8010")
                 .type("System")
@@ -90,6 +91,18 @@ public class SystemMetrics {
         var data = getData();
         if (!Objects.requireNonNull(data).isEmpty()){
             mainService.saveData(deviceId, data);
+        }
+        var res = mainService.getShutdownStatus();
+        if (res.equals("Y")){
+            shutdownSystem();
+        }
+    }
+    private void shutdownSystem(){
+        try {
+            String s = executeCommand("sudo shutdown");
+            System.err.println(s);
+        }catch (Exception e){
+            System.err.println(e);
         }
 
     }

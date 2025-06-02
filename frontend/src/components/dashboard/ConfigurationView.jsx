@@ -4,8 +4,8 @@ import {
     Box,
     Button,
     Card,
-    CardContent,
-    Grid,
+    CardContent, Chip,
+    Grid, Switch,
     TextField,
     Typography,
 } from '@mui/material';
@@ -107,6 +107,18 @@ const WiFiSettings = () => {
     );
 };
 
+const SystemSetting = () =>{
+
+    return(
+        <Card>
+            <CardContent>
+                Shutdown Safely<Switch></Switch>
+                System will shutdown when the battery reaches critical level
+            </CardContent>
+        </Card>
+    )
+}
+
 const Item = styled(Paper)(({ theme }) => ({
     backgroundColor: '#fff',
     ...theme.typography.body2,
@@ -127,7 +139,7 @@ export function ConfigurationView(){
                     <WiFiSettings/>
                 </Grid>
                 <Grid size={6}>
-                    <Item>size=4</Item>
+                    <SystemSetting/>
                 </Grid>
                 <Grid size={4}>
                     <Item>size=4</Item>

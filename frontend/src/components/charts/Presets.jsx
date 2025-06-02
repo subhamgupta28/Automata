@@ -23,7 +23,12 @@ export const Presets = React.memo(({data, type, value, deviceId, displayName}) =
     };
     return (
         <div style={{display:'flex', alignItems: 'center', flexDirection: 'column',marginTop:'4px'}}>
-            <div>
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(5, 1fr)',
+                }}
+            >
                 {Object.values(data.extras).map((ex) => (
                     <IconButton key={ex} onClick={()=>send(ex)}>
                         <Avatar  sx={{ width: 26, height: 26, background: ex === value.presets? "orange":"", fontWeight: 'bold' }}>{ex}</Avatar>

@@ -44,9 +44,8 @@ api.interceptors.response.use(
     response => response,
     async error => {
         const originalRequest = error.config;
-
         // If unauthorized and not a refresh request
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 403 && !originalRequest._retry) {
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
@@ -60,10 +59,13 @@ api.interceptors.response.use(
 
             originalRequest._retry = true;
             isRefreshing = true;
-
             try {
-                const { data } = await axios.post(BASE_URL + "auth/refresh", {
-                    refresh_token: getRefreshToken(),
+                const { data } = await axios.post(BASE_URL + "auth/refresh-token", {}, {
+                    headers: {
+                        'Authorization': 'Bearer '+getRefreshToken(), // Specify the content type if necessary
+                        // Add any other headers if needed, e.g., Authorization
+
+                    },
                 });
 
                 const updatedUser = { ...getStoredUser(), ...data };

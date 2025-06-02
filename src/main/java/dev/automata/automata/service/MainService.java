@@ -454,4 +454,9 @@ public class MainService {
         wiFiDetailsRepository.saveAll(list);
         return "success";
     }
+
+    public String getShutdownStatus() {
+
+        return "N";
+    }
 }
