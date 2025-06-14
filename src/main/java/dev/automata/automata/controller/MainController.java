@@ -2,9 +2,7 @@ package dev.automata.automata.controller;
 
 import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.dto.DataDto;
-import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.dto.RegisterDevice;
-import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.AttributeType;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
@@ -12,7 +10,6 @@ import dev.automata.automata.service.AnalyticsService;
 import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.NotificationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;

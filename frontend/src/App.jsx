@@ -51,7 +51,7 @@ function App() {
                 <BrowserRouter>
 
                     <AuthProvider>
-                    <main className={getBreathingClass(alertLevel)} style={{background:'#232323'}}>
+                    <main className={getBreathingClass(alertLevel)} style={{background:'#505050'}}>
                         <header>
                             {/*<Nav/>*/}
                         </header>

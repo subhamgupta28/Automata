@@ -111,7 +111,7 @@ const DeviceNodes = () => {
     // Close the context menu if it's open whenever the window is clicked.
     const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
     return (
-        <div style={{height: '100dvh', padding: '10px 10px 10px 0px'}}>
+        <div style={{height: '100dvh', padding: '0px 0px 0px 0px'}}>
             <ReactFlow
                 ref={ref}
                 colorMode="dark"
@@ -135,7 +135,7 @@ const DeviceNodes = () => {
                 nodeTypes={nodeTypes}
             >
 
-                <Panel position="bottom-right" style={{marginRight: '30px', display: 'flex'}}>
+                <Panel position="bottom-right" style={{marginRight: '80px', display: 'flex'}}>
                     {editUi && <NodeInspector/>}
                     {actionMenu && <div>
                         <Button variant='outlined' size='small' onClick={handleReboot}

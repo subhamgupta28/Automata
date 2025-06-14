@@ -12,7 +12,7 @@ export const createEdges = (devices, charts) => {
             // type: 'animatedSvg',// The ID of the device node
             targetHandle: 'main-node-' + index,       // Source handle ID if applicable
             // animated: true,
-            style: {stroke: '#fcab19', strokeWidth: '2px'}
+            style: {stroke: '#fff', strokeWidth: '4px'}
         })
         index++;
     });

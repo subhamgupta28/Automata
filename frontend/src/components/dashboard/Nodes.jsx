@@ -308,12 +308,14 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                 backgroundColor: 'transparent',
                 backdropFilter: 'blur(4px)'
             }}>
-                <Card elevation={0} variant="outlined" style={{
+                <Card elevation={10} variant="outlined" style={{
                     // display: 'flex',
                     borderRadius: '12px',
                     // marginLeft: '2px',
                     // marginRight: '2px',
                     // padding: '4px',
+                    borderColor: '#b9b9b9',
+                    // borderWidth:'1px',
                     backgroundColor: 'rgb(255 255 255 / 6%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
@@ -460,9 +462,11 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                 id="b"
                 style={{
                     top: 30,
-                    width: '4px',
+                    right: -3,
+                    width: '6px',
                     height: '30px',
-                    borderRadius: '0px 10px 10px 0px',
+                    borderColor:connectionColor,
+                    borderRadius: '0px 8px 8px 0px',
                     background: connectionColor,
                 }}
                 isConnectable={isConnectable}
@@ -504,17 +508,19 @@ export function MainNode({data, isConnectable}) {
         <div className="text-updater-node card-glow-container" ref={boxRef}>
             <div className="card-glow"></div>
             <div style={{
-                borderRadius: '16px',
-                // backgroundColor: 'transparent',
-                backdropFilter: 'blur(8px)',
+
+                background: 'transparent',
+                backdropFilter: 'blur(4px)',
             }}>
-                <Card variant="outlined" ref={cardRef} elevation={0} style={{
+                <Card variant="outlined" ref={cardRef} elevation={10} style={{
                     padding: '0px',
                     minHeight: '600px',
                     // borderColor:'rgb(255 155 100 / 8%)',
                     // maxWidth: '95%',
+                    borderColor: '#b9b9b9',
+                    // borderWidth:'1px',
                     borderRadius: '12px',
-                    backgroundColor: 'rgb(0 0 0 / 16%)',
+                    backgroundColor: 'rgb(255 255 255 / 6%)',
                     // boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 
@@ -543,9 +549,12 @@ export function MainNode({data, isConnectable}) {
                             id={id}
                             style={{
                                 top: handleSpacing * (index + 1),
+                                background: '#fce02b',
                                 width: '10px',
-                                height: '10px',
-                                background: '#fce02b'
+                                height: '30px',
+                                borderColor:'#fce02b',
+                                left:-4,
+                                borderRadius: '8px 0px 0px 8px',
                             }}
                             isConnectable={isConnectable}
                         />
