@@ -550,8 +550,8 @@ export function MainNode({data, isConnectable}) {
                             style={{
                                 top: handleSpacing * (index + 1),
                                 background: '#fce02b',
-                                width: '10px',
-                                height: '30px',
+                                width: '6px',
+                                height: '35px',
                                 borderColor:'#fce02b',
                                 left:-4,
                                 borderRadius: '8px 0px 0px 8px',
