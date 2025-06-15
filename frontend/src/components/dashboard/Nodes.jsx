@@ -314,9 +314,10 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                     // marginLeft: '2px',
                     // marginRight: '2px',
                     // padding: '4px',
-                    borderColor: '#b9b9b9',
+                    borderColor: '#797878',
                     // borderWidth:'1px',
-                    backgroundColor: 'rgb(255 255 255 / 6%)',
+                    background: 'transparent',
+                    backgroundColor: 'rgb(255 255 255 / 4%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
@@ -517,10 +518,11 @@ export function MainNode({data, isConnectable}) {
                     minHeight: '600px',
                     // borderColor:'rgb(255 155 100 / 8%)',
                     // maxWidth: '95%',
-                    borderColor: '#b9b9b9',
+                    borderColor: '#797878',
                     // borderWidth:'1px',
                     borderRadius: '12px',
-                    backgroundColor: 'rgb(255 255 255 / 6%)',
+                    background: 'transparent',
+                    backgroundColor: 'rgb(255 255 255 / 4%)',
                     // boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 
