@@ -457,7 +457,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                 )}
             </div>
 
-            <Handle
+            {isConnectable && <Handle
                 type="source"
                 position={Position.Right}
                 id="b"
@@ -471,7 +471,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                     background: connectionColor,
                 }}
                 isConnectable={isConnectable}
-            />
+            />}
         </div>
     );
 });

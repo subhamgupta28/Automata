@@ -188,38 +188,41 @@ export default function SideDrawer() {
             <CssBaseline/>
 
 
-            <Drawer variant="permanent" open={open} elevation={4}
-                    style={{
-                        backgroundColor: 'rgba(255, 255, 255, 10%)',
-                        backdropFilter: 'blur(7px)',
-                        // background: "linear-gradient(135deg, rgb(255 224 43 / 10%), rgb(169 104 241 / 10%), rgb(90 200 250 / 10%))",
-                        boxShadow: "0 0 30px rgb(255 224 43 / 10%)",
-                        // height: '96dvh',
-                        // position:'absolute',
-                        // zIndex:'1',
-                        margin: '10px',
-                        borderRadius: '10px'
-                    }}>
-                <Box sx={{display: 'flex', flexDirection: 'column', height: '100%'}}>
-                    <DrawerHeader>
-                        <IconButton onClick={handleDrawerClose}>
-                            {open ? <ChevronLeftIcon/> : <MenuIcon/>}
-                        </IconButton>
-                    </DrawerHeader>
+            {!isMobile &&
+                <Drawer variant="permanent" open={open} elevation={4}
+                        style={{
+                            backgroundColor: 'rgba(255, 255, 255, 10%)',
+                            backdropFilter: 'blur(7px)',
+                            // background: "linear-gradient(135deg, rgb(255 224 43 / 10%), rgb(169 104 241 / 10%), rgb(90 200 250 / 10%))",
+                            boxShadow: "0 0 30px rgb(255 224 43 / 10%)",
+                            // height: '96dvh',
+                            // position:'absolute',
+                            // zIndex:'1',
+                            margin: '10px',
+                            borderRadius: '10px'
+                        }}>
+                    <Box sx={{display: 'flex', flexDirection: 'column', height: '100%'}}>
+                        <DrawerHeader>
+                            <IconButton onClick={handleDrawerClose}>
+                                {open ? <ChevronLeftIcon/> : <MenuIcon/>}
+                            </IconButton>
+                        </DrawerHeader>
 
-                    <List sx={{flexGrow: 1}}>
-                        {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
-                    </List>
+                        <List sx={{flexGrow: 1}}>
+                            {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
+                        </List>
 
-                    {/* Avatar at the bottom */}
-                    {!isEmpty(user) && (
-                        <OptionsMenu drawerOpen={open}/>
-                    )}
+                        {/* Avatar at the bottom */}
+                        {!isEmpty(user) && (
+                            <OptionsMenu drawerOpen={open}/>
+                        )}
 
-                </Box>
+                    </Box>
 
-                {/*<Divider/>*/}
-            </Drawer>
+                    {/*<Divider/>*/}
+                </Drawer>
+            }
+
             <Box component="main" sx={{flexGrow: 1,}}>
 
                 <Card
