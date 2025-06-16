@@ -142,7 +142,7 @@ const DeviceNodes = () => {
                                 style={{marginLeft: '10px'}}>Reboot</Button>
                     </div>}
                     <Button variant='outlined' size='small' onClick={handleEdit} style={{marginLeft: '10px'}}>
-                        <EditIcon/> Edit</Button>
+                        Edit</Button>
                     <Button variant='outlined' size='small' onClick={() => setActionMenu(a => !a)}
                             style={{marginLeft: '10px'}}>Actions</Button>
                 </Panel>

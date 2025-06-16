@@ -10,7 +10,7 @@ export const darkTheme = createTheme({
             main: '#962ee5', // Secondary blue for highlights
         },
         background: {
-            default: '#181818', // Dark background for the main canvas
+            default: '#101010', // Dark background for the main canvas
             // paper: '#1c1c1c', // Slightly lighter background for cards and paper
         },
         text: {
@@ -24,7 +24,7 @@ export const darkTheme = createTheme({
         h1: {
             fontSize: '2.5rem',
             fontWeight: 500,
-            color: '#fce02b',
+            color: '#FCEE09',
         },
         h2: {
             fontSize: '2rem',

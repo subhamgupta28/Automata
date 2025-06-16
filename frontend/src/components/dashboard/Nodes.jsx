@@ -314,10 +314,10 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                     // marginLeft: '2px',
                     // marginRight: '2px',
                     // padding: '4px',
-                    borderColor: '#797878',
-                    // borderWidth:'1px',
+                    // borderColor: '#797878',
+                    borderWidth:'0',
                     background: 'transparent',
-                    backgroundColor: 'rgb(255 255 255 / 4%)',
+                    backgroundColor: 'rgb(255 255 255 / 10%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
@@ -403,10 +403,10 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                                         alignItems: 'center'
                                     }}
                                 >
-                                    <Typography variant="subtitle2" color="primary">
+                                    <Typography variant="subtitle2" color="primary" fontWeight="bold">
                                         {liveData?.[m.key]} {m.units}
                                     </Typography>
-                                    <Typography variant="subtitle2">{m.displayName}</Typography>
+                                    <Typography color="#b0b0b0" variant="subtitle2">{m.displayName}</Typography>
                                 </Card>
                             ))}
                             {switchButtons.length > 0 && (
@@ -518,11 +518,11 @@ export function MainNode({data, isConnectable}) {
                     minHeight: '600px',
                     // borderColor:'rgb(255 155 100 / 8%)',
                     // maxWidth: '95%',
-                    borderColor: '#797878',
-                    // borderWidth:'1px',
+                    // borderColor: '#797878',
+                    borderWidth:'0',
                     borderRadius: '12px',
                     background: 'transparent',
-                    backgroundColor: 'rgb(255 255 255 / 4%)',
+                    backgroundColor: 'rgb(255 255 255 / 8%)',
                     // boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 

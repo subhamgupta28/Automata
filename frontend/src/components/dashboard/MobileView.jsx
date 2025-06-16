@@ -23,29 +23,29 @@ export default function MobileView() {
         };
 
         fetchData();
-    }, [setNodes]);
+    }, []);
 
     return (
         <div style={{
-            paddingTop:'50px',
-            width:'250px',
-            gridTemplateColumns: 'repeat(1, 1fr)',
-            display: 'grid',
-            gap: '4px',
+            paddingTop: '50px',
+            columnCount: 2, // Change number of columns as needed
+            columnGap: '12px',
+            maxWidth: '100%',
         }}>
             <DeviceDataProvider>
                 <ReactFlowProvider>
                     {nodes && nodes.map((node, index) => (
-                        (node.id) !== 'main-node-1' && (
-                                <div key={index}>
-                                    <Device id={node.id} data={node.data} isConnectable={false}></Device>
-                                </div>
-                            )
+                        node.id !== 'main-node-1' && (
+                            <div key={index} style={{
+                                breakInside: 'avoid',
+                                marginBottom: '12px'
+                            }}>
+                                <Device id={node.id} data={node.data} isConnectable={false} />
+                            </div>
+                        )
                     ))}
                 </ReactFlowProvider>
-
             </DeviceDataProvider>
-
         </div>
-    )
+    );
 }

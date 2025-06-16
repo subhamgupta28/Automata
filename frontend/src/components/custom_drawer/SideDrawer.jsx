@@ -9,7 +9,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import {NavLink, Route, Routes} from "react-router-dom";
+import {Navigate, NavLink, Route, Routes, useLocation} from "react-router-dom";
 import DeviceNodes from "../dashboard/DeviceNodes.jsx";
 import Devices from "../Devices.jsx";
 import MobileView from "../dashboard/MobileView.jsx";
@@ -39,6 +39,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import OptionsMenu from "./OptionsMenu.jsx";
 import isEmpty from "../../utils/Helper.jsx";
 import Welcome from "../Welcome.jsx";
+import {useIsMobile} from "../../utils/useIsMobile.jsx";
 
 const drawerWidth = 200;
 
@@ -103,7 +104,13 @@ export default function SideDrawer() {
     const [open, setOpen] = React.useState(false);
     const [selectedIndex, setSelectedIndex] = React.useState("/");
     const {user, logout} = useAuth();
+    const isMobile = useIsMobile();
+    const location = useLocation();
 
+    // Auto redirect to /mobile if mobile and not already there
+    if (isMobile && location.pathname !== '/mob') {
+        return <Navigate to="/mob" replace />;
+    }
     const publicItems = [
         {name: 'Home', url: '/', icon: <HomeIcon/>},
 
@@ -183,8 +190,10 @@ export default function SideDrawer() {
 
             <Drawer variant="permanent" open={open} elevation={4}
                     style={{
-                        // backgroundColor: 'rgba(255, 255, 255, 0.01)',
-                        // backdropFilter: 'blur(1px)',
+                        backgroundColor: 'rgba(255, 255, 255, 10%)',
+                        backdropFilter: 'blur(7px)',
+                        // background: "linear-gradient(135deg, rgb(255 224 43 / 10%), rgb(169 104 241 / 10%), rgb(90 200 250 / 10%))",
+                        boxShadow: "0 0 30px rgb(255 224 43 / 10%)",
                         // height: '96dvh',
                         // position:'absolute',
                         // zIndex:'1',
