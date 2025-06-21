@@ -31,26 +31,9 @@ export default function HumidityGauge({ humidity = 50, size = 140, displayName }
     const lowColor = "#fc2626"; // blue
     const highColor = "#F4FF57FF"; // red
 
-    const [animatedHumidity, setAnimatedHumidity] = useState(humidity);
 
-    // Animate humidity value transition
-    useEffect(() => {
-        const step = (humidity - animatedHumidity) / 10;
-        const interval = setInterval(() => {
-            setAnimatedHumidity((prev) => {
-                const next = prev + step;
-                if ((step > 0 && next >= humidity) || (step < 0 && next <= humidity)) {
-                    clearInterval(interval);
-                    return humidity;
-                }
-                return next;
-            });
-        }, 20); // 20ms x 10 = ~200ms animation
-        return () => clearInterval(interval);
-    }, [humidity]);
-
-    const fillColor = interpolateColor(lowColor, highColor, animatedHumidity / 100);
-    const circleColor = interpolateColor(highColor, lowColor, 1 - animatedHumidity / 100);
+    const fillColor = interpolateColor(lowColor, highColor, humidity / 100);
+    const circleColor = interpolateColor(highColor, lowColor, 1 - humidity / 100);
 
     const gradientStops = [
         {
@@ -73,7 +56,7 @@ export default function HumidityGauge({ humidity = 50, size = 140, displayName }
             <LiquidFillGauge
                 width={size}
                 height={size}
-                value={animatedHumidity}
+                value={humidity}
                 percent="%"
                 textSize={1}
                 textOffsetX={0}

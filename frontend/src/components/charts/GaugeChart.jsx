@@ -10,7 +10,7 @@ export const GaugeChart = React.memo(({value, maxValue, displayName}) => {
             <div style={{display: 'flex', justifyContent: 'center'}}>
                 {
                     isHumidity ?
-                        <HumidityGauge humidity={value} displayName={displayName}/>
+                        <HumidityGauge humidity={parseInt(value)} displayName={displayName}/>
                         :
                         <div>
                             <Gauge
