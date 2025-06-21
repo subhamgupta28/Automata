@@ -1,105 +1,67 @@
-import React, { useEffect, useState } from "react";
-import LiquidFillGauge from "react-liquid-gauge";
-import Typography from "@mui/material/Typography";
-
-function interpolateColor(color1, color2, factor) {
-    const hex = (color) => color.replace(/^#/, "");
-    const hexToRgb = (hex) => ({
-        r: parseInt(hex.substring(0, 2), 16),
-        g: parseInt(hex.substring(2, 4), 16),
-        b: parseInt(hex.substring(4, 6), 16)
-    });
-    const rgbToHex = ({ r, g, b }) =>
-        "#" +
-        [r, g, b]
-            .map((x) => x.toString(16).padStart(2, "0"))
-            .join("");
-
-    const c1 = hexToRgb(hex(color1));
-    const c2 = hexToRgb(hex(color2));
-
-    const result = {
-        r: Math.round(c1.r + factor * (c2.r - c1.r)),
-        g: Math.round(c1.g + factor * (c2.g - c1.g)),
-        b: Math.round(c1.b + factor * (c2.b - c1.b))
-    };
-
-    return rgbToHex(result);
-}
-
-export default function HumidityGauge({ humidity = 50, size = 140, displayName }) {
-    const lowColor = "#fc2626"; // blue
-    const highColor = "#F4FF57FF"; // red
+import * as React from 'react';
+import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
+import { Box, Typography } from '@mui/material';
+import OpacityIcon from '@mui/icons-material/Opacity'; // Droplet
+import WhatshotIcon from '@mui/icons-material/Whatshot'; // Dry/heat-like symbol
 
 
-    const fillColor = interpolateColor(lowColor, highColor, humidity / 100);
-    const circleColor = interpolateColor(highColor, lowColor, 1 - humidity / 100);
-
-    const gradientStops = [
-        {
-            key: "0%",
-            stopColor: fillColor,
-            stopOpacity: 1,
-            offset: "0%"
-        },
-        {
-            key: "100%",
-            stopColor: circleColor,
-            stopOpacity: 1,
-            offset: "100%"
-        }
-    ];
-
+export default function DashedHumidityGauge({ humidity = 50 }) {
+    const Icon = humidity < 40 ? WhatshotIcon : OpacityIcon; // dry vs wet
     return (
-        <div style={{ textAlign: "center" }}>
-
-            <LiquidFillGauge
-                width={size}
-                height={size}
+        <Box sx={{ position: 'relative', mx: 'auto' }}>
+            <Typography variant="subtitle1" sx={{ mb: 1, color: '#fff' }}>
+                Humidity
+            </Typography>
+            <Gauge
+                height={145}
+                cornerRadius="50%"
                 value={humidity}
-                percent="%"
-                textSize={1}
-                textOffsetX={0}
-                textOffsetY={0}
-                textRenderer={({ value, textSize, width, height, percent }) => {
-                    const radius = Math.min(height / 2, width / 2);
-                    const textPixels = (textSize * radius) / 2;
-                    const valueStyle = { fontSize: textPixels };
-                    const percentStyle = { fontSize: textPixels * 0.6 };
-                    return (
-                        <tspan>
-                            <tspan className="value" style={valueStyle}>
-                                {Math.round(value)}
-                            </tspan>
-                            <tspan style={percentStyle}>{percent}</tspan>
-                        </tspan>
-                    );
-                }}
-                riseAnimation
-                waveAnimation
-                waveFrequency={2}
-                waveAmplitude={1}
-                gradient
-                gradientStops={gradientStops}
-                circleStyle={{
-                    fill: circleColor,
-                    transition: "fill 0.3s ease"
-                }}
-                waveStyle={{
-                    transition: "fill 0.3s ease"
-                }}
-                textStyle={{
-                    fill: "#fff",
-                    fontFamily: "Arial"
-                }}
-                waveTextStyle={{
-                    fill: "#fff",
-                    fontFamily: "Arial"
+                valueMax={100}
+                startAngle={0}
+                endAngle={360}
+                innerRadius="75%"
+                outerRadius="100%"
+                sx={{
+
+                    [`& .${gaugeClasses.valueText}`]: {
+                        fill: '#fff',
+                        fontSize: 24,
+                        fontWeight: 'bold',
+                        display: 'none' // hide built-in % text
+                    }
                 }}
             />
-            <Typography textAlign='center'>
-                {displayName}
+            <Box
+                sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 36
+                }}
+            >
+                <Icon fontSize="inherit" />
+            </Box>
+            {/* Show humidity text below icon */}
+            <Typography
+                variant="caption"
+                sx={{
+                    position: 'absolute',
+                    top: '64%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    color: '#fff',
+                    fontSize: 16,
+                    fontWeight: 'bold',
+                }}
+            >
+                {Math.round(humidity)}%
             </Typography>
-        </div>
+
+        </Box>
     );
 }
