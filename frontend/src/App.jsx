@@ -53,7 +53,7 @@ function App() {
                     <AuthProvider>
                     <main className={getBreathingClass(alertLevel)}
                           style={{
-                              background: "linear-gradient(135deg, rgb(255 224 40 / 10%), rgb(169 104 241 / 10%), rgb(90 200 250 / 10%))",
+                              // background: "linear-gradient(135deg, rgb(211 244 122 / 15%), rgb(255 255 255 / 20%), rgb(211 244 122 / 15%))",
 
                     }}
                     >

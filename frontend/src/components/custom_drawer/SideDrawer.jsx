@@ -194,7 +194,7 @@ export default function SideDrawer() {
                             backgroundColor: 'rgba(255, 255, 255, 10%)',
                             backdropFilter: 'blur(7px)',
                             // background: "linear-gradient(135deg, rgb(255 224 43 / 10%), rgb(169 104 241 / 10%), rgb(90 200 250 / 10%))",
-                            boxShadow: "0 0 30px rgb(255 224 43 / 10%)",
+                            // boxShadow: "0 0 30px rgb(211 244 122 / 40%)",
                             // height: '96dvh',
                             // position:'absolute',
                             // zIndex:'1',

@@ -31,6 +31,7 @@ import {Presets} from "../charts/Presets.jsx";
 import CustomBarChart from "../charts/CustomBarChart.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import CustomLineChart from "../charts/CustomLineChart.jsx";
+import CustomRadarChart from "../charts/CustomRadarChart.jsx";
 
 
 const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
@@ -227,11 +228,11 @@ const useCardGlowEffect = (cardRef) => {
     }, [cardRef]);
 };
 
-export const Device = React.memo(({ id, data, isConnectable }) => {
+export const Device = React.memo(({id, data, isConnectable}) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [actionAck, setActionAck] = useState({});
     const [liveData, setLiveData] = useState(data.live);
-    const { messages } = useDeviceLiveData();
+    const {messages} = useDeviceLiveData();
     const cardRef = useRef(null);
     useCardGlowEffect(cardRef);
 
@@ -274,6 +275,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
         presetButtons,
         mainData,
         actionOutButtons,
+        radarData
     } = useMemo(() => {
         const grouped = {
             gaugeData: [],
@@ -283,6 +285,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
             presetButtons: [],
             mainData: [],
             actionOutButtons: [],
+            radarData: [],
         };
 
         for (const attr of attributes) {
@@ -293,6 +296,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
             else if (attr.type.startsWith('ACTION|PRESET')) grouped.presetButtons.push(attr);
             else if (attr.type === 'DATA|MAIN') grouped.mainData.push(attr);
             else if (attr.type === 'ACTION|OUT') grouped.actionOutButtons.push(attr);
+            else if (attr.type === 'DATA|RADAR') grouped.radarData.push(attr);
         }
 
         return grouped;
@@ -302,7 +306,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
 
     return (
         <div className="card-glow-container text-updater-node" ref={cardRef} key={deviceId}>
-            <div className="card-glow" />
+            <div className="card-glow"/>
             <div style={{
                 borderRadius: '12px',
                 backgroundColor: 'transparent',
@@ -315,14 +319,14 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                     // marginRight: '2px',
                     // padding: '4px',
                     // borderColor: '#797878',
-                    borderWidth:'0',
+                    borderWidth: '0',
                     background: 'transparent',
                     backgroundColor: 'rgb(255 255 255 / 10%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
                     <Card elevation={1}
-                          style={{ padding:'2px', width: '100%', margin: '0px', borderRadius: '12px 12px 0px 0px'}}>
+                          style={{padding: '2px', width: '100%', margin: '0px', borderRadius: '12px 12px 0px 0px'}}>
                         <Typography
                             style={{
                                 display: 'flex',
@@ -334,8 +338,8 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                             }}
                         >
                             {name}
-                            <IconButton onClick={handleOpenModal} style={{ marginLeft: '8px' }}>
-                                <SettingsIcon />
+                            <IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}}>
+                                <SettingsIcon/>
                             </IconButton>
                         </Typography>
                     </Card>
@@ -355,13 +359,17 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                         )}
 
                         {mapData.length > 0 && liveData && (
-                            <MapView lat={liveData.LAT} lng={liveData.LONG} h="280px" w="210px" />
+                            <MapView lat={liveData.LAT} lng={liveData.LONG} h="280px" w="210px"/>
                         )}
 
                         {gaugeData.map((g) => (
-                            <GaugeChart key={g.key} value={liveData?.[g.key]} maxValue={g.extras?.max} displayName={g.displayName} />
+                            <GaugeChart key={g.key} value={liveData?.[g.key]} maxValue={g.extras?.max}
+                                        displayName={g.displayName}/>
                         ))}
 
+                        {radarData.length>0 &&
+                            <CustomRadarChart liveData={liveData} radarData={radarData}/>
+                        }
                         {sliderData.map((s) => (
                             <CustomSlider
                                 key={s.key}
@@ -393,10 +401,12 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                             {mainData.map((m) => (
                                 <Card
                                     key={m.id}
-                                    elevation={1}
+                                    elevation={0}
                                     style={{
                                         borderRadius: '8px',
                                         padding: '6px',
+                                        backgroundColor: 'rgb(0 0 0 / 12%)',
+                                        backdropFilter: 'blur(7px)',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: 'space-between',
@@ -410,7 +420,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                                 </Card>
                             ))}
                             {switchButtons.length > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                                <div style={{display: 'flex', justifyContent: 'space-around'}}>
                                     {switchButtons.map((s) => (
                                         <SwitchButton
                                             key={s.key}
@@ -426,15 +436,14 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                         </div>
 
 
-
                         {actionOutButtons.length > 0 && (
                             <div style={{
-                                    width: '100%',
-                                    marginTop: '12px',
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignItems: 'center'
-                                }}
+                                width: '100%',
+                                marginTop: '12px',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center'
+                            }}
                             >
                                 {actionOutButtons.map((a) => (
                                     <Button key={a.id} onClick={() => handleAction(a)}>
@@ -466,7 +475,7 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
                     right: -3,
                     width: '6px',
                     height: '30px',
-                    borderColor:connectionColor,
+                    borderColor: connectionColor,
                     borderRadius: '0px 8px 8px 0px',
                     background: connectionColor,
                 }}
@@ -475,7 +484,6 @@ export const Device = React.memo(({ id, data, isConnectable }) => {
         </div>
     );
 });
-
 
 
 export function MainNode({data, isConnectable}) {
@@ -519,7 +527,7 @@ export function MainNode({data, isConnectable}) {
                     // borderColor:'rgb(255 155 100 / 8%)',
                     // maxWidth: '95%',
                     // borderColor: '#797878',
-                    borderWidth:'0',
+                    borderWidth: '0',
                     borderRadius: '12px',
                     background: 'transparent',
                     backgroundColor: 'rgb(255 255 255 / 8%)',
@@ -554,8 +562,8 @@ export function MainNode({data, isConnectable}) {
                                 background: '#fce02b',
                                 width: '6px',
                                 height: '35px',
-                                borderColor:'#fce02b',
-                                left:-4,
+                                borderColor: '#fce02b',
+                                left: -4,
                                 borderRadius: '8px 0px 0px 8px',
                             }}
                             isConnectable={isConnectable}

@@ -4,12 +4,15 @@ import { Grid, Paper } from '@mui/material';
 import AccessAlarms from "@mui/icons-material/AccessAlarms";
 import CottageOutlinedIcon from "@mui/icons-material/CottageOutlined";
 import {axisClasses} from "@mui/x-charts/ChartsAxis";
+import CustomRadarChart from "../charts/CustomRadarChart.jsx";
+import HumidityGauge from "../charts/HumidityGauge.jsx";
 
 
 const Exp = () => {
     return (
         <div>
-            <CustomGrid/>
+            <CustomRadarChart/>
+            <HumidityGauge humidity={80}/>
         </div>
     );
 };

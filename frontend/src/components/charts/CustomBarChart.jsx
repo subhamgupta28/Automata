@@ -5,6 +5,7 @@ import {BarChart, lineElementClasses} from "@mui/x-charts";
 
 export default function CustomBarChart ({chartData}){
 
+    console.log("chartdata",chartData)
     const valueFormatter = (value) => {
         return `${value} ${chartData.unit}`;
     };
@@ -47,7 +48,7 @@ export default function CustomBarChart ({chartData}){
                     x2="0%"
                     y2="100%"
                 >
-                    <stop offset="0%" stopColor="#fce02b" stopOpacity="0.8"/>
+                    <stop offset="0%" stopColor="rgb(244,255,87)" stopOpacity="0.8"/>
                     <stop offset="100%" stopColor="#ffffff" stopOpacity="0.1"/>
                 </linearGradient>
             </defs>

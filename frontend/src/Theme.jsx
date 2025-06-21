@@ -4,10 +4,10 @@ export const darkTheme = createTheme({
     palette: {
         mode: 'dark',
         primary: {
-            main: '#fce02b', // Primary yellow accent
+            main: 'rgb(244,255,87)', // Primary yellow accent
         },
         secondary: {
-            main: '#962ee5', // Secondary blue for highlights
+            main: 'rgb(145, 127, 248)', // Secondary blue for highlights
         },
         background: {
             default: '#101010', // Dark background for the main canvas
@@ -24,7 +24,7 @@ export const darkTheme = createTheme({
         h1: {
             fontSize: '2.5rem',
             fontWeight: 500,
-            color: '#FCEE09',
+            color: 'rgb(244,255,87)',
         },
         h2: {
             fontSize: '2rem',

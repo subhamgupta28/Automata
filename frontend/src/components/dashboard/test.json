@@ -1,0 +1,154 @@
+{
+  "label": "power",
+  "unit": "W",
+  "dataKey": "netpower",
+  "data": [
+    {
+      "_id": "18 02",
+      "count": 13,
+      "endOfDay": "18-02:38",
+      "startOfDay": "18-02:02",
+      "netpower": 6.46
+    },
+    {
+      "_id": "18 11",
+      "count": 13,
+      "endOfDay": "18-11:59",
+      "startOfDay": "18-11:23",
+      "netpower": 77.81
+    },
+    {
+      "_id": "18 12",
+      "count": 20,
+      "endOfDay": "18-12:59",
+      "startOfDay": "18-12:02",
+      "netpower": 48.15
+    },
+    {
+      "_id": "18 13",
+      "count": 20,
+      "endOfDay": "18-13:59",
+      "startOfDay": "18-13:02",
+      "netpower": 42.26
+    },
+    {
+      "_id": "18 14",
+      "count": 20,
+      "endOfDay": "18-14:59",
+      "startOfDay": "18-14:02",
+      "netpower": 50.85
+    },
+    {
+      "_id": "18 15",
+      "count": 20,
+      "endOfDay": "18-15:59",
+      "startOfDay": "18-15:02",
+      "netpower": 36.29
+    },
+    {
+      "_id": "18 16",
+      "count": 20,
+      "endOfDay": "18-16:59",
+      "startOfDay": "18-16:02",
+      "netpower": 19.29
+    },
+    {
+      "_id": "18 17",
+      "count": 20,
+      "endOfDay": "18-17:59",
+      "startOfDay": "18-17:02",
+      "netpower": 1.99
+    },
+    {
+      "_id": "18 18",
+      "count": 20,
+      "endOfDay": "18-18:59",
+      "startOfDay": "18-18:02",
+      "netpower": 0.78
+    },
+    {
+      "_id": "18 19",
+      "count": 20,
+      "endOfDay": "18-19:59",
+      "startOfDay": "18-19:02",
+      "netpower": 2.7
+    },
+    {
+      "_id": "18 20",
+      "count": 20,
+      "endOfDay": "18-20:59",
+      "startOfDay": "18-20:02",
+      "netpower": 2.56
+    },
+    {
+      "_id": "18 21",
+      "count": 20,
+      "endOfDay": "18-21:59",
+      "startOfDay": "18-21:02",
+      "netpower": 14.79
+    },
+    {
+      "_id": "18 22",
+      "count": 19,
+      "endOfDay": "18-22:57",
+      "startOfDay": "18-22:02",
+      "netpower": 6.08
+    },
+    {
+      "_id": "18 23",
+      "count": 20,
+      "endOfDay": "18-23:57",
+      "startOfDay": "18-23:00",
+      "netpower": 5.7
+    },
+    {
+      "_id": "19 00",
+      "count": 20,
+      "endOfDay": "19-00:57",
+      "startOfDay": "19-00:00",
+      "netpower": 4.32
+    },
+    {
+      "_id": "19 01",
+      "count": 20,
+      "endOfDay": "19-01:57",
+      "startOfDay": "19-01:00",
+      "netpower": 4.54
+    },
+    {
+      "_id": "19 02",
+      "count": 14,
+      "endOfDay": "19-02:40",
+      "startOfDay": "19-02:00",
+      "netpower": 3.65
+    }
+  ],
+  "deviceId": "6755d5ec3667d03a2c053eff",
+  "period": "day",
+  "message": null,
+  "timestamps": [
+    "18-02:02",
+    "18-11:23",
+    "18-12:02",
+    "18-13:02",
+    "18-14:02",
+    "18-15:02",
+    "18-16:02",
+    "18-17:02",
+    "18-18:02",
+    "18-19:02",
+    "18-20:02",
+    "18-21:02",
+    "18-22:02",
+    "18-23:00",
+    "19-00:00",
+    "19-01:00",
+    "19-02:00"
+  ],
+  "attributes": [
+    "power",
+    "totalEnergy",
+    "percent",
+    "capacity"
+  ]
+}
