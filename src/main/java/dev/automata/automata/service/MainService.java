@@ -1,9 +1,6 @@
 package dev.automata.automata.service;
 
-import dev.automata.automata.dto.DataDto;
-import dev.automata.automata.dto.RegisterDevice;
-import dev.automata.automata.dto.RootDto;
-import dev.automata.automata.dto.ValueDto;
+import dev.automata.automata.dto.*;
 import dev.automata.automata.model.*;
 import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -62,7 +59,8 @@ public class MainService {
     }
 
 
-    public Device registerDevice(RegisterDevice registerDevice) {
+    public DeviceDto registerDevice(RegisterDevice registerDevice) {
+        DeviceMapper deviceMapper = new DeviceMapper();
         var timestamp = System.currentTimeMillis();
 
         System.err.println(registerDevice);
@@ -77,6 +75,8 @@ public class MainService {
                 .accessUrl(registerDevice.getAccessUrl())
                 .reboot(registerDevice.getReboot())
                 .attributes(registerDevice.getAttributes())
+//                .lastOnline(ZonedDateTime.now())
+                .lastRegistered(new Date())
                 .status(registerDevice.getStatus()).build();
 
 
@@ -101,8 +101,8 @@ public class MainService {
             var atr = attributeRepository.saveAll(attributes);
             device.setAttributes(atr);
             dev = deviceRepository.save(device);
-            System.err.println("Already registered device: " + device);
-            return dev;
+            System.err.println("Already registered device: " + deviceMapper.apply(device));
+            return deviceMapper.apply(device);
         }
 
 
@@ -121,7 +121,7 @@ public class MainService {
                     .build();
 
             deviceDashboardRepository.save(dash);
-        }else
+        } else
             System.err.println("Device is not in dashboard" + device.getId());
 
 
@@ -134,7 +134,7 @@ public class MainService {
 
         deviceRepository.save(device);
 
-        return savedDevice;
+        return deviceMapper.apply(device);
     }
 
     public void saveAttributes(List<Attribute> attributes) {
@@ -303,6 +303,8 @@ public class MainService {
             return new HashMap<>();
         }
         device.setStatus(status);
+        if (status == Status.OFFLINE)
+            device.setLastOnline(new Date());
         System.err.println("Set status to " + status + " for device " + deviceId);
         var lastData = dataRepository.getFirstByDeviceIdOrderByTimestampDesc(deviceId);
         device = deviceRepository.save(device);
@@ -458,5 +460,21 @@ public class MainService {
     public String getShutdownStatus() {
 
         return "N";
+    }
+
+    public Object updateAttribute(String deviceId, String attribute, String isShow) {
+        var dashboardOptional = deviceDashboardRepository.findByDeviceId(deviceId);
+        var cond = Boolean.parseBoolean(isShow);
+        if (dashboardOptional.isPresent()){
+            var dashboard = dashboardOptional.get();
+            switch (attribute){
+                case "analytics" -> dashboard.setAnalytics(cond);
+                case "showCharts" -> dashboard.setShowCharts(cond);
+                case "showInDashboard" -> dashboard.setShowInDashboard(cond);
+            }
+            deviceDashboardRepository.save(dashboard);
+            return "updated";
+        }
+        return "null";
     }
 }

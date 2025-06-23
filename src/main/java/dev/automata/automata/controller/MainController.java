@@ -147,7 +147,7 @@ public class MainController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Device> registerDevice(
+    public ResponseEntity<?> registerDevice(
             @RequestBody RegisterDevice registerDevice
     ) {
         var device = mainService.registerDevice(registerDevice);
@@ -189,6 +189,10 @@ public class MainController {
         return ResponseEntity.ok("Success");
     }
 
+    @GetMapping("/updateAttribute/{deviceId}/{attribute}/{isShow}")
+    public ResponseEntity<?> updateAttribute(@PathVariable String deviceId, @PathVariable String attribute, @PathVariable String isShow){
+        return ResponseEntity.ok(mainService.updateAttribute(deviceId, attribute, isShow));
+    }
 
     // for saving data from devices
     @PostMapping("sendData")

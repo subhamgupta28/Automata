@@ -32,6 +32,10 @@ import CustomBarChart from "../charts/CustomBarChart.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import CustomLineChart from "../charts/CustomLineChart.jsx";
 import CustomRadarChart from "../charts/CustomRadarChart.jsx";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+
+dayjs.extend(relativeTime);
 
 
 const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
@@ -112,6 +116,16 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                             <tr>
                                 <td>Update Interval</td>
                                 <td>{device.updateInterval}</td>
+                            </tr>
+                            <tr>
+                                <td>Last Online</td>
+                                <td>{dayjs(device.lastOnline).format("MMMM D, YYYY h:mm A")}</td>
+                                <td>({dayjs(device.lastOnline).fromNow()})</td>
+                            </tr>
+                            <tr>
+                                <td>Registered At</td>
+                                <td>{dayjs(device.lastRegistered).format("MMMM D, YYYY h:mm A")}</td>
+                                <td>({dayjs(device.lastRegistered).fromNow()})</td>
                             </tr>
                             <tr>
                                 <td>Show Charts</td>

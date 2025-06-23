@@ -10,7 +10,7 @@ import {
     Snackbar,
     CircularProgress, Backdrop
 } from '@mui/material';
-import {getDevices, updateShowInDashboard} from "../services/apis.jsx";
+import {getDevices, updateAttribute, updateShowInDashboard} from "../services/apis.jsx";
 import { styled } from '@mui/material/styles';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -61,11 +61,15 @@ export default function Devices() {
         fetchData();
     }, []);
 
-    const handleChange = (device, checked) => {
+    const handleChange = (device, attribute, checked) => {
         const fetchData = async () => {
             try {
-                const devices = await updateShowInDashboard(device.id, checked);
-
+                await updateAttribute(device.id, attribute, checked);
+                setDevicesData(prevData =>
+                    prevData.map(d =>
+                        d.id === device.id ? { ...d, [attribute]: checked } : d
+                    )
+                );
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
             }
@@ -87,6 +91,7 @@ export default function Devices() {
                             <StyledTableCell align="right">Status</StyledTableCell>
                             <StyledTableCell align="right">Show In Dashboard</StyledTableCell>
                             <StyledTableCell align="right">Show Charts</StyledTableCell>
+                            <StyledTableCell align="right">Analytics</StyledTableCell>
                             <StyledTableCell align="right">Access URL:</StyledTableCell>
                             <StyledTableCell align="right">Host</StyledTableCell>
                             <StyledTableCell align="right">Update Interval(Min.)</StyledTableCell>
@@ -113,10 +118,15 @@ export default function Devices() {
 
                                 <StyledTableCell align="right">
                                     <Switch defaultChecked size="small" checked={device.showInDashboard}
-                                            onChange={(e)=>handleChange(device, e.target.checked)}/>
+                                            onChange={(e)=>handleChange(device, "showInDashboard", e.target.checked)}/>
                                 </StyledTableCell>
                                 <StyledTableCell align="right">
-                                    <Switch defaultChecked size="small" checked={device.showCharts}/>
+                                    <Switch defaultChecked size="small" checked={device.showCharts}
+                                            onChange={(e)=>handleChange(device, "showCharts", e.target.checked)}/>
+                                </StyledTableCell>
+                                <StyledTableCell align="right">
+                                    <Switch defaultChecked size="small" checked={device.analytics}
+                                            onChange={(e)=>handleChange(device, "analytics", e.target.checked)}/>
                                 </StyledTableCell>
                                 <StyledTableCell align="right">
                                     <a href={device.accessUrl} target="_blank"

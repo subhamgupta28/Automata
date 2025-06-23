@@ -2,12 +2,9 @@ import {useEffect, useState} from "react";
 import api from "./CustomAxios.jsx";
 
 
-
-
 // const BROWSER_URL = window.location.href;
 // const BASE_URL = apiUrl+'api/v1/';
 // const BASE_URL = 'http://localhost:8080/api/v1/';
-
 
 
 export const getActions = async () => {
@@ -15,17 +12,28 @@ export const getActions = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
+        },
+    });
+    return response.data;
+}
+
+export const updateAttribute = async (deviceId, attribute, isShow) => {
+    const response = await api.get("main/updateAttribute/" + deviceId + "/" + attribute + "/" + isShow, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+
         },
     });
     return response.data;
 }
 
 export const getWiFiDetails = async () => {
-    const response = await api.post("main/wifiList", {},{
+    const response = await api.post("main/wifiList", {}, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
-            
+
             // Add any other headers if needed, e.g., Authorization
         },
     });
@@ -37,7 +45,7 @@ export const updatePosition = async (deviceId, x, y) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
@@ -47,7 +55,7 @@ export const getDashboardDevices = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
@@ -57,17 +65,17 @@ export const getDevices = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
 }
 export const getDetailChartData = async (deviceId, range = 'day') => {
-    const response = await api.get("main/chartDetail/" + deviceId+ "/" + range, {
+    const response = await api.get("main/chartDetail/" + deviceId + "/" + range, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
@@ -135,7 +143,7 @@ export const refreshDeviceById = async (deviceId) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
@@ -145,17 +153,17 @@ export const sendAction = async (deviceId, payload, deviceType) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
 }
 export const saveWiFiList = async (payload) => {
-    const response = await api.post("main/saveWiFiList" , payload, {
+    const response = await api.post("main/saveWiFiList", payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
@@ -165,7 +173,7 @@ export const rebootAllDevices = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
@@ -175,7 +183,7 @@ export const notificationAction = async (action, payload) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
@@ -186,7 +194,7 @@ export const getAutomationDetail = async (id) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
@@ -196,7 +204,7 @@ export const saveAutomationDetail = async (payload) => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
@@ -206,7 +214,7 @@ export const getMainNodePos = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
@@ -225,7 +233,7 @@ export const getServerTime = async () => {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
-            
+
         },
     });
     return response.data;
