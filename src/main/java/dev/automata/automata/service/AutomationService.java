@@ -231,7 +231,7 @@ public class AutomationService {
         }
     }
 
-    @Scheduled(fixedRate = 30000)
+    @Scheduled(fixedRate = 20000)
     private void triggerPeriodicAutomations() {
         automationRepository.findByIsEnabledTrue().forEach(a ->
                 checkAndExecuteSingleAutomation(a, mainService.getLastData(a.getTrigger().getDeviceId())));
@@ -316,7 +316,7 @@ public class AutomationService {
             var map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
             messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
             try {
-                var res = restTemplate.getForObject(device.getHost() + ".local/restart", String.class);
+                var res = restTemplate.getForObject("http://"+device.getHost() + ".local/restart", String.class);
                 System.err.println(res);
             } catch (Exception e) {
                 System.err.println(e.getMessage());

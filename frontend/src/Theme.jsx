@@ -7,7 +7,7 @@ export const darkTheme = createTheme({
             main: 'rgb(244,255,87)', // Primary yellow accent
         },
         secondary: {
-            main: 'rgb(145, 127, 248)', // Secondary blue for highlights
+            main: 'rgb(120,126,45)', // Secondary blue for highlights
         },
         background: {
             default: '#101010', // Dark background for the main canvas
@@ -37,17 +37,17 @@ export const darkTheme = createTheme({
         },
     },
     components: {
-        // MuiButton: {
-        //     styleOverrides: {
-        //         root: {
-        //             backgroundColor: '#fce02b', // Primary color for buttons
-        //             color: '#121212', // Text color on buttons
-        //             '&:hover': {
-        //                 backgroundColor: '#e5c21b', // Darker yellow on hover
-        //             },
-        //         },
-        //     },
-        // },
+        MuiButton: {
+            styleOverrides: {
+                root: {
+                    // backgroundColor: '#fce02b', // Primary color for buttons
+                    // color: '#121212', // Text color on buttons
+                    '&:hover': {
+                        borderColor: '#e5c21b', // Darker yellow on hover
+                    },
+                },
+            },
+        },
     },
 });
 

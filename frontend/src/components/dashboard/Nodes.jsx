@@ -34,6 +34,8 @@ import CustomLineChart from "../charts/CustomLineChart.jsx";
 import CustomRadarChart from "../charts/CustomRadarChart.jsx";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import SmallLineChart from "../charts/SmallLineChart.jsx";
+import SmallBarChart from "../charts/SmallBarChart.jsx";
 
 dayjs.extend(relativeTime);
 
@@ -365,6 +367,8 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                             paddingBottom: '16px',
                             justifyContent: 'center'
                         }}>
+
+                        <SmallBarChart messages={liveData} deviceId={deviceId} />
                         {actionAck?.command === 'reboot' && (
                             <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
                                 <Typography>Rebooting...</Typography>

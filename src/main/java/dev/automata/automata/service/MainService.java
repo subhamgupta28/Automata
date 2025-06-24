@@ -473,7 +473,22 @@ public class MainService {
                 case "showInDashboard" -> dashboard.setShowInDashboard(cond);
             }
             deviceDashboardRepository.save(dashboard);
-            return "updated";
+        }
+        else {
+            var dashboard = Dashboard.builder()
+                    .showInDashboard(cond)
+                    .deviceId(deviceId)
+                    .x(10)
+                    .y(20)
+                    .showCharts(false)
+                    .build();
+            switch (attribute){
+                case "analytics" -> dashboard.setAnalytics(cond);
+                case "showCharts" -> dashboard.setShowCharts(cond);
+                case "showInDashboard" -> dashboard.setShowInDashboard(cond);
+            }
+            deviceDashboardRepository.save(dashboard);
+            notificationService.sendNotification("New device set", "success");
         }
         return "null";
     }

@@ -119,7 +119,7 @@ export default function ChartDetail({deviceId, name}) {
                 </Box>
 
                 <LineChart
-                    height={400}
+                    height={300}
                     series={series}
                     yAxis={[{position: 'none'}]}
                     xAxis={[{scaleType: "band", data: xLabels}]}
