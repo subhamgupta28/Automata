@@ -368,7 +368,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                             justifyContent: 'center'
                         }}>
 
-                        <SmallBarChart messages={liveData} deviceId={deviceId} />
+                        {/*<SmallBarChart messages={liveData} deviceId={deviceId} attributes={mainData.map(t=> t.key)}/>*/}
                         {actionAck?.command === 'reboot' && (
                             <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
                                 <Typography>Rebooting...</Typography>

@@ -12,23 +12,17 @@ const gradientColors = [
     ['#7f7f7f', '#ffffff'],
     ['#17becf', '#ffffff'],
 ];
-export default function SmallBarChart({ messages, deviceId }) {
+export default function SmallBarChart({ messages, deviceId, attributes }) {
     const [data, setData] = useState([]);
-    const [attributes, setAttributes] = useState([]);
+    // const [attributes, setAttributes] = useState([]);
     const xLabels = data.map((item) => item.dateDay);
     const dataRef = useRef([]);
     console.log(messages)
 
-    const series = attributes.map((attr, index) => ({
-        label: attr.charAt(0).toUpperCase() + attr.slice(1),
-        data: data.map((item) => item[attr]),
-        showMark: false,
-        area: true,
-        color: `url(#Gradient${index})`,
-    }));
+
 
     useEffect(() => {
-            if (messages.device_id === deviceId) {
+            if (messages && messages.device_id === deviceId) {
                 const now = new Date();
                 const dd = String(now.getDate()).padStart(2, '0');
                 const hh = String(now.getHours()).padStart(2, '0');
@@ -49,12 +43,19 @@ export default function SmallBarChart({ messages, deviceId }) {
             }
     }, [messages, deviceId]);
 
+    const series = attributes.map((attr, index) => ({
+        label: attr.charAt(0).toUpperCase() + attr.slice(1),
+        data: data.map((item) => item[attr]),
+        showMark: false,
+        area: true,
+        color: `url(#Gradient${index})`,
+    }));
     return (
         <LineChart
             height={160}
             series={series}
             yAxis={[{position: 'none'}]}
-            xAxis={[{scaleType: "band", data: xLabels, position: 'none' }]}
+            xAxis={[{scaleType: "point", data: xLabels, position: 'none' }]}
             sx={{
                 [`& .${lineElementClasses.root}`]: {
                     strokeWidth: 2,
