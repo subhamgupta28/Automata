@@ -50,7 +50,7 @@ public class SecurityConfiguration {
             "/vite.svg",
             "/marker-icon-2x.png",
             "/marker-shadow.png",
-            "/**", // for root
+            "/", // for root
             "/ws/**",
             "/app/**",
             "/topic/**",

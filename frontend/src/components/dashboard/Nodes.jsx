@@ -337,11 +337,11 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     // borderColor: '#797878',
                     borderWidth: '0',
                     background: 'transparent',
-                    backgroundColor: 'rgb(255 255 255 / 10%)',
+                    backgroundColor: 'rgb(255 255 255 / 8%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
-                    <Card elevation={1}
+                    <Card elevation={10}
                           style={{padding: '2px', width: '100%', margin: '0px', borderRadius: '12px 12px 0px 0px'}}>
                         <Typography
                             style={{
@@ -369,7 +369,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                         }}>
 
                         {/*<SmallBarChart messages={liveData} deviceId={deviceId} attributes={mainData.map(t=> t.key)}/>*/}
-                        {deviceType==="sensor" && <CustomRadarChart name={deviceId} messages={liveData} deviceId={deviceId} attributes={mainData.map(t=> t.key)}/>}
+                        {/*{deviceType==="sensor" && <CustomRadarChart name={deviceId} messages={liveData} deviceId={deviceId} attributes={mainData.map(t=> t.key)}/>}*/}
                         {actionAck?.command === 'reboot' && (
                             <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
                                 <Typography>Rebooting...</Typography>
@@ -424,22 +424,32 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     style={{
                                         borderRadius: '8px',
                                         padding: '6px',
-                                        backgroundColor: 'rgb(0 0 0 / 12%)',
+                                        backgroundColor: 'transparent',
                                         backdropFilter: 'blur(7px)',
+                                        borderColor: '#606060',
+                                        borderWidth: '2px',
+                                        borderStyle: 'dashed',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: 'space-between',
                                         alignItems: 'center'
                                     }}
                                 >
-                                    <Typography variant="subtitle2" color="primary" fontWeight="bold">
+                                    <Typography variant="subtitle" color="primary" fontWeight="bold">
                                         {liveData?.[m.key]} {m.units}
                                     </Typography>
                                     <Typography color="#b0b0b0" variant="subtitle2">{m.displayName}</Typography>
                                 </Card>
                             ))}
                             {switchButtons.length > 0 && (
-                                <div style={{display: 'flex', justifyContent: 'space-around'}}>
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-around',
+                                    borderColor: '#606060',
+                                    borderWidth: '2px',
+                                    borderStyle: 'dashed',
+                                    borderRadius: '8px',
+                                }}>
                                     {switchButtons.map((s) => (
                                         <SwitchButton
                                             key={s.key}

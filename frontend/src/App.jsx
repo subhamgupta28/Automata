@@ -53,6 +53,7 @@ function App() {
                     <AuthProvider>
                     <main className={getBreathingClass(alertLevel)}
                           style={{
+                              // background: "radial-gradient(circle at 50% 50%, rgba(0, 128, 255, 0.6),rgba(10, 10, 30, 0.9) 30%,#000000 100%)"
                               // background: "linear-gradient(135deg, rgb(211 244 122 / 15%), rgb(255 255 255 / 20%), rgb(211 244 122 / 15%))",
 
                     }}

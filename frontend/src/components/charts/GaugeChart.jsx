@@ -1,7 +1,6 @@
 import {Gauge, gaugeClasses} from '@mui/x-charts/Gauge';
 import Typography from "@mui/material/Typography";
 import React from "react";
-import HumidityGauge from "./HumidityGauge.jsx";
 import WhatshotIcon from "@mui/icons-material/Whatshot";
 import OpacityIcon from "@mui/icons-material/Opacity";
 import {Box} from "@mui/material";
@@ -11,7 +10,14 @@ export const GaugeChart = React.memo(({value, maxValue, displayName}) => {
     const Icon = value < 40 ? WhatshotIcon : OpacityIcon; // dry vs wet
     return (
         <>
-            <Box sx={{position: 'relative', mx: 'auto'}}>
+            <Box sx={{
+                position: 'relative',
+                mx: 'auto',
+                borderRadius: '10px',
+                borderColor: '#606060',
+                borderWidth: '2px',
+                borderStyle: 'dashed',
+            }}>
                 <Gauge
                     value={parseInt(value)}
                     startAngle={-130}
@@ -28,7 +34,7 @@ export const GaugeChart = React.memo(({value, maxValue, displayName}) => {
                             transform: 'translate(0px, 0px)',
                         },
                         [`& .${gaugeClasses.valueArc}`]: {
-                            fill: '#b9b9b9',
+                            fill: '#ffffff',
                         },
                         [`& .${gaugeClasses.valueText}`]: {
                             fill: '#fff',
