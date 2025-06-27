@@ -3,10 +3,20 @@ import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
 import { Box, Typography } from '@mui/material';
 import OpacityIcon from '@mui/icons-material/Opacity'; // Droplet
 import WhatshotIcon from '@mui/icons-material/Whatshot'; // Dry/heat-like symbol
-
+import GrainIcon from '@mui/icons-material/Grain';         // High humidity (mist/dense)
+import WbSunnyIcon from '@mui/icons-material/WbSunny';
 
 export default function DashedHumidityGauge({ humidity = 50 }) {
-    const Icon = humidity < 40 ? WhatshotIcon : OpacityIcon; // dry vs wet
+    let Icon;
+    if (humidity < 30) {
+        Icon = WhatshotIcon;
+    } else if (humidity < 50) {
+        Icon = OpacityIcon;
+    } else if (humidity < 70) {
+        Icon = WbSunnyIcon;
+    } else {
+        Icon = GrainIcon; // Replace with WbSunnyIcon if preferred
+    }
     return (
         <Box sx={{ position: 'relative', mx: 'auto' }}>
             <Typography variant="subtitle1" sx={{ mb: 1, color: '#fff' }}>

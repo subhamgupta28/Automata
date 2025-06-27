@@ -3,6 +3,11 @@ import {Switch} from "@mui/material";
 import {sendAction} from "../../services/apis.jsx";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import React from "react";
+import IconButton from "@mui/material/IconButton";
+import BrightnessHighIcon from "@mui/icons-material/BrightnessHigh";
+import BrightnessLowIcon from "@mui/icons-material/BrightnessLow";
+import BoltIcon from "@mui/icons-material/Bolt";
+import FlashOffIcon from "@mui/icons-material/FlashOff";
 
 
 export const SwitchButton = React.memo(({value, deviceId, displayName, data, type}) => {
@@ -26,10 +31,21 @@ export const SwitchButton = React.memo(({value, deviceId, displayName, data, typ
             console.error("Action send failed", err);
         }
     };
-
+    const handleIcon = (key, value) => {
+        console.log("keyv", key, value)
+        if (key.includes("Light"))
+            return value ? <BrightnessHighIcon/> : <BrightnessLowIcon/>
+        if (key.includes("power"))
+            return value ? <BoltIcon/> : <FlashOffIcon/>
+    }
     return(
         <div style={{display:'flex', flexDirection:'column',justifyContent: 'space-between', alignItems: 'center'}}>
-            <Switch onChange={send} checked={on}/>
+            <div style={{display:'flex', flexDirection:'row',justifyContent: 'space-between', alignItems: 'center'}}>
+                <IconButton onClick={send} aria-label="delete" color={on? "primary":"secondary"}>
+                    {handleIcon(displayName, value)}
+                </IconButton>
+                <Switch onChange={send} checked={on}/>
+            </div>
             <span style={{fontSize:'small'}} >{displayName}</span>
         </div>
     )

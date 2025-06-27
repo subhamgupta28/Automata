@@ -36,6 +36,14 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import SmallLineChart from "../charts/SmallLineChart.jsx";
 import SmallBarChart from "../charts/SmallBarChart.jsx";
+import BoltIcon from '@mui/icons-material/Bolt';
+import FlashOffIcon from '@mui/icons-material/FlashOff';
+import AcUnitIcon from '@mui/icons-material/AcUnit';
+import ThermostatIcon from '@mui/icons-material/Thermostat';
+import CloudIcon from '@mui/icons-material/Cloud';
+import BrightnessLowIcon from '@mui/icons-material/BrightnessLow';
+import BrightnessHighIcon from '@mui/icons-material/BrightnessHigh';
+import TemperatureGauge from "../charts/TemperatureGauge.jsx";
 
 dayjs.extend(relativeTime);
 
@@ -368,6 +376,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                             justifyContent: 'center'
                         }}>
 
+
                         {/*<SmallBarChart messages={liveData} deviceId={deviceId} attributes={mainData.map(t=> t.key)}/>*/}
                         {/*{deviceType==="sensor" && <CustomRadarChart name={deviceId} messages={liveData} deviceId={deviceId} attributes={mainData.map(t=> t.key)}/>}*/}
                         {actionAck?.command === 'reboot' && (
@@ -386,7 +395,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                         displayName={g.displayName}/>
                         ))}
 
-                        {radarData.length>0 &&
+                        {radarData.length > 0 &&
                             <CustomRadarChart liveData={liveData} radarData={radarData}/>
                         }
                         {sliderData.map((s) => (
@@ -435,7 +444,9 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                         alignItems: 'center'
                                     }}
                                 >
-                                    <Typography variant="subtitle" color="primary" fontWeight="bold">
+
+                                    <Typography style={{display:'flex'}} variant="subtitle" color="primary" fontWeight="bold">
+                                        {m.displayName.includes("Temp") && <TemperatureGauge temp={liveData?.[m.key]}/>}
                                         {liveData?.[m.key]} {m.units}
                                     </Typography>
                                     <Typography color="#b0b0b0" variant="subtitle2">{m.displayName}</Typography>

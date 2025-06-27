@@ -4,10 +4,21 @@ import React from "react";
 import WhatshotIcon from "@mui/icons-material/Whatshot";
 import OpacityIcon from "@mui/icons-material/Opacity";
 import {Box} from "@mui/material";
+import WbSunnyIcon from "@mui/icons-material/WbSunny";
+import GrainIcon from "@mui/icons-material/Grain";
 
 export const GaugeChart = React.memo(({value, maxValue, displayName}) => {
     const isHumidity = displayName.toString().includes("Humid");
-    const Icon = value < 40 ? WhatshotIcon : OpacityIcon; // dry vs wet
+    let Icon;
+    if (value < 40) {
+        Icon = WbSunnyIcon;
+    } else if (value < 50) {
+        Icon = WhatshotIcon;
+    } else if (value < 70) {
+        Icon = OpacityIcon;
+    } else {
+        Icon = GrainIcon; // Replace with WbSunnyIcon if preferred
+    }
     return (
         <>
             <Box sx={{
