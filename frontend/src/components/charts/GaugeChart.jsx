@@ -26,7 +26,6 @@ export const GaugeChart = React.memo(({value, maxValue, displayName}) => {
                 mx: 'auto',
                 borderRadius: '10px',
                 borderColor: '#606060',
-                borderWidth: '2px',
                 borderStyle: 'dashed',
             }}>
                 <Gauge

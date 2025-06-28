@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useState, useMemo, useRef} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Background, Controls, Panel,
+    applyNodeChanges, Background, BackgroundVariant, Controls, Panel,
     ReactFlow, ReactFlowProvider,
     useEdgesState,
     useNodesState, useReactFlow
@@ -15,7 +15,6 @@ import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
 import {Backdrop, Button, CircularProgress} from "@mui/material";
-import EditIcon from '@mui/icons-material/Edit';
 import NodeInspector from "./NodeInspector.jsx";
 import {ZoomSlider} from "./ZoomSlider.jsx";
 import ContextMenu from "./ContextMenu.jsx";
@@ -118,7 +117,6 @@ const DeviceNodes = () => {
                 nodes={nodes}
                 edges={edges}
                 style={{
-                    borderRadius: '12px',
                     backgroundColor: 'transparent'
                 }}
                 edgeTypes={edgeTypes}

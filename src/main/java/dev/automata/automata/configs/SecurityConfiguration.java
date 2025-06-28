@@ -58,7 +58,8 @@ public class SecurityConfiguration {
             "/user/**",
             "/api/v1/main/register/**",
             "/api/v1/action/sendAction/**",
-            "/api/v1/utils/test/**"
+            "/api/v1/utils/test/**",
+            "/api/v1/main/healthCheck/**",
     };
 
     private final JwtAuthenticationFilter jwtAuthFilter;

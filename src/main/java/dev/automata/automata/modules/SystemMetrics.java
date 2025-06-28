@@ -10,6 +10,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -25,7 +26,7 @@ public class SystemMetrics {
     private final MainService mainService;
     private static String deviceId = "";
     private final SimpMessagingTemplate messagingTemplate;
-
+    private RestTemplate restTemplate;
     private void registerSystemMetrics() {
         var device = RegisterDevice.builder()
                 .name("System")
@@ -136,6 +137,17 @@ public class SystemMetrics {
 //            System.err.println("System Metrics Exception");
         }
         return null;
+    }
+
+    @Scheduled(fixedRate = 1000 * 60 * 5)// every 5 mins
+    private void healthCheck() {
+        try{
+            restTemplate = new RestTemplate();
+            var res = restTemplate.getForObject("http://raspberry.local:8010/api/v1/main/healthCheck", String.class);
+            System.err.println("Health Check: "+res);
+        }catch (Exception e){
+            System.err.println(e);
+        }
     }
 
 

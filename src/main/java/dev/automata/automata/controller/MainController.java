@@ -35,6 +35,11 @@ public class MainController {
     private final NotificationService notificationService;
 //    private final KafkaTemplate<String, String> kafkaTemplate;
 
+    @GetMapping("healthCheck")
+    public ResponseEntity<?> healthCheck(){
+        return ResponseEntity.ok("ok");
+    }
+
     @PostMapping("wifiList")
     public ResponseEntity<?> getWiFiList() {
         return ResponseEntity.ok(mainService.getWiFiList());

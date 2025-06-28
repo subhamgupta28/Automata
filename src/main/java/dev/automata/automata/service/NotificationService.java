@@ -5,8 +5,12 @@ import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
 import java.util.List;
@@ -18,6 +22,7 @@ public class NotificationService {
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationRepository notificationRepository;
     private final AutomationRepository automationRepository;
+    private RestTemplate restTemplate;
 //    private final AutomationService automationService;
 
     public void sendAlert(String message, String severity) {
@@ -63,5 +68,17 @@ public class NotificationService {
     public String test(String type) {
         sendAlert("Test", type);
         return "success";
+    }
+
+    public void sendNotify(String title, String message, String priority) {
+        restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_PLAIN);
+        headers.add("Title", title);
+        headers.add("Priority", priority);
+//        headers.add("Tags", "warning");
+
+        HttpEntity<String> request = new HttpEntity<>(message, headers);
+        restTemplate.postForObject("http://raspberry.local:82/automata", request, String.class);
     }
 }

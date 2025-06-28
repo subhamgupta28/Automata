@@ -59,13 +59,13 @@ public class AutomationService {
             return result;
         }
         System.err.println("Received action");
-        System.err.println("Device Type: "+deviceType);
-        System.err.println("Payload: "+payload);
+        System.err.println("Device Type: " + deviceType);
+        System.err.println("Payload: " + payload);
 
-        if ("System".equals(deviceType)){
+        if ("System".equals(deviceType)) {
             var key = payload.get("key").toString();
             var data = payload.get(key).toString();
-            if (payload.get("key").equals("alert")){
+            if (payload.get("key").equals("alert")) {
                 notificationService.sendNotification("", data);
             }
             return "success";
@@ -203,12 +203,11 @@ public class AutomationService {
             );
 
             System.err.println(action);
-            if ("System".equals(action.getName())){
-                if (action.getKey().equals("alert")){
-                    notificationService.sendAlert("Alert: "+action.getData().toUpperCase(Locale.ROOT), action.getData());
+            if ("System".equals(action.getName())) {
+                if (action.getKey().equals("alert")) {
+                    notificationService.sendAlert("Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
                 }
-            }
-            else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
+            } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
                 handleWLED(action.getDeviceId(), new HashMap<>(payload));
             } else {
                 messagingTemplate.convertAndSend("/topic/action/" + action.getDeviceId(), payload);
@@ -274,7 +273,7 @@ public class AutomationService {
 
         detail.getNodes().stream().filter(n -> n.getData().getConditionData() != null).findFirst().ifPresent(conditionNode -> {
             var c = conditionNode.getData().getConditionData();
-            automationBuilder.conditions(List.of(new Automation.Condition(c.getCondition(), c.getValueType(), c.getAbove(), c.getBelow(), c.getValue(),  c.getTime(), c.getIsExact())));
+            automationBuilder.conditions(List.of(new Automation.Condition(c.getCondition(), c.getValueType(), c.getAbove(), c.getBelow(), c.getValue(), c.getTime(), c.getIsExact())));
         });
 
         var automation = automationBuilder.build();
@@ -285,9 +284,11 @@ public class AutomationService {
         notificationService.sendNotification("Automation saved successfully", "success");
         return "success";
     }
+
     public List<Automation> getActions() {
         return automationRepository.findAll();
     }
+
     public AutomationDetail getAutomationDetail(String id) {
         return automationDetailRepository.findById(id).orElse(null);
     }
@@ -316,7 +317,7 @@ public class AutomationService {
             var map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
             messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
             try {
-                var res = restTemplate.getForObject("http://"+device.getHost() + ".local/restart", String.class);
+                var res = restTemplate.getForObject("http://" + device.getHost() + ".local/restart", String.class);
                 System.err.println(res);
             } catch (Exception e) {
                 System.err.println(e.getMessage());

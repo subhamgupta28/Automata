@@ -334,9 +334,9 @@ export const Device = React.memo(({id, data, isConnectable}) => {
             <div style={{
                 borderRadius: '12px',
                 backgroundColor: 'transparent',
-                backdropFilter: 'blur(4px)'
+                backdropFilter: 'blur(7px)'
             }}>
-                <Card elevation={10} variant="outlined" style={{
+                <Card style={{
                     // display: 'flex',
                     borderRadius: '12px',
                     // marginLeft: '2px',
@@ -369,9 +369,9 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     </Card>
                     <CardContent
                         style={{
-                            width: '240px',
+                            width: '260px',
                             alignItems: 'center',
-                            padding: '14px',
+                            padding: '10px',
                             paddingBottom: '16px',
                             justifyContent: 'center'
                         }}>
@@ -387,7 +387,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                         )}
 
                         {mapData.length > 0 && liveData && (
-                            <MapView lat={liveData.LAT} lng={liveData.LONG} h="280px" w="210px"/>
+                            <MapView lat={liveData.LAT} lng={liveData.LONG} h="280px" w="100%"/>
                         )}
 
                         {gaugeData.map((g) => (
@@ -423,7 +423,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                         <div style={{
                             gridTemplateColumns: 'repeat(2, 1fr)',
                             display: 'grid',
-                            gap: '6px',
+                            gap: '8px',
                             marginTop: '10px'
                         }}>
                             {mainData.map((m) => (
@@ -433,10 +433,10 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     style={{
                                         borderRadius: '8px',
                                         padding: '6px',
-                                        backgroundColor: 'transparent',
-                                        backdropFilter: 'blur(7px)',
+                                        // backgroundColor: 'transparent',
+                                        // backdropFilter: 'blur(7px)',
                                         borderColor: '#606060',
-                                        borderWidth: '2px',
+                                        // borderWidth: '2px',
                                         borderStyle: 'dashed',
                                         display: 'flex',
                                         flexDirection: 'column',
@@ -446,10 +446,10 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                 >
 
                                     <Typography style={{display:'flex'}} variant="subtitle" color="primary" fontWeight="bold">
-                                        {m.displayName.includes("Temp") && <TemperatureGauge temp={liveData?.[m.key]}/>}
+                                        {/*{m.displayName.includes("Temp") && <TemperatureGauge temp={liveData?.[m.key]}/>}*/}
                                         {liveData?.[m.key]} {m.units}
                                     </Typography>
-                                    <Typography color="#b0b0b0" variant="subtitle2">{m.displayName}</Typography>
+                                    <Typography variant="subtitle2">{m.displayName}</Typography>
                                 </Card>
                             ))}
                             {switchButtons.length > 0 && (
@@ -665,19 +665,14 @@ function BarChartComp({chartDevice}) {
 
     return (
         <div className="nodrag">
-            {chartDevice.name}
-            {
-                visibleAttr && visibleAttr.length < 0 ? (
-                    <CustomLineChart chartData={chartData}/>
-                    // <CustomPieChart className="nodrag" chartData={chartData}/>
-                ) : (
-                    <CustomBarChart chartData={chartData}/>
-                )
-            }
+
             {chartData.attributes.length > 1 && (
-                <div style={{display: 'flex', alignItems: 'center', flexDirection: 'column', width: '100%'}}>
-                    <Typography>Attributes</Typography>
-                    <div style={{margin: '2px'}}>
+                <div style={{display: 'flex', flexDirection: 'column', width: '100%'}}>
+                    <div style={{display: 'flex'}}>
+                        <Typography variant="body" color="primary">{chartDevice.name}</Typography>
+                        <Typography style={{marginLeft: '10px'}}>Attributes</Typography>
+                    </div>
+                    <div style={{padding: '2px', marginLeft:'30px'}}>
                         {chartData.attributes.map((name) => (
                             <Chip
                                 key={name}
@@ -692,6 +687,15 @@ function BarChartComp({chartDevice}) {
                     </div>
                 </div>
             )}
+            {
+                visibleAttr && visibleAttr.length < 0 ? (
+                    <CustomLineChart chartData={chartData}/>
+                    // <CustomPieChart className="nodrag" chartData={chartData}/>
+                ) : (
+                    <CustomBarChart chartData={chartData}/>
+                )
+            }
+
 
         </div>
     );
