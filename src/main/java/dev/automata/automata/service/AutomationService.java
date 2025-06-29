@@ -153,12 +153,13 @@ public class AutomationService {
     }
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
-        if (payload != null && isTriggered(automation, payload)) {
+        if (payload != null && isTriggered(automation, payload) && automation.getIsEnabled()) {
             automation.setIsActive(true);
             System.err.println("Executing automations: " + automation.getName());
-//            notificationService.sendNotification("Executing automations: " + automation.getName(), "automation");
+            notificationService.sendNotification("Executing automations: " + automation.getName(), "automation");
             executeActions(automation);
         } else {
+            System.err.println("Automation Condition Not Matched");
             automation.setIsActive(false);
         }
     }
