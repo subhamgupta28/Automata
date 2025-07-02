@@ -2,12 +2,13 @@ import React, {useMemo} from "react";
 import { BarChart } from '@mui/x-charts/BarChart';
 import {axisClasses} from "@mui/x-charts/ChartsAxis";
 import HumidityGauge from "../charts/HumidityGauge.jsx";
+import FloorLayout from "./FloorLayout.jsx";
 
 
 const Exp = () => {
     return (
         <div>
-            <HumidityGauge humidity={80}/>
+            <FloorLayout />
         </div>
     );
 };

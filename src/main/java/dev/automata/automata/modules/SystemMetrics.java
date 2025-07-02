@@ -139,7 +139,7 @@ public class SystemMetrics {
         return null;
     }
 
-    @Scheduled(fixedRate = 1000 * 60 * 5)// every 5 mins
+    @Scheduled(fixedRate = 1000 * 30)// every 5 mins
     private void healthCheck() {
         try{
             restTemplate = new RestTemplate();

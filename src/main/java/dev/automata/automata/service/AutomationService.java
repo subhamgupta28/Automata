@@ -159,7 +159,7 @@ public class AutomationService {
             notificationService.sendNotification("Executing automations: " + automation.getName(), "automation");
             executeActions(automation);
         } else {
-            System.err.println("Automation Condition Not Matched");
+            System.err.println("Automation Condition Not Matched "+automation.getName());
             automation.setIsActive(false);
         }
     }

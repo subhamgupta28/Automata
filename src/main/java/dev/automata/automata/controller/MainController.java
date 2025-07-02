@@ -14,6 +14,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
@@ -233,12 +234,13 @@ public class MainController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("No device found");
         }
-        return ResponseEntity.ok(getStringObjectMap(payload, null, deviceId));
+        return ResponseEntity.ok(getStringObjectMap(payload, deviceId));
     }
 
     @MessageMapping("/sendLiveData")
+    @SendTo("/topic/data")
     public Map<String, Object> sendLiveData(
-            @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
+            @Payload Map<String, Object> payload
     ) {
 //        System.err.println("got live message: " + payload);
         String deviceId = payload.get("device_id").toString();
@@ -248,7 +250,7 @@ public class MainController {
 //        var event  = new LiveEvent();
 //        event.setPayload(payload);
 //        publisher.publishEvent(event);
-        return getStringObjectMap(payload, headerAccessor, deviceId);
+        return getStringObjectMap(payload, deviceId);
     }
 
 //    @Value("${kafka.topic}")
@@ -261,13 +263,13 @@ public class MainController {
 //    }
 
 
-    private Map<String, Object> getStringObjectMap(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor, String deviceId) {
+    private Map<String, Object> getStringObjectMap(@Payload Map<String, Object> payload, String deviceId) {
         var map = new HashMap<String, Object>();
         map.put("deviceId", deviceId);
         map.put("data", payload);
 
-        messagingTemplate.convertAndSend("/topic/data", map);
+//        messagingTemplate.convertAndSend("/topic/data", map);
 //        headerAccessor.getSessionAttributes().put("deviceId", deviceId);
-        return payload;
+        return map;
     }
 }
