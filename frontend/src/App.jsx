@@ -6,6 +6,7 @@ import {BrowserRouter} from "react-router-dom";
 import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
 import {AuthProvider} from "./components/auth/AuthContext.jsx";
 import useWebSocket from "./services/useWebSocket.jsx";
+import HealthCheck from "./services/HealthCheck.jsx";
 
 function getBreathingClass(alertLevel) {
     switch (alertLevel) {
@@ -64,6 +65,7 @@ function App() {
                         <section >
                             <SideDrawer/>
                         </section>
+                        <HealthCheck/>
                     </main>
                     </AuthProvider>
                 </BrowserRouter>

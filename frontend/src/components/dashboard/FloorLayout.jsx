@@ -1,7 +1,7 @@
 import React from 'react';
 import './FloorLayout.css';
 
-export const FloorLayout = () => {
+export default function FloorLayout() {
     return (
         <div className="floorplan">
             <div className="room living-room">Living Room</div>
