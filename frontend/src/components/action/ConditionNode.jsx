@@ -26,7 +26,8 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         above: '0',
         value: '0',
         time: '2:20:05 AM',
-        isExact: false
+        isExact: false,
+        type: 'state'
     };
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
     const [triggerData, setTriggerData] = useState({})
@@ -36,7 +37,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     const [isRange, setIsRange] = useState(conditionData.isExact)
     const [conditionValue, setConditionValue] = useState(conditionData.value)
     const [time, setTime] = useState(dayjs(conditionData.time))
-    const [type, setType] = useState(null);
+    const [type, setType] = useState(conditionData.type);
     const connections = useHandleConnections({
         type: 'target',
         id: 'cond-t'
@@ -84,12 +85,13 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 valueType: 'int',
                 below: below,
                 above: above,
+                type: type,
                 value: conditionValue,
                 isExact: isRange,
                 time: time.format()
             }
         })
-    }, [condition, conditionValue, below, above, isRange, time]);
+    }, [condition, conditionValue, below, above, isRange, time, type]);
 
     const handleChange = (e, select) => {
         if (select === 'value') {

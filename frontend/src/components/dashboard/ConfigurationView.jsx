@@ -13,6 +13,7 @@ import axios from 'axios';
 import {getWiFiDetails, saveWiFiList} from "../../services/apis.jsx";
 import Paper from "@mui/material/Paper";
 import {styled} from "@mui/material/styles";
+import TrafficChart from "../charts/TrafficChart.jsx";
 
 const WiFiSettings = () => {
     const [wifiList, setWifiList] = useState([
@@ -139,12 +140,13 @@ export function ConfigurationView(){
                     <WiFiSettings/>
                 </Grid>
                 <Grid size={6}>
+                    <TrafficChart />
+                </Grid>
+                <Grid size={6}>
                     <SystemSetting/>
                 </Grid>
-                <Grid size={4}>
-                    <Item>size=4</Item>
-                </Grid>
-                <Grid size={8}>
+
+                <Grid size={6}>
                     <Item>size=8</Item>
                 </Grid>
             </Grid>

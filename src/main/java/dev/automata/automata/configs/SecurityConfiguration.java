@@ -51,6 +51,7 @@ public class SecurityConfiguration {
             "/marker-icon-2x.png",
             "/marker-shadow.png",
             "/", // for root
+            "/actuator/metrics/**", // for root
             "/ws/**",
             "/app/**",
             "/topic/**",

@@ -41,7 +41,8 @@ public class Wled {
                 boolean onOff = getTagValue(doc, "ac") > 0;
                 int bright = getTagValue(doc, "ac");
 
-                lastState.putAll(deviceState.getPayload());
+                if (deviceState != null)
+                    lastState.putAll(deviceState.getPayload());
                 lastState.put("onOff", onOff);
                 lastState.put("bright", bright);
                 lastState.put("device_id", deviceId);
@@ -54,6 +55,7 @@ public class Wled {
         }
         return lastState;
     }
+
     private int getTagValue(Document doc, String tagName) {
         NodeList nodeList = doc.getElementsByTagName(tagName);
         if (nodeList.getLength() > 0) {
@@ -61,6 +63,7 @@ public class Wled {
         }
         return -1; // Return null if the tag is not found
     }
+
     public String powerOnOff(boolean on) {
         lastState.put("onOff", on);
         var res = restTemplate.getForObject(ipAddress + "&T=2", String.class);

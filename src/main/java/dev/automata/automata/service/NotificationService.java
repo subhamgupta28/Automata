@@ -42,6 +42,7 @@ public class NotificationService {
                 .timestamp(new Date())
                 .build();
 //        var notify = notificationRepository.save(notification);
+        sendNotify("Automata", message, severity);
         messagingTemplate.convertAndSend("/topic/notification", notification);
     }
 

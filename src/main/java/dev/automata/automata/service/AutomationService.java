@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -186,11 +187,21 @@ public class AutomationService {
         }
         return false;
     }
-
     private boolean isCurrentTime(String triggerTime) {
-        ZonedDateTime now = ZonedDateTime.now();
+        // Set the zone to IST
+        ZoneId istZone = ZoneId.of("Asia/Kolkata");
+
+        // Get current time in IST
+        ZonedDateTime now = ZonedDateTime.now(istZone);
         LocalTime current = now.toLocalTime();
-        LocalTime target = ZonedDateTime.parse(triggerTime, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toLocalTime();
+
+        // Parse the trigger time assuming it's in ISO_OFFSET_DATE_TIME format
+        ZonedDateTime targetDateTime = ZonedDateTime.parse(triggerTime, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+        // Convert the parsed time to IST
+        LocalTime target = targetDateTime.withZoneSameInstant(istZone).toLocalTime();
+
+        // Check if the target time is within 2 minutes of the current IST time
         return Math.abs(ChronoUnit.MINUTES.between(target, current)) <= 2;
     }
 
