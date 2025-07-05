@@ -222,6 +222,9 @@ public class AutomationService {
                 if (action.getKey().equals("alert")) {
                     notificationService.sendAlert("Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
                 }
+                if (payload.get("key").equals("app_notify")) {
+                    notificationService.sendNotify("Automation", action.getData(), "low");
+                }
             } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
                 handleWLED(action.getDeviceId(), new HashMap<>(payload));
             } else {
