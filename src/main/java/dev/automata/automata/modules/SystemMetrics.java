@@ -143,7 +143,7 @@ public class SystemMetrics {
 
             return data;
         } catch (Exception e) {
-//            System.err.println("System Metrics Exception");
+            System.err.println("System Metrics Exception: "+e);
         }
         return null;
     }
