@@ -72,14 +72,18 @@ public class NotificationService {
     }
 
     public void sendNotify(String title, String message, String priority) {
-        restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.TEXT_PLAIN);
-        headers.add("Title", title);
-        headers.add("Priority", priority);
+        try{
+            restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.TEXT_PLAIN);
+            headers.add("Title", title);
+            headers.add("Priority", priority);
 //        headers.add("Tags", "warning");
 
-        HttpEntity<String> request = new HttpEntity<>(message, headers);
-        restTemplate.postForObject("http://raspberry.local:82/automata", request, String.class);
+            HttpEntity<String> request = new HttpEntity<>(message, headers);
+            restTemplate.postForObject("http://raspberry.local:82/automata", request, String.class);
+        } catch (Exception e) {
+            System.err.println(e);
+        }
     }
 }
