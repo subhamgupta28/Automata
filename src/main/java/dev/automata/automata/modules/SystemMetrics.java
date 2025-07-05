@@ -112,18 +112,18 @@ public class SystemMetrics {
         try {
             // Get CPU frequency
             String cpuFreq = getCpuFrequency();
-            System.out.println("CPU Frequency: " + cpuFreq);
+//            System.out.println("CPU Frequency: " + cpuFreq);
 
             // Get RAM usage
             String ramUsage = getRamUsage();
-            System.out.println("RAM Usage: " + ramUsage);
+//            System.out.println("RAM Usage: " + ramUsage);
 
             // Get CPU temperature
             var cpuTemp = getCpuTemperature();
-            System.out.println("CPU Temperature: " + cpuTemp);
+//            System.out.println("CPU Temperature: " + cpuTemp);
 
             String uptime = getUptime();
-            System.out.println("System Uptime: " + uptime);
+//            System.out.println("System Uptime: " + uptime);
 
             var data = new HashMap<String, Object>();
             data.put("cpu_temp", cpuTemp);
@@ -144,7 +144,7 @@ public class SystemMetrics {
         try{
             restTemplate = new RestTemplate();
             var res = restTemplate.getForObject("http://raspberry.local:8010/api/v1/main/healthCheck", String.class);
-            System.err.println("Health Check: "+res);
+//            System.err.println("Health Check: "+res);
         }catch (Exception e){
             System.err.println(e);
         }
