@@ -67,7 +67,7 @@ public class SystemMetrics {
                                 Attribute.builder()
                                         .key("ip")
                                         .displayName("IP")
-                                        .type("DATA|MAIN")
+                                        .type("DATA|AUX")
                                         .units("")
                                         .extras(new HashMap<>())
                                         .visible(true)
