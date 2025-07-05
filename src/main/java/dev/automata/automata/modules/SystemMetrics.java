@@ -59,6 +59,14 @@ public class SystemMetrics {
                                 Attribute.builder()
                                         .key("ram_usage")
                                         .displayName("Ram Usage")
+                                        .type("DATA|AUX")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("ip")
+                                        .displayName("IP")
                                         .type("DATA|MAIN")
                                         .units("")
                                         .extras(new HashMap<>())
@@ -67,7 +75,7 @@ public class SystemMetrics {
                                 Attribute.builder()
                                         .key("uptime")
                                         .displayName("Uptime")
-                                        .type("DATA|MAIN")
+                                        .type("DATA|AUX")
                                         .units("")
                                         .extras(new HashMap<>())
                                         .visible(true)
@@ -90,7 +98,7 @@ public class SystemMetrics {
     @Scheduled(fixedRate = 360000)
     public void save() {
         var data = getData();
-        if (!Objects.requireNonNull(data).isEmpty()){
+        if (data!=null){
             mainService.saveData(deviceId, data);
         }
         var res = mainService.getShutdownStatus();
@@ -131,6 +139,7 @@ public class SystemMetrics {
             data.put("uptime", uptime);
             data.put("cpu_freq", cpuFreq);
             data.put("device_id", deviceId);
+            data.put("ip", getHostIp());
 
             return data;
         } catch (Exception e) {
@@ -166,6 +175,11 @@ public class SystemMetrics {
     private static String getUptime() throws Exception {
         String command = "uptime -p"; // Get the uptime in a human-readable format
         return executeCommand(command).replace("up", "").replace("days ", "d").replace("day ", "d").replace("hours ", "h").replace("minutes ", "m");
+    }
+
+    private static String getHostIp() throws Exception {
+        String command = "ip route | grep default | awk '{print $3}'"; // Get the host IP via default gateway
+        return executeCommand(command).trim();
     }
 
     private static String getCpuFrequency() throws Exception {

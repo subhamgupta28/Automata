@@ -30,17 +30,17 @@ import java.util.Map;
 public class ApplicationConfiguration {
     private final UsersRepository userRepository;
 
-    @Bean
-    @Primary
-    public ThreadPoolTaskExecutor taskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);
-        executor.setMaxPoolSize(10);
-        executor.setQueueCapacity(25);
-        executor.setThreadNamePrefix("async-task-");
-        executor.initialize();
-        return executor;
-    }
+//    @Bean
+//    @Primary
+//    public ThreadPoolTaskExecutor taskExecutor() {
+//        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+//        executor.setCorePoolSize(2);
+//        executor.setMaxPoolSize(10);
+//        executor.setQueueCapacity(25);
+//        executor.setThreadNamePrefix("async-task-");
+//        executor.initialize();
+//        return executor;
+//    }
 
     @Bean
     public RedisTemplate<String, AutomationCache> redisTemplate(RedisConnectionFactory factory) {
