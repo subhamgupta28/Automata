@@ -178,7 +178,7 @@ public class SystemMetrics {
     }
 
     private static String getHostIp() throws Exception {
-        String command = "ip route | grep default | awk '{print $3}'"; // Get the host IP via default gateway
+        String command = "ifconfig | grep 192 | awk '{print $2}'"; // Get the host IP via default gateway
         return executeCommand(command).trim();
     }
 
