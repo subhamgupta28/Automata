@@ -69,6 +69,9 @@ public class AutomationService {
             if (payload.get("key").equals("alert")) {
                 notificationService.sendNotification("", data);
             }
+            if (payload.get("key").equals("app_notify")) {
+                notificationService.sendNotify("Automation", data, "low");
+            }
             return "success";
         }
 
@@ -147,7 +150,7 @@ public class AutomationService {
         automationRepository.findAll().forEach(automation -> {
             var payload = mainService.getLastData(automation.getTrigger().getDeviceId());
             if (isTriggered(automation, payload)) {
-                notificationService.sendNotification("Executing automations: " + automation.getName(), "automation");
+                notificationService.sendNotification("Executing automations: " + automation.getName(), "high");
                 executeActions(automation);
             }
         });
@@ -157,7 +160,7 @@ public class AutomationService {
         if (payload != null && isTriggered(automation, payload) && automation.getIsEnabled()) {
             automation.setIsActive(true);
             System.err.println("Executing automations: " + automation.getName());
-            notificationService.sendNotification("Executing automations: " + automation.getName(), "automation");
+            notificationService.sendNotification("Executing automations: " + automation.getName(), "high");
             executeActions(automation);
         } else {
 //            System.err.println("Automation Condition Not Matched "+automation.getName());

@@ -81,6 +81,14 @@ public class SystemMetrics {
                                         .visible(true)
                                         .build(),
                                 Attribute.builder()
+                                        .key("app_notify")
+                                        .displayName("App Notification")
+                                        .type("ACTION|IN")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
                                         .key("alert")
                                         .displayName("Alert")
                                         .type("ACTION|IN")

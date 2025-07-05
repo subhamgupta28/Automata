@@ -3,6 +3,7 @@ package dev.automata.automata.service;
 import dev.automata.automata.model.Notification;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.NotificationRepository;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpEntity;
@@ -42,16 +43,15 @@ public class NotificationService {
                 .timestamp(new Date())
                 .build();
 //        var notify = notificationRepository.save(notification);
-        sendNotify("Automata", message, severity);
+        if (severity.equals("high"))
+            sendNotify("Automata", message, severity);
         messagingTemplate.convertAndSend("/topic/notification", notification);
     }
 
     public String notificationAction(String action, Map<String, Object> payload) {
         return switch (action) {
-            case "stop_automation"->
-                stopAutomation(payload);
-            case "something_else"->
-                "return success";
+            case "stop_automation" -> stopAutomation(payload);
+            case "something_else" -> "return success";
             default -> "done";
 
         };
@@ -72,7 +72,7 @@ public class NotificationService {
     }
 
     public void sendNotify(String title, String message, String priority) {
-        try{
+        try {
             restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.TEXT_PLAIN);
@@ -84,6 +84,16 @@ public class NotificationService {
             restTemplate.postForObject("https://ntfy.realsubhamgupta.in/automata", request, String.class);
         } catch (Exception e) {
             System.err.println(e);
+        }
+    }
+
+    @PreDestroy
+    public void onShutdown() {
+        try {
+            sendNotify("Automata", "Server Shutting Down", "urgent");
+            System.out.println("Shutdown API called successfully.");
+        } catch (Exception e) {
+            System.err.println("Failed to call shutdown API: " + e.getMessage());
         }
     }
 }
