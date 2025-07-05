@@ -104,7 +104,7 @@ public class AutomationService {
         if (device == null) return "Device not found";
 
         try {
-            var res = new RestTemplate().getForObject("http://" + device.getHost() + ".local/restart", String.class);
+            var res = new RestTemplate().getForObject("http://" + device.getAccessUrl() + "/restart", String.class);
             System.err.println(res);
         } catch (Exception e) {
             System.err.println(e.getMessage());
@@ -332,7 +332,7 @@ public class AutomationService {
             var map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
             messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
             try {
-                var res = restTemplate.getForObject("http://" + device.getHost() + ".local/restart", String.class);
+                var res = restTemplate.getForObject("http://" + device.getAccessUrl() + "/restart", String.class);
                 System.err.println(res);
             } catch (Exception e) {
                 System.err.println(e.getMessage());
