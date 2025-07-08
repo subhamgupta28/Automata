@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 const CLIENT_ID = 'd1ee33b61aa44a61a3b81048a49940dc';
-const REDIRECT_URI = 'https://automata.realsubhamgupta.in/spotify';
+const REDIRECT_URI = 'https://automata.realsubhamgupta.in';
 const SCOPES = ['user-read-playback-state'];
 const SPOTIFY_AUTHORIZE_ENDPOINT = 'https://accounts.spotify.com/authorize';
 const SPOTIFY_TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
