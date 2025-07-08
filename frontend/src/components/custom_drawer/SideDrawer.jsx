@@ -274,11 +274,7 @@ export default function SideDrawer() {
                             <Route path="signup" element={<SignUp/>}/>
                             <Route path="signin" element={<SignIn/>}/>
                             {/*protected*/}
-                            <Route path="/" element={
-                                isEmpty(user)
-                                    ? <Navigate to="/welcome" replace />
-                                    : <PrivateRoute element={<DeviceNodes/>} />
-                            } />
+                            <Route path="/" element={<PrivateRoute element={<DeviceNodes/>} />} />
                             {/*<Route path="/" element={<PrivateRoute element={<DeviceNodes/>}/>}/>*/}
                             <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
                             <Route path="actions" element={<PrivateRoute element={<ActionBoard/>}/>}/>
