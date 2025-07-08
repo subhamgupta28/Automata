@@ -51,6 +51,13 @@ public class SecurityConfiguration {
             "/marker-icon-2x.png",
             "/marker-shadow.png",
             "/", // for root
+            "/devices", // for root
+            "/signin", // for root
+            "/signup", // for root
+            "/configure/**", // for root
+            "/actions/**", // for root
+            "/analytics/**", // for root
+            "/spotify/**", // for root
             "/actuator/metrics/**", // for root
             "/ws/**",
             "/app/**",
