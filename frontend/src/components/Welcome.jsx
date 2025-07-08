@@ -12,8 +12,16 @@ import {
     CardMedia,
 } from "@mui/material";
 import { SmartToy, Security, EnergySavingsLeaf } from "@mui/icons-material";
+import {useNavigate} from "react-router-dom";
 
 export default function Welcome() {
+
+    const navigate = useNavigate();
+
+    const handleButton = () => {
+        navigate("/signin");
+    };
+
     return (
         <Box>
             {/* Hero Section */}
@@ -29,10 +37,10 @@ export default function Welcome() {
                         Control Your Home from Anywhere
                     </Typography>
                     <Typography variant="h6" paragraph>
-                        SmartHome+ lets you automate, monitor, and secure your home with a
+                        Automata lets you automate, monitor, and secure your home with a
                         touch of a button.
                     </Typography>
-                    <Button variant="contained" color="secondary" size="large">
+                    <Button variant="contained" color="secondary" size="large" onClick={handleButton}>
                         Get Started
                     </Button>
                 </Container>
@@ -40,9 +48,6 @@ export default function Welcome() {
 
             {/* Features Section */}
             <Container sx={{ py: 2 }}>
-                <Typography variant="h4" align="center" gutterBottom>
-                    Why Choose SmartHome+
-                </Typography>
                 <Grid container spacing={4} justifyContent="center">
                     <FeatureCard
                         title="Automation"

@@ -79,18 +79,16 @@ export default function ChartDetail({deviceId, name}) {
 
     return (
         <Card elevation={1} style={{
-            borderRadius:'10px',
+            // borderRadius:'10px',
             backgroundColor: 'transparent',
-            borderColor: 'grey',
-            borderWidth:'1px',
-            borderStyle:'dashed',
+            // borderColor: 'grey',
+            // borderStyle:'dashed',
         }}>
             <CardContent>
                 <Box
                     display="flex"
                     justifyContent="space-between"
                     alignItems="center"
-                    mb={2}
                     flexWrap="wrap"
                 >
                     <Typography
@@ -119,7 +117,7 @@ export default function ChartDetail({deviceId, name}) {
                 </Box>
 
                 <LineChart
-                    height={300}
+                    height={450}
                     series={series}
                     yAxis={[{position: 'none'}]}
                     xAxis={[{scaleType: "band", data: xLabels}]}

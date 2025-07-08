@@ -48,7 +48,7 @@ export default function CustomBarChart ({chartData}){
                     x2="0%"
                     y2="100%"
                 >
-                    <stop offset="0%" stopColor="rgb(244,255,87)" stopOpacity="0.8"/>
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.8"/>
                     <stop offset="100%" stopColor="#ffffff" stopOpacity="0.1"/>
                 </linearGradient>
             </defs>

@@ -143,6 +143,7 @@ export default function SignUp(props) {
                                 name="firstName"
                                 required
                                 fullWidth
+                                size="small"
                                 id="firstName"
                                 placeholder="Jon"
                                 value={firstName}
@@ -159,6 +160,7 @@ export default function SignUp(props) {
                                 required
                                 fullWidth
                                 id="lastName"
+                                size="small"
                                 placeholder="Snow"
                                 value={lastName}
                                 onChange={(e) => setLastName(e.target.value)}
@@ -174,6 +176,7 @@ export default function SignUp(props) {
                                 id="email"
                                 placeholder="your@email.com"
                                 name="email"
+                                size="small"
                                 autoComplete="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -190,6 +193,7 @@ export default function SignUp(props) {
                                 placeholder="••••••"
                                 type="password"
                                 id="password"
+                                size="small"
                                 autoComplete="new-password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}

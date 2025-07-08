@@ -217,7 +217,6 @@ export function ActionBoard() {
                             borderRadius:'10px',
                             backgroundColor: 'transparent',
                             borderColor: 'grey',
-                            borderWidth:'1px',
                             borderStyle:'dashed',
                         }}
                         colorMode="dark"
@@ -268,7 +267,6 @@ export function ActionBoard() {
                         borderRadius:'10px',
                         backgroundColor: 'transparent',
                         borderColor: 'grey',
-                        borderWidth:'1px',
                         borderStyle:'dashed',
                     }}>
                         <CardContent style={{
@@ -279,12 +277,12 @@ export function ActionBoard() {
                             overflow: 'hidden',
 
                         }}>
-                            <Typography variant="h6" component="div">
-                                Automation Playground
-                            </Typography>
-                            <Typography gutterBottom sx={{color: 'text.secondary', fontSize: 14}}>
-                                Drag and drop nodes to create automations.
-                            </Typography>
+                            {/*<Typography variant="h6" component="div">*/}
+                            {/*    Automation Playground*/}
+                            {/*</Typography>*/}
+                            {/*<Typography gutterBottom sx={{color: 'text.secondary', fontSize: 14}}>*/}
+                            {/*    Drag and drop nodes to create automations.*/}
+                            {/*</Typography>*/}
                             <div style={{
                                 padding:'10px',
                                 display: 'flex',
@@ -321,7 +319,8 @@ export function ActionBoard() {
                                 </div>
                             </div>
                             {/* Scrollable list container */}
-                            <div style={{flex: 1, overflow: 'auto', marginTop: '16px', padding: '10px'}}>
+                            <div style={{flex: 1, overflow: 'auto', scrollbarWidth: "none", marginTop: '16px', padding: '10px'}}>
+
                                 <Typography>Saved Automations</Typography>
                                 <List>
                                     {automations.map((a) => (

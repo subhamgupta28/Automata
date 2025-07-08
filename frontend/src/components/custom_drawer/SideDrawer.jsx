@@ -40,6 +40,7 @@ import OptionsMenu from "./OptionsMenu.jsx";
 import isEmpty from "../../utils/Helper.jsx";
 import Welcome from "../Welcome.jsx";
 import {useIsMobile} from "../../utils/useIsMobile.jsx";
+import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
 
 const drawerWidth = 200;
 
@@ -104,19 +105,19 @@ export default function SideDrawer() {
     const [open, setOpen] = React.useState(false);
     const [selectedIndex, setSelectedIndex] = React.useState("/");
     const {user, logout} = useAuth();
-    const isMobile = useIsMobile();
     const location = useLocation();
 
     // Auto redirect to /mobile if mobile and not already there
-    if (isMobile && location.pathname !== '/mob') {
-        return <Navigate to="/mob" replace />;
-    }
+    // if (isMobile && location.pathname !== '/mob') {
+    //     return <Navigate to="/mob" replace />;
+    // }
     const publicItems = [
-        {name: 'Home', url: '/', icon: <HomeIcon/>},
+        // {name: 'Welcome', url: '/welcome', icon: <HomeIcon/>},
 
     ];
 
     const authItems = [
+        {name: 'Home', url: '/', icon: <HomeIcon/>},
         {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
         {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
         {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
@@ -125,6 +126,7 @@ export default function SideDrawer() {
 
     const authActions = isEmpty(user)
         ? [
+            {name: 'Welcome', url: '/welcome', icon: <HomeIcon/>},
             {name: 'Sign In', url: '/signin', icon: <LoginIcon/>},
             {name: 'Sign Up', url: '/signup', icon: <PersonAddIcon/>},
         ]
@@ -136,7 +138,7 @@ export default function SideDrawer() {
         <ListItem key={item.name} disablePadding sx={{display: 'block'}}>
             {item.url ? (
                 <ListItemButton
-                    selected={selectedIndex === item.url}
+                    selected={location.pathname === item.url}
                     onClick={(event) => handleListItemClick(event, item.url)}
                     component={NavLink}
                     to={item.url}
@@ -173,7 +175,7 @@ export default function SideDrawer() {
 
 
     const handleListItemClick = (event, index) => {
-        setSelectedIndex(index);
+        // setSelectedIndex(index);
     };
     const handleDrawerOpen = () => {
         setOpen(true);
@@ -184,14 +186,14 @@ export default function SideDrawer() {
     };
 
     return (
-        <Box sx={{display: 'flex'}}>
+        <Box sx={{display: 'flex', height:'100dvh'}}>
             <CssBaseline/>
 
 
-            {!isMobile &&
+            {/*{!isEmpty(user) &&*/}
                 <Drawer variant="permanent" open={open} elevation={4}
                         style={{
-                            backgroundColor: 'rgba(255, 255, 255, 10%)',
+                            backgroundColor: 'rgba(255, 255, 255, 14%)',
                             backdropFilter: 'blur(7px)',
                             // background: "linear-gradient(135deg, rgb(255 224 43 / 10%), rgb(169 104 241 / 10%), rgb(90 200 250 / 10%))",
                             // boxShadow: "0 0 30px rgb(211 244 122 / 40%)",
@@ -212,16 +214,16 @@ export default function SideDrawer() {
                             {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
                         </List>
 
-                        {/* Avatar at the bottom */}
-                        {!isEmpty(user) && (
-                            <OptionsMenu drawerOpen={open}/>
-                        )}
+                    {/* Avatar at the bottom */}
+                    {!isEmpty(user) && (
+                        <OptionsMenu drawerOpen={open}/>
+                    )}
 
-                    </Box>
+                </Box>
 
                     {/*<Divider/>*/}
                 </Drawer>
-            }
+            {/*}*/}
 
             <Box component="main" sx={{flexGrow: 1,}}>
 
@@ -266,12 +268,18 @@ export default function SideDrawer() {
                         <Routes>
                             {/*open*/}
                             <Route path="welcome" element={<Welcome/>}/>
-                            <Route path="/" element={<DeviceNodes/>}/>
                             <Route path="mob" element={<MobileView/>}/>
                             <Route path="exp" element={<Exp/>}/>
+                            <Route path="spotify" element={<SpotifyPlayer/>}/>
                             <Route path="signup" element={<SignUp/>}/>
                             <Route path="signin" element={<SignIn/>}/>
                             {/*protected*/}
+                            <Route path="/" element={
+                                isEmpty(user)
+                                    ? <Navigate to="/welcome" replace />
+                                    : <PrivateRoute element={<DeviceNodes/>} />
+                            } />
+                            {/*<Route path="/" element={<PrivateRoute element={<DeviceNodes/>}/>}/>*/}
                             <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
                             <Route path="actions" element={<PrivateRoute element={<ActionBoard/>}/>}/>
                             <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>

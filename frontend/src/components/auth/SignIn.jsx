@@ -155,6 +155,7 @@ export default function SignIn(props) {
                                 helperText={emailErrorMessage}
                                 id="email"
                                 type="email"
+                                size="small"
                                 name="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -185,6 +186,7 @@ export default function SignIn(props) {
                                 helperText={passwordErrorMessage}
                                 name="password"
                                 placeholder="••••••"
+                                size="small"
                                 type="password"
                                 id="password"
                                 value={password}
