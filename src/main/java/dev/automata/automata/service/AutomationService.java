@@ -282,14 +282,15 @@ public class AutomationService {
                 checkAndExecuteSingleAutomation(a, mainService.getLastData(a.getTrigger().getDeviceId())));
     }
 
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedRate = 120000)
     private void updateRedisStorage() {
-//        redisService.clearAutomationCache();
+        redisService.clearAutomationCache();
         automationRepository.findAll().forEach(a -> {
             redisService.setAutomationCache(a.getId(), AutomationCache.builder()
                     .id(a.getId())
                     .automation(a)
                     .isActive(false)
+                            .wasTriggeredPreviously(false)
                     .lastUpdate(new Date())
                     .build());
         });
