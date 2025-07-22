@@ -14,8 +14,10 @@ export default function PersonTracker({liveData, radarData}) {
     const canvasHeight = 200;
     const centerX = canvasWidth / 2;
     const centerY = canvasHeight;
-
-    const scale = 0.4; // pixels per mm
+    const maxRange = 1600;
+    const scaleX = canvasWidth / (maxRange * 2);
+    const scaleY = canvasHeight / maxRange;
+    const scale = Math.min(scaleX, scaleY);
 
     useEffect(() => {
         if (liveData) {
