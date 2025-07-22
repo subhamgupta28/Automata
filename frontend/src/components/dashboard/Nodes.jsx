@@ -44,6 +44,7 @@ import CloudIcon from '@mui/icons-material/Cloud';
 import BrightnessLowIcon from '@mui/icons-material/BrightnessLow';
 import BrightnessHighIcon from '@mui/icons-material/BrightnessHigh';
 import TemperatureGauge from "../charts/TemperatureGauge.jsx";
+import PersonTracker from "../charts/PersonTracker.jsx";
 
 dayjs.extend(relativeTime);
 
@@ -396,7 +397,8 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                         ))}
 
                         {radarData.length > 0 &&
-                            <CustomRadarChart liveData={liveData} radarData={radarData}/>
+                            <PersonTracker liveData={liveData} radarData={radarData}/>
+                            // <CustomRadarChart liveData={liveData} radarData={radarData}/>
                         }
                         {sliderData.map((s) => (
                             <CustomSlider
