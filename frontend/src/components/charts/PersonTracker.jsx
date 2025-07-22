@@ -77,10 +77,21 @@ export default function PersonTracker({liveData, radarData}) {
             ctx.lineTo(x, centerY);
             ctx.stroke();
         }
+        ctx.strokeStyle = "#ff0000";
+        [50, 100, 150].forEach((r) => {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, r, Math.PI, 0);
+            ctx.stroke();
+        });
 
+        ctx.fillStyle = "#aaa";
+        ctx.font = "10px sans-serif";
+        ctx.fillText("+X", canvasWidth - 15, centerY - 5);
+        ctx.fillText("-X", 5, centerY - 5);
+        ctx.fillText("+Y", centerX + 5, 10);
         // Draw person dot (only if Y is in upper half)
-        const dotX = centerX + position.x * scale;
-        const dotY = centerY - position.y * scale;
+        const dotX = Math.min(Math.max(centerX + position.x * scale, 0), canvasWidth);
+        const dotY = Math.min(Math.max(centerY - position.y * scale, 0), centerY);
 
         if (dotY >= 0 && dotY <= centerY) {
             ctx.beginPath();
