@@ -157,15 +157,43 @@ public class AutomationService {
     }
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
-        if (payload != null && isTriggered(automation, payload) && automation.getIsEnabled()) {
+        var automationCache = redisService.getAutomationCache(automation.getId());
+        boolean isTriggeredNow = isTriggered(automation, payload);
+
+        if (automationCache == null) {
+            // If cache not initialized, initialize it
+            automationCache = AutomationCache.builder()
+                    .id(automation.getId())
+                    .automation(automation)
+                    .isActive(false)
+                    .wasTriggeredPreviously(false)
+                    .lastUpdate(new Date())
+                    .build();
+        }
+        boolean shouldExecute = isTriggeredNow && !automationCache.isWasTriggeredPreviously();
+
+        automationCache.setWasTriggeredPreviously(isTriggeredNow); // update cache for next call
+        redisService.setAutomationCache(automation.getId(), automationCache);
+
+        if (shouldExecute && automation.getIsEnabled()) {
             automation.setIsActive(true);
-            System.err.println("Executing automations: " + automation.getName());
-            notificationService.sendNotification("Executing automations: " + automation.getName(), "high");
+            System.err.println("Executing automation: " + automation.getName());
+            notificationService.sendNotification("Executing automation: " + automation.getName(), "high");
             executeActions(automation);
         } else {
-//            System.err.println("Automation Condition Not Matched "+automation.getName());
             automation.setIsActive(false);
         }
+
+
+//        if (payload != null && isTriggered(automation, payload) && automation.getIsEnabled()) {
+//            automation.setIsActive(true);
+//            System.err.println("Executing automations: " + automation.getName());
+//            notificationService.sendNotification("Executing automations: " + automation.getName(), "high");
+//            executeActions(automation);
+//        } else {
+////            System.err.println("Automation Condition Not Matched "+automation.getName());
+//            automation.setIsActive(false);
+//        }
     }
 
     private boolean isTriggered(Automation automation, Map<String, Object> payload) {

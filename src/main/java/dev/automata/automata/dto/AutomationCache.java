@@ -23,5 +23,6 @@ public class AutomationCache {
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     private Date lastUpdate;
+    private boolean wasTriggeredPreviously;
     private Boolean isActive;
 }
