@@ -276,15 +276,15 @@ public class AutomationService {
         }
     }
 
-    @Scheduled(fixedRate = 20000)
+    @Scheduled(fixedRate = 10000)
     private void triggerPeriodicAutomations() {
         automationRepository.findByIsEnabledTrue().forEach(a ->
                 checkAndExecuteSingleAutomation(a, mainService.getLastData(a.getTrigger().getDeviceId())));
     }
 
-    @Scheduled(fixedRate = 300000)
+    @Scheduled(fixedRate = 60000)
     private void updateRedisStorage() {
-        redisService.clearAutomationCache();
+//        redisService.clearAutomationCache();
         automationRepository.findAll().forEach(a -> {
             redisService.setAutomationCache(a.getId(), AutomationCache.builder()
                     .id(a.getId())
