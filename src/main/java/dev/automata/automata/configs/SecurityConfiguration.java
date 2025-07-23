@@ -60,6 +60,7 @@ public class SecurityConfiguration {
             "/spotify/**", // for root
             "/actuator/metrics/**", // for root
             "/ws/**",
+            "/ws",
             "/app/**",
             "/topic/**",
             "/queue/**",
