@@ -1,5 +1,7 @@
 package dev.automata.automata.modules;
 
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 
 import java.net.DatagramPacket;
@@ -8,7 +10,7 @@ import java.net.InetAddress;
 
 public class AudioReactiveWled {
 
-    private final String multicastIP = "239.0.0.1";
+    private final String multicastIP = "192.168.1.46";
     private final int udpPort = 21324;
 
     public void send(AudioData data) {
@@ -19,6 +21,7 @@ public class AudioReactiveWled {
             DatagramSocket socket = new DatagramSocket();
             socket.send(datagramPacket);
             socket.close();
+            System.err.println(data);
         } catch (Exception e) {
             e.printStackTrace();
         }

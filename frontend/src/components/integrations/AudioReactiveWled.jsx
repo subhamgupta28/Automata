@@ -1,13 +1,34 @@
 import {useEffect, useRef} from "react";
+import SockJS from 'sockjs-client';
+import Stomp from 'stompjs';
 
 
 export default function AudioReactiveWled(){
-
-    const ws = useRef(null);
-
+    const stompClientRef = useRef(null);
     useEffect(() => {
-        ws.current = new WebSocket("ws://raspberry.local:8010/audio");
+        const connect = () => {
+            const socket = new SockJS("http://localhost:8010/ws");
+            const client = Stomp.over(socket);
 
+            client.debug = () => {}; // Disable logging
+
+            client.connect({}, (frame) => {
+                console.log("WebSocket connected:", frame);
+                stompClientRef.current = client;
+
+                client.subscribe("app", (message) => {
+
+                });
+
+            }, (error) => {
+                console.warn("WebSocket connection error:", error);
+            });
+
+            client.onclose = () => {
+                console.warn("WebSocket closed");
+            };
+        };
+        connect();
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
             const source = audioContext.createMediaStreamSource(stream);
@@ -33,9 +54,8 @@ export default function AudioReactiveWled(){
                     magnitude: peak,
                     frequency: freqIndex * 100 // Estimate only
                 };
-
-                if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-                    ws.current.send(JSON.stringify(payload));
+                if (stompClientRef.current?.connected) {
+                    stompClientRef.current.send("/app/audio", {}, JSON.stringify(payload));
                 }
 
                 requestAnimationFrame(sendAudioData);
@@ -45,7 +65,11 @@ export default function AudioReactiveWled(){
         });
 
         return () => {
-            ws.current?.close();
+            if (stompClientRef.current?.connected) {
+                stompClientRef.current.disconnect(() => {
+                    console.log("WebSocket disconnected cleanly");
+                });
+            }
         };
     }, []);
 

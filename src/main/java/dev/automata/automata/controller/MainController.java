@@ -2,6 +2,7 @@ package dev.automata.automata.controller;
 
 import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.dto.DataDto;
+import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.AttributeType;
 import dev.automata.automata.model.Device;
@@ -247,9 +248,9 @@ public class MainController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("No device found");
         }
-//        var event  = new LiveEvent();
-//        event.setPayload(payload);
-//        publisher.publishEvent(event);
+        var event  = new LiveEvent();
+        event.setPayload(payload);
+        publisher.publishEvent(event);
         return getStringObjectMap(payload, deviceId);
     }
 

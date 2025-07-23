@@ -62,6 +62,7 @@ public class SecurityConfiguration {
             "/ws/**",
             "/ws",
             "/exp",
+            "/audio",
             "/app/**",
             "/topic/**",
             "/queue/**",

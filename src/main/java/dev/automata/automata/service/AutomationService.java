@@ -37,13 +37,13 @@ public class AutomationService {
     private final AutomationDetailRepository automationDetailRepository;
     private final DeviceActionStateRepository deviceActionStateRepository;
 
-    private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
-
-    @PostConstruct
-    public void init() {
-        taskScheduler.setPoolSize(10);
-        taskScheduler.initialize();
-    }
+//    private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+//
+//    @PostConstruct
+//    public void init() {
+//        taskScheduler.setPoolSize(10);
+//        taskScheduler.initialize();
+//    }
 
     public List<Automation> findAll() {
         return automationRepository.findAll();
@@ -158,6 +158,9 @@ public class AutomationService {
     }
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
+        if (payload == null)
+            return;
+
         var automationCache = redisService.getAutomationCache(automation.getId());
         boolean isTriggeredNow = isTriggered(automation, payload);
 
@@ -178,23 +181,12 @@ public class AutomationService {
 
         if (shouldExecute && automation.getIsEnabled()) {
             automation.setIsActive(true);
-            System.err.println("Executing automation: " + automation.getName());
+            System.err.println("Executing automation: " + automation.getName() + " with payload: " + payload);
             notificationService.sendNotification("Executing automation: " + automation.getName(), "high");
             executeActions(automation);
         } else {
             automation.setIsActive(false);
         }
-
-
-//        if (payload != null && isTriggered(automation, payload) && automation.getIsEnabled()) {
-//            automation.setIsActive(true);
-//            System.err.println("Executing automations: " + automation.getName());
-//            notificationService.sendNotification("Executing automations: " + automation.getName(), "high");
-//            executeActions(automation);
-//        } else {
-////            System.err.println("Automation Condition Not Matched "+automation.getName());
-//            automation.setIsActive(false);
-//        }
     }
 
     private boolean isTriggered(Automation automation, Map<String, Object> payload) {
@@ -219,6 +211,7 @@ public class AutomationService {
         }
         return false;
     }
+
     private boolean isCurrentTime(String triggerTime) {
         // Set the zone to IST
         ZoneId istZone = ZoneId.of("Asia/Kolkata");
@@ -262,28 +255,23 @@ public class AutomationService {
         }
     }
 
-//    @Scheduled(fixedRate = 60*1000)
-//    public void test(){
-//        notificationService.sendAlert("Alert: ", "critical");
-//    }
 
     @EventListener
     public void onCustomEvent(LiveEvent event) {
         var payload = event.getPayload();
         var deviceId = payload.get("device_id").toString();
-        var automationCache = redisService.getAutomationCache(deviceId);
-        if (automationCache != null && !payload.isEmpty()) {
-            checkAndExecuteSingleAutomation(automationCache.getAutomation(), payload);
-        }
+        var auto = redisService.getAutomationByTriggerDevice(deviceId);
+        auto.forEach(k -> checkAndExecuteSingleAutomation(k.getAutomation(), payload));
+
     }
 
-    @Scheduled(fixedRate = 10000)
+    //    @Scheduled(fixedRate = 10000)
     private void triggerPeriodicAutomations() {
         automationRepository.findByIsEnabledTrue().forEach(a ->
                 checkAndExecuteSingleAutomation(a, mainService.getLastData(a.getTrigger().getDeviceId())));
     }
 
-    @Scheduled(fixedRate = 360000)
+    @Scheduled(fixedRate = 1000 * 60 * 5)
     private void updateRedisStorage() {
         automationRepository.findAll().forEach(a -> {
             AutomationCache existing = redisService.getAutomationCache(a.getId());
@@ -334,6 +322,7 @@ public class AutomationService {
         automationDetailRepository.save(detail);
 
         notificationService.sendNotification("Automation saved successfully", "success");
+        updateRedisStorage();
         return "success";
     }
 
@@ -352,6 +341,7 @@ public class AutomationService {
             automationRepository.save(automation);
             notificationService.sendNotification("Automation updated", "success");
         }
+        updateRedisStorage();
         return "success";
     }
 
@@ -369,7 +359,7 @@ public class AutomationService {
             var map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
             messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
             try {
-                var res = restTemplate.getForObject( device.getAccessUrl() + "/restart", String.class);
+                var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
                 System.err.println(res);
             } catch (Exception e) {
                 System.err.println(e.getMessage());
