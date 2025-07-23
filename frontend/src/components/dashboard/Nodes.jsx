@@ -61,6 +61,7 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
     };
     const switchBtn = device.attributes.filter((t) => t.type.startsWith("ACTION|MENU|BTN"));
     const sliderData = device.attributes.filter((t) => t.type === "ACTION|MENU|SLIDER");
+    const radarData = device.attributes.filter((t) => t.type === "DATA|RADAR");
 
     const handleAction = async (action) => {
         try {
@@ -167,6 +168,14 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                         {map.length > 0 && liveData && (
                             <MapView lat={liveData.LAT} lng={liveData.LONG} h={300} w='auto'/>
                         )}
+
+                        {radarData.length > 0 &&
+                            <Card style={{margin:'10px', padding: '12px', borderRadius:'12px'}}>
+                                <PersonTracker liveData={liveData} radarData={radarData} canvasHeight={300} canvasWidth={480}/>
+                            </Card>
+
+                            // <CustomRadarChart liveData={liveData} radarData={radarData}/>
+                        }
                         Aux Data
                         {liveData && (
                             <div style={{
@@ -456,6 +465,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                             ))}
                             {switchButtons.length > 0 && (
                                 <div style={{
+                                    gridColumn: (mainData.length + switchButtons.length)%2 !== 0? 'span 2' : undefined,
                                     display: 'flex',
                                     justifyContent: 'space-around',
                                     borderColor: '#606060',

@@ -132,11 +132,12 @@ public class AutomationService {
             var key = payload.get("key").toString();
             String result = switch (key) {
                 case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
-                case "onOff" -> wled.powerOnOff(true);
+                case "onOff" -> wled.powerOnOff(Boolean.parseBoolean(payload.get(key).toString()));
                 case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString()));
                 default -> "No action found for key: " + key;
             };
             var data = wled.getInfo(deviceId, deviceState);
+            System.err.println(data);
             mainService.saveData(deviceId, data);
             messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
             return result;
@@ -282,19 +283,23 @@ public class AutomationService {
                 checkAndExecuteSingleAutomation(a, mainService.getLastData(a.getTrigger().getDeviceId())));
     }
 
-    @Scheduled(fixedRate = 120000)
+    @Scheduled(fixedRate = 360000)
     private void updateRedisStorage() {
-        redisService.clearAutomationCache();
         automationRepository.findAll().forEach(a -> {
-            redisService.setAutomationCache(a.getId(), AutomationCache.builder()
+            AutomationCache existing = redisService.getAutomationCache(a.getId());
+
+            AutomationCache updatedCache = AutomationCache.builder()
                     .id(a.getId())
                     .automation(a)
-                    .isActive(false)
-                            .wasTriggeredPreviously(false)
+                    .isActive(existing != null ? existing.getIsActive() : false)
+                    .wasTriggeredPreviously(existing != null && existing.isWasTriggeredPreviously())
                     .lastUpdate(new Date())
-                    .build());
+                    .build();
+
+            redisService.setAutomationCache(a.getId(), updatedCache);
         });
     }
+
 
     public String saveAutomationDetail(AutomationDetail detail) {
         var automationBuilder = Automation.builder()
