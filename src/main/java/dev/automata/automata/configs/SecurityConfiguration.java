@@ -61,6 +61,7 @@ public class SecurityConfiguration {
             "/actuator/metrics/**", // for root
             "/ws/**",
             "/ws",
+            "/exp",
             "/app/**",
             "/topic/**",
             "/queue/**",
