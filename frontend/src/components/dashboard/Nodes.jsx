@@ -170,8 +170,9 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                         )}
 
                         {radarData.length > 0 &&
-                            <Card style={{margin:'10px', padding: '12px', borderRadius:'12px'}}>
-                                <PersonTracker liveData={liveData} radarData={radarData} canvasHeight={300} canvasWidth={480}/>
+                            <Card style={{margin: '10px', padding: '10px', borderRadius: '12px'}}>
+                                <PersonTracker liveData={liveData} radarData={radarData} canvasHeight={300}
+                                               canvasWidth={480}/>
                             </Card>
 
                             // <CustomRadarChart liveData={liveData} radarData={radarData}/>
@@ -456,7 +457,8 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     }}
                                 >
 
-                                    <Typography style={{display:'flex'}} variant="subtitle" color="primary" fontWeight="bold">
+                                    <Typography style={{display: 'flex'}} variant="subtitle" color="primary"
+                                                fontWeight="bold">
                                         {/*{m.displayName.includes("Temp") && <TemperatureGauge temp={liveData?.[m.key]}/>}*/}
                                         {liveData?.[m.key]} {m.units}
                                     </Typography>
@@ -465,7 +467,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                             ))}
                             {switchButtons.length > 0 && (
                                 <div style={{
-                                    gridColumn: (mainData.length + switchButtons.length)%2 !== 0? 'span 2' : undefined,
+                                    gridColumn: (mainData.length + actionOutButtons.length + switchButtons.length) % 2 !== 0 ? 'span 2' : undefined,
                                     display: 'flex',
                                     justifyContent: 'space-around',
                                     borderColor: '#606060',
@@ -485,25 +487,43 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     ))}
                                 </div>
                             )}
+                            {actionOutButtons.length > 0 && (
+                                <div style={{
+                                    gridColumn: (mainData.length + actionOutButtons.length + switchButtons.length) % 2 !== 0 ? 'span 2' : undefined,
+                                    display: 'flex',
+                                    justifyContent: 'space-around',
+                                    borderColor: '#606060',
+                                    borderWidth: '2px',
+                                    borderStyle: 'dashed',
+                                    borderRadius: '8px',
+                                }}
+                                >
+                                    {actionOutButtons.map((a) => (
+                                        <Button key={a.id} onClick={() => handleAction(a)}>
+                                            {a.displayName}
+                                        </Button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
 
-                        {actionOutButtons.length > 0 && (
-                            <div style={{
-                                width: '100%',
-                                marginTop: '12px',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center'
-                            }}
-                            >
-                                {actionOutButtons.map((a) => (
-                                    <Button key={a.id} onClick={() => handleAction(a)}>
-                                        {a.displayName}
-                                    </Button>
-                                ))}
-                            </div>
-                        )}
+                        {/*{actionOutButtons.length > 0 && (*/}
+                        {/*    <div style={{*/}
+                        {/*        width: '100%',*/}
+                        {/*        marginTop: '12px',*/}
+                        {/*        display: 'flex',*/}
+                        {/*        justifyContent: 'center',*/}
+                        {/*        alignItems: 'center'*/}
+                        {/*    }}*/}
+                        {/*    >*/}
+                        {/*        {actionOutButtons.map((a) => (*/}
+                        {/*            <Button key={a.id} onClick={() => handleAction(a)}>*/}
+                        {/*                {a.displayName}*/}
+                        {/*            </Button>*/}
+                        {/*        ))}*/}
+                        {/*    </div>*/}
+                        {/*)}*/}
                     </CardContent>
                 </Card>
 
@@ -684,7 +704,7 @@ function BarChartComp({chartDevice}) {
                         <Typography variant="body" color="primary">{chartDevice.name}</Typography>
                         <Typography style={{marginLeft: '10px'}}>Attributes</Typography>
                     </div>
-                    <div style={{padding: '2px', marginLeft:'30px'}}>
+                    <div style={{padding: '2px', marginLeft: '30px'}}>
                         {chartData.attributes.map((name) => (
                             <Chip
                                 key={name}

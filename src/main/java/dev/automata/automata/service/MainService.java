@@ -492,4 +492,26 @@ public class MainService {
         }
         return "null";
     }
+
+    public void saveDevice() {
+        var device = getDevice("67571bf46f2d631aa77cc632");
+        var attrs = new ArrayList<Attribute>(device.getAttributes());
+        var att = Attribute.builder()
+                .id("6882459c04a0a366870bec10")
+                .key("toggle")
+                .deviceId(device.getId())
+                .displayName("Toggle")
+                .visible(true)
+                .units("")
+                .extras(new HashMap<>())
+                .type("ACTION|OUT")
+                .build();
+
+        attrs.add(
+                att
+        );
+        device.setAttributes(attrs);
+        System.err.println(device);
+//        deviceRepository.save(device);
+    }
 }

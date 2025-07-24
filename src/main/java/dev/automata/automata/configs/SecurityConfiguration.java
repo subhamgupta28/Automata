@@ -62,6 +62,7 @@ public class SecurityConfiguration {
             "/ws/**",
             "/ws",
             "/exp",
+            "/api/v1/main/updateDevice",
             "/audio",
             "/app/**",
             "/topic/**",

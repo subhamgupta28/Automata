@@ -4,6 +4,7 @@ import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.dto.RegisterDevice;
+import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.AttributeType;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
@@ -41,6 +42,14 @@ public class MainController {
     public ResponseEntity<?> healthCheck(){
         return ResponseEntity.ok("ok");
     }
+
+    @GetMapping("updateDevice")
+    public ResponseEntity<?> updateDevice(){
+        mainService.saveDevice();
+
+        return ResponseEntity.ok("ok");
+    }
+
 
     @PostMapping("wifiList")
     public ResponseEntity<?> getWiFiList() {

@@ -68,6 +68,20 @@ public class Wled {
         return -1; // Return null if the tag is not found
     }
 
+    public String toggleOnOff() {
+        try {
+            var r = """
+                    {"on": "t"}
+                    """;
+
+            var response = restTemplate.postForObject(ipAddress, r, Object.class);
+            System.err.println(response);
+            return "success";
+        } catch (Exception e) {
+            return "error";
+        }
+    }
+
     public String powerOnOff(boolean on) {
         lastState.put("onOff", on);
 

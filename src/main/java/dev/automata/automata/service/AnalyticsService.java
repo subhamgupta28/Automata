@@ -59,9 +59,9 @@ public class AnalyticsService {
 //                : "%H:%M"; // Otherwise, show minute resolution
 
         var dateFormat = switch (range){
-            case "day" -> "%H";
-            case "week" -> "%m-%d %H";
-            case "hour" -> "%H:%M";
+            case "day" -> "%d-%H";
+            case "week" -> "%m-%d";
+            case "hour" -> "%d-%H:%M";
             default -> "";
         };
 

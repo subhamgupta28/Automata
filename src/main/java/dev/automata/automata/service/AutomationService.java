@@ -133,6 +133,7 @@ public class AutomationService {
             String result = switch (key) {
                 case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
                 case "onOff" -> wled.powerOnOff(Boolean.parseBoolean(payload.get(key).toString()));
+                case "toggle" -> wled.toggleOnOff();
                 case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString()));
                 default -> "No action found for key: " + key;
             };
