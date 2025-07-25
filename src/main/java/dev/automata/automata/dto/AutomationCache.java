@@ -20,6 +20,7 @@ public class AutomationCache {
 
     @JsonProperty("automation")
     private Automation automation;
+    private String triggerDeviceId;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     private Date lastUpdate;

@@ -7,10 +7,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @AllArgsConstructor
@@ -40,10 +37,21 @@ public class RedisService {
     }
 
     public List<AutomationCache> getAutomationByTriggerDevice(String deviceId) {
-        Set<String> keys = redisTemplate.keys("*");
-        var list = new ArrayList<AutomationCache>();
-        keys.forEach(k -> list.add(getAutomationCache(k)));
-        return list.stream().filter(k -> k.getAutomation().getTrigger().getDeviceId().equals(deviceId)).toList();
+        Set<String> keys = redisTemplate.keys(deviceId + ":*");
+        if (keys.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return keys.parallelStream()
+                .map(this::getAutomationCache)
+                .filter(Objects::nonNull)
+                .filter(ac -> {
+                    var automation = ac.getAutomation();
+                    return automation != null &&
+                            automation.getTrigger() != null &&
+                            deviceId.equals(automation.getTrigger().getDeviceId());
+                })
+                .toList();
     }
 
     public void clearAutomationCache() {

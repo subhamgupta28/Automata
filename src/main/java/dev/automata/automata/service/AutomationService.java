@@ -280,12 +280,13 @@ public class AutomationService {
             AutomationCache updatedCache = AutomationCache.builder()
                     .id(a.getId())
                     .automation(a)
+                    .triggerDeviceId(a.getTrigger().getDeviceId())
                     .isActive(existing != null ? existing.getIsActive() : false)
                     .wasTriggeredPreviously(existing != null && existing.isWasTriggeredPreviously())
                     .lastUpdate(new Date())
                     .build();
 
-            redisService.setAutomationCache(a.getId(), updatedCache);
+            redisService.setAutomationCache(a.getTrigger().getDeviceId() + ":" + a.getId(), updatedCache);
         });
     }
 
