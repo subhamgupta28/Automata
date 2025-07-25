@@ -26,4 +26,5 @@ public class AutomationCache {
     private Date lastUpdate;
     private boolean wasTriggeredPreviously;
     private Boolean isActive;
+    private boolean enabled;
 }

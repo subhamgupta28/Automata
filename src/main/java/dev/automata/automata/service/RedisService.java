@@ -44,7 +44,7 @@ public class RedisService {
 
         return keys.parallelStream()
                 .map(this::getAutomationCache)
-                .filter(Objects::nonNull)
+                .filter(AutomationCache::isEnabled)
                 .filter(ac -> {
                     var automation = ac.getAutomation();
                     return automation != null &&

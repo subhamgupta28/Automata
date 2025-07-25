@@ -159,36 +159,45 @@ public class AutomationService {
     }
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
-        if (payload == null)
-            return;
+        if (payload == null || !automation.getIsEnabled()) return;
 
-        var automationCache = redisService.getAutomationCache(automation.getId());
+        long COOLDOWN_MS = 60 * 1000;
+
+        String key = automation.getTrigger().getDeviceId() + ":" + automation.getId();
+        AutomationCache automationCache = redisService.getAutomationCache(key);
         boolean isTriggeredNow = isTriggered(automation, payload);
 
+        Date now = new Date();
+
         if (automationCache == null) {
-            // If cache not initialized, initialize it
             automationCache = AutomationCache.builder()
                     .id(automation.getId())
                     .automation(automation)
                     .isActive(false)
+                    .triggerDeviceId(automation.getTrigger().getDeviceId())
                     .wasTriggeredPreviously(false)
-                    .lastUpdate(new Date())
+                    .lastUpdate(new Date(0)) // set to epoch to allow immediate first-time execution
                     .build();
         }
-        boolean shouldExecute = isTriggeredNow && !automationCache.isWasTriggeredPreviously();
 
-        automationCache.setWasTriggeredPreviously(isTriggeredNow); // update cache for next call
-        redisService.setAutomationCache(automation.getId(), automationCache);
+        boolean cooldownElapsed = now.getTime() - automationCache.getLastUpdate().getTime() >= COOLDOWN_MS;
+        boolean shouldExecute = isTriggeredNow && !automationCache.isWasTriggeredPreviously() && cooldownElapsed;
 
-        if (shouldExecute && automation.getIsEnabled()) {
+        automationCache.setWasTriggeredPreviously(isTriggeredNow); // for next call
+
+        if (shouldExecute) {
             automation.setIsActive(true);
+            automationCache.setLastUpdate(now); // update last execution time
             System.err.println("Executing automation: " + automation.getName() + " with payload: " + payload);
             notificationService.sendNotification("Executing automation: " + automation.getName(), "high");
             executeActions(automation);
         } else {
             automation.setIsActive(false);
         }
+
+        redisService.setAutomationCache(key, automationCache);
     }
+
 
     private boolean isTriggered(Automation automation, Map<String, Object> payload) {
         if ("time".equals(automation.getTrigger().getType())) {
@@ -280,6 +289,7 @@ public class AutomationService {
             AutomationCache updatedCache = AutomationCache.builder()
                     .id(a.getId())
                     .automation(a)
+                    .enabled(a.getIsEnabled())
                     .triggerDeviceId(a.getTrigger().getDeviceId())
                     .isActive(existing != null ? existing.getIsActive() : false)
                     .wasTriggeredPreviously(existing != null && existing.isWasTriggeredPreviously())
