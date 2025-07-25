@@ -181,7 +181,7 @@ public class AutomationService {
         }
 
         boolean cooldownElapsed = now.getTime() - automationCache.getLastUpdate().getTime() >= COOLDOWN_MS;
-        boolean shouldExecute = isTriggeredNow && !automationCache.isWasTriggeredPreviously() && cooldownElapsed;
+        boolean shouldExecute = isTriggeredNow && !automationCache.isWasTriggeredPreviously();
 
         automationCache.setWasTriggeredPreviously(isTriggeredNow); // for next call
 
