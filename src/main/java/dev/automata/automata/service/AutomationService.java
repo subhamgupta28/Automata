@@ -197,11 +197,11 @@ public class AutomationService {
 
         boolean cooldownElapsed = now.getTime() - automationCache.getLastUpdate().getTime() >= COOLDOWN_MS;
         boolean shouldExecute = isTriggeredNow && !automationCache.isWasTriggeredPreviously();
-
+        automationCache.setWasTriggeredPreviously(isTriggeredNow); // for next call
 
         if (shouldExecute) {
             automation.setIsActive(true);
-            automationCache.setWasTriggeredPreviously(true); // for next call
+
             automationCache.setLastUpdate(now); // update last execution time
             System.err.println("Executing automation: " + automation.getName() + " with payload: " + payload);
             notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
