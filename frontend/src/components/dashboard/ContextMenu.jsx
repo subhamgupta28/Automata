@@ -14,14 +14,14 @@ export default function ContextMenu({id, top, left, right, bottom, ...props}) {
         <Card
             elevation={1}
             style={{top, left, right, bottom,
-                position:'absolute', zIndex:'10', padding:'2px',
+                position:'absolute', zIndex:'10', padding:'8px',
                 backgroundColor: 'transparent',
                 backdropFilter: 'blur(7px)'
         }}
             className="context-menu"
             {...props}
         >
-
+            <a href={"http://" + node.data.value.host + ".local"} target="_blank">{node.data.value.host}.local</a>
             <IconButton style={{marginLeft: '8px'}}>
                 <SettingsIcon/>
             </IconButton>

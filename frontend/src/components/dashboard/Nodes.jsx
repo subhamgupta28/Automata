@@ -471,7 +471,6 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     display: 'flex',
                                     justifyContent: 'space-around',
                                     borderColor: '#606060',
-                                    borderWidth: '2px',
                                     borderStyle: 'dashed',
                                     borderRadius: '8px',
                                 }}>
@@ -493,7 +492,6 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     display: 'flex',
                                     justifyContent: 'space-around',
                                     borderColor: '#606060',
-                                    borderWidth: '2px',
                                     borderStyle: 'dashed',
                                     borderRadius: '8px',
                                 }}

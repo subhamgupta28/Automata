@@ -159,17 +159,20 @@ public class AutomationService {
     }
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data) {
+        if (!automation.getIsEnabled()) return;
         var payload = new HashMap<String, Object>();
+        var deviceId = automation.getTrigger().getDeviceId();
         if (data != null)
             payload.putAll(data);
+        else{
+            payload.putAll((HashMap<String, Object>) mainService.getLastData(deviceId));
+        }
 
-        if (!automation.getIsEnabled()) return;
-        var deviceId = automation.getTrigger().getDeviceId();
         var type = automation.getTriggerDeviceType();
-        System.err.println(automation.getName() + " " + type);
-        if (type != null && type.equals("System"))
-            payload = (HashMap<String, Object>) mainService.getLastData(deviceId);
-        System.out.println(payload);
+//        System.err.println(automation.getName() + " " + type);
+//        if (type != null && type.equals("System"))
+//            payload = (HashMap<String, Object>) mainService.getLastData(deviceId);
+//        System.out.println(payload);
 
 
         long COOLDOWN_MS = 60 * 1000;
@@ -195,10 +198,10 @@ public class AutomationService {
         boolean cooldownElapsed = now.getTime() - automationCache.getLastUpdate().getTime() >= COOLDOWN_MS;
         boolean shouldExecute = isTriggeredNow && !automationCache.isWasTriggeredPreviously();
 
-        automationCache.setWasTriggeredPreviously(shouldExecute); // for next call
 
         if (shouldExecute) {
             automation.setIsActive(true);
+            automationCache.setWasTriggeredPreviously(true); // for next call
             automationCache.setLastUpdate(now); // update last execution time
             System.err.println("Executing automation: " + automation.getName() + " with payload: " + payload);
             notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
