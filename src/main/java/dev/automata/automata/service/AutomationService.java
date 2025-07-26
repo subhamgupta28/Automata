@@ -386,6 +386,7 @@ public class AutomationService {
     public String rebootAllDevices() {
         var devices = deviceRepository.findAll();
         RestTemplate restTemplate = new RestTemplate();
+        notificationService.sendNotification("Rebooting All Devices", "success");
         devices.forEach(device -> {
             var map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
             messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
@@ -393,10 +394,11 @@ public class AutomationService {
                 var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
                 System.err.println(res);
             } catch (Exception e) {
+                notificationService.sendNotification("Reboot action failed for device: "+device.getName(), "error");
                 System.err.println(e.getMessage());
             }
         });
-        notificationService.sendNotification("Rebooting All Devices", "success");
+        notificationService.sendNotification("Reboot Complete", "success");
         return "success";
     }
 }
