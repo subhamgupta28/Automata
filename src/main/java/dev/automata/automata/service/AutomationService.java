@@ -158,12 +158,23 @@ public class AutomationService {
         });
     }
 
-    public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> payload) {
-        if (payload == null || !automation.getIsEnabled()) return;
+    public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data) {
+        var payload = new HashMap<String, Object>();
+        if (data != null)
+            payload.putAll(data);
+
+        if (!automation.getIsEnabled()) return;
+        var deviceId = automation.getTrigger().getDeviceId();
+        var type = automation.getTriggerDeviceType();
+        System.err.println(automation.getName() + " " + type);
+        if (type != null && type.equals("System"))
+            payload = (HashMap<String, Object>) mainService.getLastData(deviceId);
+        System.out.println(payload);
+
 
         long COOLDOWN_MS = 60 * 1000;
 
-        String key = automation.getTrigger().getDeviceId() + ":" + automation.getId();
+        String key = deviceId + ":" + automation.getId();
         AutomationCache automationCache = redisService.getAutomationCache(key);
         boolean isTriggeredNow = isTriggered(automation, payload);
 
@@ -174,8 +185,9 @@ public class AutomationService {
                     .id(automation.getId())
                     .automation(automation)
                     .isActive(false)
-                    .triggerDeviceId(automation.getTrigger().getDeviceId())
+                    .triggerDeviceId(deviceId)
                     .wasTriggeredPreviously(false)
+                    .triggerDeviceType(type)
                     .lastUpdate(new Date(0)) // set to epoch to allow immediate first-time execution
                     .build();
         }
@@ -183,7 +195,7 @@ public class AutomationService {
         boolean cooldownElapsed = now.getTime() - automationCache.getLastUpdate().getTime() >= COOLDOWN_MS;
         boolean shouldExecute = isTriggeredNow && !automationCache.isWasTriggeredPreviously();
 
-        automationCache.setWasTriggeredPreviously(isTriggeredNow); // for next call
+        automationCache.setWasTriggeredPreviously(shouldExecute); // for next call
 
         if (shouldExecute) {
             automation.setIsActive(true);
@@ -290,6 +302,7 @@ public class AutomationService {
             AutomationCache updatedCache = AutomationCache.builder()
                     .id(a.getId())
                     .automation(a)
+                    .triggerDeviceType(a.getTriggerDeviceType())
                     .enabled(a.getIsEnabled())
                     .triggerDeviceId(a.getTrigger().getDeviceId())
                     .isActive(existing != null ? existing.getIsActive() : false)
@@ -330,6 +343,8 @@ public class AutomationService {
         });
 
         var automation = automationBuilder.build();
+        var device = mainService.getDevice(automation.getTrigger().getDeviceId());
+        automation.setTriggerDeviceType(device.getType());
         var saved = automationRepository.save(automation);
         detail.setId(saved.getId());
         automationDetailRepository.save(detail);

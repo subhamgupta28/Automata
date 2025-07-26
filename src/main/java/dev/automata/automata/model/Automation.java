@@ -22,6 +22,7 @@ public class Automation {
     private Boolean isEnabled;
     private Boolean isActive;
     private Long snoozeTime;
+    private String triggerDeviceType;
 
     @JsonProperty("trigger")
     private Trigger trigger;
