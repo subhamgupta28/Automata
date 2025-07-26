@@ -189,7 +189,7 @@ public class AutomationService {
             automation.setIsActive(true);
             automationCache.setLastUpdate(now); // update last execution time
             System.err.println("Executing automation: " + automation.getName() + " with payload: " + payload);
-            notificationService.sendNotification("Executing automation: " + automation.getName(), "high");
+            notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
             executeActions(automation);
         } else {
             automation.setIsActive(false);
@@ -270,15 +270,16 @@ public class AutomationService {
     public void onCustomEvent(LiveEvent event) {
         var payload = event.getPayload();
         var deviceId = payload.get("device_id").toString();
-        var auto = redisService.getAutomationByTriggerDevice(deviceId);
-        auto.forEach(k -> checkAndExecuteSingleAutomation(k.getAutomation(), payload));
+        redisService.setRecentDeviceData(deviceId, payload);
+//        var auto = redisService.getAutomationByTriggerDevice(deviceId);
+//        auto.forEach(k -> checkAndExecuteSingleAutomation(k.getAutomation(), payload));
 
     }
 
-    //    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 5000)
     private void triggerPeriodicAutomations() {
         automationRepository.findByIsEnabledTrue().forEach(a ->
-                checkAndExecuteSingleAutomation(a, mainService.getLastData(a.getTrigger().getDeviceId())));
+                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId())));
     }
 
     @Scheduled(fixedRate = 1000 * 60 * 5)

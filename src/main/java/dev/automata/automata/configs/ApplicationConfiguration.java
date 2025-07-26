@@ -52,8 +52,8 @@ public class ApplicationConfiguration {
 //    }
 
     @Bean
-    public RedisTemplate<String, AutomationCache> redisTemplate(RedisConnectionFactory factory) {
-        RedisTemplate<String, AutomationCache> template = new RedisTemplate<>();
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
         template.setKeySerializer(new StringRedisSerializer());
         template.setValueSerializer(new GenericJackson2JsonRedisSerializer());

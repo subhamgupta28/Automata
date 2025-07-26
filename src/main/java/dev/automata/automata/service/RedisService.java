@@ -13,19 +13,19 @@ import java.util.*;
 @AllArgsConstructor
 public class RedisService {
 
-    private final RedisTemplate<String, AutomationCache> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 //    private final RedisTemplate<String, Map<String, Object>> dataRedisTemplate;
 //
-//    public Map<String, Object> getData(String id) {
-//        return dataRedisTemplate.opsForValue().get("data_" + id);
-//    }
-//
-//    public void setData(String id, Map<String, Object> data) {
-//        dataRedisTemplate.opsForValue().set("data_" + id, data);
-//    }
+    public Map<String, Object> getRecentDeviceData(String id) {
+        return (Map<String, Object>) redisTemplate.opsForValue().get("data_" + id);
+    }
+
+    public void setRecentDeviceData(String id, Map<String, Object> data) {
+        redisTemplate.opsForValue().set("data_" + id, data);
+    }
 
     public AutomationCache getAutomationCache(String deviceId) {
-        return redisTemplate.opsForValue().get(deviceId);
+        return (AutomationCache) redisTemplate.opsForValue().get(deviceId);
     }
 
     public void setAutomationCache(String deviceId, AutomationCache automationCache) {
