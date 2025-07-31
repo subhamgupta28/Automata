@@ -4,6 +4,7 @@ import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import {Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import Typography from "@mui/material/Typography";
 
 
 const actionStyle = {
@@ -94,7 +95,9 @@ export const ActionNode= ({id, data, isConnectable}) => {
                 id="b"
                 isConnectable={isConnectable}
             />
-
+            <Typography variant="body1" fontWeight="bold" sx={{marginLeft:1}}>
+                Action
+            </Typography>
             <div style={{margin: '2px'}}>
                 <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top: '0', right: '0'}}>
                     <DeleteIcon/>

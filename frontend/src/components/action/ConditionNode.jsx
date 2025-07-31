@@ -1,4 +1,4 @@
-import {Handle, Position, useHandleConnections, useNodesData, useReactFlow} from "@xyflow/react";
+import {Handle, Position, useHandleConnections, useNodes, useNodesData, useReactFlow} from "@xyflow/react";
 import React, {useEffect, useState} from "react";
 import dayjs from "dayjs";
 import {Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
@@ -20,17 +20,19 @@ const conditionStyle = {
 
 export const ConditionNode = ({id, data, isConnectable}) => {
     const conditionData = data.conditionData || {
-        condition: 'numeric',
+        condition: 'equal',
         valueType: 'int',
         below: '0',
         above: '0',
         value: '0',
+        triggerKey: '',
         time: '2:20:05 AM',
         isExact: false,
         type: 'state'
     };
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
     const [triggerData, setTriggerData] = useState({})
+    const [triggerKey, setTriggerKey] = useState(conditionData.triggerKey)
     const [condition, setCondition] = useState(conditionData.condition)
     const [above, setAbove] = useState(conditionData.above)
     const [below, setBelow] = useState(conditionData.below)
@@ -46,6 +48,11 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         connections.map((connection) => connection.source),
     );
 
+    const nodes = useNodes();
+
+    const conditionNodes = nodes.filter(node => node.type === 'trigger');
+
+
     const deleteNode = (nodeId) => {
         setNodes((nodes) => nodes.filter((node) => node.id !== nodeId)); // Remove the node
         setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
@@ -56,6 +63,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             setCondition(cd.condition);
             setAbove(cd.above);
             setBelow(cd.below);
+            setTriggerKey(cd.triggerKey)
             setIsRange(cd.isExact);
             setConditionValue(cd.value);
             setTime(dayjs(cd.time));
@@ -65,23 +73,26 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
     }, [data.conditionData])
     useEffect(() => {
-        const triggerData = nodesData.length > 0 && nodesData[0].data.triggerData ? nodesData[0].data.triggerData : {
-            key: '',
+        const triggerData = conditionNodes.length > 0 && conditionNodes[0].data.triggerData ? conditionNodes[0].data.triggerData : {
+            keys: [],
             value: '',
             name: '',
             deviceId: '',
             type: ''
         };
+        if (triggerData.keys.length > 0)
+            setTriggerKey(triggerData.keys.filter(f => f.conditionId === id)[0].key)
         setTriggerData(triggerData);
         setType(triggerData.type);
 
-    }, [nodesData]);
+    }, [conditionNodes]);
 
     useEffect(() => {
 
         updateNodeData(id, {
             conditionData: {
                 condition: condition,
+                triggerKey: triggerKey,
                 valueType: 'int',
                 below: below,
                 above: above,
@@ -91,18 +102,19 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 time: time.format()
             }
         })
-    }, [condition, conditionValue, below, above, isRange, time, type]);
+    }, [condition, conditionValue, below, above, isRange, time, type, triggerKey]);
 
     const handleChange = (e, select) => {
+        const value = e.target.value;
         if (select === 'value') {
-            setConditionValue(e.target.value);
+            setConditionValue(value);
         } else if (select === 'condition') {
-            setIsRange(e.target.value === 'equal');
-            setCondition(e.target.value);
+            setIsRange(value === 'equal');
+            setCondition(value);
         } else if (select === 'above') {
-            setAbove(e.target.value);
+            setAbove(value);
         } else if (select === 'below') {
-            setBelow(e.target.value);
+            setBelow(value);
         } else if (select === 'time') {
             setTime(e);
 
@@ -142,10 +154,10 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
             ) : (
                 <div style={{marginBottom: '18px'}}>
-                    <Typography variant="body1">
-                        When {triggerData.key} is
+                    <Typography variant="body1" fontWeight="bold" sx={{marginLeft:1}}>
+                        When {triggerKey} is
                     </Typography>
-                    <FormControl fullWidth className='nodrag' sx={{marginBottom: 2}}>
+                    <FormControl fullWidth className='nodrag' sx={{marginBottom: 2, marginTop: 2}}>
                         <InputLabel id="demo-simple-select-label">Condition</InputLabel>
                         <Select
                             labelId="demo-simple-select-label"
@@ -158,10 +170,12 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                             variant='outlined'>
                             <MenuItem value={'equal'}> equal to</MenuItem>
                             <MenuItem value={'range'}> between </MenuItem>
+                            <MenuItem value={'above'}> above </MenuItem>
+                            <MenuItem value={'below'}> below </MenuItem>
                         </Select>
                     </FormControl>
 
-                    {isRange ? (
+                    {isRange || condition === 'above' || condition === 'below' ? (
                         <TextField
                             size='small'
                             label="Value"
@@ -169,7 +183,6 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                             value={conditionValue}
                             onChange={(e) => handleChange(e, 'value')}
                             name="value"
-                            sx={{marginBottom: 2}}
                         />
                     ) : (
                         <div>
@@ -189,13 +202,12 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                 value={above}
                                 onChange={(e) => handleChange(e, 'above')}
                                 name="value"
-                                sx={{marginBottom: 2}}
                             />
                         </div>
                     )}
-                    <Typography variant="body1" style={{margin: '18px'}}>
-                        trigger the actions.
-                    </Typography>
+                    {/*<Typography variant="body1" style={{margin: '18px'}}>*/}
+                    {/*    trigger the actions.*/}
+                    {/*</Typography>*/}
                 </div>
             )}
 

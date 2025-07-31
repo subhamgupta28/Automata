@@ -1,0 +1,176 @@
+[
+  {
+    "_id": "node_trigger_0",
+    "type": "trigger",
+    "position": {
+      "x": 150,
+      "y": 135
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "trigger"
+      },
+      "triggerData": {
+        "deviceId": "670e9f4d4f15cd01e98640cf",
+        "type": "state",
+        "keys": [
+          {
+            "conditionId": "node_condition_1",
+            "value": "",
+            "key": "distance"
+          },
+          {
+            "conditionId": "node_condition_4",
+            "value": "",
+            "key": "lux"
+          }
+        ],
+        "name": "test25"
+      }
+    },
+    "measured": {
+      "width": new
+      NumberInt(
+      "220"
+      ),
+      "height": new
+      NumberInt(
+      "335"
+      )
+    },
+    "selected": false,
+    "dragging": false
+  },
+  {
+    "_id": "node_condition_1",
+    "type": "condition",
+    "position": {
+      "x": 479,
+      "y": 192.66666666666666
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "condition"
+      },
+      "conditionData": {
+        "condition": "above",
+        "valueType": "int",
+        "below": "0",
+        "above": "0",
+        "triggerKey": "distance",
+        "value": "1000",
+        "time": "Invalid Date",
+        "isExact": false
+      }
+    },
+    "measured": {
+      "width": new
+      NumberInt(
+      "220"
+      ),
+      "height": new
+      NumberInt(
+      "161"
+      )
+    },
+    "selected": false,
+    "dragging": false
+  },
+  {
+    "_id": "node_action_2",
+    "type": "action",
+    "position": {
+      "x": 1141,
+      "y": 176.66666666666666
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "action"
+      },
+      "actionData": {
+        "deviceId": "67571bf46f2d631aa77cc643",
+        "key": "bright",
+        "name": "WLED 2",
+        "data": "50",
+        "isEnabled": true
+      }
+    },
+    "measured": {
+      "width": new
+      NumberInt(
+      "220"
+      ),
+      "height": new
+      NumberInt(
+      "203"
+      )
+    },
+    "selected": false,
+    "dragging": false
+  },
+  {
+    "_id": "node_and_3",
+    "type": "and",
+    "position": {
+      "x": 740,
+      "y": 53.000000000000014
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "and"
+      }
+    },
+    "measured": {
+      "width": new
+      NumberInt(
+      "100"
+      ),
+      "height": new
+      NumberInt(
+      "63"
+      )
+    },
+    "selected": false,
+    "dragging": false
+  },
+  {
+    "_id": "node_condition_4",
+    "type": "condition",
+    "position": {
+      "x": 857.3333333333335,
+      "y": 184.66666666666666
+    },
+    "data": {
+      "value": {
+        "isNewNode": false,
+        "name": "condition"
+      },
+      "conditionData": {
+        "condition": "below",
+        "valueType": "int",
+        "below": "0",
+        "above": "0",
+        "triggerKey": "lux",
+        "value": "40",
+        "time": "Invalid Date",
+        "isExact": false
+      }
+    },
+    "measured": {
+      "width": new
+      NumberInt(
+      "220"
+      ),
+      "height": new
+      NumberInt(
+      "161"
+      )
+    },
+    "selected": false,
+    "dragging": false
+  }
+]

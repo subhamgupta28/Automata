@@ -28,6 +28,7 @@ import {TriggerNode} from "./TriggerNode.jsx";
 import {ActionNode} from "./ActionNode.jsx";
 import {ConditionNode} from "./ConditionNode.jsx";
 import {ValueReaderNode} from "./ValueReaderNode.jsx";
+import {And, Or} from "./Conditions.jsx";
 
 const triggerStyle = {
     padding: '10px',
@@ -240,6 +241,8 @@ export function ActionBoard() {
                             action: ActionNode,
                             condition: ConditionNode,
                             valueReader: ValueReaderNode,
+                            and: And,
+                            or: Or
                         }}
                     >
                         {selectedAutomation && selectedAutomation.id && (
@@ -290,8 +293,6 @@ export function ActionBoard() {
                                 alignItems:'center'
                             }}>
 
-
-
                                 <div style={triggerStyle} onDragStart={(event) => onDragStart(event, 'trigger')}
                                      draggable>
                                     Add Trigger
@@ -310,13 +311,29 @@ export function ActionBoard() {
                                 >
                                     Add Action
                                 </div>
-                                <div
-                                    style={{...valueReaderStyle, marginTop: '10px'}}
-                                    onDragStart={(event) => onDragStart(event, 'valueReader')}
-                                    draggable
-                                >
-                                    Add Value Reader
+                                <div style={{display: 'flex', flexDirection:'row', padding:'6px'}}>
+                                    <div
+                                        style={{...conditionStyle, margin: '4px', width:'100px'}}
+                                        onDragStart={(event) => onDragStart(event, 'and')}
+                                        draggable
+                                    >
+                                        And
+                                    </div>
+                                    <div
+                                        style={{...conditionStyle, margin: '4px', width:'100px'}}
+                                        onDragStart={(event) => onDragStart(event, 'or')}
+                                        draggable
+                                    >
+                                        Or
+                                    </div>
                                 </div>
+                                {/*<div*/}
+                                {/*    style={{...valueReaderStyle, marginTop: '10px'}}*/}
+                                {/*    onDragStart={(event) => onDragStart(event, 'valueReader')}*/}
+                                {/*    draggable*/}
+                                {/*>*/}
+                                {/*    Add Value Reader*/}
+                                {/*</div>*/}
                             </div>
                             {/* Scrollable list container */}
                             <div style={{flex: 1, overflow: 'auto', scrollbarWidth: "none", marginTop: '16px', padding: '10px'}}>

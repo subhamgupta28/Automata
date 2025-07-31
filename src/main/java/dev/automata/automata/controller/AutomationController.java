@@ -27,6 +27,11 @@ public class AutomationController {
     private final AutomationService actionService;
     private final SimpMessagingTemplate messagingTemplate;
 
+    @GetMapping("/send/{deviceId}")
+    public ResponseEntity<?> sendConditionToDevice(@PathVariable String deviceId){
+        return ResponseEntity.ok(actionService.sendConditionToDevice(deviceId));
+    }
+
 //    @GetMapping
     public ResponseEntity<Automation> createAction() {
         var trigger = new Automation.Trigger();

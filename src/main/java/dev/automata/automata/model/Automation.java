@@ -43,6 +43,7 @@ public class Automation {
         private String type; // state, time
         private String value; // 300
         private String key; //range
+        private List<String> keys; //range
         private String name;
     }
 
@@ -73,6 +74,7 @@ public class Automation {
         private String below; // 300
         private String value;
         private String time;
+        private String triggerKey;
         private Boolean isExact; // true
         // Getters and setters
     }

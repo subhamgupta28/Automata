@@ -4,16 +4,12 @@ import dev.automata.automata.dto.AutomationCache;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationDetail;
-import dev.automata.automata.model.DeviceActionState;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.*;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -23,6 +19,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -159,12 +157,11 @@ public class AutomationService {
     }
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data) {
-        if (!automation.getIsEnabled()) return;
         var payload = new HashMap<String, Object>();
         var deviceId = automation.getTrigger().getDeviceId();
         if (data != null)
             payload.putAll(data);
-        else{
+        else {
             payload.putAll((HashMap<String, Object>) mainService.getLastData(deviceId));
         }
 
@@ -214,25 +211,123 @@ public class AutomationService {
     }
 
 
+    // new version
+    public Object sendConditionToDevice(String deviceId) {
+        var automations = automationRepository.findByTrigger_DeviceId(deviceId);
+        var payload = new HashMap<String, Object>();
+        var keyJoiner = new StringJoiner(",");
+
+        for (Automation automation : automations) {
+            System.err.println(automation.getName());
+
+            String key = automation.getTrigger().getKey();
+            var conditions = automation.getConditions();
+
+            if (conditions == null || conditions.isEmpty()) {
+                continue; // or handle accordingly
+            }
+
+            var condition = conditions.get(0);
+            String pKey = automation.getId(); // Make sure key is string
+            String pVal = key;
+
+            if (Boolean.TRUE.equals(condition.getIsExact())) {
+                pVal += "=" + condition.getValue();
+            } else {
+                pVal += ">" + condition.getAbove() + ",<" + condition.getBelow();
+            }
+
+            payload.put(pKey, pVal);
+            keyJoiner.add(pKey);
+        }
+
+        payload.put("keys", keyJoiner.toString());
+
+        System.err.println(payload);
+        messagingTemplate.convertAndSend("/topic/action/" + deviceId, payload);
+        return payload;
+    }
+
+    private boolean isTriggeredOld(Automation automation, Map<String, Object> payload) {
+        if ("time".equals(automation.getTrigger().getType())) {
+            return isCurrentTime(automation.getConditions().get(0).getTime());
+        }
+
+        var key = automation.getTrigger().getKeys();
+        if (!payload.containsKey(key)) return false;
+        var conditions = automation.getConditions();
+        var truths = new ArrayList<Boolean>();
+        for (var condition: conditions){
+            var value = payload.get(key).toString();
+            var numericValue = Double.parseDouble(value);
+
+            if ("state".equals(automation.getTrigger().getType()) || "periodic".equals(automation.getTrigger().getType())) {
+                truths.add(checkCondition(numericValue, value, condition));
+            }
+        }
+
+
+        return truths.stream().allMatch(Boolean::booleanValue);
+    }
+
     private boolean isTriggered(Automation automation, Map<String, Object> payload) {
         if ("time".equals(automation.getTrigger().getType())) {
             return isCurrentTime(automation.getConditions().get(0).getTime());
         }
 
-        String key = automation.getTrigger().getKey();
-        if (!payload.containsKey(key)) return false;
 
-        var condition = automation.getConditions().getFirst();
-        var value = payload.get(key).toString();
-        var numericValue = Double.parseDouble(value);
+        var triggerKeys = automation.getTrigger().getKeys(); // List<TriggerKey>
+        var conditions = automation.getConditions();         // List<Condition>
+        if (triggerKeys==null)
+            return isTriggeredOld(automation, payload);
+        System.err.println(automation.getName());
+        System.err.println(payload);
+        var truths = new ArrayList<Boolean>();
 
-        if ("state".equals(automation.getTrigger().getType()) || "periodic".equals(automation.getTrigger().getType())) {
-            if (condition.getIsExact()) {
-                return value.equals(condition.getValue());
+        for (var key : triggerKeys) {
+
+            if (!payload.containsKey(key)) return false;
+
+            String value = payload.get(key).toString();
+            double numericValue = Double.parseDouble(value);
+
+            // Find matching condition by ID
+            var condition = conditions.stream()
+                    .filter(c -> c.getTriggerKey().equals(key))
+                    .findFirst()
+                    .orElse(null);
+            System.err.println(condition);
+
+            if (condition == null) continue;
+
+            if ("state".equals(automation.getTrigger().getType()) || "periodic".equals(automation.getTrigger().getType())) {
+                truths.add(checkCondition(numericValue, value, condition));
             }
-            double above = Double.parseDouble(condition.getAbove());
-            double below = Double.parseDouble(condition.getBelow());
-            return numericValue > above && numericValue < below;
+        }
+        System.err.println(truths.stream().allMatch(Boolean::booleanValue));
+
+        return truths.stream().allMatch(Boolean::booleanValue);
+    }
+
+
+    private Boolean checkCondition(Double numericValue, String value, Automation.Condition condition){
+        if (condition.getIsExact()) {
+            return value.equals(condition.getValue());
+        }
+
+        double above = Double.parseDouble(condition.getAbove());
+        double below = Double.parseDouble(condition.getBelow());
+//        System.err.println(below+" "+above+" "+Double.parseDouble(condition.getValue()));
+        switch (condition.getCondition()) {
+            case "above" -> {
+                return numericValue > Double.parseDouble(condition.getValue());
+            }
+            case "below" -> {
+                return numericValue < Double.parseDouble(condition.getValue());
+            }
+            case "range" -> {
+                return numericValue > above && numericValue < below;
+            }
         }
         return false;
     }
@@ -251,8 +346,8 @@ public class AutomationService {
         // Convert the parsed time to IST
         LocalTime target = targetDateTime.withZoneSameInstant(istZone).toLocalTime();
 
-        // Check if the target time is within 2 minutes of the current IST time
-        return Math.abs(ChronoUnit.MINUTES.between(target, current)) <= 2;
+        // Check if the target time is within 1 minutes of the current IST time
+        return Math.abs(ChronoUnit.MINUTES.between(target, current)) <= 1;
     }
 
     private void executeActions(Automation automation) {
@@ -291,7 +386,7 @@ public class AutomationService {
 
     }
 
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRate = 8000)
     private void triggerPeriodicAutomations() {
         automationRepository.findByIsEnabledTrue().forEach(a ->
                 checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId())));
@@ -319,6 +414,7 @@ public class AutomationService {
 
 
     public String saveAutomationDetail(AutomationDetail detail) {
+        System.err.println(detail);
         var automationBuilder = Automation.builder()
                 .isEnabled(true)
                 .isActive(false);
@@ -327,7 +423,7 @@ public class AutomationService {
 
         detail.getNodes().stream().filter(n -> n.getData().getTriggerData() != null).findFirst().ifPresent(triggerNode -> {
             var tData = triggerNode.getData().getTriggerData();
-            automationBuilder.trigger(new Automation.Trigger(tData.getDeviceId(), tData.getType(), tData.getValue(), tData.getKey(), tData.getName()));
+            automationBuilder.trigger(new Automation.Trigger(tData.getDeviceId(), tData.getType(), tData.getValue(), tData.getKey(), tData.getKeys().stream().map(t-> t.getKey()).toList(), tData.getName()));
             automationBuilder.name(tData.getName());
         });
 
@@ -340,10 +436,22 @@ public class AutomationService {
 
         automationBuilder.actions(actions);
 
-        detail.getNodes().stream().filter(n -> n.getData().getConditionData() != null).findFirst().ifPresent(conditionNode -> {
-            var c = conditionNode.getData().getConditionData();
-            automationBuilder.conditions(List.of(new Automation.Condition(c.getCondition(), c.getValueType(), c.getAbove(), c.getBelow(), c.getValue(), c.getTime(), c.getIsExact())));
-        });
+        var conditionList = detail.getNodes().stream()
+                .map(n -> n.getData().getConditionData())
+                .filter(Objects::nonNull)
+                .map(c -> new Automation.Condition(
+                        c.getCondition(),
+                        c.getValueType(),
+                        c.getAbove(),
+                        c.getBelow(),
+                        c.getValue(),
+                        c.getTime(),
+                        c.getTriggerKey(),
+                        c.getIsExact()
+                ))
+                .collect(Collectors.toList());
+
+        automationBuilder.conditions(conditionList);
 
         var automation = automationBuilder.build();
         var device = mainService.getDevice(automation.getTrigger().getDeviceId());
@@ -394,7 +502,7 @@ public class AutomationService {
                 var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
                 System.err.println(res);
             } catch (Exception e) {
-                notificationService.sendNotification("Reboot action failed for device: "+device.getName(), "error");
+                notificationService.sendNotification("Reboot action failed for device: " + device.getName(), "error");
                 System.err.println(e.getMessage());
             }
         });

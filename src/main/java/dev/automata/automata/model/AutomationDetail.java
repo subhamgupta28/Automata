@@ -101,8 +101,21 @@ public class AutomationDetail {
                 private String deviceId;
                 private String type;
                 private String key;
+                @JsonProperty("keys")
+                private List<TriggerKeys> keys;
                 private String name;
                 private String value;
+
+                @Getter
+                @Setter
+                @AllArgsConstructor
+                @NoArgsConstructor
+                @ToString
+                public static class TriggerKeys {
+                    private String conditionId;
+                    private String value;
+                    private String key;
+                }
             }
 
             @Getter
@@ -115,6 +128,7 @@ public class AutomationDetail {
                 private String valueType;
                 private String below;
                 private String above;
+                private String triggerKey;
                 private String value;
                 private String time;
                 private Boolean isExact;
