@@ -280,8 +280,8 @@ public class AutomationService {
         var conditions = automation.getConditions();         // List<Condition>
         if (triggerKeys==null)
             return isTriggeredOld(automation, payload);
-        System.err.println(automation.getName());
-        System.err.println(payload);
+//        System.err.println(automation.getName());
+//        System.err.println(payload);
         var truths = new ArrayList<Boolean>();
 
         for (var key : triggerKeys) {
@@ -296,7 +296,7 @@ public class AutomationService {
                     .filter(c -> c.getTriggerKey().equals(key))
                     .findFirst()
                     .orElse(null);
-            System.err.println(condition);
+//            System.err.println(condition);
 
             if (condition == null) continue;
 
@@ -304,7 +304,7 @@ public class AutomationService {
                 truths.add(checkCondition(numericValue, value, condition));
             }
         }
-        System.err.println(truths.stream().allMatch(Boolean::booleanValue));
+//        System.err.println(truths.stream().allMatch(Boolean::booleanValue));
 
         return truths.stream().allMatch(Boolean::booleanValue);
     }
@@ -359,7 +359,7 @@ public class AutomationService {
                     "key", action.getKey()
             );
 
-            System.err.println(action);
+//            System.err.println(action);
             if ("System".equals(action.getName())) {
                 if (action.getKey().equals("alert")) {
                     notificationService.sendAlert("Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
