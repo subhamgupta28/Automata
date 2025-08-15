@@ -1,13 +1,12 @@
-import React, { useRef, useState, useEffect } from 'react';
-import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
-import PersonTracker from "../charts/PersonTracker.jsx";
-import AudioReactiveWled from "../integrations/AudioReactiveWled.jsx";
+import React, {useRef, useState, useEffect} from 'react';
+import DeviceNodes from "../home/DeviceNodes.jsx";
+import BubblesBackground from "../BubblesBackground.jsx";
 
 
 const Exp = () => {
     return (
-        <div style={{background:"white"}}>
-            <AudioReactiveWled/>
+        <div>
+            <BubblesBackground/>
         </div>
     );
 };

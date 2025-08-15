@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import {getDashboardDevices, getMainNodePos} from "../../services/apis.jsx";
-import {createNodes} from "./EdgeNode.jsx";
-import {Device} from "./Nodes.jsx";
+import {createNodes} from "../home/EdgeNode.jsx";
+import {Device} from "../home/Nodes.jsx";
 import {DeviceDataProvider} from '../../services/DeviceDataProvider.jsx';
 import {ReactFlowProvider} from "@xyflow/react";
 

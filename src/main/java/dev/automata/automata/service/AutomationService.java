@@ -83,7 +83,7 @@ public class AutomationService {
         }
 
         var automations = automationRepository.findByTrigger_DeviceId(deviceId);
-        automations.forEach(a -> checkAndExecuteSingleAutomation(a, payload));
+        automations.forEach(a -> checkAndExecuteSingleAutomation(a, payload, true));
 
         notificationService.sendNotification("Action applied", "success");
         return "Action successfully sent!";
@@ -156,7 +156,7 @@ public class AutomationService {
         });
     }
 
-    public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data) {
+    public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data, boolean executeNow) {
         var payload = new HashMap<String, Object>();
         var deviceId = automation.getTrigger().getDeviceId();
         if (data != null)
@@ -193,7 +193,7 @@ public class AutomationService {
         }
 
         boolean cooldownElapsed = now.getTime() - automationCache.getLastUpdate().getTime() >= COOLDOWN_MS;
-        boolean shouldExecute = isTriggeredNow && !automationCache.isWasTriggeredPreviously();
+        boolean shouldExecute = isTriggeredNow && (!automationCache.isWasTriggeredPreviously()|| executeNow);
         automationCache.setWasTriggeredPreviously(isTriggeredNow); // for next call
 
         if (shouldExecute) {
@@ -389,7 +389,7 @@ public class AutomationService {
     @Scheduled(fixedRate = 8000)
     private void triggerPeriodicAutomations() {
         automationRepository.findByIsEnabledTrue().forEach(a ->
-                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId())));
+                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId()), false));
     }
 
     @Scheduled(fixedRate = 1000 * 60 * 5)

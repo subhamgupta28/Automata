@@ -9,6 +9,7 @@ import {
     updateAttrCharts, updateShowCharts
 } from "../../services/apis.jsx";
 import {
+    Alert,
     Button,
     Card,
     CardContent,
@@ -555,6 +556,16 @@ export const Device = React.memo(({id, data, isConnectable}) => {
     );
 });
 
+export function AlertNode({data, isConnectable}){
+
+    return(
+        <div>
+            <Alert variant="outlined" severity={data.value.severity}>
+                {data.value.message}
+            </Alert>
+        </div>
+    )
+}
 
 export function MainNode({data, isConnectable}) {
     const {devices, numOfDevices, chartNodes} = data.value;

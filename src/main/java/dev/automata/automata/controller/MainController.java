@@ -221,17 +221,17 @@ public class MainController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             return payload;
         }
-        if (payload.size() > 1)
-            mainService.saveData(deviceId, payload);
-        var device = mainService.setStatus(deviceId, Status.ONLINE);
-//        messagingTemplate.convertAndSend("/topic/data", device);
-        headerAccessor.getSessionAttributes().put("deviceId", deviceId);
-        var map = new HashMap<String, Object>();
-        map.put("deviceId", deviceId);
-        map.put("data", payload);
-        map.put("deviceConfig", device.get("deviceConfig"));
-        messagingTemplate.convertAndSend("/topic/data", map);
-        return map;
+//        if (payload.size() > 1)
+//            mainService.saveData(deviceId, payload);
+//        var device = mainService.setStatus(deviceId, Status.ONLINE);
+////        messagingTemplate.convertAndSend("/topic/data", device);
+//        headerAccessor.getSessionAttributes().put("deviceId", deviceId);
+//        var map = new HashMap<String, Object>();
+//        map.put("deviceId", deviceId);
+//        map.put("data", payload);
+//        map.put("deviceConfig", device.get("deviceConfig"));
+//        messagingTemplate.convertAndSend("/topic/data", map);
+        return payload;
     }
 
     // for getting live data from devices

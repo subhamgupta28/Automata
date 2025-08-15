@@ -10,7 +10,7 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import {Navigate, NavLink, Route, Routes, useLocation} from "react-router-dom";
-import DeviceNodes from "../dashboard/DeviceNodes.jsx";
+import DeviceNodes from "../home/DeviceNodes.jsx";
 import Devices from "../Devices.jsx";
 import MobileView from "../dashboard/MobileView.jsx";
 import AnalyticsView from "../dashboard/AnalyticsView.jsx";

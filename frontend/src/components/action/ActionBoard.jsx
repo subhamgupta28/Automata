@@ -98,7 +98,7 @@ export function ActionBoard() {
         const saveFlow = async (payload) => {
             console.log("saveFlow", payload);
             await saveAutomationDetail(payload);
-            fetchData();
+            await fetchData();
         }
 
         if (rfInstance) {

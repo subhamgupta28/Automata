@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useState, useMemo, useRef} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Background, BackgroundVariant, Controls, Panel,
+    applyNodeChanges, Panel,
     ReactFlow, ReactFlowProvider,
     useEdgesState,
     useNodesState, useReactFlow
@@ -12,7 +12,7 @@ import {getDashboardDevices, getMainNodePos, rebootAllDevices} from "../../servi
 // import useWebSocket from "../../services/useWebSocket.jsx";
 
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
-import {Device, MainNode} from "./Nodes.jsx";
+import {AlertNode, Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
 import {Backdrop, Button, CircularProgress} from "@mui/material";
 import NodeInspector from "./NodeInspector.jsx";
@@ -22,12 +22,14 @@ import ContextMenu from "./ContextMenu.jsx";
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {
     deviceNode: Device,
-    mainNode: MainNode
+    mainNode: MainNode,
+    alertNode: AlertNode
 };
 
 const DeviceNodes = () => {
     const [openBackdrop, setOpenBackdrop] = useState(false);
     // const {messages} = useWebSocket('/topic/data');
+    const [rfInstance, setRfInstance] = useState(null);
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
     const [editUi, setEditUi] = useState(false);
@@ -43,6 +45,31 @@ const DeviceNodes = () => {
         await rebootAllDevices();
     }
 
+    const alert = (message) => {
+        const alertNode = {
+            id: 'alert-node',
+            type: 'alertNode',
+            position: {
+                x: 1000,
+                y: -80,
+            },
+            // hidden: true,
+            data: {value: {message, severity: 'error'}},
+        };
+
+        setNodes((nds) => nds.concat(alertNode));
+        fitView({nodes: [{id: 'alert-node'}], duration: 750});
+    }
+
+    const handleSave = () => {
+
+        alert("hello")
+        if (rfInstance) {
+            const flow = rfInstance.toObject();
+            console.log("detail", JSON.stringify(flow))
+        }
+
+    }
 
     useEffect(() => {
         setOpenBackdrop(true);
@@ -50,9 +77,9 @@ const DeviceNodes = () => {
             try {
                 const pos = await getMainNodePos();
                 const devices = await getDashboardDevices();
-                const dev = devices.filter((d) => d.showInDashboard === true);
-                setNodes(createNodes(dev, [], pos.x, pos.y));
-                setEdges(createEdges(dev, []));
+                // const dev = devices.filter((d) => d.showInDashboard === true);
+                setNodes(createNodes(devices, [], pos.x, pos.y));
+                setEdges(createEdges(devices, []));
                 setOpenBackdrop(false);
             } catch (err) {
                 setOpenBackdrop(false);
@@ -80,8 +107,8 @@ const DeviceNodes = () => {
 
     const handleNodeClick = useCallback(
         (_, node) => {
-            // if (node.id === 'main-node-1')
-            fitView({nodes: [node], duration: 750, maxZoom: 0.8});
+            if (node.id === 'alert-node')
+                fitView({nodes: [node], duration: 750, maxZoom: 0.8});
         },
         [fitView],
     );
@@ -115,6 +142,7 @@ const DeviceNodes = () => {
                 ref={ref}
                 colorMode="dark"
                 nodes={nodes}
+                onInit={setRfInstance}
                 edges={edges}
                 style={{
                     backgroundColor: 'transparent'
@@ -141,6 +169,8 @@ const DeviceNodes = () => {
                     </div>}
                     <Button variant='outlined' size='small' onClick={handleEdit} style={{marginLeft: '10px'}}>
                         Edit</Button>
+                    <Button variant='outlined' size='small' onClick={handleSave} style={{marginLeft: '10px'}}>
+                        Edit Dashboard</Button>
                     <Button variant='outlined' size='small' onClick={() => setActionMenu(a => !a)}
                             style={{marginLeft: '10px'}}>Actions</Button>
                 </Panel>

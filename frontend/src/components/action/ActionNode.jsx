@@ -26,6 +26,8 @@ export const ActionNode= ({id, data, isConnectable}) => {
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
     const {devices, loading, error} = useCachedDevices();
     const [name, setName] = useState(actionData.name);
+    const [valueOptions, setValueOptions] = useState(["op1", "op2"]);
+    const actionKeys = selectedDevice.attributes && selectedDevice.attributes.filter(f=> f.type.toString().startsWith("ACTION"));
     const [value, setValue] = useState(actionData.data);
     const [key, setKey] = useState(actionData.key);
 
@@ -60,6 +62,9 @@ export const ActionNode= ({id, data, isConnectable}) => {
             setKey(e.target.value);
         }
 
+    }
+    const handleTriggerValue = (e, select) => {
+        setValue(e.target.value);
     }
 
     const selectDevice = (e) => {
@@ -129,9 +134,26 @@ export const ActionNode= ({id, data, isConnectable}) => {
                         onChange={(e) => handleTriggerKey(e, 'key')}
                         name="key"
                     >
-                        {selectedDevice.attributes && selectedDevice.attributes.map((actionOption) => (
+                        {actionKeys && actionKeys.map((actionOption) => (
                             <MenuItem key={actionOption.id} value={actionOption.key}>
                                 {actionOption.displayName}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+                <FormControl fullWidth sx={{marginBottom: 1, marginTop: 1}} className='nodrag'>
+                    <InputLabel>Value</InputLabel>
+                    <Select
+                        variant='outlined'
+                        size='small'
+                        value={value}
+                        label="Value"
+                        onChange={(e) => handleTriggerValue(e, 'value')}
+                        name="key"
+                    >
+                        {valueOptions && valueOptions.map((actionOption) => (
+                            <MenuItem key={actionOption} value={actionOption}>
+                                {actionOption}
                             </MenuItem>
                         ))}
                     </Select>

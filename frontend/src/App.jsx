@@ -7,6 +7,10 @@ import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
 import {AuthProvider} from "./components/auth/AuthContext.jsx";
 import useWebSocket from "./services/useWebSocket.jsx";
 import HealthCheck from "./services/HealthCheck.jsx";
+import BubblesBackground from "./components/BubblesBackground.jsx";
+
+// import './components/dashboard/Exp.css'
+
 
 function getBreathingClass(alertLevel) {
     switch (alertLevel) {
@@ -20,6 +24,7 @@ function getBreathingClass(alertLevel) {
             return '';
     }
 }
+
 function App() {
     // const { messages, sendMessage } = useWebSocket('/topic/update');
     const {messages, sendMessage} = useWebSocket('/topic/alert');
