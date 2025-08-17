@@ -182,7 +182,7 @@ public class MainController {
         return ResponseEntity.ok(mainService.updateAttrCharts(deviceId, attribute, isVisible));
     }
 
-    @GetMapping("/automations")
+    @PostMapping("/automations")
     public ResponseEntity<String> getAutomations() {
 
         return ResponseEntity.ok(mainService.getAutomations());
