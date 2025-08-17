@@ -182,11 +182,11 @@ public class MainController {
         return ResponseEntity.ok(mainService.updateAttrCharts(deviceId, attribute, isVisible));
     }
 
-//    @GetMapping("/attrCharts/{deviceId}")
-//    public ResponseEntity<String> getVisibleAttrCharts(@PathVariable String deviceId) {
-//
-//        return ResponseEntity.ok(mainService.getVisibleAttrCharts(deviceId));
-//    }
+    @GetMapping("/automations")
+    public ResponseEntity<String> getAutomations() {
+
+        return ResponseEntity.ok(mainService.getAutomations());
+    }
 
     @GetMapping("/update/{deviceId}")
     public ResponseEntity<String> updateDevice(@PathVariable String deviceId) {

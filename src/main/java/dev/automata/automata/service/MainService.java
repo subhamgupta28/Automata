@@ -28,6 +28,7 @@ public class MainService {
     private final DeviceChartsRepository dashboardChartsRepository;
     private final AttributeTypeRepository attributeTypeRepository;
     private final WiFiDetailsRepository wiFiDetailsRepository;
+    private final AutomationRepository automationRepository;
     private final NotificationService notificationService;
     private final MongoTemplate mongoTemplate;
 
@@ -465,16 +466,15 @@ public class MainService {
     public Object updateAttribute(String deviceId, String attribute, String isShow) {
         var dashboardOptional = deviceDashboardRepository.findByDeviceId(deviceId);
         var cond = Boolean.parseBoolean(isShow);
-        if (dashboardOptional.isPresent()){
+        if (dashboardOptional.isPresent()) {
             var dashboard = dashboardOptional.get();
-            switch (attribute){
+            switch (attribute) {
                 case "analytics" -> dashboard.setAnalytics(cond);
                 case "showCharts" -> dashboard.setShowCharts(cond);
                 case "showInDashboard" -> dashboard.setShowInDashboard(cond);
             }
             deviceDashboardRepository.save(dashboard);
-        }
-        else {
+        } else {
             var dashboard = Dashboard.builder()
                     .showInDashboard(cond)
                     .deviceId(deviceId)
@@ -482,7 +482,7 @@ public class MainService {
                     .y(20)
                     .showCharts(false)
                     .build();
-            switch (attribute){
+            switch (attribute) {
                 case "analytics" -> dashboard.setAnalytics(cond);
                 case "showCharts" -> dashboard.setShowCharts(cond);
                 case "showInDashboard" -> dashboard.setShowInDashboard(cond);
@@ -513,5 +513,12 @@ public class MainService {
         device.setAttributes(attrs);
         System.err.println(device);
 //        deviceRepository.save(device);
+    }
+
+    public String getAutomations() {
+        return automationRepository.findByIsEnabledTrue()
+                .stream()
+                .map(a -> a.getName() + ":" + a.getId())
+                .collect(Collectors.joining(","));
     }
 }
