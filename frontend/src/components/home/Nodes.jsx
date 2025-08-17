@@ -537,7 +537,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                 )}
             </div>
 
-            {isConnectable && <Handle
+            {isConnectable && data.value.x < 900 && <Handle
                 type="source"
                 position={Position.Right}
                 id="b"
@@ -546,6 +546,21 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     right: -3,
                     width: '6px',
                     height: '30px',
+                    borderColor: connectionColor,
+                    borderRadius: '0px 8px 8px 0px',
+                    background: connectionColor,
+                }}
+                isConnectable={isConnectable}
+            />}
+            {isConnectable && data.value.x > 900 && <Handle
+                type="source"
+                position={Position.Bottom}
+                id="b"
+                style={{
+                    left: 30,
+                    // right: -3,
+                    width: '35px',
+                    height: '6px',
                     borderColor: connectionColor,
                     borderRadius: '0px 8px 8px 0px',
                     background: connectionColor,
@@ -578,7 +593,7 @@ export function MainNode({data, isConnectable}) {
             device.showCharts === true
         ), [devices]);
 
-
+    const notAbove400 = devices.filter(f=> f.y < 400).length;
     // Memoize the node and chart IDs since they don't change during render
     const nodeIds = useMemo(() =>
         Array.from({length: numOfDevices}, (_, i) => `main-node-${i}`), [numOfDevices]);
@@ -604,7 +619,7 @@ export function MainNode({data, isConnectable}) {
             }}>
                 <Card variant="outlined" ref={cardRef} elevation={10} style={{
                     padding: '0px',
-                    minHeight: '600px',
+                    // minHeight: '400px',
                     // borderColor:'rgb(255 155 100 / 8%)',
                     // maxWidth: '95%',
                     // borderColor: '#797878',
@@ -631,25 +646,32 @@ export function MainNode({data, isConnectable}) {
                     {/*   */}
                     {/*</Stack>*/}
 
-                    {/* Render Handles for Main Nodes */}
-                    {nodeIds.map((id, index) => (
-                        <Handle
-                            key={id}
-                            type="target"
-                            position={Position.Left}
-                            id={id}
-                            style={{
-                                top: handleSpacing * (index + 1),
-                                background: '#fce02b',
-                                width: '6px',
-                                height: '35px',
-                                borderColor: '#fce02b',
-                                left: -4,
-                                borderRadius: '8px 0px 0px 8px',
-                            }}
-                            isConnectable={isConnectable}
-                        />
-                    ))}
+                    {/* Render Handles for Devices */}
+                    {devices.map((device, index) => {
+                        const isLeftHandle = device.y > 400;
+
+                        return (
+                            <Handle
+                                key={device.id}
+                                id={`main-node-${index}`}
+                                type="target"
+                                position={isLeftHandle ? Position.Left : Position.Top}
+                                style={{
+                                    // For left handles → stack vertically near the top-left
+                                    top: isLeftHandle ? handleSpacing * (index - notAbove400 + 1) : undefined,
+                                    left: isLeftHandle ? 0 : handleSpacing * (index + 1),
+
+                                    background: '#fce02b',
+                                    width: isLeftHandle ? '6px' : '35px',
+                                    height: isLeftHandle ? '35px' : '6px',
+                                    borderColor: '#fce02b',
+                                    borderRadius: '8px 0px 0px 8px',
+                                }}
+                                isConnectable={isConnectable}
+                            />
+                        );
+                    })}
+
                 </Card>
             </div>
         </div>
