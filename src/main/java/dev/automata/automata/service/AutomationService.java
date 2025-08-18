@@ -77,6 +77,12 @@ public class AutomationService {
             return rebootDevice(deviceId);
         }
 
+        if (payload.containsKey("automation")) {
+            var id = payload.get(payload.get("key").toString()).toString();
+            automationRepository.findById(id).ifPresent(this::executeActions);
+            return "Running automation";
+        }
+
         if (payload.containsKey("direct")) {
             sendDirectAction(deviceId, payload);
             return "No saved action found but sent directly";
@@ -193,7 +199,7 @@ public class AutomationService {
         }
 
         boolean cooldownElapsed = now.getTime() - automationCache.getLastUpdate().getTime() >= COOLDOWN_MS;
-        boolean shouldExecute = isTriggeredNow && (!automationCache.isWasTriggeredPreviously()|| executeNow);
+        boolean shouldExecute = isTriggeredNow && (!automationCache.isWasTriggeredPreviously() || executeNow);
         automationCache.setWasTriggeredPreviously(isTriggeredNow); // for next call
 
         if (shouldExecute) {
@@ -257,7 +263,7 @@ public class AutomationService {
         if (!payload.containsKey(key)) return false;
         var conditions = automation.getConditions();
         var truths = new ArrayList<Boolean>();
-        for (var condition: conditions){
+        for (var condition : conditions) {
             var value = payload.get(key).toString();
             var numericValue = Double.parseDouble(value);
 
@@ -278,7 +284,7 @@ public class AutomationService {
 
         var triggerKeys = automation.getTrigger().getKeys(); // List<TriggerKey>
         var conditions = automation.getConditions();         // List<Condition>
-        if (triggerKeys==null)
+        if (triggerKeys == null)
             return isTriggeredOld(automation, payload);
 //        System.err.println(automation.getName());
 //        System.err.println(payload);
@@ -310,7 +316,7 @@ public class AutomationService {
     }
 
 
-    private Boolean checkCondition(Double numericValue, String value, Automation.Condition condition){
+    private Boolean checkCondition(Double numericValue, String value, Automation.Condition condition) {
         if (condition.getIsExact()) {
             return value.equals(condition.getValue());
         }
@@ -423,7 +429,7 @@ public class AutomationService {
 
         detail.getNodes().stream().filter(n -> n.getData().getTriggerData() != null).findFirst().ifPresent(triggerNode -> {
             var tData = triggerNode.getData().getTriggerData();
-            automationBuilder.trigger(new Automation.Trigger(tData.getDeviceId(), tData.getType(), tData.getValue(), tData.getKey(), tData.getKeys().stream().map(t-> t.getKey()).toList(), tData.getName()));
+            automationBuilder.trigger(new Automation.Trigger(tData.getDeviceId(), tData.getType(), tData.getValue(), tData.getKey(), tData.getKeys().stream().map(t -> t.getKey()).toList(), tData.getName()));
             automationBuilder.name(tData.getName());
         });
 
