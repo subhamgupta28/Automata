@@ -84,6 +84,7 @@ public class AutomationService {
         }
         if (payload.containsKey("master")) {
             var id = payload.get("deviceId").toString();
+            var device =  deviceRepository.findById(id);
             var key = payload.get("key").toString();
             var value = Integer.parseInt(payload.get("key").toString());
             var screen = payload.get("screen").toString();
@@ -91,7 +92,8 @@ public class AutomationService {
             req.put("key", key);
             req.put(key, value);
             req.put("deviceId", id);
-            sendDirectAction(id, req);
+            device.ifPresent(device1 -> handleAction(id, req, device1.getType()));
+
         }
 
         if (payload.containsKey("direct")) {
