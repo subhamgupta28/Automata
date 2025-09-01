@@ -91,6 +91,7 @@ public class AutomationService {
             var req = new HashMap<String, Object>();
             req.put("key", key);
             req.put(key, value);
+            req.put("direct", true);
             req.put("deviceId", id);
             device.ifPresent(device1 -> handleAction(id, req, device1.getType()));
 
