@@ -521,4 +521,38 @@ public class MainService {
                 .map(a -> a.getName() + ":" + a.getId())
                 .collect(Collectors.joining(","));
     }
+
+    public Object getMasterList() {
+        var list = new ArrayList<>();
+        list.add(
+                Map.of(
+                        "id", "67571bf46f2d631aa77cc632",
+                        "name", "Wled 2 Bright",
+                        "key", "bright"
+                )
+        );
+        list.add(
+                Map.of(
+                        "id", "67571bf46f2d631aa77cc643",
+                        "name", "Wled Bright",
+                        "key", "bright"
+                )
+        );
+        list.add(
+                Map.of(
+                        "id", "673b8250da1ad94ac1d28280",
+                        "name", "Fan Speed",
+                        "key", "speed"
+                )
+        );
+        list.add(
+                Map.of(
+                        "id", "673b8250da1ad94ac1d28280",
+                        "name", "Fan Heat",
+                        "key", "heat"
+                )
+        );
+
+        return list;
+    }
 }

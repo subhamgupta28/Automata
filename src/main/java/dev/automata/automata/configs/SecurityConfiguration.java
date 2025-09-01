@@ -64,6 +64,7 @@ public class SecurityConfiguration {
             "/exp",
             "/api/v1/main/updateDevice",
             "/api/v1/main/automations",
+            "/api/v1/main/masterList",
             "/api/v1/action/send/**",
             "/audio",
             "/app/**",
