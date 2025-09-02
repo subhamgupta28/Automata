@@ -82,18 +82,23 @@ public class AutomationService {
             automationRepository.findById(id).ifPresent(this::executeActions);
             return "Running automation";
         }
-        if (payload.containsKey("master")) {
+        if (payload.containsValue("master")) {
             var id = payload.get("deviceId").toString();
             var device =  deviceRepository.findById(id);
             var key = payload.get("key").toString();
-            var value = Integer.parseInt(payload.get("key").toString());
+            var value = Integer.parseInt(payload.get("value").toString());
             var screen = payload.get("screen").toString();
             var req = new HashMap<String, Object>();
             req.put("key", key);
             req.put(key, value);
             req.put("direct", true);
             req.put("deviceId", id);
-            device.ifPresent(device1 -> handleAction(id, req, device1.getType()));
+            if (device.isPresent()){
+                System.out.println("Master action sent "+req);
+                System.out.println("Device type "+device.get().getType());
+                handleAction(id, req, device.get().getType());
+            }
+
 
         }
 

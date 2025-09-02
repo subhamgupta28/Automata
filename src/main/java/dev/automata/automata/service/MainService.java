@@ -527,14 +527,14 @@ public class MainService {
         list.add(
                 Map.of(
                         "id", "67571bf46f2d631aa77cc632",
-                        "name", "Wled 2 Bright",
+                        "name", "Wled Bright",
                         "key", "bright"
                 )
         );
         list.add(
                 Map.of(
                         "id", "67571bf46f2d631aa77cc643",
-                        "name", "Wled Bright",
+                        "name", "Wled 2 Bright",
                         "key", "bright"
                 )
         );
