@@ -29,6 +29,7 @@ public class MainService {
     private final AttributeTypeRepository attributeTypeRepository;
     private final WiFiDetailsRepository wiFiDetailsRepository;
     private final AutomationRepository automationRepository;
+    private final MasterOptionRepository masterOptionRepository;
     private final NotificationService notificationService;
     private final MongoTemplate mongoTemplate;
 
@@ -521,38 +522,23 @@ public class MainService {
                 .map(a -> a.getName() + ":" + a.getId())
                 .collect(Collectors.joining(","));
     }
+//    @Scheduled(fixedRate = 80000)
+//    public void executeInsert(){
+//        getMasterList();
+//    }
 
     public Object getMasterList() {
+        var req = masterOptionRepository.findAll();
         var list = new ArrayList<>();
-        list.add(
-                Map.of(
-                        "id", "67571bf46f2d631aa77cc632",
-                        "name", "Wled Bright",
-                        "key", "bright"
-                )
-        );
-        list.add(
-                Map.of(
-                        "id", "67571bf46f2d631aa77cc643",
-                        "name", "Wled 2 Bright",
-                        "key", "bright"
-                )
-        );
-        list.add(
-                Map.of(
-                        "id", "673b8250da1ad94ac1d28280",
-                        "name", "Fan Speed",
-                        "key", "speed"
-                )
-        );
-        list.add(
-                Map.of(
-                        "id", "673b8250da1ad94ac1d28280",
-                        "name", "Fan Heat",
-                        "key", "heat"
-                )
-        );
-
+        for (var i: req){
+            list.add(
+                    Map.of(
+                            "id", i.getDeviceId(),
+                            "name", i.getName(),
+                            "key", i.getKey()
+                    )
+            );
+        }
         return list;
     }
 }
