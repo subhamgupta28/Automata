@@ -51,14 +51,14 @@ const DeviceNodes = () => {
             type: 'alertNode',
             position: {
                 x: 1000,
-                y: -80,
+                y: 300,
             },
             // hidden: true,
             data: {value: {message, severity: 'error'}},
         };
 
         setNodes((nds) => nds.concat(alertNode));
-        fitView({nodes: [{id: 'alert-node'}], duration: 750});
+        // fitView({nodes: [{id: 'alert-node'}], duration: 750});
     }
 
     const handleSave = () => {

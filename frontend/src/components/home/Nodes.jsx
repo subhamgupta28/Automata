@@ -574,11 +574,11 @@ export const Device = React.memo(({id, data, isConnectable}) => {
 export function AlertNode({data, isConnectable}){
 
     return(
-        <div>
+        <Card elevation={10} style={{height:'400px', width:'600px', borderRadius:'12px', padding:'10px'}}>
             <Alert variant="outlined" severity={data.value.severity}>
                 {data.value.message}
             </Alert>
-        </div>
+        </Card>
     )
 }
 

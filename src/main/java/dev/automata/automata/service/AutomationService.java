@@ -366,6 +366,7 @@ public class AutomationService {
         LocalTime current = now.toLocalTime();
 
         // Parse the trigger time assuming it's in ISO_OFFSET_DATE_TIME format
+        System.err.println(triggerTime);
         ZonedDateTime targetDateTime = ZonedDateTime.parse(triggerTime, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
         // Convert the parsed time to IST

@@ -10,6 +10,7 @@ import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.service.AnalyticsService;
 import dev.automata.automata.service.MainService;
+import dev.automata.automata.service.MqttService;
 import dev.automata.automata.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -36,10 +37,12 @@ public class MainController {
     private final AnalyticsService analyticsService;
     private final ApplicationEventPublisher publisher;
     private final NotificationService notificationService;
+    private final MqttService mqttService;
 //    private final KafkaTemplate<String, String> kafkaTemplate;
 
     @GetMapping("healthCheck")
     public ResponseEntity<?> healthCheck(){
+//        mqttService.sendToTopic("automata/action/68c355de653e5d47410e878c", Map.of("key", "val"));
         return ResponseEntity.ok("ok");
     }
 
