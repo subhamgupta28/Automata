@@ -1,5 +1,6 @@
 package dev.automata.automata.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.AutomationCache;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.model.Automation;
@@ -8,7 +9,9 @@ import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -34,6 +37,8 @@ public class AutomationService {
     private final NotificationService notificationService;
     private final AutomationDetailRepository automationDetailRepository;
     private final DeviceActionStateRepository deviceActionStateRepository;
+    private final MessageChannel mqttOutboundChannel;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
 //    private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
 //
@@ -113,7 +118,19 @@ public class AutomationService {
         notificationService.sendNotification("Action applied", "success");
         return "Action successfully sent!";
     }
-
+    private void sendToTopic(String topic, Map<String, Object> payload) {
+        try {
+            String json = objectMapper.writeValueAsString(payload);
+            mqttOutboundChannel.send(
+                    MessageBuilder.withPayload(json)
+                            .setHeader("mqtt_topic", topic)
+                            .build()
+            );
+            System.out.println("📤 Sent to " + topic + " => " + json);
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+    }
     private void notifyBasedOnResult(String result) {
         if ("Success".equals(result)) {
             notificationService.sendNotification("Action applied", "success");
@@ -141,6 +158,7 @@ public class AutomationService {
         map.put(key, payload.get(key));
         map.put("key", key);
         messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
+        sendToTopic("automata/action/" + deviceId, map);
         notificationService.sendNotification("Action applied", "success");
     }
 
@@ -164,6 +182,7 @@ public class AutomationService {
             System.err.println(data);
             mainService.saveData(deviceId, data);
             messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
+            sendToTopic("automata/data", Map.of("deviceId", deviceId, "data", data));
             return result;
         } catch (Exception e) {
             System.err.println(e);
@@ -270,6 +289,7 @@ public class AutomationService {
 
         System.err.println(payload);
         messagingTemplate.convertAndSend("/topic/action/" + deviceId, payload);
+        sendToTopic("automata/action/" + deviceId, payload);
         return payload;
     }
 
@@ -380,7 +400,7 @@ public class AutomationService {
         for (Automation.Action action : automation.getActions()) {
             if (Boolean.FALSE.equals(action.getIsEnabled())) continue;
 
-            var payload = Map.of(
+            Map<String, Object> payload = Map.of(
                     action.getKey(), action.getData(),
                     "key", action.getKey()
             );
@@ -397,6 +417,7 @@ public class AutomationService {
                 handleWLED(action.getDeviceId(), new HashMap<>(payload));
             } else {
                 messagingTemplate.convertAndSend("/topic/action/" + action.getDeviceId(), payload);
+                sendToTopic("automata/action/" + action.getDeviceId(), payload);
             }
         }
     }
@@ -513,6 +534,7 @@ public class AutomationService {
     public String ackAction(String deviceId, Map<String, Object> payload) {
         if (payload.containsKey("actionAck")) {
             messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "ack", payload));
+            sendToTopic("automata/data", Map.of("deviceId", deviceId, "ack", payload));
         }
         return "success";
     }
@@ -522,8 +544,9 @@ public class AutomationService {
         RestTemplate restTemplate = new RestTemplate();
         notificationService.sendNotification("Rebooting All Devices", "success");
         devices.forEach(device -> {
-            var map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
+            Map<String, Object> map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
             messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
+            sendToTopic("automata/action/" + device.getId(), map);
             try {
                 var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
                 System.err.println(res);

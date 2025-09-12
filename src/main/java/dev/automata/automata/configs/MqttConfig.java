@@ -29,10 +29,11 @@ public class MqttConfig {
     private String user;
     @Value("${application.mqtt.password}")
     private String password;
-    private final String clientId = "springboot-client";
+    private final String clientId = "springboot-client-dev";
     private final String topicDefault = "automata/message";
     private final String topicSendLiveData = "automata/sendLiveData";
     private final String topicSendData = "automata/sendData";
+    private final String topicAction = "automata/action";
 
     @Bean
     public MqttPahoClientFactory mqttClientFactory() {
@@ -72,7 +73,8 @@ public class MqttConfig {
                         clientId + "-sub",
                         mqttClientFactory(),
                         topicSendLiveData,
-                        topicSendData
+                        topicSendData,
+                        topicAction
                 );
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());
@@ -91,6 +93,7 @@ public class MqttConfig {
                                 .channelMapping(topicSendLiveData, "sendLiveData")
                                 .channelMapping(topicSendData, "sendData")
                                 .channelMapping(topicDefault, "mqttInputChannel")
+                                .channelMapping(topicAction, "action")
                 )
                 .get();
     }
@@ -107,7 +110,10 @@ public class MqttConfig {
     public MessageChannel sendData() {
         return new DirectChannel();
     }
-
+    @Bean
+    public MessageChannel action() {
+        return new DirectChannel();
+    }
 
 //    @Bean
 //    @ServiceActivator(inputChannel = "mqttInputChannel")

@@ -37,7 +37,7 @@ public class MainController {
     private final AnalyticsService analyticsService;
     private final ApplicationEventPublisher publisher;
     private final NotificationService notificationService;
-    private final MqttService mqttService;
+
 //    private final KafkaTemplate<String, String> kafkaTemplate;
 
     @GetMapping("healthCheck")
@@ -231,7 +231,6 @@ public class MainController {
         if (payload.size() > 1)
             mainService.saveData(deviceId, payload);
         var device = mainService.setStatus(deviceId, Status.ONLINE);
-//        messagingTemplate.convertAndSend("/topic/data", device);
         headerAccessor.getSessionAttributes().put("deviceId", deviceId);
         var map = new HashMap<String, Object>();
         map.put("deviceId", deviceId);

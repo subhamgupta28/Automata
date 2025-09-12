@@ -2,7 +2,9 @@ package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.LiveEvent;
+import dev.automata.automata.model.Status;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -18,31 +20,40 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MqttService {
 
-    private final MessageChannel mqttOutboundChannel;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+
     private final SimpMessagingTemplate messagingTemplate;
+    private final MainService mainService;
+    private final AutomationService actionService;
+    private final ApplicationEventPublisher publisher;
 
-    public void sendToTopic(String topic, Map<String, Object> payload) {
-        try {
-            String json = objectMapper.writeValueAsString(payload);
-            mqttOutboundChannel.send(
-                    MessageBuilder.withPayload(json)
-                            .setHeader("mqtt_topic", topic)
-                            .build()
-            );
-            System.out.println("📤 Sent to " + topic + " => " + json);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
-    public void send(String data) {
-        mqttOutboundChannel.send(MessageBuilder.withPayload(data).build());
-    }
 
     @ServiceActivator(inputChannel = "sendData")
     public void sendData(Map<String, Object> payload) {
         System.out.println("📡 Data: " + payload);
+        String deviceId = payload.get("device_id").toString();
+        if (deviceId.isEmpty() || deviceId.equals("null")) {
+            System.err.println("No device found");
+        }
+        if (payload.size() > 1)
+            mainService.saveData(deviceId, payload);
+        var device = mainService.setStatus(deviceId, Status.ONLINE);
+        var map = new HashMap<String, Object>();
+        map.put("deviceId", deviceId);
+        map.put("data", payload);
+        map.put("deviceConfig", device.get("deviceConfig"));
+        messagingTemplate.convertAndSend("/topic/data", map);
+    }
+
+    @ServiceActivator(inputChannel = "action")
+    public void action(Map<String, Object> payload) {
+        System.out.println("📡 Action: " + payload);
+        System.err.println("got action message: " + payload);
+        String deviceId = payload.get("device_id").toString();
+        if (deviceId.isEmpty() || deviceId.equals("null")) {
+            System.err.println("Device Id not found");;
+        }
+        actionService.handleAction(deviceId, payload, "");
     }
 
     @ServiceActivator(inputChannel = "sendLiveData")
@@ -53,6 +64,7 @@ public class MqttService {
         }
         var event  = new LiveEvent();
         event.setPayload(payload);
+        publisher.publishEvent(event);
         messagingTemplate.convertAndSend("/topic/data", getStringObjectMap(payload, deviceId));
 
     }
