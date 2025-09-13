@@ -156,16 +156,16 @@ public class SystemMetrics {
         return null;
     }
 
-    @Scheduled(fixedRate = 1000 * 30)// every 5 mins
-    private void healthCheck() {
-        try{
-            restTemplate = new RestTemplate();
-            var res = restTemplate.getForObject("http://raspberry.local:8010/api/v1/main/healthCheck", String.class);
-//            System.err.println("Health Check: "+res);
-        }catch (Exception e){
-            System.err.println(e);
-        }
-    }
+//    @Scheduled(fixedRate = 1000 * 30)// every 5 mins
+//    private void healthCheck() {
+//        try{
+//            restTemplate = new RestTemplate();
+//            var res = restTemplate.getForObject("http://raspberry.local:8010/api/v1/main/healthCheck", String.class);
+////            System.err.println("Health Check: "+res);
+//        }catch (Exception e){
+//            System.err.println(e);
+//        }
+//    }
 
 
     @Scheduled(fixedRate = 5000)
