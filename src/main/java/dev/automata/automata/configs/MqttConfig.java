@@ -1,12 +1,12 @@
 package dev.automata.automata.configs;
 
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.channel.DirectChannel;
-import org.springframework.integration.core.MessageProducer;
+import org.springframework.integration.channel.ExecutorChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.Transformers;
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
@@ -19,6 +19,8 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Configuration
 public class MqttConfig {
@@ -29,8 +31,8 @@ public class MqttConfig {
     private String user;
     @Value("${application.mqtt.password}")
     private String password;
-    private final String clientId = "springboot-client-dev";
-    private final String topicDefault = "automata/message";
+    private final String clientId = "springboot-client-0";
+    private final String topicDefault = "automata/status";
     private final String topicSendLiveData = "automata/sendLiveData";
     private final String topicSendData = "automata/sendData";
     private final String topicAction = "automata/action";
@@ -39,14 +41,36 @@ public class MqttConfig {
     public MqttPahoClientFactory mqttClientFactory() {
         MqttConnectOptions options = new MqttConnectOptions();
         options.setServerURIs(new String[]{brokerUrl});
-        options.setUserName(user); // if needed
-        options.setPassword(password.toCharArray()); // if needed
+        options.setUserName(user);
+        options.setPassword(password.toCharArray());
         options.setAutomaticReconnect(true);
-        options.setConnectionTimeout(10);
-        options.setKeepAliveInterval(20);
+        options.setConnectionTimeout(2);
+        options.setKeepAliveInterval(0);
+        options.setCleanSession(true);
+        options.setMaxInflight(10000);
+
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
         factory.setConnectionOptions(options);
         return factory;
+    }
+
+
+    @Bean
+    public MqttPahoMessageDrivenChannelAdapter inbound() {
+        MqttPahoMessageDrivenChannelAdapter adapter =
+                new MqttPahoMessageDrivenChannelAdapter(
+                        clientId + "-sub",
+                        mqttClientFactory(),
+                        topicSendLiveData,
+                        topicSendData,
+                        topicAction,
+                        topicDefault
+                );
+
+        adapter.setCompletionTimeout(5000);
+        adapter.setConverter(new DefaultPahoMessageConverter());
+        adapter.setQos(1);
+        return adapter;
     }
 
     // Outbound: publish messages
@@ -65,23 +89,6 @@ public class MqttConfig {
         return new DirectChannel();
     }
 
-    // Inbound: subscribe and receive messages
-    @Bean
-    public MqttPahoMessageDrivenChannelAdapter inbound() {
-        MqttPahoMessageDrivenChannelAdapter adapter =
-                new MqttPahoMessageDrivenChannelAdapter(
-                        clientId + "-sub",
-                        mqttClientFactory(),
-                        topicSendLiveData,
-                        topicSendData,
-                        topicAction
-                );
-        adapter.setCompletionTimeout(5000);
-        adapter.setConverter(new DefaultPahoMessageConverter());
-        adapter.setQos(1);
-//        adapter.setOutputChannel(mqttInputChannel());
-        return adapter;
-    }
 
     @Bean
     public IntegrationFlow mqttInFlow() {
@@ -98,29 +105,37 @@ public class MqttConfig {
                 .get();
     }
     @Bean
-    public MessageChannel mqttInputChannel() {
-        return new DirectChannel();
-    }
-    @Bean
-    public MessageChannel sendLiveData() {
-        return new DirectChannel();
+    public ExecutorService mqttExecutor() {
+        // Thread pool for processing MQTT messages
+        return Executors.newFixedThreadPool(10);
     }
 
     @Bean
-    public MessageChannel sendData() {
-        return new DirectChannel();
-    }
-    @Bean
-    public MessageChannel action() {
-        return new DirectChannel();
+    public ExecutorChannel mqttInputChannel(ExecutorService mqttExecutor) {
+        return new ExecutorChannel(mqttExecutor);
     }
 
-//    @Bean
-//    @ServiceActivator(inputChannel = "mqttInputChannel")
-//    public MessageHandler handler() {
-//        return message -> {
-//            System.out.println("Received MQTT headers: " + message.getHeaders());
-//            System.out.println("Received MQTT message: " + message.getPayload());
-//        };
-//    }
+    @Bean
+    public ExecutorChannel sendLiveData(ExecutorService mqttExecutor) {
+        return new ExecutorChannel(mqttExecutor);
+    }
+
+    @Bean
+    public ExecutorChannel sendData(ExecutorService mqttExecutor) {
+        return new ExecutorChannel(mqttExecutor);
+    }
+
+    @Bean
+    public ExecutorChannel action(ExecutorService mqttExecutor) {
+        return new ExecutorChannel(mqttExecutor);
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = "mqttInputChannel")
+    public MessageHandler handler() {
+        return message -> {
+            System.out.println("Received MQTT headers: " + message.getHeaders());
+            System.out.println("Received MQTT message: " + message.getPayload());
+        };
+    }
 }

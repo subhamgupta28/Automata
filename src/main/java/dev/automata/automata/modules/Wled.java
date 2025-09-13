@@ -3,6 +3,7 @@ package dev.automata.automata.modules;
 import dev.automata.automata.dto.WledResponse;
 import dev.automata.automata.model.DeviceActionState;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.client.RestTemplate;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
@@ -13,21 +14,20 @@ import java.io.ByteArrayInputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 
 public class Wled {
     private final String ipAddress;
-    private final RestTemplate restTemplate;
     private static final HashMap<String, Object> lastState = new HashMap<>();
 
 
     public Wled(String ipAddress) {
         this.ipAddress = ipAddress + "/json/state";
-        restTemplate = new RestTemplate();
     }
 
     public Map<String, Object> getInfo(String deviceId, DeviceActionState deviceState) {
-        var res = restTemplate.getForObject(ipAddress, WledResponse.class);
+        var res = new RestTemplate().getForObject(ipAddress, WledResponse.class);
         if (res != null) {
             try {
 //                // Convert the XML string into a byte stream
@@ -68,21 +68,23 @@ public class Wled {
         return -1; // Return null if the tag is not found
     }
 
-    public String toggleOnOff() {
+    @Async
+    public CompletableFuture<String> toggleOnOff() {
         try {
             var r = """
                     {"on": "t"}
                     """;
 
-            var response = restTemplate.postForObject(ipAddress, r, Object.class);
+            var response = new RestTemplate().postForObject(ipAddress, r, Object.class);
             System.err.println(response);
-            return "success";
+            return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
-            return "error";
+            return CompletableFuture.completedFuture("error");
         }
     }
 
-    public String powerOnOff(boolean on) {
+    @Async
+    public CompletableFuture<String> powerOnOff(boolean on) {
         lastState.put("onOff", on);
 
         try {
@@ -90,50 +92,48 @@ public class Wled {
                     {"on": v}
                     """;
 
-            var response = restTemplate.postForObject(ipAddress, r.replace("v", String.valueOf(on)), Object.class);
+            var response = new RestTemplate().postForObject(ipAddress, r.replace("v", String.valueOf(on)), Object.class);
             System.err.println(response);
-            return "success";
+            return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
-            return "error";
+            return CompletableFuture.completedFuture("error");
         }
     }
 
-    public String setBrightness(int brightness) {
+    @Async
+    public CompletableFuture<String> setBrightness(int brightness) {
         lastState.put("bright", brightness);
         try {
             var r = """
                     {"bri": v}
                     """;
 
-            var response = restTemplate.postForObject(ipAddress, r.replace("v", String.valueOf(brightness)), Object.class);
+            var response = new RestTemplate().postForObject(ipAddress, r.replace("v", String.valueOf(brightness)), Object.class);
             System.err.println(response);
-            return "success";
+            return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
-            return "error";
+            return CompletableFuture.completedFuture("error");
         }
 
     }
 
-    public String setPresets(int presets) {
-        lastState.put("presets", presets);
+    @Async
+    public CompletableFuture<String> setPresets(int presets) {
         try {
-            var r = """
-                    {"ps": v}
-                    """;
-
-            var response = restTemplate.postForObject(ipAddress, r.replace("v", String.valueOf(presets)), Object.class);
+            String payload = String.format("{\"ps\": %d}", presets);
+            var response = new RestTemplate().postForObject(ipAddress, payload, Object.class);
             System.err.println(response);
-            return "success";
+            return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
-            return "error";
+            return CompletableFuture.completedFuture("error");
         }
     }
 
     public String setRGB(int red, int green, int blue) {
-        return restTemplate.getForObject(ipAddress + "&R=" + red + "&G=" + green + "&B=" + blue, String.class);
+        return new RestTemplate().getForObject(ipAddress + "&R=" + red + "&G=" + green + "&B=" + blue, String.class);
     }
 
     public String setEffect(int effect) {
-        return restTemplate.getForObject(ipAddress + "&FX=" + effect, String.class);
+        return new RestTemplate().getForObject(ipAddress + "&FX=" + effect, String.class);
     }
 }

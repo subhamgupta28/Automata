@@ -12,6 +12,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -22,6 +23,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -58,9 +60,11 @@ public class AutomationService {
 
     public String handleAction(String deviceId, Map<String, Object> payload, String deviceType) {
         if ("WLED".equals(deviceType)) {
+
             var result = handleWLED(deviceId, payload);
             notifyBasedOnResult(result);
-            return result;
+
+            return "error";
         }
         System.err.println("Received action");
         System.err.println("Device Type: " + deviceType);
@@ -89,7 +93,7 @@ public class AutomationService {
         }
         if (payload.containsValue("master")) {
             var id = payload.get("deviceId").toString();
-            var device =  deviceRepository.findById(id);
+            var device = deviceRepository.findById(id);
             var key = payload.get("key").toString();
             var value = Integer.parseInt(payload.get("value").toString());
             var screen = payload.get("screen").toString();
@@ -98,9 +102,9 @@ public class AutomationService {
             req.put(key, value);
             req.put("direct", true);
             req.put("deviceId", id);
-            if (device.isPresent()){
-                System.out.println("Master action sent "+req);
-                System.out.println("Device type "+device.get().getType());
+            if (device.isPresent()) {
+                System.out.println("Master action sent " + req);
+                System.out.println("Device type " + device.get().getType());
                 handleAction(id, req, device.get().getType());
             }
 
@@ -118,6 +122,7 @@ public class AutomationService {
         notificationService.sendNotification("Action applied", "success");
         return "Action successfully sent!";
     }
+
     private void sendToTopic(String topic, Map<String, Object> payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);
@@ -131,8 +136,9 @@ public class AutomationService {
             System.err.println(e);
         }
     }
+
     private void notifyBasedOnResult(String result) {
-        if ("Success".equals(result)) {
+        if ("success".equals(result)) {
             notificationService.sendNotification("Action applied", "success");
         } else {
             notificationService.sendNotification("Action failed", "error");
@@ -172,18 +178,21 @@ public class AutomationService {
             var wled = new Wled(device.getAccessUrl());
             var key = payload.get("key").toString();
             String result = switch (key) {
-                case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString()));
-                case "onOff" -> wled.powerOnOff(Boolean.parseBoolean(payload.get(key).toString()));
-                case "toggle" -> wled.toggleOnOff();
-                case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString()));
+                case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString())).resultNow();
+                case "onOff" -> wled.powerOnOff(Boolean.parseBoolean(payload.get(key).toString())).resultNow();
+                case "toggle" -> wled.toggleOnOff().resultNow();
+                case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString())).resultNow();
                 default -> "No action found for key: " + key;
             };
-            var data = wled.getInfo(deviceId, deviceState);
-            System.err.println(data);
-            mainService.saveData(deviceId, data);
-            messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
-            sendToTopic("automata/data", Map.of("deviceId", deviceId, "data", data));
-            return result;
+            CompletableFuture.runAsync(() -> {
+                var data = wled.getInfo(deviceId, deviceState);
+                System.err.println(data);
+                mainService.saveData(deviceId, data);
+                messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
+                sendToTopic("automata/data", Map.of("deviceId", deviceId, "data", data));
+
+            });
+            return "success";
         } catch (Exception e) {
             System.err.println(e);
             return "Error";
