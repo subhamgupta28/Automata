@@ -189,7 +189,7 @@ public class AutomationService {
                 System.err.println(data);
                 mainService.saveData(deviceId, data);
                 messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
-                sendToTopic("automata/data", Map.of("deviceId", deviceId, "data", data));
+//                sendToTopic("automata/data", Map.of("deviceId", deviceId, "data", data));
 
             });
             return "success";
@@ -415,13 +415,10 @@ public class AutomationService {
             );
 
 //            System.err.println(action);
-            if ("System".equals(action.getName())) {
-                if (action.getKey().equals("alert")) {
-                    notificationService.sendAlert("Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
-                }
-                if (payload.get("key").equals("app_notify")) {
-                    notificationService.sendNotify("Automation", action.getData(), "low");
-                }
+            if (action.getKey().equals("alert")) {
+                notificationService.sendAlert("Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
+            } else if (payload.get("key").equals("app_notify")) {
+                notificationService.sendNotify("Automation", action.getData(), "low");
             } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
                 handleWLED(action.getDeviceId(), new HashMap<>(payload));
             } else {
@@ -543,7 +540,7 @@ public class AutomationService {
     public String ackAction(String deviceId, Map<String, Object> payload) {
         if (payload.containsKey("actionAck")) {
             messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "ack", payload));
-            sendToTopic("automata/data", Map.of("deviceId", deviceId, "ack", payload));
+//            sendToTopic("automata/data", Map.of("deviceId", deviceId, "ack", payload));
         }
         return "success";
     }

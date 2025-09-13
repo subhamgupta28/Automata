@@ -31,7 +31,7 @@ public class MqttConfig {
     private String user;
     @Value("${application.mqtt.password}")
     private String password;
-    private final String clientId = "springboot-client-0";
+    private final String clientId = "springboot-client-";
     private final String topicDefault = "automata/status";
     private final String topicSendLiveData = "automata/sendLiveData";
     private final String topicSendData = "automata/sendData";
@@ -59,7 +59,7 @@ public class MqttConfig {
     public MqttPahoMessageDrivenChannelAdapter inbound() {
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter(
-                        clientId + "-sub",
+                        clientId + System.currentTimeMillis() + "-sub",
                         mqttClientFactory(),
                         topicSendLiveData,
                         topicSendData,
@@ -104,6 +104,7 @@ public class MqttConfig {
                 )
                 .get();
     }
+
     @Bean
     public ExecutorService mqttExecutor() {
         // Thread pool for processing MQTT messages
