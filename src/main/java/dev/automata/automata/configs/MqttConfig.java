@@ -4,6 +4,7 @@ import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.ExecutorChannel;
@@ -17,6 +18,7 @@ import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -44,9 +46,9 @@ public class MqttConfig {
         options.setUserName(user);
         options.setPassword(password.toCharArray());
         options.setAutomaticReconnect(true);
-        options.setConnectionTimeout(2);
+//        options.setConnectionTimeout(2);
         options.setKeepAliveInterval(0);
-        options.setCleanSession(true);
+        options.setCleanSession(false);
         options.setMaxInflight(10000);
 
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
@@ -104,30 +106,40 @@ public class MqttConfig {
                 )
                 .get();
     }
-
     @Bean
-    public ExecutorService mqttExecutor() {
-        // Thread pool for processing MQTT messages
-        return Executors.newFixedThreadPool(10);
+    @Primary
+    public ThreadPoolTaskExecutor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(25);
+        executor.setThreadNamePrefix("async-task-");
+        executor.initialize();
+        return executor;
     }
+//    @Bean
+//    public ExecutorService mqttExecutor() {
+//        // Thread pool for processing MQTT messages
+//        return Executors.newFixedThreadPool(10);
+//    }
 
     @Bean
-    public ExecutorChannel mqttInputChannel(ExecutorService mqttExecutor) {
+    public ExecutorChannel mqttInputChannel(ThreadPoolTaskExecutor mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel sendLiveData(ExecutorService mqttExecutor) {
+    public ExecutorChannel sendLiveData(ThreadPoolTaskExecutor mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel sendData(ExecutorService mqttExecutor) {
+    public ExecutorChannel sendData(ThreadPoolTaskExecutor mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel action(ExecutorService mqttExecutor) {
+    public ExecutorChannel action(ThreadPoolTaskExecutor mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
