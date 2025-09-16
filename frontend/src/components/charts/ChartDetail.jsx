@@ -1,4 +1,8 @@
-import {LineChart, lineElementClasses} from "@mui/x-charts";
+import {
+    LineChart,
+    lineElementClasses,
+    BarChart,
+} from "@mui/x-charts";
 import React, {useEffect, useState, useRef} from "react";
 import {getDetailChartData} from "../../services/apis.jsx";
 import {
@@ -10,7 +14,6 @@ import {
     ToggleButtonGroup,
 } from "@mui/material";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
-// Adjust path as needed
 
 const gradientColors = [
     ['#42a5f5', '#ffffff'],
@@ -22,11 +25,21 @@ const gradientColors = [
     ['#7f7f7f', '#ffffff'],
     ['#17becf', '#ffffff'],
 ];
-
+const solidColors = [
+    '#42a5f5',
+    '#2ca02c',
+    '#ff7f0e',
+    '#d62728',
+    '#bcbd22',
+    '#17becf',
+    '#7f7f7f',
+    '#9467bd',
+];
 export default function ChartDetail({deviceId, name}) {
     const [data, setData] = useState([]);
     const [attributes, setAttributes] = useState([]);
     const [range, setRange] = useState("day");
+    const [chartType, setChartType] = useState("bar");
     const {messages} = useDeviceLiveData();
     const dataRef = useRef([]);
 
@@ -43,14 +56,11 @@ export default function ChartDetail({deviceId, name}) {
 
     // Listen for live updates
     useEffect(() => {
-        if (range === "live"){
+        if (range === "live") {
             if (messages.deviceId === deviceId && messages.data) {
                 const now = new Date();
-                const dd = String(now.getDate()).padStart(2, '0');
-                const hh = String(now.getHours()).padStart(2, '0');
                 const mm = String(now.getMinutes()).padStart(2, '0');
                 const ss = String(now.getSeconds()).padStart(2, '0');
-
                 const formattedTimestamp = `${mm}:${ss}`;
 
                 const newEntry = {
@@ -58,13 +68,11 @@ export default function ChartDetail({deviceId, name}) {
                     ...messages.data
                 };
 
-
-                const updatedData = [...dataRef.current, newEntry].slice(-10); // Keep last 50 points
+                const updatedData = [...dataRef.current, newEntry].slice(-24);
                 dataRef.current = updatedData;
                 setData(updatedData);
             }
         }
-
     }, [messages, deviceId]);
 
     const xLabels = data.map((item) => item.dateDay);
@@ -73,17 +81,15 @@ export default function ChartDetail({deviceId, name}) {
         label: attr.charAt(0).toUpperCase() + attr.slice(1),
         data: data.map((item) => item[attr]),
         showMark: false,
-        area: true,
-        color: `url(#Gradient${index})`,
+        area: chartType === "line",
+        color: chartType === "line"
+            ? `url(#Gradient${index})`
+            : solidColors[index % solidColors.length],
+        stack: chartType === "bar" ? "total" : undefined, // stack all bar series together
     }));
 
     return (
-        <Card elevation={1} style={{
-            // borderRadius:'10px',
-            backgroundColor: 'transparent',
-            // borderColor: 'grey',
-            // borderStyle:'dashed',
-        }}>
+        <Card elevation={1} style={{backgroundColor: 'transparent'}}>
             <CardContent>
                 <Box
                     display="flex"
@@ -93,63 +99,90 @@ export default function ChartDetail({deviceId, name}) {
                 >
                     <Typography
                         variant="h6"
-                        sx={{
-                            fontWeight: 600,
-                            // color: "#90caf9",
-                            mb: 2,
-                        }}
+                        sx={{fontWeight: 600}}
                     >
                         {name}
                     </Typography>
+
+                    {/* Range toggle */}
                     <ToggleButtonGroup
                         color="primary"
                         size="small"
                         value={range}
                         exclusive
                         onChange={(e) => setRange(e.target.value)}
-                        aria-label="Platform"
+                        aria-label="range"
                     >
                         <ToggleButton value="hour">Hour</ToggleButton>
                         <ToggleButton value="day">Day</ToggleButton>
                         <ToggleButton value="week">Week</ToggleButton>
                         <ToggleButton value="live">Live</ToggleButton>
                     </ToggleButtonGroup>
+
+                    {/* Chart type toggle */}
+                    <ToggleButtonGroup
+                        color="primary"
+                        size="small"
+                        value={chartType}
+                        exclusive
+                        onChange={(e) => setChartType(e.target.value)}
+                        aria-label="chart type"
+                        sx={{ml: 2}}
+                    >
+                        <ToggleButton value="line">Line</ToggleButton>
+                        <ToggleButton value="bar">Bar</ToggleButton>
+                    </ToggleButtonGroup>
                 </Box>
 
-                <LineChart
-                    height={450}
-                    series={series}
-                    yAxis={[{position: 'none'}]}
-                    xAxis={[{scaleType: "band", data: xLabels}]}
-                    sx={{
-                        [`& .${lineElementClasses.root}`]: {
-                            strokeWidth: 2,
-                        },
-                        '& .MuiChartsArea-area': {
-                            fillOpacity: 0.3,
-                            fill: 'url(#gradientFill)',
-                        },
-                    }}
-                >
-                    <defs>
-                        {attributes.map((_, index) => {
-                            const [start, end] = gradientColors[index % gradientColors.length];
-                            return (
-                                <linearGradient
-                                    key={index}
-                                    id={`Gradient${index}`}
-                                    x1="0%"
-                                    y1="0%"
-                                    x2="0%"
-                                    y2="100%"
-                                >
-                                    <stop offset="0%" stopColor={start} stopOpacity="0.8"/>
-                                    <stop offset="100%" stopColor={end} stopOpacity="0"/>
-                                </linearGradient>
-                            );
-                        })}
-                    </defs>
-                </LineChart>
+                {chartType === "line" ? (
+                    <LineChart
+                        height={450}
+                        series={series}
+                        yAxis={[{position: 'none'}]}
+                        xAxis={[{scaleType: "band", data: xLabels}]}
+                        sx={{
+                            [`& .${lineElementClasses.root}`]: {strokeWidth: 2},
+                            '& .MuiChartsArea-area': {
+                                fillOpacity: 0.3,
+                                fill: 'url(#gradientFill)',
+                            },
+                        }}
+                    >
+                        <defs>
+                            {attributes.map((_, index) => {
+                                const [start, end] = gradientColors[index % gradientColors.length];
+                                return (
+                                    <linearGradient
+                                        key={index}
+                                        id={`Gradient${index}`}
+                                        x1="0%"
+                                        y1="0%"
+                                        x2="0%"
+                                        y2="100%"
+                                    >
+                                        <stop offset="0%" stopColor={start} stopOpacity="0.8"/>
+                                        <stop offset="100%" stopColor={end} stopOpacity="0"/>
+                                    </linearGradient>
+                                );
+                            })}
+                        </defs>
+                    </LineChart>
+                ) : (
+                    <BarChart
+                        height={480}
+                        series={series}
+                        xAxis={[{ scaleType: "band", data: xLabels }]}
+                        yAxis={[{ position: 'left' }]}
+                        // sx={{
+                        //     '& rect': {
+                        //         rx: 2,   // horizontal radius
+                        //         ry: 2,   // vertical radius
+                        //     },
+                        // }}
+                        borderRadius={4}
+
+                    />
+                )}
             </CardContent>
         </Card>
     );

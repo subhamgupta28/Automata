@@ -3,16 +3,14 @@ package dev.automata.automata.service;
 import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Data;
+import dev.automata.automata.model.DeviceCharts;
 import dev.automata.automata.repository.AttributeRepository;
 import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceChartsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.DateOperators;
-import org.springframework.data.mongodb.core.aggregation.GroupOperation;
-import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
+import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -53,15 +51,11 @@ public class AnalyticsService {
 
         var list = filteredAttributes.stream().map(Attribute::getKey).toList();
 
-        // Format for date grouping (hourly)
-//        var dateFormat = (range.equalsIgnoreCase("day") || range.equalsIgnoreCase("week"))
-//                ? "%H:00"  // Group by hour
-//                : "%H:%M"; // Otherwise, show minute resolution
-
-        var dateFormat = switch (range){
-            case "day" -> "%d-%H";
+        // Format based on range
+        var dateFormat = switch (range) {
+            case "day" -> "%Y-%m-%d %H:%M"; // full timestamp for 30-min grouping
             case "week" -> "%m-%d";
-            case "hour" -> "%d-%H:%M";
+            case "hour" -> "%Y-%m-%d %H:%M";
             default -> "";
         };
 
@@ -81,14 +75,42 @@ public class AnalyticsService {
 
         Aggregation aggregation;
 
-        if (range.equalsIgnoreCase("day") || range.equalsIgnoreCase("week")) {
-            // Group stage to average values by hour
+        if (range.equalsIgnoreCase("day")) {
+            // ✅ Use raw $dateTrunc to bucket into 30-min slots
+            ProjectionOperation halfHourProject = project()
+                    .andExpression("{ $dateTrunc: { date: \"$updateDate\", unit: \"minute\", binSize: 30, timezone: \"Asia/Calcutta\" } }")
+                    .as("halfHourSlot");
+
+            for (var i : filteredAttributes) {
+                halfHourProject = halfHourProject.andExpression("toDouble(data." + i.getKey() + ")").as(i.getKey());
+            }
+
+            // Group by halfHourSlot and compute averages
+            GroupOperation group = group("halfHourSlot");
+            for (var attr : filteredAttributes) {
+                group = group.avg(attr.getKey()).as(attr.getKey());
+            }
+
+            // Flatten "_id" to "dateDay"
+            ProjectionOperation regroupProject = project()
+                    .andExpression("{ $dateToString: { format: \"%m-%d %H:%M\", date: \"$_id\", timezone: \"Asia/Calcutta\" } }")
+                    .as("dateDay");
+
+            for (var attr : filteredAttributes) {
+                regroupProject = regroupProject.and(
+                        ArithmeticOperators.Round.roundValueOf(attr.getKey())
+                ).as(attr.getKey());
+            }
+
+            aggregation = newAggregation(match, halfHourProject, group, regroupProject, sort(Sort.by("dateDay")));
+        }
+        else if (range.equalsIgnoreCase("week")) {
+            // Average by day
             GroupOperation group = group("dateDay");
             for (var attr : filteredAttributes) {
                 group = group.avg(attr.getKey()).as(attr.getKey());
             }
 
-            // Re-project to flatten "_id" back to "dateDay"
             ProjectionOperation regroupProject = project()
                     .and("_id").as("dateDay");
             for (var attr : filteredAttributes) {
@@ -96,6 +118,7 @@ public class AnalyticsService {
             }
 
             aggregation = newAggregation(match, project, sort, group, regroupProject, sort(Sort.by("dateDay")));
+
         } else {
             aggregation = newAggregation(match, project, sort);
         }
@@ -104,6 +127,7 @@ public class AnalyticsService {
         chartDataDto.setData(res);
         return chartDataDto;
     }
+
 
 
 
@@ -186,7 +210,7 @@ public class AnalyticsService {
 
     private List<Attribute> getFilteredAttributes(String deviceId) {
         var attrs = deviceChartsRepository.findByDeviceId(deviceId);
-        var attributes = attributeRepository.findByDeviceIdAndTypeNot(deviceId, "DATA|AUX");
+        var attributes = attributeRepository.findByDeviceId(deviceId);
 
         return attributes.stream()
                 .filter(attribute -> attrs.stream()
