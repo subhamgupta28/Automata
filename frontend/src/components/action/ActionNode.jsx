@@ -13,6 +13,9 @@ const actionStyle = {
     width: '220px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '2px solid #0288D1',
+    background: 'transparent',
+    backdropFilter: 'blur(6px)',
+    backgroundColor: 'rgb(255 255 255 / 8%)',
 };
 
 export const ActionNode= ({id, data, isConnectable}) => {

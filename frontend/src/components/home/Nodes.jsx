@@ -46,6 +46,7 @@ import BrightnessLowIcon from '@mui/icons-material/BrightnessLow';
 import BrightnessHighIcon from '@mui/icons-material/BrightnessHigh';
 import TemperatureGauge from "../charts/TemperatureGauge.jsx";
 import PersonTracker from "../charts/PersonTracker.jsx";
+import ChartDetail from "../charts/ChartDetail.jsx";
 
 dayjs.extend(relativeTime);
 
@@ -357,12 +358,16 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     // borderColor: '#797878',
                     borderWidth: '0',
                     background: 'transparent',
-                    backgroundColor: 'rgb(255 255 255 / 8%)',
+                    backgroundColor: 'rgb(255 255 255 / 10%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
-                    <Card elevation={10}
-                          style={{padding: '2px', width: '100%', margin: '0px', borderRadius: '12px 12px 0px 0px'}}>
+                    <Card
+                          style={{padding: '2px', width: '100%', margin: '0px',
+                              borderRadius: '12px 12px 0px 0px',
+                              background: 'transparent',
+                              backgroundColor: 'rgb(255 255 255 / 10%)',
+                    }}>
                         <Typography
                             style={{
                                 display: 'flex',
@@ -615,7 +620,7 @@ export function MainNode({data, isConnectable}) {
             <div style={{
 
                 background: 'transparent',
-                backdropFilter: 'blur(4px)',
+                backdropFilter: 'blur(6px)',
             }}>
                 <Card variant="outlined" ref={cardRef} elevation={10} style={{
                     padding: '0px',
@@ -626,7 +631,7 @@ export function MainNode({data, isConnectable}) {
                     borderWidth: '0',
                     borderRadius: '12px',
                     background: 'transparent',
-                    backgroundColor: 'rgb(255 255 255 / 8%)',
+                    backgroundColor: 'rgb(255 255 255 / 10%)',
                     // boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 

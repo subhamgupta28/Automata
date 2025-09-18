@@ -268,7 +268,9 @@ export function ActionBoard() {
                         flexDirection: 'column',
                         margin:'10px 10px 10px 0px',
                         borderRadius:'10px',
-                        backgroundColor: 'transparent',
+                        background: 'transparent',
+                        backdropFilter: 'blur(6px)',
+                        backgroundColor: 'rgb(255 255 255 / 8%)',
                         borderColor: 'grey',
                         borderStyle:'dashed',
                     }}>
@@ -344,7 +346,13 @@ export function ActionBoard() {
                                         <ListItem
                                             variant="outlined"
                                             component={Card}
-                                            style={{padding: '6px', marginTop: '8px'}}
+                                            style={{
+                                                padding: '6px', marginTop: '8px',
+                                                background: 'transparent',
+                                                backdropFilter: 'blur(6px)',
+                                                borderColor:'#ffffff',
+                                                backgroundColor: 'rgb(255 255 255 / 8%)',
+                                        }}
                                             key={a.id}
                                         >
                                             <ListItemText>{a.name}</ListItemText>

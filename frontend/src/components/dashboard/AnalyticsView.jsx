@@ -54,11 +54,19 @@ export default function AnalyticsView() {
                 // padding: 1,
                 // paddingRight:2,
                 // paddingLeft:2,
+
                 color: theme.palette.text.primary,
             }}
         >
             <Box sx={{paddingTop:'50px'}}>
-                <Box>
+                <Box style={{
+                    background: 'transparent',
+                    backdropFilter: 'blur(4px)',
+                    marginRight: '10px',
+                    marginLeft:'10px',
+                    borderRadius:'8px',
+                    backgroundColor: 'rgb(255 255 255 / 8%)',
+                }}>
                     <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
                         {devices.map((device) => (
                             <Tab label={device.name}  />

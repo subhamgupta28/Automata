@@ -31,11 +31,11 @@ const solidColors = [
     '#ff7f0e',
     '#d62728',
     '#bcbd22',
-    '#17becf',
+    '#935050',
     '#7f7f7f',
     '#9467bd',
 ];
-export default function ChartDetail({deviceId, name}) {
+export default function ChartDetail({deviceId, name, style}) {
     const [data, setData] = useState([]);
     const [attributes, setAttributes] = useState([]);
     const [range, setRange] = useState("day");
@@ -89,7 +89,11 @@ export default function ChartDetail({deviceId, name}) {
     }));
 
     return (
-        <Card elevation={1} style={{backgroundColor: 'transparent'}}>
+        <Card elevation={1} style={{
+            background: 'transparent',
+            backdropFilter: 'blur(8px)',
+            backgroundColor: 'rgb(255 255 255 / 8%)',
+        }}>
             <CardContent>
                 <Box
                     display="flex"
