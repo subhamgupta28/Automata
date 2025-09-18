@@ -70,13 +70,13 @@ function App() {
                                 {/*<Nav/>*/}
                             </header>
                             <section>
-                                <Silk
-                                    speed={5}
-                                    scale={1}
-                                    color="#c0a000"
-                                    noiseIntensity={10}
-                                    rotation={0}
-                                />
+                                {/*<Silk*/}
+                                {/*    speed={5}*/}
+                                {/*    scale={1}*/}
+                                {/*    color="#c0a000"*/}
+                                {/*    noiseIntensity={10}*/}
+                                {/*    rotation={0}*/}
+                                {/*/>*/}
                                 <SideDrawer/>
                             </section>
                             <HealthCheck/>
