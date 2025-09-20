@@ -17,7 +17,6 @@
     "@mui/x-charts": "^8.5.2",
     "@mui/x-date-pickers": "^7.23.3",
     "@popperjs/core": "^2.11.8",
-    "@react-three/fiber": "^8.18.0",
     "@toolpad/core": "^0.14.0",
     "@xyflow/react": "^12.3.1",
     "axios": "^1.7.7",
@@ -35,8 +34,7 @@
     "react-router-dom": "^7.0.2",
     "recharts": "^2.15.3",
     "sockjs-client": "^1.6.1",
-    "stompjs": "^2.3.3",
-    "three": "^0.180.0"
+    "stompjs": "^2.3.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
@@ -49,6 +47,6 @@
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
     "sass": "^1.79.4",
-    "vite": "6.2.6"
+    "vite": "^6.3.6"
   }
 }
