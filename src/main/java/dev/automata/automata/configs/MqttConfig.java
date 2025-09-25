@@ -1,5 +1,7 @@
 package dev.automata.automata.configs;
 
+import dev.automata.automata.mqtt.SafeJsonTransformer;
+import lombok.RequiredArgsConstructor;
 import org.eclipse.paho.client.mqttv3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -25,8 +27,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Configuration
+@RequiredArgsConstructor
 public class MqttConfig {
 
+    private final SafeJsonTransformer safeJsonTransformer;
     @Value("${application.mqtt.url}")
     private String brokerUrl; // Your MQTT broker
     @Value("${application.mqtt.user}")
@@ -38,6 +42,7 @@ public class MqttConfig {
     private final String topicSendLiveData = "automata/sendLiveData";
     private final String topicSendData = "automata/sendData";
     private final String topicAction = "automata/action";
+    private final String topicSys = "$SYS/broker/clients/123";
 
     @Bean
     public MqttPahoClientFactory mqttClientFactory() {
@@ -66,7 +71,8 @@ public class MqttConfig {
                         topicSendLiveData,
                         topicSendData,
                         topicAction,
-                        topicDefault
+                        topicDefault,
+                        topicSys
                 );
 
         adapter.setCompletionTimeout(5000);
@@ -95,7 +101,7 @@ public class MqttConfig {
     @Bean
     public IntegrationFlow mqttInFlow() {
         return IntegrationFlow.from(inbound())
-                .transform(Transformers.fromJson(Map.class))
+                .transform(safeJsonTransformer)
                 .route(Message.class,
                         m -> (String) m.getHeaders().get("mqtt_receivedTopic"),
                         mapping -> mapping
@@ -103,6 +109,7 @@ public class MqttConfig {
                                 .channelMapping(topicSendData, "sendData")
                                 .channelMapping(topicDefault, "mqttInputChannel")
                                 .channelMapping(topicAction, "action")
+                                .channelMapping(topicSys, "sysData")
                 )
                 .get();
     }
@@ -144,11 +151,8 @@ public class MqttConfig {
     }
 
     @Bean
-    @ServiceActivator(inputChannel = "mqttInputChannel")
-    public MessageHandler handler() {
-        return message -> {
-            System.out.println("Received MQTT headers: " + message.getHeaders());
-            System.out.println("Received MQTT message: " + message.getPayload());
-        };
+    public ExecutorChannel sysData(ThreadPoolTaskExecutor mqttExecutor) {
+        return new ExecutorChannel(mqttExecutor);
     }
+
 }

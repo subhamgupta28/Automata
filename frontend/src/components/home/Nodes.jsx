@@ -347,7 +347,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
             <div style={{
                 borderRadius: '12px',
                 backgroundColor: 'transparent',
-                backdropFilter: 'blur(7px)'
+                // backdropFilter: 'blur(7px)'
             }}>
                 <Card style={{
                     // display: 'flex',
@@ -355,10 +355,10 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     // marginLeft: '2px',
                     // marginRight: '2px',
                     // padding: '4px',
-                    // borderColor: '#797878',
-                    borderWidth: '0',
+                    // borderColor: '#ff0000',
+                    // borderWidth: '10px',
                     background: 'transparent',
-                    backgroundColor: 'rgb(255 255 255 / 10%)',
+                    backgroundColor: 'rgb(0 0 0 / 20%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
@@ -620,7 +620,7 @@ export function MainNode({data, isConnectable}) {
             <div style={{
 
                 background: 'transparent',
-                backdropFilter: 'blur(6px)',
+                // backdropFilter: 'blur(6px)',
             }}>
                 <Card variant="outlined" ref={cardRef} elevation={10} style={{
                     padding: '0px',
@@ -631,7 +631,7 @@ export function MainNode({data, isConnectable}) {
                     borderWidth: '0',
                     borderRadius: '12px',
                     background: 'transparent',
-                    backgroundColor: 'rgb(255 255 255 / 10%)',
+                    backgroundColor: 'rgb(0 0 0 / 20%)',
                     // boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 

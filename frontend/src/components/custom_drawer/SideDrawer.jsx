@@ -186,7 +186,7 @@ export default function SideDrawer() {
     };
 
     return (
-        <Box sx={{display: 'flex', height:'100dvh', position:'absolute', zIndex:'10', width:'100%'}}>
+        <Box sx={{display: 'flex', height:'100dvh', width:'100%', background:'transparent'}}>
             <CssBaseline/>
 
 

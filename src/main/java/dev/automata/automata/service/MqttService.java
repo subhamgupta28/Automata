@@ -76,6 +76,11 @@ public class MqttService {
     }
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public void handleAck(Map<String, Object> payload) {
-        System.out.println("✅ Ack: " + payload);
+        System.out.println("✅ Status: " + payload);
+    }
+
+    @ServiceActivator(inputChannel = "sysData")
+    public void sysData(Object payload) {
+        System.out.println("✅ sysData: " + payload);
     }
 }

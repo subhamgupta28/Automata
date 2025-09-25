@@ -140,14 +140,14 @@ export function ConfigurationView(){
                     <WiFiSettings/>
                 </Grid>
                 <Grid size={6}>
-                    <TrafficChart />
+                    {/*<TrafficChart />*/}
                 </Grid>
                 <Grid size={6}>
                     <SystemSetting/>
                 </Grid>
 
                 <Grid size={6}>
-                    <Item>size=8</Item>
+                    <Item></Item>
                 </Grid>
             </Grid>
 

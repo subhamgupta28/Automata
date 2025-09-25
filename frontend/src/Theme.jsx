@@ -4,7 +4,7 @@ export const darkTheme = createTheme({
     palette: {
         mode: 'dark',
         primary: {
-            main: 'rgb(244,255,87)', // Primary yellow accent
+            main: '#ffd821', // Primary yellow accent
         },
         secondary: {
             main: 'rgb(120,126,45)', // Secondary blue for highlights
@@ -24,7 +24,7 @@ export const darkTheme = createTheme({
         h1: {
             fontSize: '2.5rem',
             fontWeight: 500,
-            color: 'rgb(244,255,87)',
+            color: '#ffd821',
         },
         h2: {
             fontSize: '2rem',
@@ -43,7 +43,7 @@ export const darkTheme = createTheme({
                     // backgroundColor: '#fce02b', // Primary color for buttons
                     // color: '#121212', // Text color on buttons
                     '&:hover': {
-                        borderColor: '#e5c21b', // Darker yellow on hover
+                        borderColor: '#ffd821', // Darker yellow on hover
                     },
                 },
             },

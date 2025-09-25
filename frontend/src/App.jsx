@@ -68,7 +68,9 @@ function App() {
                             <header>
                                 {/*<Nav/>*/}
                             </header>
-                            <section>
+                            <section
+                                style={{backgroundColor: '#1b1b1b'}}
+                            >
                                 {/*<Silk*/}
                                 {/*    speed={5}*/}
                                 {/*    scale={1}*/}

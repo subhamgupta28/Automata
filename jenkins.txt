@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+
+    environment {
+        SPRING_PROFILE = 'prod'
+        CONTAINER_NAME = 'automata' // Define a consistent container name
+        NETWORK_NAME = 'bridge' // Define the first network name
+        SECOND_NETWORK_NAME = 'automata-net' // Define the second network name
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                // Checkout the code from Git
+                git 'https://github.com/subhamgupta28/Automata.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // Build the Spring Boot app using Maven
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                // Build the Docker image
+                sh 'docker build -t myapp .'
+            }
+        }
+
+        stage('Ensure Networks Exist') {
+            steps {
+                // Ensure both Docker networks exist before running the container
+                sh 'docker network ls | grep -w ${NETWORK_NAME} || docker network create ${NETWORK_NAME}'
+                sh 'docker network ls | grep -w ${SECOND_NETWORK_NAME} || docker network create ${SECOND_NETWORK_NAME}'
+            }
+        }
+
+        stage('Stop and Remove Old Docker Container') {
+            steps {
+                // Stop and remove any old container with the same name
+                sh 'docker ps -q -f name=${CONTAINER_NAME} | xargs -r docker stop'
+                sh 'docker ps -a -q -f name=${CONTAINER_NAME} | xargs -r docker rm'
+            }
+        }
+
+        stage('Run Docker Container') {
+            steps {
+                // Run the Docker container with a restart policy and connect it to both networks
+                sh '''
+                docker run -d --name ${CONTAINER_NAME} \
+                --restart unless-stopped \
+                --network ${NETWORK_NAME} \
+                -p 8010:8010 myapp
+                '''
+                // Connect the running container to the second network
+                sh 'docker network connect ${SECOND_NETWORK_NAME} ${CONTAINER_NAME}'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Deployment successful!'
+        }
+
+        failure {
+            echo 'Deployment failed.'
+        }
+    }
+}

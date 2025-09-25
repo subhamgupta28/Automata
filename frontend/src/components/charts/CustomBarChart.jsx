@@ -21,7 +21,7 @@ export default function CustomBarChart ({chartData}){
             color: `url(#Gradient1)`,
             valueFormatter
         }],
-        height: 300,
+        height: 350,
         width: 1100,
         sx: {
             [`& .${axisClasses.directionY} .${axisClasses.label}`]: {

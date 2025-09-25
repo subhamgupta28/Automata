@@ -169,8 +169,8 @@ const DeviceNodes = () => {
                     </div>}
                     <Button variant='outlined' size='small' onClick={handleEdit} style={{marginLeft: '10px'}}>
                         Edit</Button>
-                    <Button variant='outlined' size='small' onClick={handleSave} style={{marginLeft: '10px'}}>
-                        Edit Dashboard</Button>
+                    {/*<Button variant='outlined' size='small' onClick={handleSave} style={{marginLeft: '10px'}}>*/}
+                    {/*    Edit Dashboard</Button>*/}
                     <Button variant='outlined' size='small' onClick={() => setActionMenu(a => !a)}
                             style={{marginLeft: '10px'}}>Actions</Button>
                 </Panel>
