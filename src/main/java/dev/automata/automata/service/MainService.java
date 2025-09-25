@@ -104,7 +104,7 @@ public class MainService {
             device.setAttributes(atr);
             dev = deviceRepository.save(device);
             System.err.println("Already registered device: " + deviceMapper.apply(device));
-            notificationService.sendNotification(device.getName()+" device became online", "low");
+            notificationService.sendNotification("Device: "+device.getName()+"  is back online", "low");
             return deviceMapper.apply(device);
         }else{
             notificationService.sendNotification("New device registered: "+device.getName(), "low");
