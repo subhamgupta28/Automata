@@ -1,7 +1,10 @@
 package dev.automata.automata.service;
 
 
+import dev.automata.automata.model.Data;
+import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Parameter;
+import dev.automata.automata.model.Status;
 import dev.automata.automata.repository.DataHistRepository;
 import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceRepository;
@@ -15,11 +18,14 @@ import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
 import oshi.hardware.HardwareAbstractionLayer;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +33,7 @@ public class ScheduleTasks {
 
     private final MainService mainService;
     private final DataRepository dataRepository;
+    private final DeviceRepository deviceRepository;
     private final DataHistRepository dataHistRepository;
     private final ParameterRepository parameterRepository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -81,7 +88,24 @@ public class ScheduleTasks {
 
 
     }
+    @Scheduled(fixedRate = 180000) // runs every 60 seconds
+    public void checkAndUpdateStatus() {
+        var devices = deviceRepository.findAll();
 
+        Instant now = Instant.now();
+        System.err.println("Starting consolidation...");
+        for (var device : devices) {
+            var entity = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(device.getId()).orElse(new Data());
+            if (entity.getTimestamp() != null) {
+//                System.err.println(entity);
+                Duration diff = Duration.between(entity.getUpdateDate().toInstant(), now);
+                var newStatus = diff.toMinutes() <= 10 ? Status.ONLINE : Status.OFFLINE;
+//                System.err.println(diff.toMinutes());
+                mainService.setStatus(device.getId(), newStatus);
+                System.err.println("ID: " + entity.getId() + ", Status: " + newStatus);
+            }
+        }
+    }
 
 //    @Scheduled(fixedRate = 30000)
     public void getSystemInfo() {

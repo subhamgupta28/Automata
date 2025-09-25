@@ -37,11 +37,11 @@ public class MqttService {
         }
         if (payload.size() > 1)
             mainService.saveData(deviceId, payload);
-        var device = mainService.setStatus(deviceId, Status.ONLINE);
+//        var device = mainService.setStatus(deviceId, Status.ONLINE);
         var map = new HashMap<String, Object>();
         map.put("deviceId", deviceId);
         map.put("data", payload);
-        map.put("deviceConfig", device.get("deviceConfig"));
+//        map.put("deviceConfig", device.get("deviceConfig"));
         messagingTemplate.convertAndSend("/topic/data", map);
     }
 
