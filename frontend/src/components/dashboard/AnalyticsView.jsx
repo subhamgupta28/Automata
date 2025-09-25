@@ -75,7 +75,7 @@ export default function AnalyticsView() {
                 </Box>
                 {devices.map((device, i) => (
                     <CustomTabPanel value={value} index={i}>
-                        <ChartDetail deviceId={device.id} name={device.name}/>
+                        <ChartDetail deviceId={device.id} name={device.name} width={1000} height={500}/>
                     </CustomTabPanel>
                 ))}
             </Box>

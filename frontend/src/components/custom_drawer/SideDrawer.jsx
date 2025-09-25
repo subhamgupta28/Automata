@@ -193,7 +193,7 @@ export default function SideDrawer() {
             {/*{!isEmpty(user) &&*/}
                 <Drawer variant="permanent" open={open} elevation={4}
                         style={{
-                            backgroundColor: 'rgba(255, 255, 255, 14%)',
+                            backgroundColor: 'rgba(0, 0, 0, 60%)',
                             backdropFilter: 'blur(7px)',
                             // background: "linear-gradient(135deg, rgb(255 224 43 / 10%), rgb(169 104 241 / 10%), rgb(90 200 250 / 10%))",
                             // boxShadow: "0 0 30px rgb(211 244 122 / 40%)",

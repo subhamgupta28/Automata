@@ -35,7 +35,7 @@ const solidColors = [
     '#7f7f7f',
     '#9467bd',
 ];
-export default function ChartDetail({deviceId, name, style}) {
+export default function ChartDetail({deviceId, name, height=450, width=1000}) {
     const [data, setData] = useState([]);
     const [attributes, setAttributes] = useState([]);
     const [range, setRange] = useState("day");
@@ -91,6 +91,7 @@ export default function ChartDetail({deviceId, name, style}) {
     return (
         <Card elevation={1} style={{
             background: 'transparent',
+            borderRadius:'12px',
             backdropFilter: 'blur(8px)',
             backgroundColor: 'rgb(255 255 255 / 8%)',
         }}>
@@ -140,7 +141,7 @@ export default function ChartDetail({deviceId, name, style}) {
 
                 {chartType === "line" ? (
                     <LineChart
-                        height={450}
+                        height={height}
                         series={series}
                         yAxis={[{position: 'none'}]}
                         xAxis={[{scaleType: "band", data: xLabels}]}
@@ -173,7 +174,7 @@ export default function ChartDetail({deviceId, name, style}) {
                     </LineChart>
                 ) : (
                     <BarChart
-                        height={480}
+                        height={height}
                         series={series}
                         xAxis={[{ scaleType: "band", data: xLabels }]}
                         yAxis={[{ position: 'left' }]}

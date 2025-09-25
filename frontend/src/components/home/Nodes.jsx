@@ -347,7 +347,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
             <div style={{
                 borderRadius: '12px',
                 backgroundColor: 'transparent',
-                // backdropFilter: 'blur(7px)'
+                backdropFilter: 'blur(3px)'
             }}>
                 <Card style={{
                     // display: 'flex',
@@ -358,7 +358,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     // borderColor: '#ff0000',
                     // borderWidth: '10px',
                     background: 'transparent',
-                    backgroundColor: 'rgb(0 0 0 / 20%)',
+                    backgroundColor: 'rgb(0 0 0 / 60%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
@@ -631,18 +631,20 @@ export function MainNode({data, isConnectable}) {
                     borderWidth: '0',
                     borderRadius: '12px',
                     background: 'transparent',
-                    backgroundColor: 'rgb(0 0 0 / 20%)',
+                    backgroundColor: 'rgb(0 0 0 / 80%)',
                     // boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 
                     <CardContent style={{
-                        marginLeft: '10px', display: 'grid', marginTop: '15px',
-                        marginRight: '50px',
+                        // marginLeft: '10px', display: 'grid', marginTop: '15px',
+                        // marginRight: '50px',
+                        width:'1200px',
                         gridTemplateColumns: 'repeat(1, 1fr)', /* 4 columns */
                         gap: '10px', /* Space between items */
                     }}>
                         {charts && charts.map((device, index) => (
-                            <BarChartComp key={device.id} chartDevice={device}/>
+                            <ChartDetail deviceId={device.id} name={device.name} width={1000} height={360}/>
+                            // <BarChartComp key={device.id} chartDevice={device}/>
                         ))}
 
                     </CardContent>
