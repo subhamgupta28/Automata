@@ -23,14 +23,17 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
 
     public AuthenticationResponse register(RegisterRequest request) {
+        var message = "ok";
         var user = Users.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .build();
+        System.err.println(user);
         var alreadyExists = repository.findByEmail(request.getEmail());
         if (alreadyExists.isPresent()) {
+            message = "email already exists";
             return AuthenticationResponse.builder()
                     .message("Email already exists")
                     .build();
@@ -40,8 +43,10 @@ public class AuthenticationService {
         System.err.println(savedUser);
         var jwtToken = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
+        message="";
         return AuthenticationResponse.builder()
                 .accessToken(jwtToken)
+                .message("message")
                 .refreshToken(refreshToken)
                 .build();
     }

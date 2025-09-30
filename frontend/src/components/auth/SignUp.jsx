@@ -109,6 +109,7 @@ export default function SignUp(props) {
         if (!valid) return;
 
         try {
+
             const res = await signUpReq({ firstName, lastName, email, password });
             console.log('Signup successful', res);
             navigate("/signin")

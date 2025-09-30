@@ -1,0 +1,4 @@
+mvn clean package -DskipTests
+docker build -t myapp .
+docker tag myapp:latest localhost:5000/myapp:local
+docker push localhost:5000/myapp:local

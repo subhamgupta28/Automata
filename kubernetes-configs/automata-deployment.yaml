@@ -14,32 +14,17 @@ spec:
     spec:
       containers:
         - name: automata
-          image: your-dockerhub-user/automata:latest
+          image: localhost:5000/myapp:local
+          imagePullPolicy: Always
           ports:
             - containerPort: 8010
           env:
-            - name: SPRING_CONFIG_LOCATION
-              value: "classpath:/application.properties,/config/application.properties"
-            - name: APPLICATION_SECURITY_JWT_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: automata-secrets
-                  key: jwt-secret
-            - name: APPLICATION_MQTT_USER
-              valueFrom:
-                secretKeyRef:
-                  name: automata-secrets
-                  key: mqtt-user
-            - name: APPLICATION_MQTT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: automata-secrets
-                  key: mqtt-password
-            - name: SPRING_DATA_REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: automata-secrets
-                  key: redis-password
+            - name: SPRING_DATA_MONGODB_HOST
+              value: mongodb-service
+            - name: SPRING_DATA_MONGODB_PORT
+              value: "27017"
+            - name: SPRING_DATA_MONGODB_DATABASE
+              value: automata
             - name: SPRING_DATA_MONGODB_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -50,10 +35,19 @@ spec:
                 secretKeyRef:
                   name: automata-secrets
                   key: mongo-password
-          volumeMounts:
-            - name: config-volume
-              mountPath: /config
-      volumes:
-        - name: config-volume
-          configMap:
-            name: automata-config
+            - name: SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE
+              value: admin
+            - name: APPLICATION_MQTT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: automata-secrets
+                  key: mqtt-user
+            - name: APPLICATION_MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: automata-secrets
+                  key: mqtt-password
+            - name: SPRING_REDIS_HOST
+              value: redis-service
+            - name: SPRING_REDIS_PORT
+              value: "6379"

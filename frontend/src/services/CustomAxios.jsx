@@ -2,7 +2,7 @@ import axios from "axios";
 
 const BASE_URL = __API_MODE__ === 'serve'
     ? 'http://localhost:8010/api/v1/' // Local API server for development
-    : window.location.href + "api/v1/";
+    : window.location.host + "api/v1/";
 
 
 const api = axios.create({
