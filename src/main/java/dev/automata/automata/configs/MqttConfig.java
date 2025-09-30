@@ -113,45 +113,45 @@ public class MqttConfig {
                 )
                 .get();
     }
-    @Bean
-    @Primary
-    public ThreadPoolTaskExecutor taskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);
-        executor.setMaxPoolSize(10);
-        executor.setQueueCapacity(25);
-        executor.setThreadNamePrefix("async-task-");
-        executor.initialize();
-        return executor;
-    }
 //    @Bean
-//    public ExecutorService mqttExecutor() {
-//        // Thread pool for processing MQTT messages
-//        return Executors.newFixedThreadPool(10);
+//    @Primary
+//    public ThreadPoolTaskExecutor taskExecutor() {
+//        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+//        executor.setCorePoolSize(2);
+//        executor.setMaxPoolSize(10);
+//        executor.setQueueCapacity(25);
+//        executor.setThreadNamePrefix("async-task-");
+//        executor.initialize();
+//        return executor;
 //    }
+    @Bean
+    public ExecutorService mqttExecutor() {
+        // Thread pool for processing MQTT messages
+        return Executors.newFixedThreadPool(2);
+    }
 
     @Bean
-    public ExecutorChannel mqttInputChannel(ThreadPoolTaskExecutor mqttExecutor) {
+    public ExecutorChannel mqttInputChannel(ExecutorService mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel sendLiveData(ThreadPoolTaskExecutor mqttExecutor) {
+    public ExecutorChannel sendLiveData(ExecutorService mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel sendData(ThreadPoolTaskExecutor mqttExecutor) {
+    public ExecutorChannel sendData(ExecutorService mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel action(ThreadPoolTaskExecutor mqttExecutor) {
+    public ExecutorChannel action(ExecutorService mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel sysData(ThreadPoolTaskExecutor mqttExecutor) {
+    public ExecutorChannel sysData(ExecutorService mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
