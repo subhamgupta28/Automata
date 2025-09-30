@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: automata-config
+data:
+  application.properties: |
+    spring.application.name=Automata
+    server.address=0.0.0.0
+    server.port=8010
+
+    spring.data.mongodb.database=automata
+    spring.data.mongodb.port=27017
+    spring.data.mongodb.host=mongodb-service
+    spring.data.mongodb.auto-index-creation=true
+
+    spring.data.redis.host=redis-service
+    spring.data.redis.port=6379
+    spring.cache.type=redis
+
+    application.mqtt.url=tcp://mqtt-service:1883
+    management.endpoints.web.exposure.include=health,info,metrics
+    management.endpoints.web.cors.allowed-origins=http://localhost:5173
+    management.endpoints.web.cors.allowed-methods=GET
+    spring.threads.virtual.enabled=true

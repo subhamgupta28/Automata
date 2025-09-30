@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: automata
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: automata
+  template:
+    metadata:
+      labels:
+        app: automata
+    spec:
+      containers:
+        - name: automata
+          image: your-dockerhub-user/automata:latest
+          ports:
+            - containerPort: 8010
+          env:
+            - name: SPRING_CONFIG_LOCATION
+              value: "classpath:/application.properties,/config/application.properties"
+            - name: APPLICATION_SECURITY_JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: automata-secrets
+                  key: jwt-secret
+            - name: APPLICATION_MQTT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: automata-secrets
+                  key: mqtt-user
+            - name: APPLICATION_MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: automata-secrets
+                  key: mqtt-password
+            - name: SPRING_DATA_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: automata-secrets
+                  key: redis-password
+            - name: SPRING_DATA_MONGODB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: automata-secrets
+                  key: mongo-username
+            - name: SPRING_DATA_MONGODB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: automata-secrets
+                  key: mongo-password
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+      volumes:
+        - name: config-volume
+          configMap:
+            name: automata-config

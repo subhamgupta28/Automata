@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"automata-service","namespace":"default"},"spec":{"ports":[{"port":80,"protocol":"TCP","targetPort":8010}],"selector":{"app":"automata"},"type":"LoadBalancer"}}
+    metallb.universe.tf/ip-allocated-from-pool: local-ip-pool
+  creationTimestamp: "2025-09-30T16:11:44Z"
+  finalizers:
+  - service.kubernetes.io/load-balancer-cleanup
+  name: automata-service
+  namespace: default
+  resourceVersion: "23453"
+  uid: a7005075-7426-40ef-8669-478199e498ee
+spec:
+  allocateLoadBalancerNodePorts: true
+  clusterIP: 10.43.205.132
+  clusterIPs:
+  - 10.43.205.132
+  externalTrafficPolicy: Cluster
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - nodePort: 32240
+    port: 80
+    protocol: TCP
+    targetPort: 8010
+  selector:
+    app: automata
+  sessionAffinity: None
+  type: LoadBalancer
+status:
+  loadBalancer:
+    ingress:
+    - ip: 192.168.29.6
+      ipMode: VIP
