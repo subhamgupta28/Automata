@@ -24,7 +24,7 @@ spec:
   ipFamilyPolicy: SingleStack
   ports:
   - nodePort: 32240
-    port: 80
+    port: 6969
     protocol: TCP
     targetPort: 8010
   selector:
