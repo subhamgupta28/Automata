@@ -2,8 +2,7 @@ import axios from "axios";
 
 const BASE_URL = __API_MODE__ === 'serve'
     ? 'http://localhost:8010/api/v1/' // Local API server for development
-    : window.location.host + "api/v1/";
-
+    : "http://" + window.location.host + "/api/v1/";
 
 const api = axios.create({
     baseURL: BASE_URL,
@@ -48,7 +47,7 @@ api.interceptors.response.use(
         if (error.response?.status === 403 && !originalRequest._retry) {
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
-                    failedQueue.push({ resolve, reject });
+                    failedQueue.push({resolve, reject});
                 })
                     .then(token => {
                         originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -60,15 +59,15 @@ api.interceptors.response.use(
             originalRequest._retry = true;
             isRefreshing = true;
             try {
-                const { data } = await axios.post(BASE_URL + "auth/refresh-token", {}, {
+                const {data} = await axios.post(BASE_URL + "auth/refresh-token", {}, {
                     headers: {
-                        'Authorization': 'Bearer '+getRefreshToken(), // Specify the content type if necessary
+                        'Authorization': 'Bearer ' + getRefreshToken(), // Specify the content type if necessary
                         // Add any other headers if needed, e.g., Authorization
 
                     },
                 });
 
-                const updatedUser = { ...getStoredUser(), ...data };
+                const updatedUser = {...getStoredUser(), ...data};
                 localStorage.setItem("user", JSON.stringify(updatedUser));
 
                 api.defaults.headers.Authorization = `Bearer ${data.access_token}`;
