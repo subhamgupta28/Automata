@@ -323,7 +323,13 @@ public class AutomationService {
 
         return truths.stream().allMatch(Boolean::booleanValue);
     }
+    private boolean isInteger(String input) {
+        return input != null && input.matches("-?\\d+"); // optional minus, then digits
+    }
 
+    private boolean isText(String input) {
+        return input != null && input.matches("[a-zA-Z]+"); // only alphabets
+    }
     private boolean isTriggered(Automation automation, Map<String, Object> payload) {
         if ("time".equals(automation.getTrigger().getType())) {
             return isCurrentTime(automation.getConditions().get(0).getTime());
@@ -343,19 +349,18 @@ public class AutomationService {
             if (!payload.containsKey(key)) return false;
 
             String value = payload.get(key).toString();
-            double numericValue = Double.parseDouble(value);
-
-            // Find matching condition by ID
             var condition = conditions.stream()
                     .filter(c -> c.getTriggerKey().equals(key))
                     .findFirst()
                     .orElse(null);
-//            System.err.println(condition);
-
             if (condition == null) continue;
-
-            if ("state".equals(automation.getTrigger().getType()) || "periodic".equals(automation.getTrigger().getType())) {
-                truths.add(checkCondition(numericValue, value, condition));
+            if (isInteger(value)) {
+                double numericValue = Double.parseDouble(value);
+                if ("state".equals(automation.getTrigger().getType()) || "periodic".equals(automation.getTrigger().getType())) {
+                    truths.add(checkCondition(numericValue, value, condition));
+                }
+            }else{
+                truths.add(value.equals(condition.getValue()));
             }
         }
 //        System.err.println(truths.stream().allMatch(Boolean::booleanValue));

@@ -11,10 +11,14 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import oshi.SystemInfo;
+import oshi.hardware.CentralProcessor;
+import oshi.hardware.GlobalMemory;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -41,32 +45,40 @@ public class SystemMetrics {
                 .attributes(
                         List.of(
                                 Attribute.builder()
-                                        .key("cpu_temp")
-                                        .displayName("CPU Temp")
+                                        .key("totalMemory")
+                                        .displayName("Memory")
                                         .type("DATA|MAIN")
-                                        .units("°C")
+                                        .units("GB")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
                                 Attribute.builder()
-                                        .key("cpu_freq")
+                                        .key("cpuFreq")
                                         .displayName("CPU Freq")
                                         .type("DATA|MAIN")
-                                        .units("")
+                                        .units("%")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
                                 Attribute.builder()
-                                        .key("ram_usage")
-                                        .displayName("Ram Usage")
-                                        .type("DATA|AUX")
-                                        .units("")
+                                        .key("memoryUsagePercent")
+                                        .displayName("Used Memory")
+                                        .type("DATA|MAIN")
+                                        .units("%")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
                                 Attribute.builder()
-                                        .key("ip")
-                                        .displayName("IP")
+                                        .key("availableMemory")
+                                        .displayName("Free Memory")
+                                        .type("DATA|MAIN")
+                                        .units("GB")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("host")
+                                        .displayName("Host")
                                         .type("DATA|AUX")
                                         .units("")
                                         .extras(new HashMap<>())
@@ -116,39 +128,70 @@ public class SystemMetrics {
     }
     private void shutdownSystem(){
         try {
-            String s = executeCommand("sudo shutdown");
-            System.err.println(s);
+
+
         }catch (Exception e){
             System.err.println(e);
         }
 
     }
+    private final SystemInfo systemInfo = new SystemInfo();
 
+
+    public long getTotalMemory() {
+        GlobalMemory memory = systemInfo.getHardware().getMemory();
+        return memory.getTotal();
+    }
+
+    public long getAvailableMemory() {
+        GlobalMemory memory = systemInfo.getHardware().getMemory();
+        return memory.getAvailable();
+    }
+
+    public String getMemoryUsagePercent() {
+        GlobalMemory memory = systemInfo.getHardware().getMemory();
+        double percent = 100.0 * (memory.getTotal() - memory.getAvailable()) / memory.getTotal();
+        return formatPercent(percent);
+    }
+
+    public String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(1024));
+        String pre = "KMGTPE".charAt(exp - 1) + "i";
+        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
+    }
+
+    public String formatPercent(double value) {
+        return String.format("%.2f%%", value);
+    }
+    public String getUptimeHuman() {
+        long uptimeSec = systemInfo.getOperatingSystem().getSystemUptime();
+        long hours = uptimeSec / 3600;
+        long minutes = (uptimeSec % 3600) / 60;
+        return hours + "h " + minutes + "m";
+    }
+    public String getCpuUsagePercent() {
+        CentralProcessor processor = systemInfo.getHardware().getProcessor();
+        long[] prevTicks = processor.getSystemCpuLoadTicks();
+        try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+        long[] ticks = processor.getSystemCpuLoadTicks();
+        double cpu = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100;
+        return formatPercent(cpu);
+    }
     private HashMap<String, Object> getData() {
         try {
-            // Get CPU frequency
-            String cpuFreq = getCpuFrequency();
-//            System.out.println("CPU Frequency: " + cpuFreq);
 
-            // Get RAM usage
-            String ramUsage = getRamUsage();
-//            System.out.println("RAM Usage: " + ramUsage);
-
-            // Get CPU temperature
-            var cpuTemp = getCpuTemperature();
-//            System.out.println("CPU Temperature: " + cpuTemp);
-
-            String uptime = getUptime();
-//            System.out.println("System Uptime: " + uptime);
+            var cpuFreq = getCpuUsagePercent();
 
             var data = new HashMap<String, Object>();
-            data.put("cpu_temp", cpuTemp);
-            data.put("ram_usage", ramUsage);
-            data.put("uptime", uptime);
-            data.put("cpu_freq", cpuFreq);
+            data.put("totalMemory", formatBytes(getTotalMemory()));
+            data.put("memoryUsagePercent", getMemoryUsagePercent());
+            data.put("uptime", getUptimeHuman());
+            data.put("availableMemory", formatBytes(getAvailableMemory()));
+            data.put("cpuFreq", cpuFreq);
             data.put("device_id", deviceId);
-            data.put("ip", getHostIp());
-
+            data.put("host", systemInfo.getOperatingSystem().getNetworkParams().getHostName());
+            System.err.println(data);
             return data;
         } catch (Exception e) {
 //            System.err.println("System Metrics Exception: "+e);
@@ -168,7 +211,7 @@ public class SystemMetrics {
 //    }
 
 
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(fixedRate = 10000)
     public void getInfo() {
         var data = getData();
         if (data != null){
@@ -180,71 +223,11 @@ public class SystemMetrics {
 
     }
 
-    private static String getUptime() throws Exception {
-        String command = "uptime -p"; // Get the uptime in a human-readable format
-        return executeCommand(command).replace("up", "").replace("days ", "d").replace("day ", "d").replace("hours ", "h").replace("minutes ", "m");
-    }
-
-    private static String getHostIp() throws Exception {
-        String command = "ifconfig | grep 192 | awk '{print $2}'"; // Get the host IP via default gateway
-        return executeCommand(command).trim();
-    }
-
-    private static String getCpuFrequency() throws Exception {
-        String filePath = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq";
-        BufferedReader reader = new BufferedReader(new FileReader(filePath));
-        String line = reader.readLine();
-        reader.close();
-
-        if (line != null) {
-            int currentFreqKHz = Integer.parseInt(line.trim());
-            // Convert kHz to MHz and return the value
-            return String.format("%.2f", currentFreqKHz / 1000.0); // MHz
-        }
-        return "N/A";
-    }
-
-    // Method to get RAM usage
-    private static String getRamUsage() throws Exception {
-        String command = "free -h | grep Mem"; // Get memory usage
-        String result = executeCommand(command);
-
-        // Parse the result and extract total and used memory
-        if (result != null && !result.isEmpty()) {
-            String[] parts = result.split("\\s+");
-            return parts[2].replace("Gi", "") + " - " + parts[1].replace("Gi", ""); // Extract total and used memory
-        }
-        return "N/A";
-    }
-
-    // Method to get CPU temperature
-    private static double getCpuTemperature() throws Exception {
-        String command = "cat /sys/class/thermal/thermal_zone0/temp"; // Read CPU temperature in millidegrees Celsius
-        String result = executeCommand(command);
-        if (result != null) {
-            // Convert the millidegrees to degrees Celsius
-            int tempInMilliCelsius = Integer.parseInt(result.trim());
-            return (tempInMilliCelsius / 1000.0);
-        }
-        return 0;
-    }
-
-    // Method to execute a command and return the output
-    private static String executeCommand(String command) throws Exception {
-        Process process = Runtime.getRuntime().exec(new String[]{"bash", "-c", command});
-        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        StringBuilder output = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            output.append(line).append("\n");
-        }
-        return output.toString().trim();
-    }
 
     @EventListener
     public void handleApplicationReadyEvent(ApplicationReadyEvent event) {
         System.err.println("ready...");
-//        registerSystemMetrics();
+        registerSystemMetrics();
         var device = mainService.getDeviceByName("System");
         if (device == null) {
             registerSystemMetrics();
