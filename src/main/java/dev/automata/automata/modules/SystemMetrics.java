@@ -48,7 +48,7 @@ public class SystemMetrics {
                                         .key("totalMemory")
                                         .displayName("Memory")
                                         .type("DATA|MAIN")
-                                        .units("GB")
+                                        .units("")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
@@ -56,7 +56,7 @@ public class SystemMetrics {
                                         .key("cpuFreq")
                                         .displayName("CPU Freq")
                                         .type("DATA|MAIN")
-                                        .units("%")
+                                        .units("")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
@@ -64,7 +64,7 @@ public class SystemMetrics {
                                         .key("memoryUsagePercent")
                                         .displayName("Used Memory")
                                         .type("DATA|MAIN")
-                                        .units("%")
+                                        .units("")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
@@ -72,7 +72,7 @@ public class SystemMetrics {
                                         .key("availableMemory")
                                         .displayName("Free Memory")
                                         .type("DATA|MAIN")
-                                        .units("GB")
+                                        .units("")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
