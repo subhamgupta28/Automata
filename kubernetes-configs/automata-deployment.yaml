@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: automata
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: automata
@@ -51,3 +51,22 @@ spec:
               value: redis-service
             - name: SPRING_REDIS_PORT
               value: "6379"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: automata-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: automata
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 1
