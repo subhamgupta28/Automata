@@ -192,9 +192,9 @@ const Dashboard = () => {
 
     return (
         // <DeviceDataProvider>
-        <ReactFlowProvider>
+        // <ReactFlowProvider>
             <DeviceNodes/>
-        </ReactFlowProvider>
+        // </ReactFlowProvider>
         // </DeviceDataProvider>
 
     )

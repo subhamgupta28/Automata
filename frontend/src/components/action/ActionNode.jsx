@@ -121,7 +121,7 @@ export const ActionNode= ({id, data, isConnectable}) => {
                         name="deviceId"
                     >
                         {devices && devices.map((device) => (
-                            <MenuItem key={device.id} value={device.id} width={100}>
+                            <MenuItem key={device.name} value={device.id} width={100}>
                                 {device.name}
                             </MenuItem>
                         ))}
@@ -138,29 +138,29 @@ export const ActionNode= ({id, data, isConnectable}) => {
                         name="key"
                     >
                         {actionKeys && actionKeys.map((actionOption) => (
-                            <MenuItem key={actionOption.id} value={actionOption.key}>
+                            <MenuItem key={actionOption.key} value={actionOption.key}>
                                 {actionOption.displayName}
                             </MenuItem>
                         ))}
                     </Select>
                 </FormControl>
-                <FormControl fullWidth sx={{marginBottom: 1, marginTop: 1}} className='nodrag'>
-                    <InputLabel>Value</InputLabel>
-                    <Select
-                        variant='outlined'
-                        size='small'
-                        value={value}
-                        label="Value"
-                        onChange={(e) => handleTriggerValue(e, 'value')}
-                        name="key"
-                    >
-                        {valueOptions && valueOptions.map((actionOption) => (
-                            <MenuItem key={actionOption} value={actionOption}>
-                                {actionOption}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+                {/*<FormControl fullWidth sx={{marginBottom: 1, marginTop: 1}} className='nodrag'>*/}
+                {/*    <InputLabel>Value</InputLabel>*/}
+                {/*    <Select*/}
+                {/*        variant='outlined'*/}
+                {/*        size='small'*/}
+                {/*        value={value}*/}
+                {/*        label="Value"*/}
+                {/*        onChange={(e) => handleTriggerValue(e, 'value')}*/}
+                {/*        name="key"*/}
+                {/*    >*/}
+                {/*        {valueOptions && valueOptions.map((actionOption) => (*/}
+                {/*            <MenuItem key={actionOption} value={actionOption}>*/}
+                {/*                {actionOption}*/}
+                {/*            </MenuItem>*/}
+                {/*        ))}*/}
+                {/*    </Select>*/}
+                {/*</FormControl>*/}
                 <TextField
                     size='small'
                     label="Value"

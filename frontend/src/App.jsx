@@ -60,17 +60,18 @@ function App() {
 
                         <main className={getBreathingClass(alertLevel)}
                               style={{
+                                  backgroundColor: '#1b1b1b'
                                   // background: "radial-gradient(circle at 50% 50%, rgba(0, 128, 255, 0.6),rgba(10, 10, 30, 0.9) 30%,#000000 100%)"
                                   // background: "linear-gradient(135deg, rgb(211 244 122 / 15%), rgb(255 255 255 / 20%), rgb(211 244 122 / 15%))",
 
                               }}
                         >
-                            <header>
+                            {/*<header>*/}
                                 {/*<Nav/>*/}
-                            </header>
-                            <section
-                                style={{backgroundColor: '#1b1b1b'}}
-                            >
+                            {/*</header>*/}
+                            {/*<section*/}
+                            {/*    style={{backgroundColor: '#1b1b1b'}}*/}
+                            {/*>*/}
                                 {/*<Silk*/}
                                 {/*    speed={5}*/}
                                 {/*    scale={1}*/}
@@ -79,8 +80,8 @@ function App() {
                                 {/*    rotation={0}*/}
                                 {/*/>*/}
                                 <SideDrawer/>
-                            </section>
-                            <HealthCheck/>
+                            {/*</section>*/}
+                            {/*<HealthCheck/>*/}
                         </main>
                     </AuthProvider>
                 </BrowserRouter>

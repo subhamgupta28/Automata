@@ -1,15 +1,17 @@
 // src/components/PrivateRoute.js
 import React from 'react';
-import {Navigate} from 'react-router-dom';
+import {Navigate, useLocation} from 'react-router-dom';
+import { useAuth } from "./AuthContext.jsx";
 
-// Protected route component
-const PrivateRoute = ({ element }) => {
-    const storedUser = JSON.parse(localStorage.getItem('user'));
-    if (!storedUser) {
-        return <Navigate to="/signin" />;
+export default function PrivateRoute({ element }) {
+    const { user } = useAuth();
+    const location = useLocation();
+
+    if (!user) {
+        return <Navigate to="/signin" replace />;
     }
 
-    return element;
-};
+    // Force re-mount of protected page when path changes
+    return React.cloneElement(element, { key: location.pathname });
+}
 
-export default PrivateRoute;

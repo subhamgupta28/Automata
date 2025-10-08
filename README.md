@@ -1,156 +1,163 @@
-# **Project Documentation**
+# Automata
 
-## **Project Name**
+A full‑stack automation and device orchestration platform. The backend is a Spring Boot (Java 21) service that integrates MongoDB, Redis, WebSockets, MQTT, and JWT-based auth. The frontend is a React app built with Vite and Material UI, bundled into Spring resources for production or served by Vite during development.
 
----
+Note: This README replaces stale info in the previous version (e.g., references to Jakarta EE and port 8080). It documents the current stack and provides setup/run instructions. Where details are unknown, TODOs are added.
 
-## **Overview**
-This project is a modern web application built with a **Java (Jakarta EE)** backend and a feature-rich **React** frontend interface. Designed for seamless interaction and management, the project integrates powerful frameworks, real-time messaging, efficient data processing, and interactive UI elements.
 
-### **Key Technologies**
-- **Java (Jakarta EE)** with **Jakarta Imports**.
-- **Spring Framework**: Includes Spring Data for MongoDB and Spring MVC.
-- **React** for a dynamic, component-based frontend.
-- **Material-UI** for comprehensive, responsive UI components.
-- **MongoDB** as the NoSQL database.
-- **WebSocket (via SockJS)** for real-time communication.
+## Overview
+Automata lets you:
+- Manage devices and visualize status and telemetry
+- Define automations with conditions and actions
+- Send real-time actions to devices via WebSockets and MQTT
+- Receive notifications for automation events
 
-### **Purpose**
-The purpose of this system is to provide an efficient tool for device management, automated action orchestration, and real-time data visualization.
+Key features (from codebase):
+- Device Management and Automation orchestration
+- Real‑time updates via STOMP over WebSocket and MQTT topics
+- Notifications (alerts, app notifications)
+- Charts and dashboards (Chart.js, Recharts)
+- Maps/geolocation (Leaflet)
 
----
 
-## **Key Features**
+## Tech Stack
+- Backend
+  - Java 21, Spring Boot 3.3.x
+  - Spring Web, WebSocket, Security (JWT), Data MongoDB, Data Redis, Cache, Actuator
+  - MQTT via spring-integration-mqtt
+  - Build: Maven, Spring Boot Maven Plugin
+- Frontend
+  - React 18, Vite 6, Material UI, Axios
+  - Charts: chart.js, react-chartjs-2, recharts
+  - Maps: leaflet, react-leaflet
+  - Routing: react-router-dom
+- Datastores & Messaging
+  - MongoDB
+  - Redis (cache and app state)
+  - MQTT broker
 
-1. **Device Management Dashboard**
-    - Manage and monitor your devices.
-    - Add, edit, or remove devices.
-    - View useful device details, statuses, and operational logs.
 
-2. **Action Automation Board**
-    - Create and manage custom device-specific actions.
-    - Automate the execution of routines and tasks.
-    - Track and monitor status of all action workflows.
+## Requirements
+- Java 21 (JDK)
+- Maven 3.9+
+- Node.js 18+ and npm
+- MongoDB (local or remote)
+- Redis (optional locally, enabled via Spring cache config)
+- MQTT broker (e.g., HiveMQ / Mosquitto) if using MQTT features
+- Docker (optional for container builds) and Docker Compose (optional)
 
-3. **Real-Time Data Updates**
-    - **WebSocket**: Ensure live updates on device statuses, logs, and actions.
-    - Use **StompJS** and **SockJS** to establish WebSocket communication seamlessly.
-    - Keep the user interface synced with real-time backend data.
 
-4. **Responsive UI**
-    - Built with **Material-UI** for flexible compatibility across devices.
-    - Optimized for both desktop and mobile screens.
+## Project Structure
+- pom.xml — Backend build and dependencies
+- Dockerfile — Container entrypoint for Spring Boot JAR (port 8010)
+- docker-compose.yaml — MongoDB service (data volume)
+- kubernetes-configs/automata-service.yaml — K8s Service mapping port 6969 -> targetPort 8010
+- src/main/java/dev/automata/automata/AutomataApplication.java — Spring Boot entry point
+- src/main/resources/application.properties — Spring configuration
+- src/main/resources/static — Production frontend bundle output (from Vite)
+- frontend/ — React app (Vite)
+  - package.json — scripts and dependencies
+  - vite.config.js — build output path, API mode define
+  - src/services/CustomAxios.jsx — API base URL logic for dev/prod
 
-5. **Interactive Data Charts**
-    - Powered by **Chart.js** and **react-chartjs-2** for data visualization.
-    - Display trends and analytics for devices or actions in visually appealing charts.
 
-6. **Mapping and Geolocation**
-    - Fully integrated using **Leaflet** and **react-leaflet.**
-    - Visualize device locations, coverage areas, and geospatial data on a dynamic map.
+## Backend Service
+- Entry point: dev.automata.automata.AutomataApplication
+- Default host/port: 0.0.0.0:8010 (see application.properties)
+- Notable integrations (from pom.xml):
+  - WebSocket: spring-boot-starter-websocket
+  - Security/JWT: spring-boot-starter-security, jjwt
+  - Mongo: spring-boot-starter-data-mongodb
+  - Redis: spring-boot-starter-data-redis, spring-boot-starter-cache
+  - MQTT: spring-integration-mqtt
+  - Actuator enabled
 
----
+Run (development):
+- From repo root:
+  - mvn spring-boot:run
+- Or package and run:
+  - mvn clean package
+  - java -jar target/Automata-0.0.1-SNAPSHOT.jar
 
-## **Technical Stack**
+Common Maven scripts:
+- Build: mvn clean package
+- Run: mvn spring-boot:run
+- Tests: mvn test
 
-### **Backend**
-- **Java SDK 21**: Reliable and robust base for application logic.
-- **Spring Boot** Framework:
-    - **Spring MVC** for RESTful web services.
-    - **Spring Data MongoDB** for efficient NoSQL database interactions.
-- **MongoDB**: Robust and scalable NoSQL database for managing fast-changing data.
-- **Jackson** (built into Spring): Used for JSON serialization/deserialization.
 
-### **Frontend**
-- **React (18.3.1)**: Provides a dynamic, componentized frontend structure.
-    - Works alongside `react-dom` and React-specific plugins like `@emotion/react` for styling.
-- **Material-UI (v6+)**: Entire frontend built with rich MUI components, supporting responsive designs.
-- **Axios**: Simplifies HTTP requests and handles API calls efficiently.
-- **Chart.js & react-chartjs-2**: Implements charts via reactive components.
-- **Leaflet** & **react-leaflet**: Incorporates live, interactive maps into the application.
+## Frontend App (Vite + React)
+Dev server:
+- cd frontend
+- npm install
+- npm run dev
+- Opens http://localhost:5173 by default
 
-### **Real-Time Communication**
-- **SockJS** + **StompJS**: WebSocket tools to handle live message delivery between backend and frontend.
+API base URL handling (see frontend/src/services/CustomAxios.jsx):
+- In Vite dev (command === 'serve'): http://localhost:8010/api/v1/
+- In production (built and served by Spring): http://{host}/api/v1/
 
-### **Build Tools**
-- **Maven**: Ties backend dependencies and builds a deployable Java application.
-- **Vite (5.4.1)**: Vite’s fast module bundler ensures short build cycles and optimized delivery for React.
-- **npm** (Node Package Manager): Manages JavaScript dependencies and packages like `eslint`, `vite`, etc.
+Build for production (bundled into Spring resources):
+- cd frontend
+- npm run build
+- Output goes to ../src/main/resources/static (configured in vite.config.js)
 
----
-## **Run & Deployment Guide**
+Available npm scripts (from package.json):
+- npm run dev — Vite dev server
+- npm run build — Production build (empties outDir)
+- npm run preview — Preview built app
+- npm run lint — ESLint
 
-### **Prerequisites**
-1. **Backend**:
-    - Java 21 installed.
-    - MongoDB setup and running (Update `application.properties` with database connection string).
-    - Maven installed.
 
-2. **Frontend**:
-    - Node.js and npm must be installed.
 
----
+## Running with Docker
+Build JAR and image:
+- mvn clean package -DskipTests
+- docker build -t automata:local .
 
-### **Running the Application Locally**
+Run container:
+- docker run -d --name automata -p 8010:8010 \
+  -e APPLICATION_SECURITY_JWT_SECRET_KEY=change-me \
+  -e SPRING_DATA_MONGODB_HOST=host.docker.internal \
+  -e SPRING_DATA_MONGODB_PORT=27017 \
+  automata:local
 
-#### Backend
-1. Navigate to the backend directory.
-2. Run:
-   ```bash
-   mvn clean install
-   mvn spring-boot:run
-   ```
-3. Access the server at `http://localhost:8080`.
+Note: Provide Redis and MQTT envs if those integrations are enabled in your environment.
 
-#### Frontend
-1. Navigate to the frontend directory.
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
-4. Open the React app at `http://localhost:5173`.
+Compose (MongoDB only is defined in repo):
+- docker-compose up -d mongodb
+- TODO: extend docker-compose.yaml to include app (automata), redis, and mqtt services.
 
----
 
-### **Deployment**
-1. Build a production-ready frontend:
-   ```bash
-   npm run build
-   ```
-   This generates optimized static files inside a `build/` directory.
+## Kubernetes
+- A Service manifest exists at kubernetes-configs/automata-service.yaml mapping port 6969 to targetPort 8010 and selector app=automata.
+- TODO: add a Deployment manifest for the app (image, env vars, liveness/readiness probes).
+- TODO: add MongoDB/Redis/MQTT manifests or use managed services.
+- TODO: use ConfigMap/Secret for properties (JWT secret, DB creds, MQTT creds).
 
-2. Package backend and combine with the frontend static files.
-3. Deploy the application to any Java-supported hosting provider or containerized platform like Docker.
 
----
+## Scripts and CI/CD
+- build-steps.txt shows a simple local build/push flow to a registry.
+- jenkins.txt contains a Jenkins pipeline example that builds the JAR, builds a Docker image (myapp), ensures networks, and runs the container on port 8010.
+- TODO: align image name/tag across Dockerfile, build steps, and Jenkins (currently uses myapp).
 
-## **Real-Time WebSocket Configuration**
-The WebSocket connections can handle bidirectional messages from backend to frontend. Backend is configured using Spring WebSocket; SockJS is used as fallbacks. Messages are processed in `stomp` format.
 
----
+Manual/Integration testing:
+- Use curl/Postman against http://localhost:8010/api/v1/* during dev
+- WebSocket endpoints (STOMP) via SockJS from the frontend
 
-## **Testing and Validation**
 
-- **Frontend**:
-    - Use **Jest** and **React Testing Library** for component/unit tests.
-    - Add `eslint` integration for static code analysis.
+## Access Points
+- Backend (dev): http://localhost:8010
+- Frontend (dev): http://localhost:5173
+- In production build, the frontend is served by Spring from / (static resources under src/main/resources/static)
 
-- **Backend**:
-    - Use **JUnit** for unit tests.
-    - Use **Mockito** for mocking services and repositories.
 
-Integration tests are recommended using tools like `Postman` or automated API test frameworks.
+## License
+No explicit license is declared in pom.xml (empty license stanza) and no LICENSE file exists.
+- TODO: Add a LICENSE file (e.g., MIT/Apache-2.0) and update pom.xml <licenses> accordingly.
 
----
 
-## **Future Enhancements**
-- Expand device management capabilities to include predictive maintenance.
-- Add user role-based authentication (e.g., Admin/Guest users).
-- Improve chart visualization (add AI/ML predictions in graphs).
-- Enhance map functionality to calculate geospatial routes.
-
----
+## Changelog
+2025-10-04
+- Rewrote README to reflect Spring Boot 3 on port 8010, React+Vite frontend, Mongo/Redis/MQTT usage.
+- Added setup, run, Docker, Kubernetes, env vars, scripts, tests, and TODOs for unknowns.

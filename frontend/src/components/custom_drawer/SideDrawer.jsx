@@ -41,6 +41,7 @@ import isEmpty from "../../utils/Helper.jsx";
 import Welcome from "../Welcome.jsx";
 import {useIsMobile} from "../../utils/useIsMobile.jsx";
 import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
+import {ReactFlowProvider} from "@xyflow/react";
 
 const drawerWidth = 200;
 
@@ -139,7 +140,6 @@ export default function SideDrawer() {
             {item.url ? (
                 <ListItemButton
                     selected={location.pathname === item.url}
-                    onClick={(event) => handleListItemClick(event, item.url)}
                     component={NavLink}
                     to={item.url}
                     sx={{
@@ -186,11 +186,11 @@ export default function SideDrawer() {
     };
 
     return (
-        <Box sx={{display: 'flex', height:'100dvh', width:'100%', background:'transparent'}}>
+        <Box sx={{display: 'flex', height: '100dvh', width: '100%', background: 'transparent'}}>
             <CssBaseline/>
 
 
-            {/*{!isEmpty(user) &&*/}
+            {!isEmpty(user) &&
                 <Drawer variant="permanent" open={open} elevation={4}
                         style={{
                             backgroundColor: 'rgba(0, 0, 0, 60%)',
@@ -198,8 +198,8 @@ export default function SideDrawer() {
                             // background: "linear-gradient(135deg, rgb(255 224 43 / 10%), rgb(169 104 241 / 10%), rgb(90 200 250 / 10%))",
                             // boxShadow: "0 0 30px rgb(211 244 122 / 40%)",
                             // height: '96dvh',
-                            // position:'absolute',
-                            // zIndex:'1',
+                            position: 'relative',
+                            zIndex: 10,
                             margin: '10px',
                             borderRadius: '10px'
                         }}>
@@ -214,18 +214,18 @@ export default function SideDrawer() {
                             {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
                         </List>
 
-                    {/* Avatar at the bottom */}
-                    {!isEmpty(user) && (
-                        <OptionsMenu drawerOpen={open}/>
-                    )}
+                        {/* Avatar at the bottom */}
+                        {!isEmpty(user) && (
+                            <OptionsMenu drawerOpen={open}/>
+                        )}
 
-                </Box>
+                    </Box>
 
                     {/*<Divider/>*/}
                 </Drawer>
-            {/*}*/}
+            }
 
-            <Box component="main" sx={{flexGrow: 1,}}>
+            <Box component="main" sx={{flexGrow: 1, }}>
 
                 <Card
                     elevation={10}
@@ -263,27 +263,33 @@ export default function SideDrawer() {
                     </Typography>
                 </Card>
 
-                <AppCacheProvider>
-                    <DeviceDataProvider>
-                        <Routes>
-                            {/*open*/}
-                            <Route path="welcome" element={<Welcome/>}/>
-                            <Route path="mob" element={<MobileView/>}/>
-                            <Route path="exp" element={<Exp/>}/>
-                            <Route path="spotify" element={<SpotifyPlayer/>}/>
-                            <Route path="signup" element={<SignUp/>}/>
-                            <Route path="signin" element={<SignIn/>}/>
-                            {/*protected*/}
-                            <Route path="/" element={<PrivateRoute element={<DeviceNodes/>} />} />
-                            {/*<Route path="/" element={<PrivateRoute element={<DeviceNodes/>}/>}/>*/}
-                            <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
-                            <Route path="actions" element={<PrivateRoute element={<ActionBoard/>}/>}/>
-                            <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>
-                            <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>
-                            <Route path="configure" element={<PrivateRoute element={<ConfigurationView/>}/>}/>
-                        </Routes>
-                    </DeviceDataProvider>
-                </AppCacheProvider>
+                {/*<div style={{position: 'relative', zIndex: 2}}>*/}
+                    <AppCacheProvider>
+                        <DeviceDataProvider key={location.pathname}>
+                            <ReactFlowProvider>
+                                <Routes location={location} key={location.pathname}>
+                                    {/*open*/}
+                                    <Route path="/welcome" element={<Welcome/>}/>
+                                    <Route path="/mob" element={<MobileView/>}/>
+                                    <Route path="/exp" element={<Exp/>}/>
+                                    <Route path="spotify" element={<SpotifyPlayer/>}/>
+                                    <Route path="signup" element={<SignUp/>}/>
+                                    <Route path="signin" element={<SignIn/>}/>
+                                    {/*protected*/}
+
+                                    <Route index element={<PrivateRoute element={<DeviceNodes/>}/>}/>
+                                    {/*<Route path="/" element={<PrivateRoute element={<DeviceNodes/>}/>}/>*/}
+                                    <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
+
+                                    <Route path="actions" element={<PrivateRoute element={<ActionBoard />}/>}/>
+                                    <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>
+                                    <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>
+                                    <Route path="configure" element={<PrivateRoute element={<ConfigurationView/>}/>}/>
+                                </Routes>
+                            </ReactFlowProvider>
+                        </DeviceDataProvider>
+                    </AppCacheProvider>
+                {/*</div>*/}
 
                 <SnackbarProvider maxSnack={3} preventDuplicate>
                     <Notifications/>

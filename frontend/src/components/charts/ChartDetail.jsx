@@ -68,7 +68,7 @@ export default function ChartDetail({deviceId, name, height=450, width=1000}) {
                     ...messages.data
                 };
 
-                const updatedData = [...dataRef.current, newEntry].slice(-24);
+                const updatedData = [...dataRef.current, newEntry].slice(-44);
                 dataRef.current = updatedData;
                 setData(updatedData);
             }

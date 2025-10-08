@@ -59,7 +59,7 @@ const valueReaderStyle = {
 let id = 0;
 const getId = (type) => `node_${type}_${id++}`;
 
-export function ActionBoard() {
+function ActionBoardDetail() {
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
     // const [isModalOpen, setIsModalOpen] = useState(false);
@@ -202,6 +202,10 @@ export function ActionBoard() {
     const handleCreateAction = () => {
         setIsModalOpen(true)
     }
+    useEffect(() => {
+        console.log("ActionBoard mounted at:", window.location.pathname);
+        return () => console.log("ActionBoard unmounted");
+    }, []);
 
     const defaultViewport = useMemo(() => ({x: 0, y: 50, zoom: 0.75}), []);
 
@@ -210,7 +214,7 @@ export function ActionBoard() {
         event.dataTransfer.effectAllowed = 'move';
     };
     return (
-        <div>
+        <div style={{position:'relative', zIndex: 0}}>
             <Stack direction="row">
                 <div style={{width: '80%', height: '100dvh', borderRadius:'10px', padding:'10px 10px 10px 0px'}} className="reactflow-wrapper" ref={reactFlowWrapper}>
                     <ReactFlow
@@ -219,6 +223,8 @@ export function ActionBoard() {
                             backgroundColor: 'transparent',
                             borderColor: 'grey',
                             borderStyle:'dashed',
+                            position: 'relative',
+                            zIndex: 0,
                         }}
                         colorMode="dark"
                         nodes={nodes}
@@ -376,7 +382,7 @@ export function ActionBoard() {
 const DnDContext = createContext([null, (_) => {
 }]);
 
-export const DnDProvider = ({children}) => {
+const DnDProvider = ({children}) => {
     const [type, setType] = useState(null);
 
     return (
@@ -389,10 +395,13 @@ export const DnDProvider = ({children}) => {
 const useDnD = () => {
     return useContext(DnDContext);
 }
-export default () => (
-    <ReactFlowProvider>
-        <DnDProvider>
-            <ActionBoard/>
-        </DnDProvider>
-    </ReactFlowProvider>
+const ActionBoard = () => (
+
+        // <ReactFlowProvider>
+            <DnDProvider>
+                <ActionBoardDetail/>
+            </DnDProvider>
+        // </ReactFlowProvider>
+
 );
+export default React.memo(ActionBoard);

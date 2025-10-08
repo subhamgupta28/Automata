@@ -85,6 +85,46 @@ public class SystemMetrics {
                                         .visible(true)
                                         .build(),
                                 Attribute.builder()
+                                        .key("cpu_temp")
+                                        .displayName("Cpu Temp")
+                                        .type("DATA|AUX")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("fan_speed")
+                                        .displayName("Fan Speed")
+                                        .type("DATA|AUX")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("battery_percent")
+                                        .displayName("SOC")
+                                        .type("DATA|AUX")
+                                        .units("%")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("power")
+                                        .displayName("Power")
+                                        .type("DATA|AUX")
+                                        .units("mW")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("time_remaining")
+                                        .displayName("Time Left")
+                                        .type("DATA|AUX")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
                                         .key("uptime")
                                         .displayName("Uptime")
                                         .type("DATA|AUX")
@@ -191,6 +231,29 @@ public class SystemMetrics {
             data.put("cpuFreq", cpuFreq);
             data.put("device_id", deviceId);
             data.put("host", systemInfo.getOperatingSystem().getNetworkParams().getHostName());
+            data.put("cpu_temp", systemInfo.getHardware().getSensors().getCpuTemperature());
+
+            var fans = systemInfo.getHardware().getSensors().getFanSpeeds();
+            if (fans != null && fans.length > 0) {
+                data.put("fan_speed", fans[0]);
+            }
+
+            System.out.println(Arrays.toString(systemInfo.getHardware().getSensors().getFanSpeeds()));
+            var power = systemInfo.getHardware().getPowerSources();
+            if (power!=null && !power.isEmpty()) {
+                data.put("battery_percent", power.getFirst().getRemainingCapacityPercent());
+                data.put("power", power.getFirst().getPowerUsageRate());
+                data.put("time_remaining", power.getFirst().getTimeRemainingEstimated());
+            }
+
+            System.err.println(systemInfo.getHardware().getPowerSources());
+            //[Name: System Battery, Device Name: Primary,
+            // RemainingCapacityPercent: 100.0%, Time Remaining: Unknown, Time Remaining Instant: Unknown,
+            // Power Usage Rate: 0.0mW, Voltage: 13.16V, Amperage: 0.0mA,
+            // Power OnLine: true, Charging: false, Discharging: false,
+            // Capacity Units: MWH, Current Capacity: 82194, Max Capacity: 82194, Design Capacity: 83028,
+            // Cycle Count: 4, Chemistry: LION, Manufacture Date: unknown, Manufacturer: HP,
+            // SerialNumber: SerialNumber, Temperature: unknown]
             System.err.println(data);
             return data;
         } catch (Exception e) {

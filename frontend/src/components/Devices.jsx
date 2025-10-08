@@ -81,9 +81,9 @@ export default function Devices() {
     };
 
     return (
-        <div style={{paddingTop: '40px', paddingLeft: '40px', paddingRight: '40px',height:'100dvh',}}>
+        <div style={{paddingTop: '40px', paddingLeft: '40px', paddingRight: '40px',height:'100%',}}>
             {/*<Action/>*/}
-            <TableContainer component={Paper} style={{borderRadius:'10px', height:'650px',scrollbarWidth: "none"}}>
+            <TableContainer component={Paper} style={{borderRadius:'10px', height:'90dvh',scrollbarWidth: "none"}}>
                 <Table sx={{ minWidth: 700 }} aria-label="customized table">
                     <TableHead>
                         <TableRow>
