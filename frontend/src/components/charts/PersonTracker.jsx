@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from "react";
 import {Card, CardContent, Typography} from "@mui/material";
 
-export default function PersonTracker({liveData, radarData, canvasWidth = 240, canvasHeight = 200}) {
+export default function PersonTracker({liveData, radarData, canvasWidth = 260, canvasHeight = 220}) {
     const canvasRef = useRef(null);
     const [position, setPosition] = useState({
         x: 0,

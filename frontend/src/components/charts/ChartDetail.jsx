@@ -3,7 +3,7 @@ import {
     lineElementClasses,
     BarChart,
 } from "@mui/x-charts";
-import React, {useEffect, useState, useRef} from "react";
+import React, {useEffect, useState, useRef, useMemo} from "react";
 import {getDetailChartData} from "../../services/apis.jsx";
 import {
     Card,
@@ -35,13 +35,16 @@ const solidColors = [
     '#7f7f7f',
     '#9467bd',
 ];
-export default function ChartDetail({deviceId, name, height=450, width=1000}) {
+export default function ChartDetail({deviceId, name, height = 450, width = 1000, deviceAttributes}) {
     const [data, setData] = useState([]);
     const [attributes, setAttributes] = useState([]);
     const [range, setRange] = useState("day");
     const [chartType, setChartType] = useState("bar");
     const {messages} = useDeviceLiveData();
     const dataRef = useRef([]);
+    const unitsMap
+        = useMemo(() => new Map(deviceAttributes.map(obj => [obj.key, obj.units])), []);
+    console.log("attr", unitsMap);
 
     useEffect(() => {
         const fetchChartData = async () => {
@@ -77,6 +80,7 @@ export default function ChartDetail({deviceId, name, height=450, width=1000}) {
 
     const xLabels = data.map((item) => item.dateDay);
 
+
     const series = attributes.map((attr, index) => ({
         label: attr.charAt(0).toUpperCase() + attr.slice(1),
         data: data.map((item) => item[attr]),
@@ -86,14 +90,15 @@ export default function ChartDetail({deviceId, name, height=450, width=1000}) {
             ? `url(#Gradient${index})`
             : solidColors[index % solidColors.length],
         stack: chartType === "bar" ? "total" : undefined, // stack all bar series together
+        valueFormatter: (value) => `${value} ${unitsMap.get(attr) || ''}`,
     }));
 
     return (
-        <Card elevation={1} style={{
-            background: 'transparent',
-            borderRadius:'12px',
-            backdropFilter: 'blur(8px)',
-            backgroundColor: 'rgb(255 255 255 / 8%)',
+        <Card elevation={0} style={{
+            // background: 'transparent',
+            borderRadius: '12px',
+            // backdropFilter: 'blur(8px)',
+            // backgroundColor: 'rgb(255 255 255 / 8%)',
         }}>
             <CardContent>
                 <Box
@@ -176,14 +181,20 @@ export default function ChartDetail({deviceId, name, height=450, width=1000}) {
                     <BarChart
                         height={height}
                         series={series}
-                        xAxis={[{ scaleType: "band", data: xLabels }]}
-                        yAxis={[{ position: 'left' }]}
+                        xAxis={[{scaleType: "band", data: xLabels}]}
+                        // yAxis={[{ position: 'left' }]}
                         // sx={{
                         //     '& rect': {
                         //         rx: 2,   // horizontal radius
                         //         ry: 2,   // vertical radius
                         //     },
                         // }}
+                        sx={{
+                            '& .MuiChartsAxis-tickLabel': {
+                                transform: 'rotate(-40deg)',
+                                textAnchor: 'end',
+                            },
+                        }}
                         borderRadius={4}
 
                     />

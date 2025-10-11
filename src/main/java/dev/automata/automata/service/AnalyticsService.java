@@ -30,7 +30,10 @@ public class AnalyticsService {
     private final AttributeRepository attributeRepository;
     private final DeviceChartsRepository deviceChartsRepository;
     private final MongoTemplate mongoTemplate;
-
+    private String safeToDouble(String fieldPath) {
+        // Returns a MongoDB expression string that safely converts a field to double
+        return "{ $convert: { input: \"" + fieldPath + "\", to: \"double\", onError: null, onNull: null } }";
+    }
     public ChartDataDto getChartDetail(String deviceId, String range) {
         ChartDataDto chartDataDto = initializeChartDataDto(deviceId, range);
 
@@ -67,8 +70,8 @@ public class AnalyticsService {
                 .and(dateProjection).as("dateDay")
                 .andExclude("_id");
 
-        for (var i : filteredAttributes) {
-            project = project.andExpression("toDouble(data." + i.getKey() + ")").as(i.getKey());
+        for (var attr : filteredAttributes) {
+            project = project.andExpression(safeToDouble("$data." + attr.getKey())).as(attr.getKey());
         }
 
         var sort = sort(Sort.by(Sort.Order.asc("updateDate")));
@@ -77,12 +80,12 @@ public class AnalyticsService {
 
         if (range.equalsIgnoreCase("day")) {
             // ✅ Use raw $dateTrunc to bucket into 30-min slots
-            ProjectionOperation halfHourProject = project()
+            var halfHourProject = project()
                     .andExpression("{ $dateTrunc: { date: \"$updateDate\", unit: \"minute\", binSize: 30, timezone: \"Asia/Calcutta\" } }")
                     .as("halfHourSlot");
 
-            for (var i : filteredAttributes) {
-                halfHourProject = halfHourProject.andExpression("toDouble(data." + i.getKey() + ")").as(i.getKey());
+            for (var attr : filteredAttributes) {
+                halfHourProject = halfHourProject.andExpression(safeToDouble("$data." + attr.getKey())).as(attr.getKey());
             }
 
             // Group by halfHourSlot and compute averages

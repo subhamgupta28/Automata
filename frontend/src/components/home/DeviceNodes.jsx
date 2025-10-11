@@ -3,7 +3,7 @@ import {
     addEdge,
     applyEdgeChanges,
     applyNodeChanges, Panel,
-    ReactFlow, ReactFlowProvider,
+    ReactFlow,
     useEdgesState,
     useNodesState, useReactFlow
 } from '@xyflow/react';

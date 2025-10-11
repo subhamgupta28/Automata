@@ -32,19 +32,8 @@ import {Presets} from "../charts/Presets.jsx";
 import CustomBarChart from "../charts/CustomBarChart.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import CustomLineChart from "../charts/CustomLineChart.jsx";
-import CustomRadarChart from "../charts/CustomRadarChart.jsx";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import SmallLineChart from "../charts/SmallLineChart.jsx";
-import SmallBarChart from "../charts/SmallBarChart.jsx";
-import BoltIcon from '@mui/icons-material/Bolt';
-import FlashOffIcon from '@mui/icons-material/FlashOff';
-import AcUnitIcon from '@mui/icons-material/AcUnit';
-import ThermostatIcon from '@mui/icons-material/Thermostat';
-import CloudIcon from '@mui/icons-material/Cloud';
-import BrightnessLowIcon from '@mui/icons-material/BrightnessLow';
-import BrightnessHighIcon from '@mui/icons-material/BrightnessHigh';
-import TemperatureGauge from "../charts/TemperatureGauge.jsx";
 import PersonTracker from "../charts/PersonTracker.jsx";
 import ChartDetail from "../charts/ChartDetail.jsx";
 
@@ -363,7 +352,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                 }}>
 
                     <Card
-                          style={{padding: '2px', width: '100%', margin: '0px',
+                          style={{padding: '0px', width: '100%', margin: '0px',
                               borderRadius: '12px 12px 0px 0px',
                               background: 'transparent',
                               backgroundColor: 'rgb(255 255 255 / 10%)',
@@ -386,9 +375,9 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     </Card>
                     <CardContent
                         style={{
-                            width: '260px',
+                            width: '280px',
                             alignItems: 'center',
-                            padding: '10px',
+                            padding: '8px',
                             paddingBottom: '16px',
                             justifyContent: 'center'
                         }}>
@@ -463,7 +452,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     }}
                                 >
 
-                                    <Typography style={{display: 'flex'}} variant="subtitle" color="primary"
+                                    <Typography style={{display: 'flex', }} color="primary"
                                                 fontWeight="bold">
                                         {/*{m.displayName.includes("Temp") && <TemperatureGauge temp={liveData?.[m.key]}/>}*/}
                                         {liveData?.[m.key]} {m.units}
@@ -587,7 +576,7 @@ export function AlertNode({data, isConnectable}){
     )
 }
 
-export function MainNode({data, isConnectable}) {
+export const MainNode = React.memo(({data, isConnectable}) => {
     const {devices, numOfDevices, chartNodes} = data.value;
     const boxRef = useRef(null);
     useCardGlowEffect(boxRef);
@@ -606,13 +595,13 @@ export function MainNode({data, isConnectable}) {
     const chartIds = useMemo(() =>
         Array.from({length: chartNodes}, (_, i) => `chart-node-${i}`), [chartNodes]);
 
+
     // Fetch chart data when device or attribute is selected
     const cardRef = useRef(null);
     const [cardHeight, setCardHeight] = useState(550);
 
     // Calculate top position for handles
     const handleSpacing = cardHeight / (numOfDevices + 1); // +1 to avoid handles being on the very top or bottom
-
 
     return (
         <div className="text-updater-node card-glow-container" ref={boxRef}>
@@ -638,12 +627,13 @@ export function MainNode({data, isConnectable}) {
                     <CardContent style={{
                         // marginLeft: '10px', display: 'grid', marginTop: '15px',
                         // marginRight: '50px',
+                        padding:'8px',
                         width:'1200px',
                         gridTemplateColumns: 'repeat(1, 1fr)', /* 4 columns */
                         gap: '10px', /* Space between items */
                     }}>
                         {charts && charts.map((device, index) => (
-                            <ChartDetail deviceId={device.id} name={device.name} width={1000} height={360}/>
+                            <ChartDetail deviceId={device.id} name={device.name} width={1000} height={360} deviceAttributes={device.attributes}/>
                             // <BarChartComp key={device.id} chartDevice={device}/>
                         ))}
 
@@ -683,7 +673,7 @@ export function MainNode({data, isConnectable}) {
             </div>
         </div>
     );
-}
+});
 
 function BarChartComp({chartDevice}) {
     // Initialize state for the chart data and the selected device/attribute
