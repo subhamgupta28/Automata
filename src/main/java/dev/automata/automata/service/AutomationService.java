@@ -42,13 +42,30 @@ public class AutomationService {
     private final MessageChannel mqttOutboundChannel;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-//    private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+    //    private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
 //
 //    @PostConstruct
 //    public void init() {
 //        taskScheduler.setPoolSize(10);
 //        taskScheduler.initialize();
 //    }
+    @Scheduled(fixedRate = 20000)
+    public void updateWLEDDevices() {
+        var devices = deviceRepository.findAllByType("WLED");
+        devices.forEach(device -> {
+            try{
+                var deviceId = device.getId();
+                var wled = new Wled(device.getAccessUrl());
+                var data = wled.getInfo(device.getAccessUrl(), null);
+                mainService.saveData(deviceId, data);
+                System.err.println("WLED: " + data);
+                messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
+            }catch(Exception e){
+                System.err.println(e.getMessage());
+            }
+
+        });
+    }
 
     public List<Automation> findAll() {
         return automationRepository.findAll();
@@ -323,6 +340,7 @@ public class AutomationService {
 
         return truths.stream().allMatch(Boolean::booleanValue);
     }
+
     private boolean isInteger(String input) {
         return input != null && input.matches("-?\\d+"); // optional minus, then digits
     }
@@ -330,6 +348,7 @@ public class AutomationService {
     private boolean isText(String input) {
         return input != null && input.matches("[a-zA-Z]+"); // only alphabets
     }
+
     private boolean isTriggered(Automation automation, Map<String, Object> payload) {
         if ("time".equals(automation.getTrigger().getType())) {
             return isCurrentTime(automation.getConditions().get(0).getTime());
@@ -359,7 +378,7 @@ public class AutomationService {
                 if ("state".equals(automation.getTrigger().getType()) || "periodic".equals(automation.getTrigger().getType())) {
                     truths.add(checkCondition(numericValue, value, condition));
                 }
-            }else{
+            } else {
                 truths.add(value.equals(condition.getValue()));
             }
         }

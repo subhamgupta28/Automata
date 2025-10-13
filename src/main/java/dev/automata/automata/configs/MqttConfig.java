@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.ExecutorChannel;
@@ -113,45 +114,45 @@ public class MqttConfig {
                 )
                 .get();
     }
+    @Bean
+    @Primary
+    public ThreadPoolTaskExecutor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(25);
+        executor.setThreadNamePrefix("async-task-");
+        executor.initialize();
+        return executor;
+    }
 //    @Bean
-//    @Primary
-//    public ThreadPoolTaskExecutor taskExecutor() {
-//        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-//        executor.setCorePoolSize(2);
-//        executor.setMaxPoolSize(10);
-//        executor.setQueueCapacity(25);
-//        executor.setThreadNamePrefix("async-task-");
-//        executor.initialize();
-//        return executor;
+//    public ExecutorService mqttExecutor() {
+//        // Thread pool for processing MQTT messages
+//        return Executors.newFixedThreadPool(2);
 //    }
-    @Bean
-    public ExecutorService mqttExecutor() {
-        // Thread pool for processing MQTT messages
-        return Executors.newFixedThreadPool(2);
-    }
 
     @Bean
-    public ExecutorChannel mqttInputChannel(ExecutorService mqttExecutor) {
+    public ExecutorChannel mqttInputChannel(TaskExecutor mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel sendLiveData(ExecutorService mqttExecutor) {
+    public ExecutorChannel sendLiveData(TaskExecutor mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel sendData(ExecutorService mqttExecutor) {
+    public ExecutorChannel sendData(TaskExecutor mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel action(ExecutorService mqttExecutor) {
+    public ExecutorChannel action(TaskExecutor mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 
     @Bean
-    public ExecutorChannel sysData(ExecutorService mqttExecutor) {
+    public ExecutorChannel sysData(TaskExecutor mqttExecutor) {
         return new ExecutorChannel(mqttExecutor);
     }
 

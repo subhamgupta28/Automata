@@ -102,9 +102,10 @@ public class ScheduleTasks {
                 var newStatus = diff.toMinutes() <= 10 ? Status.ONLINE : Status.OFFLINE;
 //                System.err.println(diff.toMinutes());
                 mainService.setStatus(device.getId(), newStatus);
-                System.err.println("ID: " + entity.getId() + ", Status: " + newStatus);
+//                System.err.println("ID: " + entity.getId() + ", Status: " + newStatus);
             }
         }
+        System.err.println("Consolidation done.");
     }
 
 //    @Scheduled(fixedRate = 30000)
