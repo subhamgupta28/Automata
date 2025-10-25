@@ -14,7 +14,8 @@ import java.util.*;
 public class RedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
-//    private final RedisTemplate<String, Map<String, Object>> dataRedisTemplate;
+
+    //    private final RedisTemplate<String, Map<String, Object>> dataRedisTemplate;
 //
     public Map<String, Object> getRecentDeviceData(String id) {
         return (Map<String, Object>) redisTemplate.opsForValue().get("data_" + id);
@@ -42,7 +43,7 @@ public class RedisService {
             return Collections.emptyList();
         }
 
-        return keys.parallelStream()
+        return keys.stream()
                 .map(this::getAutomationCache)
                 .filter(AutomationCache::isEnabled)
                 .filter(ac -> {

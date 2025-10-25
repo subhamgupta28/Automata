@@ -1,7 +1,11 @@
 package dev.automata.automata.modules;
 
+import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.dto.WledResponse;
+import dev.automata.automata.model.Attribute;
+import dev.automata.automata.model.Device;
 import dev.automata.automata.model.DeviceActionState;
+import dev.automata.automata.model.Status;
 import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.client.RestTemplate;
@@ -24,6 +28,59 @@ public class Wled {
 
     public Wled(String ipAddress) {
         this.ipAddress = ipAddress + "/json/state";
+    }
+
+
+    public RegisterDevice newDevice() {
+        return RegisterDevice.builder()
+                .name("WLED 2")
+                .sleep(false)
+                .reboot(false)
+                .host("bigled")
+                .macAddr("8C:A3:99:CF:FB:AC")
+                .accessUrl("http://192.168.1.55")
+                .type("WLED")
+                .status(Status.ONLINE)
+                .updateInterval(190000L)
+                .attributes(
+                        List.of(
+                                Attribute.builder()
+                                        .key("onOff")
+                                        .displayName("On Off")
+                                        .type("ACTION|SWITCH")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("toggle")
+                                        .displayName("Toggle")
+                                        .type("ACTION|OUT")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("preset")
+                                        .displayName("Presets")
+                                        .type("ACTION|PRESET")
+                                        .units("")
+                                        .extras(Map.of("p1", 1, "p2", 2, "p3", 3, "p4", 4, "p5", 5))
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("bright")
+                                        .displayName("Brightness")
+                                        .type("ACTION|SLIDER")
+                                        .units("")
+                                        .extras(Map.of("min", 0, "max", 255))
+                                        .visible(true)
+                                        .build()
+
+                        )
+                )
+                .build();
+
     }
 
     public Map<String, Object> getInfo(String deviceId, DeviceActionState deviceState) {

@@ -49,18 +49,20 @@ public class AutomationService {
 //        taskScheduler.setPoolSize(10);
 //        taskScheduler.initialize();
 //    }
-    @Scheduled(fixedRate = 20000)
+    @Scheduled(fixedRate = 10000)
     public void updateWLEDDevices() {
+//        var w = new Wled("");
+//        mainService.registerDevice(w.newDevice());
         var devices = deviceRepository.findAllByType("WLED");
         devices.forEach(device -> {
-            try{
+            try {
                 var deviceId = device.getId();
                 var wled = new Wled(device.getAccessUrl());
                 var data = wled.getInfo(device.getAccessUrl(), null);
                 mainService.saveData(deviceId, data);
                 System.err.println("WLED: " + data);
                 messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
-            }catch(Exception e){
+            } catch (Exception e) {
                 System.err.println(e.getMessage());
             }
 
@@ -203,7 +205,7 @@ public class AutomationService {
             };
             CompletableFuture.runAsync(() -> {
                 var data = wled.getInfo(deviceId, deviceState);
-                System.err.println(data);
+//                System.err.println(data);
                 mainService.saveData(deviceId, data);
                 messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
 //                sendToTopic("automata/data", Map.of("deviceId", deviceId, "data", data));
@@ -227,6 +229,7 @@ public class AutomationService {
     }
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data, boolean executeNow) {
+//        System.err.println("Checking automation: " + automation.getName());
         var payload = new HashMap<String, Object>();
         var deviceId = automation.getTrigger().getDeviceId();
         if (data != null)
@@ -237,8 +240,8 @@ public class AutomationService {
 
         var type = automation.getTriggerDeviceType();
 //        System.err.println(automation.getName() + " " + type);
-//        if (type != null && type.equals("System"))
-//            payload = (HashMap<String, Object>) mainService.getLastData(deviceId);
+        if (type != null && type.equals("System"))
+            payload = (HashMap<String, Object>) mainService.getLastData(deviceId);
 //        System.out.println(payload);
 
 
@@ -288,7 +291,7 @@ public class AutomationService {
         var keyJoiner = new StringJoiner(",");
 
         for (Automation automation : automations) {
-            System.err.println(automation.getName());
+//            System.err.println(automation.getName());
 
             String key = automation.getTrigger().getKey();
             var conditions = automation.getConditions();
@@ -313,7 +316,7 @@ public class AutomationService {
 
         payload.put("keys", keyJoiner.toString());
 
-        System.err.println(payload);
+//        System.err.println(payload);
         messagingTemplate.convertAndSend("/topic/action/" + deviceId, payload);
         sendToTopic("automata/action/" + deviceId, payload);
         return payload;
@@ -341,8 +344,8 @@ public class AutomationService {
         return truths.stream().allMatch(Boolean::booleanValue);
     }
 
-    private boolean isInteger(String input) {
-        return input != null && input.matches("-?\\d+"); // optional minus, then digits
+    private boolean isNumeric(String input) {
+        return input != null && input.matches("-?\\d+(\\.\\d+)?");
     }
 
     private boolean isText(String input) {
@@ -373,7 +376,7 @@ public class AutomationService {
                     .findFirst()
                     .orElse(null);
             if (condition == null) continue;
-            if (isInteger(value)) {
+            if (isNumeric(value)) {
                 double numericValue = Double.parseDouble(value);
                 if ("state".equals(automation.getTrigger().getType()) || "periodic".equals(automation.getTrigger().getType())) {
                     truths.add(checkCondition(numericValue, value, condition));
@@ -457,9 +460,12 @@ public class AutomationService {
     public void onCustomEvent(LiveEvent event) {
         var payload = event.getPayload();
         var deviceId = payload.get("device_id").toString();
+//        System.err.println("Redis: " + deviceId);
         redisService.setRecentDeviceData(deviceId, payload);
 //        var auto = redisService.getAutomationByTriggerDevice(deviceId);
-//        auto.forEach(k -> checkAndExecuteSingleAutomation(k.getAutomation(), payload));
+//        if (deviceId.equals("670edfe8166ab22722fbf728"))
+//            System.err.println("Auto: " + auto);
+//        auto.forEach(k -> checkAndExecuteSingleAutomation(k.getAutomation(), payload, false));
 
     }
 
@@ -486,6 +492,7 @@ public class AutomationService {
                     .build();
 
             redisService.setAutomationCache(a.getTrigger().getDeviceId() + ":" + a.getId(), updatedCache);
+            System.err.println("Redis: " + a.getTrigger().getDeviceId() + ":" + a.getId());
         });
     }
 

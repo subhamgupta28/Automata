@@ -238,7 +238,7 @@ public class SystemMetrics {
                 data.put("fan_speed", fans[0]);
             }
 
-            System.out.println(Arrays.toString(systemInfo.getHardware().getSensors().getFanSpeeds()));
+//            System.out.println(Arrays.toString(systemInfo.getHardware().getSensors().getFanSpeeds()));
             var power = systemInfo.getHardware().getPowerSources();
             if (power!=null && !power.isEmpty()) {
                 data.put("battery_percent", power.getFirst().getRemainingCapacityPercent());
@@ -246,7 +246,7 @@ public class SystemMetrics {
                 data.put("time_remaining", power.getFirst().getTimeRemainingEstimated());
             }
 
-            System.err.println(systemInfo.getHardware().getPowerSources());
+//            System.err.println(systemInfo.getHardware().getPowerSources());
             //[Name: System Battery, Device Name: Primary,
             // RemainingCapacityPercent: 100.0%, Time Remaining: Unknown, Time Remaining Instant: Unknown,
             // Power Usage Rate: 0.0mW, Voltage: 13.16V, Amperage: 0.0mA,
@@ -254,7 +254,7 @@ public class SystemMetrics {
             // Capacity Units: MWH, Current Capacity: 82194, Max Capacity: 82194, Design Capacity: 83028,
             // Cycle Count: 4, Chemistry: LION, Manufacture Date: unknown, Manufacturer: HP,
             // SerialNumber: SerialNumber, Temperature: unknown]
-            System.err.println(data);
+//            System.err.println(data);
             return data;
         } catch (Exception e) {
 //            System.err.println("System Metrics Exception: "+e);
