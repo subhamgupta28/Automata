@@ -451,15 +451,16 @@ public class AutomationService {
         for (Automation.Action action : automation.getActions()) {
             if (Boolean.FALSE.equals(action.getIsEnabled())) continue;
 
+            Object parsedData = parseData(action.getData());
+
             Map<String, Object> payload = Map.of(
-                    action.getKey(), action.getData(),
+                    action.getKey(), parsedData,
                     "key", action.getKey()
             );
 
-//            System.err.println(action);
-            if (action.getKey().equals("alert")) {
+            if ("alert".equals(action.getKey())) {
                 notificationService.sendAlert("Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
-            } else if (payload.get("key").equals("app_notify")) {
+            } else if ("app_notify".equals(action.getKey())) {
                 notificationService.sendNotify("Automation", action.getData(), "low");
             } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
                 handleWLED(action.getDeviceId(), new HashMap<>(payload));
@@ -468,6 +469,34 @@ public class AutomationService {
                 sendToTopic("automata/action/" + action.getDeviceId(), payload);
             }
         }
+    }
+
+    /**
+     * Attempts to parse a string into the appropriate data type:
+     * - Boolean ("true"/"false")
+     * - Integer/Double (numeric)
+     * - Otherwise, returns as String
+     */
+    private Object parseData(String data) {
+        if (data == null) return null;
+
+        // Try boolean
+        if ("true".equalsIgnoreCase(data)) return Boolean.TRUE;
+        if ("false".equalsIgnoreCase(data)) return Boolean.FALSE;
+
+        // Try number
+        try {
+            if (data.contains(".")) {
+                return Double.parseDouble(data);
+            } else {
+                return Integer.parseInt(data);
+            }
+        } catch (NumberFormatException ignored) {
+            // Not a number — fall through
+        }
+
+        // Default: string
+        return data;
     }
 
 
