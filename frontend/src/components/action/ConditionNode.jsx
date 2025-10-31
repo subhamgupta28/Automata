@@ -8,7 +8,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
 import {LocalizationProvider, MobileTimePicker} from "@mui/x-date-pickers";
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
-
+import customParseFormat from "dayjs/plugin/customParseFormat";
+dayjs.extend(customParseFormat);
 
 const conditionStyle = {
     padding: '10px',
@@ -41,7 +42,9 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     const [below, setBelow] = useState(conditionData.below)
     const [isRange, setIsRange] = useState(conditionData.isExact)
     const [conditionValue, setConditionValue] = useState(conditionData.value)
-    const [time, setTime] = useState(dayjs(conditionData.time))
+    const [time, setTime] = useState(
+        conditionData.time ? dayjs(conditionData.time, "hh:mm:ss A") : dayjs()
+    );
     const [type, setType] = useState(conditionData.type);
     const connections = useHandleConnections({
         type: 'target',
@@ -69,7 +72,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             setTriggerKey(cd.triggerKey)
             setIsRange(cd.isExact);
             setConditionValue(cd.value);
-            setTime(dayjs(cd.time));
+            setTime(dayjs(cd.time, "hh:mm:ss A"));
             setType(cd.type);
         }
 
@@ -102,13 +105,13 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 type: type,
                 value: conditionValue,
                 isExact: isRange,
-                time: time.format()
+                time: time.format("hh:mm:ss A")
             }
         })
     }, [condition, conditionValue, below, above, isRange, time, type, triggerKey]);
 
     const handleChange = (e, select) => {
-        const value = e.target.value;
+        let value = e?.target?.value ?? e; // handles both normal events and dayjs objects
         if (select === 'value') {
             setConditionValue(value);
         } else if (select === 'condition') {
@@ -119,10 +122,12 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         } else if (select === 'below') {
             setBelow(value);
         } else if (select === 'time') {
-            setTime(e);
-
-            console.log("time", time.format());
-
+            if (e && e.isValid()) {
+                setTime(e);
+                console.log("time", e.format("hh:mm:ss A"));
+            } else {
+                console.warn("Invalid time value:", e);
+            }
         }
     }
 

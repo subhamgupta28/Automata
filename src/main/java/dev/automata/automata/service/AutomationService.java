@@ -21,6 +21,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -414,23 +415,37 @@ public class AutomationService {
     }
 
     private boolean isCurrentTime(String triggerTime) {
-        // Set the zone to IST
         ZoneId istZone = ZoneId.of("Asia/Kolkata");
+        LocalTime current = LocalTime.now(istZone);
 
-        // Get current time in IST
-        ZonedDateTime now = ZonedDateTime.now(istZone);
-        LocalTime current = now.toLocalTime();
+        // Clean up any stray whitespace just in case
+        String timeText = triggerTime == null ? "" : triggerTime.trim();
 
-        // Parse the trigger time assuming it's in ISO_OFFSET_DATE_TIME format
-        System.err.println(triggerTime);
-        ZonedDateTime targetDateTime = ZonedDateTime.parse(triggerTime, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        LocalTime target = null;
 
-        // Convert the parsed time to IST
-        LocalTime target = targetDateTime.withZoneSameInstant(istZone).toLocalTime();
+        try {
+            // Try parsing 24-hour format first: "HH:mm:ss"
+            target = LocalTime.parse(timeText, DateTimeFormatter.ofPattern("HH:mm:ss"));
+        } catch (Exception e1) {
+            try {
+                // Fallback to 12-hour format: "hh:mm:ss a"
+                DateTimeFormatter formatter12 = new DateTimeFormatterBuilder()
+                        .parseCaseInsensitive()
+                        .appendPattern("hh:mm:ss a")
+                        .toFormatter(Locale.ENGLISH);
+                target = LocalTime.parse(timeText, formatter12);
+            } catch (Exception e2) {
+                System.err.println("⚠️ Unable to parse triggerTime: '" + triggerTime + "'");
+                e2.printStackTrace();
+                return false; // or handle gracefully
+            }
+        }
 
-        // Check if the target time is within 1 minutes of the current IST time
-        return Math.abs(ChronoUnit.MINUTES.between(target, current)) <= 1;
+        long diff = Math.abs(ChronoUnit.MINUTES.between(target, current));
+        return diff <= 1;
     }
+
+
 
     private void executeActions(Automation automation) {
         for (Automation.Action action : automation.getActions()) {

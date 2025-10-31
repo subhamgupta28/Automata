@@ -53,6 +53,7 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
     const switchBtn = device.attributes.filter((t) => t.type.startsWith("ACTION|MENU|BTN"));
     const sliderData = device.attributes.filter((t) => t.type === "ACTION|MENU|SLIDER");
     const radarData = device.attributes.filter((t) => t.type === "DATA|RADAR");
+    const switchButtons = device.attributes.filter((t) => t.type === "ACTION|MENU|SWITCH");
 
     const handleAction = async (action) => {
         try {
@@ -159,6 +160,23 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                         {map.length > 0 && liveData && (
                             <MapView lat={liveData.LAT} lng={liveData.LONG} h={300} w='auto'/>
                         )}
+                        <div style={{
+                            display:'flex',
+                            justifyContent:'space-around',
+                            alignItems:'center'
+                        }}>
+                            {switchButtons.map((s) => (
+                                <SwitchButton
+                                    key={s.key}
+                                    value={liveData?.[s.key]}
+                                    deviceId={device.id}
+                                    data={s}
+                                    type={device.deviceType}
+                                    displayName={s.displayName}
+                                />
+                            ))}
+                        </div>
+
 
                         {radarData.length > 0 &&
                             <Card style={{margin: '10px', padding: '10px', borderRadius: '12px'}}>
