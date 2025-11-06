@@ -470,13 +470,7 @@ public class AutomationService {
                     "key", action.getKey()
             );
 
-            deviceActionStateRepository.save(DeviceActionState.builder()
-                    .user(user)
-                    .deviceId(action.getDeviceId())
-                    .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
-                    .payload(payload)
-                    .deviceType("sensor")
-                    .build());
+
 
             if ("alert".equals(action.getKey())) {
                 notificationService.sendAlert("Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
@@ -485,6 +479,13 @@ public class AutomationService {
             } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
                 handleWLED(action.getDeviceId(), new HashMap<>(payload), user);
             } else {
+                deviceActionStateRepository.save(DeviceActionState.builder()
+                        .user(user)
+                        .deviceId(action.getDeviceId())
+                        .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
+                        .payload(payload)
+                        .deviceType("sensor")
+                        .build());
                 messagingTemplate.convertAndSend("/topic/action/" + action.getDeviceId(), payload);
                 sendToTopic("automata/action/" + action.getDeviceId(), payload);
             }
