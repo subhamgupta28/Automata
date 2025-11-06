@@ -1,18 +1,20 @@
-// src/components/PrivateRoute.js
 import React from 'react';
-import {Navigate, useLocation} from 'react-router-dom';
-import { useAuth } from "./AuthContext.jsx";
-import isEmpty from "../../utils/Helper.jsx";
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from './AuthContext.jsx';
+import isEmpty from '../../utils/Helper.jsx';
 
 export default function PrivateRoute({ element }) {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const location = useLocation();
 
-    if (isEmpty(user)) {
-        return <Navigate to="/signin" replace />;
+    if (loading) {
+        // You can replace this with a spinner, skeleton, or splash screen
+        return <div style={{ color: '#fff', textAlign: 'center' }}>Loading...</div>;
     }
 
-    // Force re-mount of protected page when path changes
+    if (isEmpty(user)) {
+        return <Navigate to="/signin" replace state={{ from: location }} />;
+    }
+
     return React.cloneElement(element, { key: location.pathname });
 }
-

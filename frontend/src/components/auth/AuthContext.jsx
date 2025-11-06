@@ -1,20 +1,23 @@
-// src/context/AuthContext.js
-import React, {createContext, useState, useContext, useEffect} from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import isEmpty from "../../utils/Helper.jsx";
 
-// Create a context for authentication
 const AuthContext = createContext();
 
-// Create a provider for authentication context
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState({});
+    const [loading, setLoading] = useState(true);
 
-    // Check for stored user on mount
     useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem('user'));
-        console.log("user",storedUser)
-        if (!isEmpty(storedUser)) {
-            setUser(storedUser);
+        try {
+            const storedUser = JSON.parse(localStorage.getItem('user'));
+            if (storedUser && !isEmpty(storedUser)) {
+                setUser(storedUser);
+            }
+        } catch (err) {
+            console.error("Error parsing stored user:", err);
+            localStorage.removeItem('user');
+        } finally {
+            setLoading(false);
         }
     }, []);
 
@@ -29,13 +32,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout }}>
+        <AuthContext.Provider value={{ user, login, logout, loading }}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-// Custom hook to access auth context
-export const useAuth = () => {
-    return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);
