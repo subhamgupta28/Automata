@@ -210,21 +210,21 @@ public class AutomationService {
                 case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString())).resultNow();
                 default -> "No action found for key: " + key;
             };
-            CompletableFuture.runAsync(() -> {
-                var data = wled.getInfo(deviceId, null);
-                deviceActionStateRepository.save(DeviceActionState.builder()
-                        .user(user)
-                        .deviceId(deviceId)
-                        .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
-                        .payload(payload)
-                        .deviceType("WLED")
-                        .build());
+//            CompletableFuture.runAsync(() -> {
+            var data = wled.getInfo(deviceId, null);
+            deviceActionStateRepository.save(DeviceActionState.builder()
+                    .user(user)
+                    .deviceId(deviceId)
+                    .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
+                    .payload(payload)
+                    .deviceType("WLED")
+                    .build());
 //                System.err.println(data);
-                mainService.saveData(deviceId, data);
-                messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
+            mainService.saveData(deviceId, data);
+            messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
 //                sendToTopic("automata/data", Map.of("deviceId", deviceId, "data", data));
 
-            });
+//            });
             return "success";
         } catch (Exception e) {
             System.err.println(e);
@@ -471,7 +471,6 @@ public class AutomationService {
             );
 
 
-
             if ("alert".equals(action.getKey())) {
                 notificationService.sendAlert("Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
             } else if ("app_notify".equals(action.getKey())) {
@@ -537,7 +536,7 @@ public class AutomationService {
     @Scheduled(fixedRate = 8000)
     private void triggerPeriodicAutomations() {
         automationRepository.findByIsEnabledTrue().forEach(a ->
-                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId()), false,  "system"));
+                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId()), false, "system"));
     }
 
     @Scheduled(fixedRate = 1000 * 60 * 5)
