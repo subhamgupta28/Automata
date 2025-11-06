@@ -5,6 +5,7 @@ import dev.automata.automata.dto.AutomationCache;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationDetail;
+import dev.automata.automata.model.DeviceActionState;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -61,7 +62,7 @@ public class AutomationService {
                 var wled = new Wled(device.getAccessUrl());
                 var data = wled.getInfo(device.getAccessUrl(), null);
                 mainService.saveData(deviceId, data);
-                System.err.println("WLED: " + data);
+//                System.err.println("WLED: " + data);
                 messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
             } catch (Exception e) {
                 System.err.println(e.getMessage());
@@ -78,17 +79,20 @@ public class AutomationService {
         return automationRepository.save(action);
     }
 
-    public String handleAction(String deviceId, Map<String, Object> payload, String deviceType) {
-        if ("WLED".equals(deviceType)) {
-
-            var result = handleWLED(deviceId, payload);
-            notifyBasedOnResult(result);
-
-            return "error";
-        }
+    public String handleAction(String deviceId, Map<String, Object> payload, String deviceType, String user) {
         System.err.println("Received action");
         System.err.println("Device Type: " + deviceType);
         System.err.println("Payload: " + payload);
+        System.err.println("User: " + user);
+
+        if ("WLED".equals(deviceType)) {
+
+            var result = handleWLED(deviceId, payload, user);
+            notifyBasedOnResult(result);
+
+            return "success";
+        }
+
 
         if ("System".equals(deviceType)) {
             var key = payload.get("key").toString();
@@ -108,8 +112,10 @@ public class AutomationService {
 
         if (payload.containsKey("automation")) {
             var id = payload.get(payload.get("key").toString()).toString();
-            automationRepository.findById(id).ifPresent(this::executeActions);
-            return "Running automation";
+            automationRepository.findById(id).ifPresent((automation) -> {
+                executeActions(automation, user);
+            });
+            return "success";
         }
         if (payload.containsValue("master")) {
             var id = payload.get("deviceId").toString();
@@ -125,7 +131,7 @@ public class AutomationService {
             if (device.isPresent()) {
                 System.out.println("Master action sent " + req);
                 System.out.println("Device type " + device.get().getType());
-                handleAction(id, req, device.get().getType());
+                handleAction(id, req, device.get().getType(), user);
             }
 
 
@@ -137,7 +143,7 @@ public class AutomationService {
         }
 
         var automations = automationRepository.findByTrigger_DeviceId(deviceId);
-        automations.forEach(a -> checkAndExecuteSingleAutomation(a, payload, true));
+        automations.forEach(a -> checkAndExecuteSingleAutomation(a, payload, true, user));
 
         notificationService.sendNotification("Action applied", "success");
         return "Action successfully sent!";
@@ -188,9 +194,9 @@ public class AutomationService {
         notificationService.sendNotification("Action applied", "success");
     }
 
-    private String handleWLED(String deviceId, Map<String, Object> payload) {
+    private String handleWLED(String deviceId, Map<String, Object> payload, String user) {
         var device = deviceRepository.findById(deviceId).orElse(null);
-        var deviceState = deviceActionStateRepository.findById(deviceId).orElse(null);
+//        var deviceState = deviceActionStateRepository.findById(deviceId).orElse(null);
 
         if (device == null) return "Not found";
 
@@ -205,7 +211,14 @@ public class AutomationService {
                 default -> "No action found for key: " + key;
             };
             CompletableFuture.runAsync(() -> {
-                var data = wled.getInfo(deviceId, deviceState);
+                var data = wled.getInfo(deviceId, null);
+                deviceActionStateRepository.save(DeviceActionState.builder()
+                        .user(user)
+                        .deviceId(deviceId)
+                        .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
+                        .payload(payload)
+                        .deviceType("WLED")
+                        .build());
 //                System.err.println(data);
                 mainService.saveData(deviceId, data);
                 messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
@@ -219,17 +232,17 @@ public class AutomationService {
         }
     }
 
-    public void checkAndExecuteAutomations() {
-        automationRepository.findAll().forEach(automation -> {
-            var payload = mainService.getLastData(automation.getTrigger().getDeviceId());
-            if (isTriggered(automation, payload)) {
-                notificationService.sendNotification("Executing automations: " + automation.getName(), "high");
-                executeActions(automation);
-            }
-        });
-    }
+//    public void checkAndExecuteAutomations() {
+//        automationRepository.findAll().forEach(automation -> {
+//            var payload = mainService.getLastData(automation.getTrigger().getDeviceId());
+//            if (isTriggered(automation, payload)) {
+//                notificationService.sendNotification("Executing automations: " + automation.getName(), "high");
+//                executeActions(automation);
+//            }
+//        });
+//    }
 
-    public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data, boolean executeNow) {
+    public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data, boolean executeNow, String user) {
 //        System.err.println("Checking automation: " + automation.getName());
         var payload = new HashMap<String, Object>();
         var deviceId = automation.getTrigger().getDeviceId();
@@ -276,7 +289,7 @@ public class AutomationService {
             automationCache.setLastUpdate(now); // update last execution time
             System.err.println("Executing automation: " + automation.getName() + " with payload: " + payload);
             notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
-            executeActions(automation);
+            executeActions(automation, user);
         } else {
             automation.setIsActive(false);
         }
@@ -446,8 +459,7 @@ public class AutomationService {
     }
 
 
-
-    private void executeActions(Automation automation) {
+    private void executeActions(Automation automation, String user) {
         for (Automation.Action action : automation.getActions()) {
             if (Boolean.FALSE.equals(action.getIsEnabled())) continue;
 
@@ -458,12 +470,20 @@ public class AutomationService {
                     "key", action.getKey()
             );
 
+            deviceActionStateRepository.save(DeviceActionState.builder()
+                    .user(user)
+                    .deviceId(action.getDeviceId())
+                    .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
+                    .payload(payload)
+                    .deviceType("sensor")
+                    .build());
+
             if ("alert".equals(action.getKey())) {
                 notificationService.sendAlert("Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
             } else if ("app_notify".equals(action.getKey())) {
                 notificationService.sendNotify("Automation", action.getData(), "low");
             } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
-                handleWLED(action.getDeviceId(), new HashMap<>(payload));
+                handleWLED(action.getDeviceId(), new HashMap<>(payload), user);
             } else {
                 messagingTemplate.convertAndSend("/topic/action/" + action.getDeviceId(), payload);
                 sendToTopic("automata/action/" + action.getDeviceId(), payload);
@@ -516,7 +536,7 @@ public class AutomationService {
     @Scheduled(fixedRate = 8000)
     private void triggerPeriodicAutomations() {
         automationRepository.findByIsEnabledTrue().forEach(a ->
-                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId()), false));
+                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId()), false,  "system"));
     }
 
     @Scheduled(fixedRate = 1000 * 60 * 5)
@@ -536,7 +556,7 @@ public class AutomationService {
                     .build();
 
             redisService.setAutomationCache(a.getTrigger().getDeviceId() + ":" + a.getId(), updatedCache);
-            System.err.println("Redis: " + a.getTrigger().getDeviceId() + ":" + a.getId());
+//            System.err.println("Redis: " + a.getTrigger().getDeviceId() + ":" + a.getId());
         });
     }
 

@@ -2,12 +2,13 @@
 import React from 'react';
 import {Navigate, useLocation} from 'react-router-dom';
 import { useAuth } from "./AuthContext.jsx";
+import isEmpty from "../../utils/Helper.jsx";
 
 export default function PrivateRoute({ element }) {
     const { user } = useAuth();
     const location = useLocation();
 
-    if (!user) {
+    if (isEmpty(user)) {
         return <Navigate to="/signin" replace />;
     }
 

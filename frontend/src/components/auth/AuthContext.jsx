@@ -1,5 +1,6 @@
 // src/context/AuthContext.js
 import React, {createContext, useState, useContext, useEffect} from 'react';
+import isEmpty from "../../utils/Helper.jsx";
 
 // Create a context for authentication
 const AuthContext = createContext();
@@ -12,7 +13,7 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem('user'));
         console.log("user",storedUser)
-        if (storedUser) {
+        if (!isEmpty(storedUser)) {
             setUser(storedUser);
         }
     }, []);

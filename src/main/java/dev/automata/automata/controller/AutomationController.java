@@ -104,7 +104,7 @@ public class AutomationController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             return "Device Id not found";
         }
-        return actionService.handleAction(deviceId, payload, "");
+        return actionService.handleAction(deviceId, payload, "", "device");
     }
 
     @GetMapping("/rebootAllDevices")
@@ -146,6 +146,6 @@ public class AutomationController {
             @PathVariable String deviceType
     ) {
         System.err.println("got action message: " + payload);
-        return ResponseEntity.ok(actionService.handleAction(deviceId, payload, deviceType));
+        return ResponseEntity.ok(actionService.handleAction(deviceId, payload, deviceType, "user"));
     }
 }

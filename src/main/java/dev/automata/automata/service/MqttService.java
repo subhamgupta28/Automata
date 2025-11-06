@@ -53,7 +53,7 @@ public class MqttService {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("Device Id not found");;
         }
-        actionService.handleAction(deviceId, payload, "");
+        actionService.handleAction(deviceId, payload, "", "device");
     }
 
     @ServiceActivator(inputChannel = "sendLiveData")
