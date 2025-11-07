@@ -23,5 +23,6 @@ public class DeviceActionState {
     private String deviceType;
     private String user;
     private Date timestamp;
+    private Map<String, Object> deviceCurrentState;
 
 }

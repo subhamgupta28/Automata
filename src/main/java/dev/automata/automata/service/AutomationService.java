@@ -218,6 +218,7 @@ public class AutomationService {
                     .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
                     .payload(payload)
                     .deviceType("WLED")
+                    .deviceCurrentState(data)
                     .build());
 //                System.err.println(data);
             mainService.saveData(deviceId, data);

@@ -54,6 +54,7 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
     const sliderData = device.attributes.filter((t) => t.type === "ACTION|MENU|SLIDER");
     const radarData = device.attributes.filter((t) => t.type === "DATA|RADAR");
     const switchButtons = device.attributes.filter((t) => t.type === "ACTION|MENU|SWITCH");
+    const deviceInfo = device.attributes.filter((t) => t.type === "DATA|INFO");
 
     const handleAction = async (action) => {
         try {
@@ -142,14 +143,23 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                             </tr>
                             </tbody>
                         </table>
+                        <Divider style={{marginTop: '10px', marginBottom: '5px'}}></Divider>
 
-                        {switchBtn.map((btn) => (
-                            <Button key={btn["key"]} aria-label="delete" variant="contained"
-                                    style={{marginLeft: "12px", marginTop: "12px"}}
-                                    onClick={() => handleAction(btn["key"])}>
-                                {btn["displayName"]}
-                            </Button>
-                        ))}
+                        <div style={{display: "flex", justifyContent: "flex-start", gap: "12px", flexWrap: "wrap"}}>
+                            {switchBtn.map((btn, i) => (
+                                <Button
+                                    key={btn["key"]}
+                                    aria-label="delete"
+                                    variant="contained"
+                                    style={{marginTop: "12px"}}
+                                    onClick={() => handleAction(btn["key"])}
+                                >
+                                    {btn["displayName"]}
+                                </Button>
+                            ))}
+                        </div>
+
+
                         <div style={{width: '50%'}}>
                             {sliderData && liveData && sliderData.map((slide) => (
                                 <CustomSlider key={slide.key} value={liveData[slide.key]} deviceId={device.id}
@@ -157,14 +167,11 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                                               displayName={slide.displayName}/>
                             ))}
                         </div>
+
                         {map.length > 0 && liveData && (
                             <MapView lat={liveData.LAT} lng={liveData.LONG} h={300} w='auto'/>
                         )}
-                        <div style={{
-                            display:'flex',
-                            justifyContent:'space-around',
-                            alignItems:'center'
-                        }}>
+                        <div style={{display: "flex", justifyContent: "flex-start", gap: "12px", flexWrap: "wrap"}}>
                             {switchButtons.map((s) => (
                                 <SwitchButton
                                     key={s.key}
@@ -186,6 +193,7 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
 
                             // <CustomRadarChart liveData={liveData} radarData={radarData}/>
                         }
+                        <Divider style={{marginTop: '10px', marginBottom: '5px'}}></Divider>
                         Aux Data
                         {liveData && (
                             <div style={{
@@ -197,7 +205,7 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                             }}>
 
                                 {device.attributes.map(attribute => (
-                                    (attribute.type !== "DATA|MAIN") && (
+                                    (attribute.type !== "DATA|MAIN" && attribute.type !== "DATA|INFO") && (
                                         <Card key={attribute.id} elevation={0} style={{
                                             borderRadius: '8px',
                                             padding: '6px',
@@ -214,7 +222,17 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                                 ))}
                             </div>
                         )}
-
+                        <Divider style={{marginTop: '10px', marginBottom: '5px'}}></Divider>
+                        <table>
+                            <tbody>
+                            {deviceInfo.map((t) => (
+                                <tr>
+                                    <td>{t.displayName}</td>
+                                    <td>{t.units}</td>
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
 
                     </div>
                     <div style={{width: '30%'}}>
@@ -370,11 +388,12 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                 }}>
 
                     <Card
-                          style={{padding: '0px', width: '100%', margin: '0px',
-                              borderRadius: '12px 12px 0px 0px',
-                              background: 'transparent',
-                              backgroundColor: 'rgb(255 255 255 / 10%)',
-                    }}>
+                        style={{
+                            padding: '0px', width: '100%', margin: '0px',
+                            borderRadius: '12px 12px 0px 0px',
+                            background: 'transparent',
+                            backgroundColor: 'rgb(255 255 255 / 10%)',
+                        }}>
                         <Typography
                             style={{
                                 display: 'flex',
@@ -382,6 +401,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                 justifyContent: 'space-between',
                                 marginLeft: '18px',
                                 fontWeight: 'bold',
+                                fontSize: '18px',
                                 marginRight: '10px'
                             }}
                         >
@@ -393,10 +413,10 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     </Card>
                     <CardContent
                         style={{
-                            width: '280px',
+                            width: '285px',
                             alignItems: 'center',
                             padding: '8px',
-                            paddingBottom: '16px',
+                            paddingBottom: '10px',
                             justifyContent: 'center'
                         }}>
 
@@ -448,7 +468,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                         <div style={{
                             gridTemplateColumns: 'repeat(2, 1fr)',
                             display: 'grid',
-                            gap: '8px',
+                            gap: '4px',
                             marginTop: '10px'
                         }}>
                             {mainData.map((m) => (
@@ -457,12 +477,12 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     elevation={0}
                                     style={{
                                         borderRadius: '8px',
-                                        padding: '6px',
+                                        padding: '4px',
                                         // backgroundColor: 'transparent',
                                         // backdropFilter: 'blur(7px)',
-                                        borderColor: '#606060',
+                                        // borderColor: '#606060',
                                         // borderWidth: '2px',
-                                        borderStyle: 'dashed',
+                                        // borderStyle: 'dashed',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: 'space-between',
@@ -470,12 +490,12 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     }}
                                 >
 
-                                    <Typography style={{display: 'flex', }} color="primary"
+                                    <Typography style={{display: 'flex', fontSize: '18px'}} color="primary"
                                                 fontWeight="bold">
                                         {/*{m.displayName.includes("Temp") && <TemperatureGauge temp={liveData?.[m.key]}/>}*/}
                                         {liveData?.[m.key]} {m.units}
                                     </Typography>
-                                    <Typography variant="subtitle2">{m.displayName}</Typography>
+                                    <Typography>{m.displayName}</Typography>
                                 </Card>
                             ))}
                             {switchButtons.length > 0 && (
@@ -483,8 +503,8 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     gridColumn: (mainData.length + actionOutButtons.length + switchButtons.length) % 2 !== 0 ? 'span 2' : undefined,
                                     display: 'flex',
                                     justifyContent: 'space-around',
-                                    borderColor: '#606060',
-                                    borderStyle: 'dashed',
+                                    // borderColor: '#606060',
+                                    // borderStyle: 'dashed',
                                     borderRadius: '8px',
                                 }}>
                                     {switchButtons.map((s) => (
@@ -504,8 +524,8 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                                     gridColumn: (mainData.length + actionOutButtons.length + switchButtons.length) % 2 !== 0 ? 'span 2' : undefined,
                                     display: 'flex',
                                     justifyContent: 'space-around',
-                                    borderColor: '#606060',
-                                    borderStyle: 'dashed',
+                                    // borderColor: '#606060',
+                                    // borderStyle: 'dashed',
                                     borderRadius: '8px',
                                 }}
                                 >
@@ -549,44 +569,52 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                 )}
             </div>
 
-            {isConnectable && data.value.x < 900 && <Handle
-                type="source"
-                position={Position.Right}
-                id="b"
-                style={{
-                    top: 30,
-                    right: -3,
-                    width: '6px',
-                    height: '30px',
-                    borderColor: connectionColor,
-                    borderRadius: '0px 8px 8px 0px',
-                    background: connectionColor,
-                }}
-                isConnectable={isConnectable}
-            />}
-            {isConnectable && data.value.x > 900 && <Handle
-                type="source"
-                position={Position.Bottom}
-                id="b"
-                style={{
-                    left: 30,
-                    // right: -3,
-                    width: '35px',
-                    height: '6px',
-                    borderColor: connectionColor,
-                    borderRadius: '0px 8px 8px 0px',
-                    background: connectionColor,
-                }}
-                isConnectable={isConnectable}
-            />}
+
+
+
+            {isConnectable &&
+                data?.value?.x !== undefined &&
+                data?.value?.y !== undefined && data.value.x < 900  && <Handle
+                    type="source"
+                    position={Position.Right}
+                    id="b"
+                    style={{
+                        top: 30,
+                        right: -3,
+                        width: '6px',
+                        height: '30px',
+                        borderColor: connectionColor,
+                        borderRadius: '0px 8px 8px 0px',
+                        background: connectionColor,
+                    }}
+                    isConnectable={isConnectable}
+                />}
+            {isConnectable &&
+                data?.value?.x !== undefined &&
+                data?.value?.y !== undefined && data.value.x > 900 && <Handle
+                    type="source"
+                    position={Position.Bottom}
+                    id="b"
+                    style={{
+                        left: 30,
+                        // right: -3,
+                        bottom: -4,
+                        width: '35px',
+                        height: '6px',
+                        borderColor: connectionColor,
+                        borderRadius: '0px 0px 8px 8px',
+                        background: connectionColor,
+                    }}
+                    isConnectable={isConnectable}
+                />}
         </div>
     );
 });
 
-export function AlertNode({data, isConnectable}){
+export function AlertNode({data, isConnectable}) {
 
-    return(
-        <Card elevation={10} style={{height:'400px', width:'600px', borderRadius:'12px', padding:'10px'}}>
+    return (
+        <Card elevation={10} style={{height: '400px', width: '600px', borderRadius: '12px', padding: '10px'}}>
             <Alert variant="outlined" severity={data.value.severity}>
                 {data.value.message}
             </Alert>
@@ -605,7 +633,7 @@ export const MainNode = React.memo(({data, isConnectable}) => {
             device.showCharts === true
         ), [devices]);
 
-    const notAbove400 = devices.filter(f=> f.y < 400).length;
+    const notAbove400 = devices.filter(f => f.y < 400).length;
     // Memoize the node and chart IDs since they don't change during render
     const nodeIds = useMemo(() =>
         Array.from({length: numOfDevices}, (_, i) => `main-node-${i}`), [numOfDevices]);
@@ -645,13 +673,14 @@ export const MainNode = React.memo(({data, isConnectable}) => {
                     <CardContent style={{
                         // marginLeft: '10px', display: 'grid', marginTop: '15px',
                         // marginRight: '50px',
-                        padding:'8px',
-                        width:'1200px',
+                        padding: '8px',
+                        width: '1200px',
                         gridTemplateColumns: 'repeat(1, 1fr)', /* 4 columns */
                         gap: '10px', /* Space between items */
                     }}>
                         {charts && charts.map((device, index) => (
-                            <ChartDetail deviceId={device.id} name={device.name} width={1000} height={360} deviceAttributes={device.attributes}/>
+                            <ChartDetail deviceId={device.id} name={device.name} width={1000} height={360}
+                                         deviceAttributes={device.attributes}/>
                             // <BarChartComp key={device.id} chartDevice={device}/>
                         ))}
 
