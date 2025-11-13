@@ -49,7 +49,7 @@ export const ZoomSlider = forwardRef(({...props}) => {
             <Slider
                 value={zoom}
                 min={minZoom}
-                step={0.1}
+                step={0.01}
                 max={maxZoom}
                 style={{width: '100px', marginLeft: '10px', marginRight: '10px'}}
                 onChange={handleChange}
@@ -64,7 +64,7 @@ export const ZoomSlider = forwardRef(({...props}) => {
                 size="small"
                 onClick={() => zoomTo(1, {duration: 300})}
             >
-                {(100 * zoom).toFixed(0)}%
+                {(10 * zoom).toFixed(0)}%
             </Button>
             <IconButton
                 size="small"
