@@ -42,6 +42,9 @@ import Welcome from "../Welcome.jsx";
 import {useIsMobile} from "../../utils/useIsMobile.jsx";
 import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
+import VirtualDeviceForm from "../v2/VirtualDeviceForm.jsx";
+import {CalendarViewMonthRounded, Dashboard, GridView} from "@mui/icons-material";
+import DashboardV2 from "../v2/DashboardV2.jsx";
 
 const drawerWidth = 200;
 
@@ -121,6 +124,8 @@ export default function SideDrawer() {
         {name: 'Home', url: '/', icon: <HomeIcon/>},
         {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
         {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
+        {name: 'Virtual Device', url: '/virtual', icon: <Dashboard/>},
+        {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
         {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
         {name: 'Configure', url: '/configure', icon: <SettingsIcon/>},
     ];
@@ -280,7 +285,8 @@ export default function SideDrawer() {
                                     <Route index element={<PrivateRoute element={<DeviceNodes/>}/>}/>
                                     {/*<Route path="/" element={<PrivateRoute element={<DeviceNodes/>}/>}/>*/}
                                     <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
-
+                                    <Route path="virtual" element={<PrivateRoute element={<VirtualDeviceForm/>}/>}/>
+                                    <Route path="dashboard" element={<PrivateRoute element={<DashboardV2/>}/>}/>
                                     <Route path="actions" element={<PrivateRoute element={<ActionBoard />}/>}/>
                                     <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>
                                     <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>

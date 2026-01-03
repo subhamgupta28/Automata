@@ -4,16 +4,14 @@ import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.dto.RegisterDevice;
-import dev.automata.automata.model.Attribute;
-import dev.automata.automata.model.AttributeType;
-import dev.automata.automata.model.Device;
-import dev.automata.automata.model.Status;
+import dev.automata.automata.model.*;
 import dev.automata.automata.service.AnalyticsService;
 import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.MqttService;
 import dev.automata.automata.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -71,8 +69,15 @@ public class MainController {
     }
 
     @GetMapping("chartDetail/{deviceId}/{range}")
-    public ResponseEntity<ChartDataDto> getChartDetail(@PathVariable String deviceId, @PathVariable String range) {
-        return ResponseEntity.ok(analyticsService.getChartDetail(deviceId, range));
+    public ResponseEntity<ChartDataDto> getChartDetail(
+            @PathVariable String deviceId,
+            @PathVariable String range,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end
+    ) {
+        return ResponseEntity.ok(
+                analyticsService.getChartDetail(deviceId, range, start, end)
+        );
     }
 
     @GetMapping("pieChart/{deviceId}")

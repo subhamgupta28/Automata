@@ -14,6 +14,10 @@ import {
     ToggleButtonGroup,
 } from "@mui/material";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import {LocalizationProvider} from "@mui/x-date-pickers";
+import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
 
 const gradientColors = [
     ['#42a5f5', '#ffffff'],
@@ -21,9 +25,19 @@ const gradientColors = [
     ['#ff7f0e', '#ffffff'],
     ['#d62728', '#ffffff'],
     ['#bcbd22', '#ffffff'],
-    ['#17becf', '#ffffff'],
+    ['#b13b3b', '#ffffff'],
     ['#7f7f7f', '#ffffff'],
     ['#17becf', '#ffffff'],
+    ['#1f77b4', '#ffffff'], // blue
+    ['#9467bd', '#ffffff'], // purple
+    ['#e377c2', '#ffffff'], // pink
+    ['#8c564b', '#ffffff'], // brown
+    ['#aec7e8', '#ffffff'], // light blue
+    ['#98df8a', '#ffffff'], // light green
+    ['#ffbb78', '#ffffff'], // light orange
+    ['#c5b0d5', '#ffffff'], // lavender
+    ['#f7b6d2', '#ffffff'], // light pink
+    ['#c49c94', '#ffffff'], // muted brown
 ];
 const solidColors = [
     '#42a5f5',
@@ -34,6 +48,16 @@ const solidColors = [
     '#935050',
     '#7f7f7f',
     '#9467bd',
+    '#17becf', // teal
+    '#1f77b4', // blue
+    '#e377c2', // pink
+    '#8c564b', // brown
+    '#aec7e8', // light blue
+    '#98df8a', // light green
+    '#ffbb78', // light orange
+    '#c5b0d5', // lavender
+    '#f7b6d2', // light pink
+    '#c49c94', // muted brown
 ];
 export default function ChartDetail({deviceId, name, height = 450, width = 1000, deviceAttributes}) {
     const [data, setData] = useState([]);
@@ -42,20 +66,43 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
     const [chartType, setChartType] = useState("bar");
     const {messages} = useDeviceLiveData();
     const dataRef = useRef([]);
+    const [selectedMonth, setSelectedMonth] = useState(dayjs());
     const unitsMap
         = useMemo(() => new Map(deviceAttributes.map(obj => [obj.key, obj.units])), []);
-    console.log("attr", unitsMap);
+
 
     useEffect(() => {
         const fetchChartData = async () => {
-            const d = await getDetailChartData(deviceId, range);
-            setData(d.data);
-            dataRef.current = d.data;
-            setAttributes(d.attributes);
+            let response;
+            if (range === "history" && selectedMonth) {
+                const start = selectedMonth.startOf('month').toISOString();
+                const end = selectedMonth.endOf('month').toISOString();
+
+                getDetailChartData(deviceId, "history", { start, end })
+                    .then((d) => {
+                        setData(d.data);
+                        setAttributes(d.attributes);
+                        dataRef.current = d.data;
+                    });
+            }else if (range!=="live"){
+                getDetailChartData(deviceId, range, {})
+                    .then((d) => {
+                        setData(d.data);
+                        setAttributes(d.attributes);
+                        dataRef.current = d.data;
+                    });
+            }
+
+            if (response) {
+                setData(response.data);
+                dataRef.current = response.data;
+                setAttributes(response.attributes);
+            }
         };
-        if (range !== "live")
-            fetchChartData();
-    }, [deviceId, range]);
+
+        fetchChartData();
+    }, [deviceId, range, selectedMonth]);
+
 
     // Listen for live updates
     useEffect(() => {
@@ -126,7 +173,19 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
                         <ToggleButton value="hour">Hour</ToggleButton>
                         <ToggleButton value="day">Day</ToggleButton>
                         <ToggleButton value="week">Week</ToggleButton>
+                        <ToggleButton value="history">History</ToggleButton>
                         <ToggleButton value="live">Live</ToggleButton>
+                        <LocalizationProvider dateAdapter={AdapterDayjs}>
+                            {range === "history" && (
+                                <DatePicker
+                                    views={['year', 'month', 'day']}
+                                    label="Select Month"
+                                    value={selectedMonth}
+                                    maxDate={dayjs()}
+                                    onChange={(newValue) => setSelectedMonth(newValue)}
+                                />
+                            )}
+                        </LocalizationProvider>
                     </ToggleButtonGroup>
 
                     {/* Chart type toggle */}
@@ -143,6 +202,7 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
                         <ToggleButton value="bar">Bar</ToggleButton>
                     </ToggleButtonGroup>
                 </Box>
+
 
                 {chartType === "line" ? (
                     <LineChart
@@ -183,18 +243,18 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
                         series={series}
                         xAxis={[{scaleType: "band", data: xLabels}]}
                         // yAxis={[{ position: 'left' }]}
-                        // sx={{
-                        //     '& rect': {
-                        //         rx: 2,   // horizontal radius
-                        //         ry: 2,   // vertical radius
-                        //     },
-                        // }}
                         sx={{
-                            '& .MuiChartsAxis-tickLabel': {
-                                transform: 'rotate(-40deg)',
-                                textAnchor: 'end',
+                            '& rect': {
+                                rx: 2,   // horizontal radius
+                                ry: 2,   // vertical radius
                             },
                         }}
+                        // sx={{
+                        //     '& .MuiChartsAxis-tickLabel': {
+                        //         transform: 'rotate(-40deg)',
+                        //         textAnchor: 'end',
+                        //     },
+                        // }}
                         borderRadius={4}
 
                     />

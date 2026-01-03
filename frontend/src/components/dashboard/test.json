@@ -1,109 +1,92 @@
-[
-  {
-    "_id": "node_trigger_0",
-    "type": "trigger",
-    "position": {
-      "x": 252.33333333333337,
-      "y": 146.33333333333334
-    },
-    "data": {
-      "value": {
-        "isNewNode": false,
-        "name": "trigger"
-      },
-      "triggerData": {
-        "deviceId": "67dafae9fa67e36c0a25687e",
-        "type": "state",
-        "keys": [
-          {
-            "conditionId": "node_condition_1",
-            "value": "",
-            "key": "button"
-          }
-        ],
-        "name": "Bat Btn 1"
-      }
-    },
-    "measured": {
-      "width": new
-      NumberInt(
-      "220"
-      ),
-      "height": new
-      NumberInt(
-      "303"
-      )
-    },
-    "selected": false,
-    "dragging": false
-  },
-  {
-    "_id": "node_condition_1",
-    "type": "condition",
-    "position": {
-      "x": 559.3333333333335,
-      "y": 145.33333333333331
-    },
-    "data": {
-      "value": {
-        "isNewNode": false,
-        "name": "condition"
-      },
-      "conditionData": {
-        "condition": "equal",
-        "valueType": "int",
-        "below": "0",
-        "above": "0",
-        "triggerKey": "button",
-        "value": "1",
-        "time": "Invalid Date",
-        "isExact": true
-      }
-    },
-    "measured": {
-      "width": new
-      NumberInt(
-      "220"
-      ),
-      "height": new
-      NumberInt(
-      "177"
-      )
-    },
-    "selected": false,
-    "dragging": false
-  },
-  {
-    "_id": "node_action_2",
-    "type": "action",
-    "position": {
-      "x": 872.6666666666667,
-      "y": 138.33333333333334
-    },
-    "data": {
-      "value": {
-        "isNewNode": false,
-        "name": "action"
-      },
-      "actionData": {
-        "deviceId": "67dafae9fa67e36c0a25687e",
-        "key": "fan",
-        "name": "Battery Main",
-        "data": "60",
-        "isEnabled": true
-      }
-    },
-    "measured": {
-      "width": new
-      NumberInt(
-      "220"
-      ),
-      "height": new
-      NumberInt(
-      "283"
-      )
-    },
-    "selected": false,
-    "dragging": false
+{
+  "0": {
+    "id": "69591fa55435a3287696e1e8",
+    "name": "Weather",
+    "x": 0,
+    "y": 0,
+    "width": 0,
+    "height": 0,
+    "lastModified": "2026-01-03T14:41:22.883+00:00",
+    "tag": "Weather",
+    "deviceIds": [
+      "670edfe8166ab22722fbf728"
+    ],
+    "attributes": {
+      "670edfe8166ab22722fbf728": [
+        {
+          "id": "6958e9668f598b2fda7128fb",
+          "displayName": "CO2",
+          "key": "s_co2",
+          "units": "ppm",
+          "visible": true,
+          "type": "DATA|MAIN",
+          "extras": null,
+          "deviceId": "670edfe8166ab22722fbf728"
+        },
+        {
+          "id": "6958e9668f598b2fda7128fe",
+          "displayName": "Temp 2",
+          "key": "temp",
+          "units": "C",
+          "visible": true,
+          "type": "DATA|MAIN",
+          "extras": null,
+          "deviceId": "670edfe8166ab22722fbf728"
+        },
+        {
+          "id": "6958e9668f598b2fda712900",
+          "displayName": "Humidity 2",
+          "key": "humid",
+          "units": "%",
+          "visible": true,
+          "type": "DATA|MAIN",
+          "extras": {
+            "max": 100,
+            "min": 0
+          },
+          "deviceId": "670edfe8166ab22722fbf728"
+        },
+        {
+          "id": "6958e9668f598b2fda712901",
+          "displayName": "AQI",
+          "key": "aqi",
+          "units": "",
+          "visible": true,
+          "type": "DATA|MAIN",
+          "extras": null,
+          "deviceId": "670edfe8166ab22722fbf728"
+        },
+        {
+          "id": "6958e9668f598b2fda712905",
+          "displayName": "TVOC",
+          "key": "tvoc",
+          "units": "mg/m³",
+          "visible": true,
+          "type": "DATA|AUX",
+          "extras": null,
+          "deviceId": "670edfe8166ab22722fbf728"
+        },
+        {
+          "id": "6958e9668f598b2fda712906",
+          "displayName": "CH2O",
+          "key": "ch2o",
+          "units": "ppb",
+          "visible": true,
+          "type": "DATA|AUX",
+          "extras": null,
+          "deviceId": "670edfe8166ab22722fbf728"
+        },
+        {
+          "id": "6958e9668f598b2fda712904",
+          "displayName": "Light",
+          "key": "lux",
+          "units": "lx",
+          "visible": true,
+          "type": "DATA|MAIN",
+          "extras": null,
+          "deviceId": "670edfe8166ab22722fbf728"
+        }
+      ]
+    }
   }
-]
+}

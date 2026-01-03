@@ -29,16 +29,26 @@ public class Wled {
     public Wled(String ipAddress) {
         this.ipAddress = ipAddress + "/json/state";
     }
-
+/// [
+///{
+///     "macAddr": "8C:A3:99:CF:FB:SG"
+///   },
+///   {
+///     "macAddr": "DC:54:75:EE:0F:7C"
+///   },
+///   {
+///     "macAddr": "DC:54:75:EB:6C:F4"
+///   }
+/// ]
 
     public RegisterDevice newDevice() {
         return RegisterDevice.builder()
-                .name("WLED 2")
+                .name("Matrix")
                 .sleep(false)
                 .reboot(false)
-                .host("bigled")
-                .macAddr("8C:A3:99:CF:FB:AC")
-                .accessUrl("http://192.168.1.55")
+                .host("matrix")
+                .macAddr("8C:A3:99:CF:FB:SG")
+                .accessUrl("http://192.168.1.65")
                 .type("WLED")
                 .status(Status.ONLINE)
                 .updateInterval(190000L)

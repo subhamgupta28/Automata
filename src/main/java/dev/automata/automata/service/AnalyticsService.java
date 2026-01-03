@@ -11,12 +11,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -34,32 +37,58 @@ public class AnalyticsService {
         // Returns a MongoDB expression string that safely converts a field to double
         return "{ $convert: { input: \"" + fieldPath + "\", to: \"double\", onError: null, onNull: null } }";
     }
-    public ChartDataDto getChartDetail(String deviceId, String range) {
+    public ChartDataDto getChartDetail(
+            String deviceId, String range,
+            LocalDateTime start,
+            LocalDateTime end
+    ) {
         ChartDataDto chartDataDto = initializeChartDataDto(deviceId, range);
 
         List<Attribute> filteredAttributes = getFilteredAttributes(deviceId);
         chartDataDto.setAttributes(filteredAttributes.stream().map(Attribute::getKey).collect(Collectors.toList()));
+        Date startDate;
+        Date endDate;
+        if ("history".equalsIgnoreCase(range)) {
+            if (start == null || end == null) {
+                throw new IllegalArgumentException("Start and end date required for history");
+            }
+            startDate = Date.from(start.atZone(ZoneId.of("Asia/Calcutta")).toInstant());
+            endDate = Date.from(end.atZone(ZoneId.of("Asia/Calcutta")).toInstant());
+        } else {
+            Duration duration = switch (range.toLowerCase()) {
+                case "hour" -> Duration.ofHours(1);
+                case "day" -> Duration.ofHours(30);
+                case "week" -> Duration.ofDays(7);
+                default -> Duration.ofHours(8);
+            };
 
-        Duration duration = switch (range.toLowerCase()) {
-            case "hour" -> Duration.ofHours(1);
-            case "day" -> Duration.ofDays(1);
-            case "week" -> Duration.ofDays(7);
-            default -> Duration.ofHours(8); // fallback
-        };
-
-        var endDate = new Date(); // now
-        var startDate = Date.from(Instant.now().minus(duration));
+            endDate = new Date();
+            startDate = Date.from(Instant.now().minus(duration));
+        }
 
         var match = match(where("deviceId").is(deviceId).and("updateDate").gte(startDate).lte(endDate));
 
         var list = filteredAttributes.stream().map(Attribute::getKey).toList();
+        long daysBetween = ChronoUnit.DAYS.between(
+                startDate.toInstant(),
+                endDate.toInstant()
+        );
 
+        String effectiveRange = range;
+
+
+        if ("history".equalsIgnoreCase(range)) {
+            if (daysBetween <= 1) effectiveRange = "day";
+            else if (daysBetween <= 7) effectiveRange = "week";
+            else effectiveRange = "month";
+        }
+        System.err.println("daysBetween "+ daysBetween);
+        System.err.println("effectiveRange "+ effectiveRange);
         // Format based on range
-        var dateFormat = switch (range) {
-            case "day" -> "%Y-%m-%d %H:%M"; // full timestamp for 30-min grouping
+        var dateFormat = switch (effectiveRange) {
             case "week" -> "%m-%d";
-            case "hour" -> "%Y-%m-%d %H:%M";
-            default -> "";
+            case "month" -> "%Y-%m-%d";
+            default -> "%Y-%m-%d %H:%M";
         };
 
         var dateProjection = DateOperators.dateOf("updateDate")
@@ -78,7 +107,7 @@ public class AnalyticsService {
 
         Aggregation aggregation;
 
-        if (range.equalsIgnoreCase("day")) {
+        if (effectiveRange.equalsIgnoreCase("day")) {
             // ✅ Use raw $dateTrunc to bucket into 30-min slots
             var halfHourProject = project()
                     .andExpression("{ $dateTrunc: { date: \"$updateDate\", unit: \"minute\", binSize: 30, timezone: \"Asia/Calcutta\" } }")
@@ -107,8 +136,7 @@ public class AnalyticsService {
 
             aggregation = newAggregation(match, halfHourProject, group, regroupProject, sort(Sort.by("dateDay")));
         }
-        else if (range.equalsIgnoreCase("week")) {
-            // Average by day
+        else if (effectiveRange.equals("week") || effectiveRange.equals("month")) {
             GroupOperation group = group("dateDay");
             for (var attr : filteredAttributes) {
                 group = group.avg(attr.getKey()).as(attr.getKey());
@@ -116,13 +144,14 @@ public class AnalyticsService {
 
             ProjectionOperation regroupProject = project()
                     .and("_id").as("dateDay");
+
             for (var attr : filteredAttributes) {
                 regroupProject = regroupProject.andInclude(attr.getKey());
             }
 
             aggregation = newAggregation(match, project, sort, group, regroupProject, sort(Sort.by("dateDay")));
-
-        } else {
+        }
+        else {
             aggregation = newAggregation(match, project, sort);
         }
 

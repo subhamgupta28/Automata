@@ -4,12 +4,12 @@ import {
     useReactFlow, Panel
 } from '@xyflow/react';
 import Button from "@mui/material/Button";
-import {updatePosition} from "../../services/apis.jsx";
+import {updatePosition, updateVirtualDevicePosition} from "../../services/apis.jsx";
 import {Card} from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import React from "react";
 
-export default function NodeInspector() {
+export default function NodeInspector({dashboard}) {
     const {getInternalNode} = useReactFlow();
     const nodes = useNodes();
 
@@ -19,13 +19,23 @@ export default function NodeInspector() {
             if (!internalNode) {
                 return null;
             }
-            await updatePosition(node.id, node.position.x.toFixed(1), node.position.y.toFixed(1))
+            if (dashboard === "v2") {
+                await updateVirtualDevicePosition(
+                    node.id,
+                    node.position.x.toFixed(1),
+                    node.position.y.toFixed(1),
+                    node.measured?.width,
+                    node.measured?.height
+                )
+            } else
+                await updatePosition(node.id, node.position.x.toFixed(1), node.position.y.toFixed(1))
         });
     }
 
     return (
         <div>
-            <Button size="small" variant='outlined' color="primary" style={{marginLeft: '10px'}} aria-label="add" onClick={handleUpdate}>
+            <Button size="small" variant='outlined' color="primary" style={{marginLeft: '10px'}} aria-label="add"
+                    onClick={handleUpdate}>
                 <SaveIcon/> Save
             </Button>
             <ViewportPortal>
@@ -65,8 +75,6 @@ function NodeInfo({id, type, selected, position, absPosition, width, height, dat
     }
 
 
-
-
     return (
         <Card
             elevation={12}
@@ -88,9 +96,9 @@ function NodeInfo({id, type, selected, position, absPosition, width, height, dat
             <div>
                 position: {position.x.toFixed(1)}, {position.y.toFixed(1)}
             </div>
-            {/*<div>*/}
-            {/*    dimensions: {width} × {height}*/}
-            {/*</div>*/}
+            <div>
+                dimensions: {width} × {height}
+            </div>
             {/*<div>data: {JSON.stringify(data, null, 2)}</div>*/}
         </Card>
     );

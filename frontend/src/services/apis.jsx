@@ -39,7 +39,16 @@ export const getWiFiDetails = async () => {
     });
     return response.data;
 }
+export const updateVirtualDevicePosition = async (vid, x, y, width, height) => {
+    const response = await api.get("virtual/updatePosition/" + vid + "/" + x + "/" + y + "/" + width + "/" + height, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
 
+        },
+    });
+    return response.data;
+}
 export const updatePosition = async (deviceId, x, y) => {
     const response = await api.get("main/updatePosition/" + deviceId + "/" + x + "/" + y, {
         headers: {
@@ -70,16 +79,31 @@ export const getDevices = async () => {
     });
     return response.data;
 }
-export const getDetailChartData = async (deviceId, range = 'day') => {
-    const response = await api.get("main/chartDetail/" + deviceId + "/" + range, {
-        headers: {
-            'Content-Type': 'application/json', // Specify the content type if necessary
-            // Add any other headers if needed, e.g., Authorization
+export const getDetailChartData = async (
+    deviceId,
+    range = "day",
+    params = {}
+) => {
+    let url = `main/chartDetail/${deviceId}/${range}`;
 
+    // Handle historical range
+    if (range === "history") {
+        const query = new URLSearchParams({
+            start: params.start,
+            end: params.end,
+        }).toString();
+
+        url += `?${query}`;
+    }
+
+    const response = await api.get(url, {
+        headers: {
+            "Content-Type": "application/json",
         },
     });
+
     return response.data;
-}
+};
 export const getPieChartData = async (deviceId) => {
     const response = await api.get("main/pieChart/" + deviceId, {
         headers: {
@@ -140,6 +164,27 @@ export const disableAutomation = async (id, isEnabled) => {
 
 export const refreshDeviceById = async (deviceId) => {
     const response = await api.get("main/update/" + deviceId, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+
+        },
+    });
+    return response.data;
+}
+
+export const getVirtualDeviceList = async () => {
+    const response = await api.get("virtual/deviceList", {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+
+        },
+    });
+    return response.data;
+}
+export const saveVirtualDevice = async (payload) => {
+    const response = await api.post("virtual/create", payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization

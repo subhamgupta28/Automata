@@ -62,6 +62,7 @@ public class SecurityConfiguration {
             "/ws/**",
             "/ws",
             "/exp",
+            "/api/v1/virtual/**",
             "/api/v1/main/updateDevice",
             "/api/v1/main/automations",
             "/api/v1/main/masterList",
