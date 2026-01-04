@@ -65,63 +65,55 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
             <NodeResizer
                 color="#ff0000"
                 isVisible={selected}
-                minWidth={240}
-                minHeight={100}
+                minWidth={width}
+                minHeight={height}
             />
 
-            <div style={{
-                borderRadius: '12px',
-                backgroundColor: 'transparent',
-                height: '100%',
-                backdropFilter: 'blur(3px)'
-            }}>
-                <Card style={{
-                    borderRadius: '12px',
-                    background: 'transparent',
-                    height:'100%',
-                }}>
 
-                    <Card
+            <div style={{minHeight: '400px', height: '100%', minWidth: width, borderRadius: '12px'}}>
+
+                <Card
+
+                    style={{
+                        padding: '0px', width: '100%',height: '100%', margin: '0px',
+                        borderRadius: '12px 12px 0px 0px',
+                        background: 'transparent',
+                        backgroundColor: 'rgb(255 255 255 / 10%)',
+                    }}>
+                    <Typography
                         style={{
-                            padding: '0px', width: '100%', margin: '0px',
-                            borderRadius: '12px 12px 0px 0px',
-                            background: 'transparent',
-                            backgroundColor: 'rgb(255 255 255 / 10%)',
-                        }}>
-                        <Typography
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                marginLeft: '18px',
-                                fontWeight: 'bold',
-                                fontSize: '18px',
-                                marginRight: '10px'
-                            }}
-                        >
-                            {name}
-                        </Typography>
-                    </Card>
-                    <CardContent
-                        style={{
-                            width: '285px',
+                            display: 'flex',
                             alignItems: 'center',
-                            padding: '8px',
-                            paddingBottom: '10px',
-                            justifyContent: 'center'
-                        }}>
-                        {actionAck?.command === 'reboot' && (
-                            <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
-                                <Typography>Rebooting...</Typography>
-                                <LinearProgress/>
-                            </Card>
-                        )}
-
-
-                    </CardContent>
+                            justifyContent: 'space-between',
+                            marginLeft: '18px',
+                            fontWeight: 'bold',
+                            fontSize: '18px',
+                            marginRight: '10px'
+                        }}
+                    >
+                        {name}
+                    </Typography>
                 </Card>
+                <CardContent
+                    style={{
+                        width: '285px',
+                        alignItems: 'center',
+                        padding: '8px',
+                        paddingBottom: '10px',
+                        justifyContent: 'center'
+                    }}>
+                    {actionAck?.command === 'reboot' && (
+                        <Card elevation={4} style={{borderRadius: '8px', padding: '8px', margin: '2px'}}>
+                            <Typography>Rebooting...</Typography>
+                            <LinearProgress/>
+                        </Card>
+                    )}
 
+
+                </CardContent>
             </div>
+
+
         </>
     )
 }

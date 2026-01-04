@@ -71,7 +71,7 @@ const AQIBar = ({aqi}) => {
 
             {/* AQI Gradient Slider */}
             <Slider
-                value={aqi}
+                value={parseInt(aqi)}
                 min={0}
                 max={400}
                 disabled
@@ -201,7 +201,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
         ch2o: [],
     });
     const [weather, setLiveData] = useState({
-        location: "Cortes, Madrid, Spain",
+        location: "Khariar Road, Odisha",
         time: "Tuesday, 3:00 PM",
         temp: 0,
         condition: "Cloud",
@@ -248,9 +248,9 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                     time: dayjs().format("dddd, h:mm A")
                 })
                 setHistory((prev) => ({
-                    co2: [...prev.co2, weather.gases.co2].slice(-MAX_POINTS),
-                    tvoc: [...prev.tvoc, weather.gases.tvoc].slice(-MAX_POINTS),
-                    ch2o: [...prev.ch2o, weather.gases.ch2o].slice(-MAX_POINTS),
+                    co2: [...prev.co2, parseInt(weather.gases.co2)].slice(-MAX_POINTS),
+                    tvoc: [...prev.tvoc, parseInt(weather.gases.tvoc)].slice(-MAX_POINTS),
+                    ch2o: [...prev.ch2o, parseInt(weather.gases.ch2o)].slice(-MAX_POINTS),
                 }));
             }
             // setActionAck(messages.ack);

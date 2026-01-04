@@ -49,6 +49,16 @@ export const updateVirtualDevicePosition = async (vid, x, y, width, height) => {
     });
     return response.data;
 }
+export const getEnergyStats = async (deviceId) => {
+    const response = await api.get("virtual/energyStats/" + deviceId, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+
+        },
+    });
+    return response.data;
+}
 export const updatePosition = async (deviceId, x, y) => {
     const response = await api.get("main/updatePosition/" + deviceId + "/" + x + "/" + y, {
         headers: {

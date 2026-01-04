@@ -234,7 +234,6 @@ export default function SideDrawer() {
 
                 <Card
                     elevation={10}
-                    variant="outlined"
                     sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
                     style={{
                         marginLeft: "10px",

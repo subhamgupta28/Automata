@@ -12,7 +12,7 @@ import RemoveTwoToneIcon from '@mui/icons-material/RemoveTwoTone';
 import FullscreenTwoToneIcon from '@mui/icons-material/FullscreenTwoTone';
 import IconButton from "@mui/material/IconButton";
 
-export const ZoomSlider = forwardRef(({...props}) => {
+export const ZoomSlider = (({...props}) => {
     const {zoom} = useViewport();
     const {zoomTo, zoomIn, zoomOut, fitView} = useReactFlow();
 

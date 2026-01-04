@@ -1,124 +1,68 @@
-import {NodeResizer, useEdges, useNodes, useReactFlow} from "@xyflow/react";
-import React, {useEffect, useMemo, useState} from "react";
-import {Button, Card, CardContent} from "@mui/material";
+import {NodeResizer,} from "@xyflow/react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
+import {Box, Button, Card, CardContent} from "@mui/material";
 import Typography from "@mui/material/Typography";
+import {Chart} from "react-google-charts";
+import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
+import {combineAttributes} from "./VirtualDevice.jsx";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import Stack from "@mui/material/Stack";
+import {getEnergyStats} from "../../services/apis.jsx";
+import {useAnimatedNumber} from "../../utils/Helper.jsx";
 
+export const cdata = [
+    ["From", "To", ""],
+    ["Battery 1", "System", 15],
+    ["Battery 2", "System", 18],
+    ["System", "Light", 10],
+    ["System", "Sensor", 9],
+    ["System", "Fan", 9],
 
-export function EnergyChildNode({id, data, isConnectable, selected}) {
-    const {messages} = useDeviceLiveData();
-    const [liveData, setLiveData] = useState(null);
-    const {
-        attributes,
-    } = data.value;
+];
+
+function useEnergyStats(deviceIds) {
+    const [statsData, setData] = useState({
+        "totalWh": 0,
+        "peakWh": 0,
+        "lowestWh": 0,
+    });
+    const prevData = useRef(null);
+
     useEffect(() => {
-        if (id === messages.deviceId) {
-            if (messages.data) setLiveData(messages.data);
-
-        }
-    }, [messages, id]);
-    const {
-        mainData,
-    } = useMemo(() => {
-        const grouped = {
-            mainData: [],
+        if (!deviceIds) return;
+        const fetchStats = async () => {
+            const result = {"totalWh": 0, "lowestWh": 0, "peakWh": 0};
+            for (const deviceId of deviceIds) {
+                const res = await getEnergyStats(deviceId);
+                result["totalWh"] += parseFloat(res["totalWh"]);
+                result["peakWh"] += parseFloat(res["peakWh"]);
+                result["lowestWh"] += parseFloat(res["lowestWh"]);
+            }
+            prevData.current = statsData;
+            setData(result);
         };
 
-        for (const attr of attributes) {
-            if (attr.type === 'DATA|MAIN') grouped.mainData.push(attr);
-        }
 
-        return grouped;
-    }, [attributes]);
-    return (
-        <Card>
-            <CardContent>
-                <div style={{
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    display: 'grid',
-                    gap: '4px',
-                    marginTop: '10px'
-                }}>
-                    {attributes.map((m) => (
-                        <Card
-                            key={m.id}
-                            elevation={0}
-                            style={{
-                                borderRadius: '8px',
-                                padding: '4px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                            }}
-                        >
+        fetchStats();
+        const interval = setInterval(fetchStats, 60_000);
+        return () => clearInterval(interval);
+    }, [deviceIds]);
 
-                            <Typography style={{display: 'flex', fontSize: '18px'}}
-                                        fontWeight="bold">
-                                {/*{m.displayName.includes("Temp") && <TemperatureGauge temp={liveData?.[m.key]}/>}*/}
-                                {liveData?.[m.key]} {m.units}
-                            </Typography>
-                            <Typography>{m.displayName}</Typography>
-                        </Card>
-                    ))}
-                </div>
-            </CardContent>
-        </Card>
-    )
+    return { statsData, prevData: prevData.current };
 }
 
+export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
+    const {devices, loading, error} = useCachedDevices();
+    const {messages} = useDeviceLiveData();
+    const [chartData, setChartData] = useState([]);
 
-const initialNodes = [
-    {
-        id: 'B',
-        type: 'input',
-        data: {label: 'child node 1'},
-        position: {x: 10, y: 10},
-        parentId: '695925995435a3287696e30b',
-        extent: 'parent',
-    },
-    {
-        id: 'C',
-        data: {label: 'child node 2'},
-        position: {x: 10, y: 90},
-        parentId: '695925995435a3287696e30b',
-        extent: 'parent',
-    },
-];
-
-const initialEdges = [
-    {
-        id: 'b-c',
-        source: 'B',
-        target: 'C',
-        animated: true,
-        style: {stroke: '#ffa500', strokeWidth: '4px'}
-    }
-];
-
-const createNodes = (parentId, deviceIds, attributes) => {
-    let nodes = [];
-    deviceIds.map((device) => {
-        console.log("attrib", )
-        nodes.push({
-            id: device,
-            type: 'energyChildNode',
-            position: {x: 50, y: 50},
-            data: {value: {attributes: attributes[device]}},
-            parentId,
-            extent: 'parent',
-        });
+    const [topCards, setTopCards] = useState({
+        "totalWh": 0,
+        "peakWh": 0,
+        "lowestWh": 0,
     })
-
-    return nodes;
-}
-
-export default function EnergyNode({id, data, isConnectable, selected}) {
-    const {getInternalNode, setNodes, setEdges} = useReactFlow();
-    // const {messages} = useDeviceLiveData();
-
-    const nodes = useNodes();
-    const edges = useEdges();
     const {
         attributes,
         deviceIds,
@@ -130,22 +74,49 @@ export default function EnergyNode({id, data, isConnectable, selected}) {
         x,
         y,
     } = data.value;
-
+    const { statsData, prevData } = useEnergyStats(deviceIds);
+    // useEffect(()=>{
+    //     console.log("att", combineAttributes(attributes))
+    //     if (deviceIds && deviceIds.includes(messages.deviceId)) {
+    //         if (messages.data) {
+    //             const data = messages.data;
+    //             console.log("bat", data)
+    //
+    //         }
+    //     }
+    // }, [messages])
 
     useEffect(() => {
-        setNodes((nodes) => {
-            const exists = nodes.some((n) => n.id === 'A');
-            if (exists) return nodes;
+        if (devices) {
+            const focusIds = new Set(deviceIds);
 
-            return [...nodes, ...createNodes(id, deviceIds, attributes)];
-        });
+            const focusDevices = devices?.filter(d => focusIds.has(d.id));
+            const otherDevices = devices?.filter(
+                d => !focusIds.has(d.id) && d.status === "ONLINE" && d.name !== "System"
+            );
+            const percentMap = {};
 
-        setEdges((edges) => {
-            const exists = edges.some((n) => n.id === 'b-c');
-            if (exists) return edges;
-            return [...edges, ...initialEdges]
-        })
-    }, [setNodes, setEdges]);
+
+            const items = [
+                ["From", "To", ""],
+                ...focusDevices.map(d => [
+                    d.name,
+                    "System",
+                    parseInt(d['lastData']['percent'])
+                ]),
+                ...otherDevices.map(d => [
+                    "System",
+                    d.name,
+                    20
+                ])
+            ];
+
+            setChartData(items);
+        }
+
+    }, [devices])
+
+
     const energy = {
         solar: 17.1,
         home: 12.6,
@@ -156,18 +127,39 @@ export default function EnergyNode({id, data, isConnectable, selected}) {
     };
 
 
+    const options = {
+        sankey: {
+            link: {
+                // colorMode:'target',
+                color: {
+                    fillOpacity: 0.8,
+                    fill: "#505050"
+                }
+            },
+            // link: { color: { fill: "#d799ae" } },
+            node: {
+                labelPadding: 6,     // Horizontal distance between the label and the node.
+                nodePadding: 5,
+                colors: ["#ff0000", "#ffffff", "#ffd821"],
+                label: {
+                    color: "#ffffff",
+                    fontSize: 12,
+                    bold: true,
+                },
+            },
+        },
+    };
 
 
-//height: height, width: width,
     return (
         <>
-            <NodeResizer
-                color="#ff0000"
-                isVisible={selected}
-                minWidth={width}
-                minHeight={height}
-            />
-            <Card style={{minHeight: height, height:'100%',minWidth:width, padding: '10px', borderRadius: '12px'}}>
+            {/*<NodeResizer*/}
+            {/*    color="#ff0000"*/}
+            {/*    isVisible={selected}*/}
+            {/*    minWidth={width}*/}
+            {/*    minHeight={height}*/}
+            {/*/>*/}
+            <Card style={{minHeight: '400px', height: '100%', minWidth: width, padding: '10px', borderRadius: '12px'}}>
 
                 <Typography
                     style={{
@@ -175,6 +167,7 @@ export default function EnergyNode({id, data, isConnectable, selected}) {
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         marginLeft: '18px',
+                        width: '100%',
                         fontWeight: 'bold',
                         fontSize: '18px',
                         marginRight: '10px'
@@ -182,9 +175,97 @@ export default function EnergyNode({id, data, isConnectable, selected}) {
                 >
                     {name}
                 </Typography>
+                <Stack direction="column" spacing={4}>
 
+
+                    <Stack direction="row" spacing={4} style={{padding: '14px'}}>
+                        <StatItem
+                            label="Total usage today"
+                            value={statsData.totalWh}
+                            prevValue={prevData?.totalWh}
+                            unit="Wh"
+                        />
+                        <StatItem
+                            label="Peak hour consumption"
+                            value={statsData.peakWh}
+                            prevValue={prevData?.peakWh}
+                            unit="Wh"
+                        />
+                        <StatItem
+                            label="Lowest hourly usage"
+                            value={statsData.lowestWh}
+                            prevValue={prevData?.lowestWh}
+                            unit="Wh"
+                        />
+                    </Stack>
+                    <Box>
+                        <Chart
+                            chartType="Sankey"
+                            width="500px"
+                            height="120px"
+                            data={chartData}
+                            options={options}
+                        />
+                    </Box>
+                </Stack>
             </Card>
         </>
 
     )
+});
+
+const StatItem = ({label, value, prevValue, unit}) => {
+    const animated = useAnimatedNumber(value);
+
+    const diff =
+        prevValue !== null && prevValue !== undefined
+            ? value - prevValue
+            : 0;
+
+    const positive = diff > 0;
+    return (
+
+        <Box>
+            <Typography variant="h4" fontWeight={600}>
+                {animated.toFixed(2)}{" "}
+                <Typography
+                    component="span"
+                    variant="body2"
+                    color="text.secondary"
+                >
+                    {unit}
+                </Typography>
+            </Typography>
+
+
+            <Box display="flex" alignItems="center" gap={0.5}>
+                {diff !== 0 && (
+                    <>
+                        {positive ? (
+                            <ArrowUpwardIcon
+                                sx={{ fontSize: 16, color: "success.main" }}
+                            />
+                        ) : (
+                            <ArrowDownwardIcon
+                                sx={{ fontSize: 16, color: "error.main" }}
+                            />
+                        )}
+                        <Typography
+                            variant="caption"
+                            sx={{
+                                color: positive
+                                    ? "success.main"
+                                    : "error.main",
+                            }}
+                        >
+                            {Math.abs(diff).toFixed(2)} {unit}
+                        </Typography>
+                    </>
+                )}
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+                {label}
+            </Typography>
+        </Box>
+    );
 }

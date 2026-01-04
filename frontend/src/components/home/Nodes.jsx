@@ -657,7 +657,7 @@ export const MainNode = React.memo(({data, isConnectable}) => {
                 background: 'transparent',
                 // backdropFilter: 'blur(6px)',
             }}>
-                <Card variant="outlined" ref={cardRef} elevation={10} style={{
+                <Card ref={cardRef} elevation={10} style={{
                     padding: '0px',
                     // minHeight: '400px',
                     // borderColor:'rgb(255 155 100 / 8%)',

@@ -21,9 +21,7 @@ import List from "@mui/material/List";
 
 const DashboardEditor = ({change, existingDevice}) => {
     const {devices, loading, error} = useCachedDevices();
-    const [selectedDevice, setSelectedDevice] = useState([]);
-
-    const [tag, setTag] = useState("Other");
+    const [selectedDeviceIds, setSelectedDeviceIds] = useState([]);
     // const [form, setForm] = useState({
     //     name: existingDevice.name || "",
     //     x: existingDevice.x || 0,
@@ -47,67 +45,115 @@ const DashboardEditor = ({change, existingDevice}) => {
         deviceIds: [],
         attributes: {},
     });
-    useEffect(() => {
-        if (existingDevice) {
-            const ids = existingDevice.deviceIds;
-            const device = devices?.filter((f) => ids.includes(f.id))
-            setSelectedDevice(device)
-            setForm(existingDevice)
-        }
-    }, [existingDevice])
-
-
     const deviceMap = useMemo(() => {
         const map = {};
         devices?.forEach((d) => (map[d.id] = d));
         return map;
     }, [devices]);
+
+    useEffect(() => {
+        if (!existingDevice || !devices?.length) return;
+        console.log("exist", existingDevice)
+        const deviceIds = existingDevice.deviceIds || [];
+        const normalizedAttributes = {};
+        let ready = true;
+
+        deviceIds.forEach(deviceId => {
+            const device = deviceMap[deviceId];
+
+            // 🔴 ATTRIBUTES NOT READY → ABORT NORMALIZATION
+            if (!device || !Array.isArray(device.attributes)) {
+                ready = false;
+                return;
+            }
+
+            const savedAttrs = existingDevice.attributes?.[deviceId] || [];
+            const deviceAttrs = deviceMap[deviceId]?.attributes || [];
+
+            const keyToIdMap = new Map(
+                deviceAttrs.map(a => [a.key, a.id])
+            );
+
+            normalizedAttributes[deviceId] = savedAttrs
+                .map(a => keyToIdMap.get(a.key))
+                .filter(Boolean);
+        });
+
+        // 🔴 WAIT until ALL device attributes exist
+        if (!ready) return;
+
+        setSelectedDeviceIds(deviceIds);
+
+        console.log("form",{
+            ...existingDevice,
+            deviceIds,
+            attributes: normalizedAttributes,
+        } )
+        setForm(prev => ({
+            ...prev,
+            ...existingDevice,
+            deviceIds,
+            attributes: normalizedAttributes,
+        }));
+    }, [existingDevice, devices, deviceMap]);
+
+
+
+
+
+
     const handleChange = (key, value) => {
         setForm((prev) => ({...prev, [key]: value}));
 
     };
 
-    const handleDeviceChange = (selectedIds) => {
-        // console.log(selectedIds.map(d=> d.id))
-        const ids = selectedIds.map(d => d.id);
-        const newAttributes = {...form.attributes};
+    const handleDeviceChange = (ids) => {
+        const newAttributes = { ...form.attributes };
 
-        ids.forEach((id) => {
+        ids.forEach(id => {
             if (!newAttributes[id]) newAttributes[id] = [];
         });
 
-        Object.keys(newAttributes).forEach((id) => {
+        Object.keys(newAttributes).forEach(id => {
             if (!ids.includes(id)) delete newAttributes[id];
         });
-        setSelectedDevice(selectedIds)
-        setForm({
-            ...form,
-            // devices: selectedIds,
+
+        setSelectedDeviceIds(ids);
+        setForm(prev => ({
+            ...prev,
             deviceIds: ids,
             attributes: newAttributes,
-        });
+        }));
     };
 
-    const handleAttributeChange = (deviceId, attrs) => {
-        setForm((prev) => ({
+    const handleAttributeChange = (deviceId, attrIds) => {
+        setForm(prev => ({
             ...prev,
-            attributes: {...prev.attributes, [deviceId]: attrs},
+            attributes: {
+                ...prev.attributes,
+                [deviceId]: attrIds,
+            },
         }));
     };
 
     const submit = () => {
+        const expandedAttributes = {};
+
+        Object.entries(form.attributes).forEach(([deviceId, attrIds]) => {
+            expandedAttributes[deviceId] =
+                attrIds.map(attrId =>
+                    deviceMap[deviceId]?.attributes
+                        ?.find(a => a.id === attrId)
+                ).filter(Boolean);
+        });
+
         const data = {
             ...form,
-            lastModified: new Date(),
-        }
-        saveVirtualDevice(data)
-            .then(
-                () => {
-                    console.log(data)
-                    change();
-                }
-            )
-
+            attributes: expandedAttributes,
+            lastModified: new Date().toISOString(),
+        };
+        console.log("save", data)
+        saveVirtualDevice(data).then(() => change());
     };
     const handleClear = () => {
         setForm(
@@ -123,7 +169,7 @@ const DashboardEditor = ({change, existingDevice}) => {
                 attributes: {},
             }
         )
-        setSelectedDevice([])
+        setSelectedDeviceIds([]);
     }
 
     if (loading) return <CircularProgress/>;
@@ -163,29 +209,27 @@ const DashboardEditor = ({change, existingDevice}) => {
             <FormControl fullWidth style={{marginTop: '20px'}}>
                 <InputLabel>Devices</InputLabel>
                 <Select
-                    variant="standard"
                     multiple
-                    size="small"
-                    value={selectedDevice}
+                    variant="standard"
+                    value={selectedDeviceIds}
                     onChange={(e) => handleDeviceChange(e.target.value)}
-                    input={<OutlinedInput label="Devices"/>}
                     renderValue={(selected) => (
-                        <Box sx={{display: "flex", flexWrap: "wrap", gap: 0.5}}>
-                            {selected.map((value) => (
-                                <Chip key={value.id} label={value.name}/>
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                            {selected.map(id => (
+                                <Chip key={id} label={deviceMap[id]?.name} />
                             ))}
                         </Box>
                     )}
                 >
-                    {devices?.map((d) => (
-                        <MenuItem key={d.id} value={d}>
+                    {devices?.map(d => (
+                        <MenuItem key={d.id} value={d.id}>
                             {d.name}
                         </MenuItem>
                     ))}
                 </Select>
             </FormControl>
             {form.deviceIds.map((deviceId) => (
-                <FormControl fullWidth style={{marginTop: '20px'}}>
+                <FormControl key={deviceId} fullWidth style={{marginTop: '20px'}}>
                     <InputLabel>
                         Attributes ({deviceMap[deviceId]?.name})
                     </InputLabel>
@@ -197,21 +241,24 @@ const DashboardEditor = ({change, existingDevice}) => {
                         onChange={(e) =>
                             handleAttributeChange(deviceId, e.target.value)
                         }
-                        input={
-                            <OutlinedInput
-                                label={`Attributes (${deviceMap[deviceId]?.name})`}
-                            />
-                        }
                         renderValue={(selected) => (
-                            <Box sx={{display: "flex", flexWrap: "wrap", gap: 0.5}}>
-                                {selected.map((attr) => (
-                                    <Chip key={attr.id} label={attr.key}/>
-                                ))}
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                                {selected.map(attrId => {
+                                    const attr = deviceMap[deviceId]?.attributes
+                                        ?.find(a => a.id === attrId);
+
+                                    return (
+                                        <Chip
+                                            key={attrId}
+                                            label={attr?.key}
+                                        />
+                                    );
+                                })}
                             </Box>
                         )}
                     >
-                        {(deviceMap && deviceMap[deviceId]?.attributes || []).map((attr) => (
-                            <MenuItem key={attr.id} value={attr}>
+                        {deviceMap[deviceId]?.attributes.map(attr => (
+                            <MenuItem key={attr.id} value={attr.id}>
                                 {attr.key}
                             </MenuItem>
                         ))}
@@ -222,7 +269,7 @@ const DashboardEditor = ({change, existingDevice}) => {
             <Button variant="contained" size="small" fullWidth onClick={submit} style={{marginTop: '20px'}}>
                 Save Virtual Device
             </Button>
-            {selectedDevice.length !== 0 && (
+            {selectedDeviceIds.length !== 0 && (
                 <Button variant="contained" size="small" fullWidth onClick={handleClear} style={{marginTop: '20px'}}>
                     Clear Selection
                 </Button>

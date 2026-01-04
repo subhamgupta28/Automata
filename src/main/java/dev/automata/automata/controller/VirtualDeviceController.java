@@ -8,6 +8,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RequestMapping("/api/v1/virtual")
 @Controller
@@ -39,5 +40,10 @@ public class VirtualDeviceController {
     ) {
 
         return ResponseEntity.ok(virtualDeviceService.updateDevicePosition(vid, x, y, width, height));
+    }
+
+    @GetMapping("energyStats/{id}")
+    public ResponseEntity<Map<String, Double>> getEnergyStats(@PathVariable String id) {
+        return ResponseEntity.ok(virtualDeviceService.getTodayStats(id));
     }
 }

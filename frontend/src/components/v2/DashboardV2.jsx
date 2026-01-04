@@ -12,7 +12,7 @@ import {
 } from "@xyflow/react";
 
 import VirtualDevice from "./VirtualDevice.jsx";
-import EnergyNode, {EnergyChildNode} from "./EnergyNode.jsx";
+import {EnergyNode} from "./EnergyNode.jsx";
 import NodeInspector from "../home/NodeInspector.jsx";
 import {Button} from "@mui/material";
 import {ZoomSlider} from "../home/ZoomSlider.jsx";
@@ -22,7 +22,7 @@ const nodeTypes = {
     virtualDeviceNode: VirtualDevice,
     weatherNode: WeatherCard,
     energyNode: EnergyNode,
-    energyChildNode: EnergyChildNode
+    // energyChildNode: EnergyChildNode
 };
 
 
