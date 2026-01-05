@@ -166,7 +166,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        marginLeft: '18px',
+                        marginLeft: '12px',
                         width: '100%',
                         fontWeight: 'bold',
                         fontSize: '18px',
