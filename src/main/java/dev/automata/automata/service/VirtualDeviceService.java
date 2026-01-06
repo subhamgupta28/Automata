@@ -119,7 +119,7 @@ public class VirtualDeviceService {
     private static final double SAMPLE_INTERVAL_HOURS = 5.0 / 60.0;
     public Map<String, Double> getTodayStats(String deviceId) {
 
-        ZoneId zone = ZoneId.systemDefault();
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
 
         long startOfDay = LocalDate.now(zone)
                 .atStartOfDay(zone)

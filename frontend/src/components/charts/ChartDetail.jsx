@@ -173,19 +173,19 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
                         <ToggleButton value="hour">Hour</ToggleButton>
                         <ToggleButton value="day">Day</ToggleButton>
                         <ToggleButton value="week">Week</ToggleButton>
-                        <ToggleButton value="history">History</ToggleButton>
+                        {/*<ToggleButton value="history">History</ToggleButton>*/}
                         <ToggleButton value="live">Live</ToggleButton>
-                        <LocalizationProvider dateAdapter={AdapterDayjs}>
-                            {range === "history" && (
-                                <DatePicker
-                                    views={['year', 'month', 'day']}
-                                    label="Select Month"
-                                    value={selectedMonth}
-                                    maxDate={dayjs()}
-                                    onChange={(newValue) => setSelectedMonth(newValue)}
-                                />
-                            )}
-                        </LocalizationProvider>
+                        {/*<LocalizationProvider dateAdapter={AdapterDayjs}>*/}
+                        {/*    {range === "history" && (*/}
+                        {/*        <DatePicker*/}
+                        {/*            views={['year', 'month', 'day']}*/}
+                        {/*            label="Select Month"*/}
+                        {/*            value={selectedMonth}*/}
+                        {/*            maxDate={dayjs()}*/}
+                        {/*            onChange={(newValue) => setSelectedMonth(newValue)}*/}
+                        {/*        />*/}
+                        {/*    )}*/}
+                        {/*</LocalizationProvider>*/}
                     </ToggleButtonGroup>
 
                     {/* Chart type toggle */}

@@ -103,7 +103,7 @@ const DeviceNodes = () => {
         [setEdges],
     );
 
-    const defaultViewport = useMemo(() => ({x: 0, y: 40, zoom: 0.70}), []);
+    const defaultViewport = useMemo(() => ({x: 0, y: 40, zoom: 0.60}), []);
 
     const handleNodeClick = useCallback(
         (_, node) => {

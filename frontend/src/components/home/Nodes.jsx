@@ -40,7 +40,7 @@ import ChartDetail from "../charts/ChartDetail.jsx";
 dayjs.extend(relativeTime);
 
 
-const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
+export const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
     const [attrs, setAttrs] = useState(device.attributes);
     const [showCharts, setShowCharts] = useState(device.showCharts);
     const fetchData = async () => {
@@ -168,7 +168,7 @@ const CustomModal = ({isOpen, onClose, device, liveData, map}) => {
                             ))}
                         </div>
 
-                        {map.length > 0 && liveData && (
+                        {map && map.length > 0 && liveData && (
                             <MapView lat={liveData.LAT} lng={liveData.LONG} h={300} w='auto'/>
                         )}
                         <div style={{display: "flex", justifyContent: "flex-start", gap: "12px", flexWrap: "wrap"}}>

@@ -12,6 +12,7 @@ import ThermostatIcon from "@mui/icons-material/Thermostat";
 import WaterDropIcon from "@mui/icons-material/WaterDrop";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import SunriseSunsetCard from "./SunriseSunsetCard.jsx";
+import {GasBubble, GasLegend} from "./GasBubble.jsx";
 
 const getWeatherIcon = (condition) => {
     const c = condition.toLowerCase();
@@ -102,86 +103,68 @@ const AQIBar = ({aqi}) => {
     );
 };
 
-const getLevelColor = (value, type) => {
-    switch (type) {
-        case "co2":
-            if (value < 800) return "success";
-            if (value < 1200) return "warning";
-            return "error";
-
-        case "tvoc":
-            if (value < 300) return "success";
-            if (value < 600) return "warning";
-            return "error";
-
-        case "ch2o":
-            if (value < 0.08) return "success";
-            if (value < 0.1) return "warning";
-            return "error";
-
-        default:
-            return "success";
-    }
-};
-
-const GasBar = ({label, value, unit, max, type}) => {
-    const color = getLevelColor(value, type);
-    const percent = Math.min((value / max) * 100, 100);
-
-    return (
-        <Box>
-            <Box display="flex" justifyContent="space-between" mb={0.5}>
-                <Typography variant="body2" fontWeight={600}>
-                    {label}
-                </Typography>
-                <Typography variant="body2">
-                    {value} {unit}
-                </Typography>
-            </Box>
-
-            <LinearProgress
-                variant="determinate"
-                value={percent}
-                color={color}
-                sx={{
-                    height: 8,
-                    borderRadius: 5,
-                }}
-            />
-        </Box>
-    );
-};
 
 const GasQualitySection = ({gases}) => {
     return (
-        <Box mt={4}>
+        <Box mt={2}>
             <Typography variant="subtitle1" fontWeight={600} mb={2}>
                 Gas Levels
             </Typography>
 
-            <Stack spacing={2}>
-                <GasBar
+            <Stack spacing={2} sx={{
+                position: "relative",
+                width: "100%",
+                height: 200,
+                margin: "auto",
+            }}>
+                {/* CO₂ – largest */}
+                <GasBubble
                     label="CO₂"
                     value={gases.co2}
                     unit="ppm"
                     max={2000}
+                    color={'#22537c'}
                     type="co2"
+                    size={120}
+                    top="30px"
+                    left="10px"
                 />
 
-                <GasBar
-                    label="TVOC"
-                    value={gases.tvoc}
-                    unit="ppb"
-                    max={1000}
-                    type="tvoc"
-                />
-
-                <GasBar
+                {/* CH₂O */}
+                <GasBubble
                     label="CH₂O"
                     value={gases.ch2o}
-                    unit="mg/m³"
-                    max={0.3}
+                    unit="ppb"
+                    max={1000}
+                    color={'#1c641c'}
                     type="ch2o"
+                    size={100}
+                    top="0px"
+                    left="180px"
+                />
+
+                {/* TVOC */}
+                <GasBubble
+                    label="TVOC"
+                    value={gases.tvoc}
+                    unit="mg/m³"
+                    max={1}
+                    color={'#ad6322'}
+                    type="tvoc"
+                    size={80}
+                    top="100px"
+                    left="130px"
+                />
+                <GasBubble
+                    label="PM2.5"
+                    value={gases.pm25}
+                    unit="ug/m³"
+                    max={1}
+                    color={'#a2292a'}
+                    type="pm25"
+                    size={60}
+                    top="110px"
+                    left="280px"
                 />
             </Stack>
         </Box>
@@ -200,55 +183,6 @@ function getDevicesWithCO2(attributes) {
         .map(([deviceId]) => deviceId);
 }
 
-function StatusPill({
-                        icon,
-                        value,
-                        unit,
-                        color = "#fff",
-                        bg = "#505050",
-                    }) {
-    return (
-        <Box
-            sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                px: 1.6,
-                py: 0.8,
-                borderRadius: "999px",
-                backgroundColor: bg,
-                border: "1px solid #E0E0E0",
-                boxShadow: "0px 1px 3px rgba(0,0,0,0.08)",
-                fontWeight: 600,
-                minHeight: 36,
-            }}
-        >
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    color,
-                }}
-            >
-                {icon}
-            </Box>
-
-            <Typography fontWeight={600} fontSize={14}>
-                {value}
-                {unit && (
-                    <Typography
-                        component="span"
-                        fontSize={12}
-                        color="text.secondary"
-                        ml={0.5}
-                    >
-                        {unit}
-                    </Typography>
-                )}
-            </Typography>
-        </Box>
-    );
-}
 
 export default function WeatherCard({id, data, isConnectable, selected}) {
     const {messages} = useDeviceLiveData();
@@ -268,6 +202,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
             co2: 0,
             tvoc: 0,
             ch2o: 0,
+            pm25: 0
         }
     });
     // console.log("data", data.value)
@@ -338,6 +273,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
             tvoc,
             ch2o,
             lux,
+            pm25
         } = dt;
 
         setLiveData(prev => ({
@@ -346,10 +282,12 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
             humidity: humid,
             aqi,
             lux,
+
             gases: {
                 co2: s_co2,
                 tvoc,
                 ch2o,
+                pm25,
             },
             time: dayjs().format("dddd, h:mm A"),
         }));
@@ -393,7 +331,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                         </Typography>
                     </Box>
                 </Box>
-                <Box  mb={2}>
+                <Box mb={2}>
                     <Typography variant="body2" color="text.secondary" maxWidth={500}>
                         Outdoor: {dataPoint?.[otherDevice]?.["temp"]} °C
                         {" H: "}{dataPoint?.[otherDevice]?.["humid"]}%
@@ -451,10 +389,18 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                     <GasQualitySection
                         gases={weather.gases}
                     />
+                    <GasLegend
+                        items={[
+                            {label: "CO₂", value: weather.gases.co2, type: "co2", color: '#42a5f5'},
+                            {label: "CH₂O", value: weather.gases.ch20, type: "ch20", color: '#2ca02c'},
+                            {label: "TVOC", value: weather.gases.tvoc, type: "tvoc", color: '#ff7f0e'},
+                            {label: "PM2.5", value: weather.gases.pm25, type: "pm25", color: '#d62728'},
+                        ]}
+                    />
                 </Box>
-                <Typography variant="subtitle1" fontWeight={600} mb={2} mt={2}>
-                    Sunrise & sunset
-                </Typography>
+                {/*<Typography variant="subtitle1" fontWeight={600} mb={2} mt={2}>*/}
+                {/*    Sunrise & sunset*/}
+                {/*</Typography>*/}
                 {/*<Box display="flex" gap={1.5} mt={0} justifyContent="space-between">*/}
                 {/*    <StatusPill*/}
                 {/*        icon={<ThermostatIcon fontSize="small"/>}*/}
@@ -476,9 +422,9 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                 {/*        color="#fff"*/}
                 {/*    />*/}
                 {/*</Box>*/}
-                <Box>
-                    <SunriseSunsetCard/>
-                </Box>
+                {/*<Box>*/}
+                {/*    <SunriseSunsetCard/>*/}
+                {/*</Box>*/}
             </CardContent>
         </Card>
     );

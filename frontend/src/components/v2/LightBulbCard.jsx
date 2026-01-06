@@ -9,7 +9,7 @@ import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import {sendAction} from "../../services/apis.jsx";
 import dayjs from "dayjs";
 
-export default function LightBulbCard({value, name, type, deviceId, data, lastOnline}) {
+export default function LightBulbCard({value, name, type, deviceId, data, lastOnline, onClick}) {
     const [isOn, setIsOn] = React.useState(Boolean(value));
 
     // Sync external value → local UI
@@ -74,7 +74,7 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
                     />
                 </IconButton>
 
-                <Box>
+                <Box onClick={onClick}>
                     <Typography fontWeight={600} fontSize="16px">
                         {name}
                     </Typography>

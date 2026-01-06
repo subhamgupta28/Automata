@@ -1,11 +1,9 @@
 import {NodeResizer,} from "@xyflow/react";
-import React, {useEffect, useMemo, useRef, useState} from "react";
-import {Box, Button, Card, CardContent} from "@mui/material";
+import React, {useEffect, useState} from "react";
+import {Box, Card, CircularProgress} from "@mui/material";
 import Typography from "@mui/material/Typography";
 import {Chart} from "react-google-charts";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
-import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
-import {combineAttributes} from "./VirtualDevice.jsx";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import Stack from "@mui/material/Stack";
@@ -72,7 +70,7 @@ function useEnergyStats(deviceIds) {
                 );
                 if (combined?.percent)
                     combined.percent = combined.percent / results.length
-                // console.log("combined", combined)
+                console.log("combined", combined)
                 setHistory(prev => {
                     const next = [...prev, statsData].slice(-10);
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -205,13 +203,13 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
 
     return (
         <>
-            {/*<NodeResizer*/}
-            {/*    color="#ff0000"*/}
-            {/*    isVisible={selected}*/}
-            {/*    minWidth={width}*/}
-            {/*    minHeight={height}*/}
-            {/*/>*/}
-            <Card style={{minHeight: '400px', height: '100%', minWidth: width, padding: '10px', borderRadius: '12px'}}>
+            <NodeResizer
+                color="#ff0000"
+                isVisible={selected}
+                minWidth={width}
+                minHeight={height}
+            />
+            <Card style={{minHeight: '340px', height: '100%', minWidth: width, padding: '10px', borderRadius: '12px'}}>
 
                 <div style={{display: 'flex'}}>
                     <Typography
@@ -287,15 +285,20 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                             unit="%"
                         />
                     </Stack>
-                    <Box>
-                        <Chart
-                            chartType="Sankey"
-                            width="500px"
-                            height="120px"
-                            data={chartData}
-                            options={options}
-                        />
-                    </Box>
+                    {chartData.length <= 1 ? (
+                        <CircularProgress color="inherit"/>
+                    ):(
+                        <Box>
+                            <Chart
+                                chartType="Sankey"
+                                width="500px"
+                                height="120px"
+                                data={chartData}
+                                options={options}
+                            />
+                        </Box>
+                    )}
+
                 </Stack>
             </Card>
         </>

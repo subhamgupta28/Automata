@@ -18,6 +18,7 @@ import {getVirtualDeviceList, saveVirtualDevice} from "../../services/apis.jsx";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import List from "@mui/material/List";
+import DeviceCreateForm from "./DeviceCreateForm.jsx";
 
 const DashboardEditor = ({change, existingDevice}) => {
     const {devices, loading, error} = useCachedDevices();
@@ -300,22 +301,22 @@ const VirtualDeviceForm = () => {
 
     return (
         <Box p={3} style={{height: '100vh'}}>
-            <Typography variant="h6" mb={2} pt={5}>
-                Virtual Device
-            </Typography>
 
-            <Stack direction="row" style={{height: '80%'}} divider={<Divider orientation="vertical" flexItem/>}
+            <Stack direction="row" style={{height: '80%', marginTop:'20px'}} divider={<Divider orientation="vertical" flexItem/>}
                    spacing={2}>
+
                 <div style={{width: '30%'}}>
+                    Create Virtual Device
                     <DashboardEditor change={fetch} existingDevice={selectedDevice}/>
                 </div>
                 <div style={{width: '50%'}}>
-
+                    <DeviceCreateForm/>
                 </div>
 
                 <div style={{width: '20%'}}>
+                    Saved Virtual Devices
                     <List>
-                        {virtualDeviceList.map((a) => (
+                        {virtualDeviceList && virtualDeviceList.map((a) => (
                             <ListItem
                                 variant="outlined"
                                 component={Card}

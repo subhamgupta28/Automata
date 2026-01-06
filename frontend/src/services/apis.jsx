@@ -336,7 +336,15 @@ export const signInReq = async (payload) => {
     });
     return response.data;
 }
-
+export const registerDevice = async (payload) => {
+    const response = await api.post("main/register", payload, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
 export const signUpReq = async (payload) => {
     const response = await api.post("auth/register", payload, {
         headers: {
