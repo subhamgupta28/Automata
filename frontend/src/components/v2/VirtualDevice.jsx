@@ -71,19 +71,19 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
 
     return (
         <>
-            <NodeResizer
-                color="#ff0000"
-                isVisible={selected}
-                minWidth={width}
-                minHeight={height}
-            />
+            {/*<NodeResizer*/}
+            {/*    color="#ff0000"*/}
+            {/*    isVisible={selected}*/}
+            {/*    minWidth={width}*/}
+            {/*    minHeight={height}*/}
+            {/*/>*/}
 
 
-            <Card style={{minHeight: '200px', height: '100%', minWidth: width, borderRadius: '12px'}}>
+            <Card style={{minHeight: '200px', height: '100%', minWidth: width, borderRadius: '10px'}}>
 
                 <div
                     style={{
-                        padding: '0px', width: '100%', height: '100%', margin: '0px',
+                        padding: '0px', width: '100%', height: '100%', marginTop: '12px',
                         borderRadius: '12px 12px 0px 0px',
                         background: 'transparent',
                     }}>
@@ -190,15 +190,7 @@ const Wled = ({device, messages}) => {
             {/*    />*/}
             {/*))}*/}
             {switchButtons.map((s) => (
-                <LightBulbCard key={s.key} value={liveData?.[s.key]} name={device.name}/>
-                // <SwitchButton
-                //     key={s.key}
-                //     value={liveData?.[s.key]}
-                //     deviceId={device.id}
-                //     data={s}
-                //     type={device.type}
-                //     displayName={s.displayName}
-                // />
+                <LightBulbCard key={s.key} data={s} lastOnline={device.lastOnline} value={liveData?.[s.key]} name={device.name} deviceId={device.id} type={device.type}/>
             ))}
 
         </div>

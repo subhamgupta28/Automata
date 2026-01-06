@@ -135,21 +135,28 @@ public class VirtualDeviceService {
 
         List<Data> records = mongoTemplate.find(query, Data.class);
 
-        Map<Integer, Double> hourlyWh = new HashMap<>();
-        double totalWh = 0.0;
+        Map<Integer, Double> dischargeHourlyWh = new HashMap<>();
+        Map<Integer, Double> chargeHourlyWh = new HashMap<>();
 
+        double dischargeTotalWh = 0.0;
+        double chargeTotalWh = 0.0;
+
+        var recordsLast = records.getLast();
+        double percent = 0;
+        if (recordsLast!=null){
+            percent = Double.parseDouble((String) recordsLast.getData().get("percent"));
+        }
         for (int i = 1; i < records.size(); i++) {
 
             Data prev = records.get(i - 1);
             Data curr = records.get(i);
 
-            // Only count discharge periods
-            if (!"DISCHARGE".equals(prev.getData().get("status"))) {
-                continue;
-            }
-
+            Object statusObj = prev.getData().get("status");
             Object powerObj = prev.getData().get("power");
-            if (powerObj == null) continue;
+
+            if (statusObj == null || powerObj == null) continue;
+
+            String status = statusObj.toString();
 
             double powerW;
             try {
@@ -160,49 +167,75 @@ public class VirtualDeviceService {
 
             long deltaSeconds = curr.getTimestamp() - prev.getTimestamp();
 
-            // Guard against bad / duplicate timestamps
+            // Guard against bad timestamps
             if (deltaSeconds <= 0 || deltaSeconds > 3600) {
-                continue; // skip unrealistic gaps (>1h)
+                continue;
             }
 
-            double deltaHours = deltaSeconds / 3600.0;
-            double energyWh = powerW * deltaHours;
-
-            totalWh += energyWh;
+            double energyWh = powerW * (deltaSeconds / 3600.0);
 
             int hour = Instant.ofEpochSecond(prev.getTimestamp())
                     .atZone(zone)
                     .getHour();
 
-            hourlyWh.merge(hour, energyWh, Double::sum);
+            if ("DISCHARGE".equals(status)) {
+                dischargeTotalWh += energyWh;
+                dischargeHourlyWh.merge(hour, energyWh, Double::sum);
+            }
+
+            if ("CHARGING".equals(status)) {
+                chargeTotalWh += energyWh;
+                chargeHourlyWh.merge(hour, energyWh, Double::sum);
+            }
         }
 
         // Remove current incomplete hour
         int currentHour = LocalDateTime.now(zone).getHour();
-        hourlyWh.remove(currentHour);
+        dischargeHourlyWh.remove(currentHour);
+        chargeHourlyWh.remove(currentHour);
 
-        double peakWh = 0;
-        double lowestWh = 0;
+        double dischargePeakWh = 0;
+        double dischargeLowestWh = 0;
+        double chargePeakWh = 0;
+        double chargeLowestWh = 0;
 
-        if (!hourlyWh.isEmpty()) {
-            peakWh = hourlyWh.values().stream()
+        if (!dischargeHourlyWh.isEmpty()) {
+            dischargePeakWh = dischargeHourlyWh.values().stream()
                     .mapToDouble(Double::doubleValue)
                     .max()
                     .orElse(0);
 
-            lowestWh = hourlyWh.values().stream()
+            dischargeLowestWh = dischargeHourlyWh.values().stream()
+                    .mapToDouble(Double::doubleValue)
+                    .min()
+                    .orElse(0);
+        }
+
+        if (!chargeHourlyWh.isEmpty()) {
+            chargePeakWh = chargeHourlyWh.values().stream()
+                    .mapToDouble(Double::doubleValue)
+                    .max()
+                    .orElse(0);
+
+            chargeLowestWh = chargeHourlyWh.values().stream()
                     .mapToDouble(Double::doubleValue)
                     .min()
                     .orElse(0);
         }
 
         Map<String, Double> result = new HashMap<>();
-        result.put("totalWh", round(totalWh));
-        result.put("peakWh", round(peakWh));
-        result.put("lowestWh", round(lowestWh));
+        result.put("totalWh", round(dischargeTotalWh));
+        result.put("peakWh", round(dischargePeakWh));
+        result.put("lowestWh", round(dischargeLowestWh));
+
+        result.put("chargeTotalWh", round(chargeTotalWh));
+        result.put("chargePeakWh", round(chargePeakWh));
+        result.put("chargeLowestWh", round(chargeLowestWh));
+        result.put("percent", percent);
 
         return result;
     }
+
 
     private double round(double value) {
         return Math.round(value * 100.0) / 100.0;

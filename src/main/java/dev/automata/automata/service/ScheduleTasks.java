@@ -71,7 +71,7 @@ public class ScheduleTasks {
                     System.err.println(data.size());
                 }
 
-            }else {
+            } else {
                 System.err.println("Parameter not found: " + device.getId());
                 var para = Parameter.builder()
                         .deviceId(device.getId())
@@ -83,11 +83,11 @@ public class ScheduleTasks {
             }
 
 
-
         }
 
 
     }
+
     @Scheduled(fixedRate = 180000) // runs every 60 seconds
     public void checkAndUpdateStatus() {
         var devices = deviceRepository.findAll();
@@ -101,14 +101,15 @@ public class ScheduleTasks {
                 Duration diff = Duration.between(entity.getUpdateDate().toInstant(), now);
                 var newStatus = diff.toMinutes() <= 10 ? Status.ONLINE : Status.OFFLINE;
 //                System.err.println(diff.toMinutes());
-                mainService.setStatus(device.getId(), newStatus);
+                if (!device.getStatus().equals(newStatus))
+                    mainService.setStatus(device.getId(), newStatus);
 //                System.err.println("ID: " + entity.getId() + ", Status: " + newStatus);
             }
         }
         System.err.println("Consolidation done.");
     }
 
-//    @Scheduled(fixedRate = 30000)
+    //    @Scheduled(fixedRate = 30000)
     public void getSystemInfo() {
         SystemInfo systemInfo = new SystemInfo();
         HardwareAbstractionLayer hal = systemInfo.getHardware();

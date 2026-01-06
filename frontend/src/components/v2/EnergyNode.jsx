@@ -22,41 +22,87 @@ export const cdata = [
 
 ];
 
+const STORAGE_KEY = "energy_stats_history";
+
 function useEnergyStats(deviceIds) {
-    const [statsData, setData] = useState({
-        "totalWh": 0,
-        "peakWh": 0,
-        "lowestWh": 0,
+    const [statsData, setStatsData] = useState(() => ({
+        totalWh: 0,
+        peakWh: 0,
+        lowestWh: 0,
+        chargeLowestWh: 0, chargePeakWh: 0, chargeTotalWh: 0,
+        percent: 0
+    }));
+
+    const [history, setHistory] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        } catch {
+            return [];
+        }
     });
-    const prevData = useRef(null);
 
     useEffect(() => {
-        if (!deviceIds) return;
+        if (!deviceIds?.length) return;
+
         const fetchStats = async () => {
-            const result = {"totalWh": 0, "lowestWh": 0, "peakWh": 0};
-            for (const deviceId of deviceIds) {
-                const res = await getEnergyStats(deviceId);
-                result["totalWh"] += parseFloat(res["totalWh"]);
-                result["peakWh"] += parseFloat(res["peakWh"]);
-                result["lowestWh"] += parseFloat(res["lowestWh"]);
+            try {
+                const results = await Promise.all(
+                    deviceIds.map(id => getEnergyStats(id))
+                );
+
+                const combined = results.reduce(
+                    (acc, res) => ({
+                        totalWh: acc.totalWh + Number(res?.totalWh || 0),
+                        peakWh: acc.peakWh + Number(res?.peakWh || 0),
+                        lowestWh: acc.lowestWh + Number(res?.lowestWh || 0),
+                        chargeTotalWh: acc.chargeTotalWh + Number(res?.chargeTotalWh || 0),
+                        chargePeakWh: acc.chargePeakWh + Number(res?.chargePeakWh || 0),
+                        chargeLowestWh: acc.chargeLowestWh + Number(res?.chargeLowestWh || 0),
+                        percent: acc.percent + Number(res?.percent || 0),
+                    }),
+                    {
+                        totalWh: 0,
+                        peakWh: 0,
+                        lowestWh: 0,
+                        chargeLowestWh: 0,
+                        chargePeakWh: 0,
+                        chargeTotalWh: 0,
+                        percent: 0
+                    }
+                );
+                if (combined?.percent)
+                    combined.percent = combined.percent / results.length
+                // console.log("combined", combined)
+                setHistory(prev => {
+                    const next = [...prev, statsData].slice(-10);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                    return next;
+                });
+                setStatsData(combined);
+
+            } catch (err) {
+                console.error("Energy stats fetch failed", err);
             }
-            prevData.current = statsData;
-            setData(result);
         };
 
-
         fetchStats();
-        const interval = setInterval(fetchStats, 60_000);
-        return () => clearInterval(interval);
+        const id = setInterval(fetchStats, 60_000);
+
+        return () => clearInterval(id);
     }, [deviceIds]);
 
-    return { statsData, prevData: prevData.current };
+    return {
+        statsData,
+        prevData: history,
+    };
 }
+
 
 export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
     const {devices, loading, error} = useCachedDevices();
-    const {messages} = useDeviceLiveData();
+    // const {messages} = useDeviceLiveData();
     const [chartData, setChartData] = useState([]);
+    const [deviceList, setDeviceList] = useState([]);
 
     const [topCards, setTopCards] = useState({
         "totalWh": 0,
@@ -74,7 +120,9 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
         x,
         y,
     } = data.value;
-    const { statsData, prevData } = useEnergyStats(deviceIds);
+    // console.log("energy", data.value)
+    const {statsData, prevData} = useEnergyStats(deviceIds);
+    console.log("deviceList", deviceList[0]?.lastData?.status)
     // useEffect(()=>{
     //     console.log("att", combineAttributes(attributes))
     //     if (deviceIds && deviceIds.includes(messages.deviceId)) {
@@ -104,13 +152,18 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                     "System",
                     parseInt(d['lastData']['percent'])
                 ]),
+                ...focusDevices.map(d => [
+                    d.name,
+                    "Grid",
+                    parseInt(d['lastData']['power'])
+                ]),
                 ...otherDevices.map(d => [
                     "System",
                     d.name,
                     20
                 ])
             ];
-
+            setDeviceList(focusDevices);
             setChartData(items);
         }
 
@@ -150,7 +203,6 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
         },
     };
 
-
     return (
         <>
             {/*<NodeResizer*/}
@@ -161,41 +213,78 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
             {/*/>*/}
             <Card style={{minHeight: '400px', height: '100%', minWidth: width, padding: '10px', borderRadius: '12px'}}>
 
-                <Typography
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginLeft: '12px',
-                        width: '100%',
-                        fontWeight: 'bold',
-                        fontSize: '18px',
-                        marginRight: '10px'
-                    }}
-                >
-                    {name}
-                </Typography>
+                <div style={{display: 'flex'}}>
+                    <Typography
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginLeft: '12px',
+                            width: '100%',
+                            fontWeight: 'bold',
+                            fontSize: '18px',
+                            marginRight: '10px'
+                        }}
+                    >
+                        {name}
+                    </Typography>
+                    <Typography variant="caption">
+                        {deviceList.length !== 0 && deviceList[0]?.lastData?.status}
+                    </Typography>
+                </div>
+
                 <Stack direction="column" spacing={4}>
 
 
                     <Stack direction="row" spacing={4} style={{padding: '14px'}}>
+                        {(deviceList.length !== 0 && deviceList[0]?.lastData?.status === "CHARGING") ? (
+                            <>
+                                <StatItem
+                                    label="Total charged today"
+                                    value={statsData.chargeTotalWh}
+                                    prevValue={avg(prevData, "chargeTotalWh")}
+                                    unit="Wh"
+                                />
+                                <StatItem
+                                    label="Peak hour consumption"
+                                    value={statsData.chargePeakWh}
+                                    prevValue={avg(prevData, "chargePeakWh")}
+                                    unit="Wh"
+                                />
+                                <StatItem
+                                    label="Lowest hourly usage"
+                                    value={statsData.chargeLowestWh}
+                                    prevValue={avg(prevData, "chargeLowestWh")}
+                                    unit="Wh"
+                                />
+                            </>
+                        ) : (
+                            <>
+                                <StatItem
+                                    label="Total usage today"
+                                    value={statsData.totalWh}
+                                    prevValue={avg(prevData, "totalWh")}
+                                    unit="Wh"
+                                />
+                                <StatItem
+                                    label="Peak hour consumption"
+                                    value={statsData.peakWh}
+                                    prevValue={avg(prevData, "peakWh")}
+                                    unit="Wh"
+                                />
+                                <StatItem
+                                    label="Lowest hourly usage"
+                                    value={statsData.lowestWh}
+                                    prevValue={avg(prevData, "lowestWh")}
+                                    unit="Wh"
+                                />
+                            </>
+                        )}
                         <StatItem
-                            label="Total usage today"
-                            value={statsData.totalWh}
-                            prevValue={prevData?.totalWh}
-                            unit="Wh"
-                        />
-                        <StatItem
-                            label="Peak hour consumption"
-                            value={statsData.peakWh}
-                            prevValue={prevData?.peakWh}
-                            unit="Wh"
-                        />
-                        <StatItem
-                            label="Lowest hourly usage"
-                            value={statsData.lowestWh}
-                            prevValue={prevData?.lowestWh}
-                            unit="Wh"
+                            label="Percent"
+                            value={statsData.percent}
+                            prevValue={statsData.percent - 1}
+                            unit="%"
                         />
                     </Stack>
                     <Box>
@@ -213,59 +302,57 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
 
     )
 });
+const avg = (arr, key) => {
+    if (!arr?.length) return null;
+    const valid = arr.map(d => Number(d?.[key])).filter(v => !isNaN(v));
+    return valid.length
+        ? valid.reduce((s, v) => s + v, 0) / valid.length
+        : null;
+};
 
 const StatItem = ({label, value, prevValue, unit}) => {
-    const animated = useAnimatedNumber(value);
+    const animated = useAnimatedNumber(value ?? 0);
 
-    const diff =
-        prevValue !== null && prevValue !== undefined
-            ? value - prevValue
-            : 0;
+    const hasPrev =
+        prevValue !== null &&
+        prevValue !== undefined &&
+        prevValue !== 0;
+
+    const diff = hasPrev ? value - prevValue : 0;
+    const percentChange = hasPrev ? (diff / prevValue) * 100 : 0;
 
     const positive = diff > 0;
-    return (
 
+    return (
         <Box>
             <Typography variant="h4" fontWeight={600}>
                 {animated.toFixed(2)}{" "}
-                <Typography
-                    component="span"
-                    variant="body2"
-                    color="text.secondary"
-                >
+                <Typography component="span" variant="body2" color="text.secondary">
                     {unit}
                 </Typography>
             </Typography>
 
+            {hasPrev && diff !== 0 && (
+                <Box display="flex" alignItems="center" gap={0.5}>
+                    {positive ? (
+                        <ArrowUpwardIcon sx={{fontSize: 16, color: "success.main"}}/>
+                    ) : (
+                        <ArrowDownwardIcon sx={{fontSize: 16, color: "error.main"}}/>
+                    )}
 
-            <Box display="flex" alignItems="center" gap={0.5}>
-                {diff !== 0 && (
-                    <>
-                        {positive ? (
-                            <ArrowUpwardIcon
-                                sx={{ fontSize: 16, color: "success.main" }}
-                            />
-                        ) : (
-                            <ArrowDownwardIcon
-                                sx={{ fontSize: 16, color: "error.main" }}
-                            />
-                        )}
-                        <Typography
-                            variant="caption"
-                            sx={{
-                                color: positive
-                                    ? "success.main"
-                                    : "error.main",
-                            }}
-                        >
-                            {Math.abs(diff).toFixed(2)} {unit}
-                        </Typography>
-                    </>
-                )}
-            </Box>
+                    <Typography
+                        variant="caption"
+                        sx={{color: positive ? "success.main" : "error.main"}}
+                    >
+                        {Math.abs(diff).toFixed(2)} {unit} (
+                        {Math.abs(percentChange).toFixed(1)}%)
+                    </Typography>
+                </Box>
+            )}
+
             <Typography variant="body2" color="text.secondary">
                 {label}
             </Typography>
         </Box>
     );
-}
+};

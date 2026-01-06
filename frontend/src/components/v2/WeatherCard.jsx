@@ -1,21 +1,17 @@
-import {
-    Card,
-    CardContent,
-    Typography,
-    Box,
-    Stack,
-    Divider, Slider, LinearProgress,
-} from "@mui/material";
+import {Box, Card, CardContent, Divider, LinearProgress, Slider, Stack, Typography,} from "@mui/material";
 import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import CloudIcon from "@mui/icons-material/Cloud";
 import GrainIcon from "@mui/icons-material/Grain";
 import AirIcon from "@mui/icons-material/Air";
-import WaterDropIcon from "@mui/icons-material/WaterDrop";
 import OpacityIcon from "@mui/icons-material/Opacity";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {useEffect, useState} from "react";
 import dayjs from "dayjs";
-import {SparkLineChart} from "@mui/x-charts";
+import {Lightbulb} from "@mui/icons-material";
+import ThermostatIcon from "@mui/icons-material/Thermostat";
+import WaterDropIcon from "@mui/icons-material/WaterDrop";
+import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import SunriseSunsetCard from "./SunriseSunsetCard.jsx";
 
 const getWeatherIcon = (condition) => {
     const c = condition.toLowerCase();
@@ -193,13 +189,72 @@ const GasQualitySection = ({gases}) => {
 };
 const MAX_POINTS = 50;
 
+function getDevicesWithCO2(attributes) {
+    if (!attributes || typeof attributes !== "object") return [];
+
+    return Object.entries(attributes)
+        .filter(([_, attrs]) =>
+            Array.isArray(attrs) &&
+            attrs.some(a => a?.key === "co2")
+        )
+        .map(([deviceId]) => deviceId);
+}
+
+function StatusPill({
+                        icon,
+                        value,
+                        unit,
+                        color = "#fff",
+                        bg = "#505050",
+                    }) {
+    return (
+        <Box
+            sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 1.6,
+                py: 0.8,
+                borderRadius: "999px",
+                backgroundColor: bg,
+                border: "1px solid #E0E0E0",
+                boxShadow: "0px 1px 3px rgba(0,0,0,0.08)",
+                fontWeight: 600,
+                minHeight: 36,
+            }}
+        >
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    color,
+                }}
+            >
+                {icon}
+            </Box>
+
+            <Typography fontWeight={600} fontSize={14}>
+                {value}
+                {unit && (
+                    <Typography
+                        component="span"
+                        fontSize={12}
+                        color="text.secondary"
+                        ml={0.5}
+                    >
+                        {unit}
+                    </Typography>
+                )}
+            </Typography>
+        </Box>
+    );
+}
+
 export default function WeatherCard({id, data, isConnectable, selected}) {
     const {messages} = useDeviceLiveData();
-    const [history, setHistory] = useState({
-        co2: [],
-        tvoc: [],
-        ch2o: [],
-    });
+    const [dataPoint, setDatapoint] = useState({});
+    const [mainDevice, setMainDevice] = useState("");
+    const [otherDevice, setOtherDevice] = useState("");
     const [weather, setLiveData] = useState({
         location: "Khariar Road, Odisha",
         time: "Tuesday, 3:00 PM",
@@ -227,35 +282,80 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
         x,
         y,
     } = data.value;
+    useEffect(() => {
+        if (!attributes || !deviceIds?.length) return;
+
+        // get all devices that expose CO2
+        const co2DeviceIds = getDevicesWithCO2(attributes);
+        if (co2DeviceIds.length !== 0) {
+
+            setMainDevice(co2DeviceIds[0])
+            const other = deviceIds.filter(d => d !== co2DeviceIds[0]);
+            if (other.length)
+                setOtherDevice(other[0])
+        }
+
+        console.log("CO2 devices:", co2DeviceIds);
+
+    }, [attributes, deviceIds]);
 
     useEffect(() => {
-        // console.log("de id", deviceIds);
-        // console.log("ms id", messages.deviceId);
-        if (deviceIds && deviceIds.includes(messages.deviceId)) {
-            // console.log("live", messages)
-            if (messages.data) {
-                const data = messages.data;
-                setLiveData({
-                    ...weather,
-                    temp: data['temp'],
-                    humidity: data['humid'],
-                    aqi: data['aqi'],
-                    gases: {
-                        co2: data['s_co2'],
-                        tvoc: data['tvoc'],
-                        ch2o: data['ch2o']
-                    },
-                    time: dayjs().format("dddd, h:mm A")
-                })
-                setHistory((prev) => ({
-                    co2: [...prev.co2, parseInt(weather.gases.co2)].slice(-MAX_POINTS),
-                    tvoc: [...prev.tvoc, parseInt(weather.gases.tvoc)].slice(-MAX_POINTS),
-                    ch2o: [...prev.ch2o, parseInt(weather.gases.ch2o)].slice(-MAX_POINTS),
-                }));
+        if (!messages?.data || !messages?.deviceId) return;
+
+        const deviceId = messages.deviceId;
+
+        // ignore devices we don't care about
+        if (!deviceIds?.includes(deviceId)) return;
+
+        const attrs = attributes?.[deviceId];
+        if (!Array.isArray(attrs)) return;
+
+        // build datapoint object
+        const dt = attrs.reduce((acc, m) => {
+            if (messages.data[m.key] !== undefined) {
+                acc[m.key] = messages.data[m.key];
             }
-            // setActionAck(messages.ack);
-        }
-    }, [messages, data.live]);
+            return acc;
+        }, {});
+
+        // update per-device datapoint
+        setDatapoint(prev => ({
+            ...prev,
+            [deviceId]: {
+                ...(prev[deviceId] || {}),
+                ...dt,
+            },
+        }));
+
+        // only update live weather if this is the main device
+        if (deviceId !== mainDevice) return;
+
+        const {
+            temp,
+            humid,
+            aqi,
+            s_co2,
+            tvoc,
+            ch2o,
+            lux,
+        } = dt;
+
+        setLiveData(prev => ({
+            ...prev,
+            temp,
+            humidity: humid,
+            aqi,
+            lux,
+            gases: {
+                co2: s_co2,
+                tvoc,
+                ch2o,
+            },
+            time: dayjs().format("dddd, h:mm A"),
+        }));
+
+
+    }, [messages, attributes, deviceIds, mainDevice]);
 
 
     // const weather = {
@@ -276,14 +376,14 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
     return (
         <Card
             sx={{
-                borderRadius: 4,
+                borderRadius: '10px',
                 width: 400,
                 p: 1,
             }}
         >
             <CardContent>
                 {/* Header */}
-                <Box display="flex" justifyContent="space-between" mb={2}>
+                <Box display="flex" justifyContent="space-between">
                     <Box>
                         <Typography fontWeight={600}>
                             {weather.location}
@@ -292,10 +392,13 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                             {weather.time}
                         </Typography>
                     </Box>
-
-
                 </Box>
-
+                <Box  mb={2}>
+                    <Typography variant="body2" color="text.secondary" maxWidth={500}>
+                        Outdoor: {dataPoint?.[otherDevice]?.["temp"]} °C
+                        {" H: "}{dataPoint?.[otherDevice]?.["humid"]}%
+                    </Typography>
+                </Box>
                 <Divider sx={{mb: 2}}/>
 
                 {/* Main Content */}
@@ -315,6 +418,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                         </Box>
                     </Box>
 
+
                     {/* Right Stats */}
                     <Stack spacing={1}>
                         <Box display="flex" alignItems="center" gap={1}>
@@ -325,9 +429,9 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                         </Box>
 
                         <Box display="flex" alignItems="center" gap={1}>
-                            <WaterDropIcon fontSize="small"/>
+                            <Lightbulb fontSize="small"/>
                             <Typography variant="body2">
-                                Precipitation: {weather.precipitation}%
+                                Indoor Light: {weather.lux}
                             </Typography>
                         </Box>
 
@@ -339,60 +443,41 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                         </Box>
                     </Stack>
                 </Box>
+
                 <Box sx={{mt: 2}}>
                     <AQIBar aqi={weather.aqi}/>
                 </Box>
-                <Box>
+                <Box mb={2}>
                     <GasQualitySection
                         gases={weather.gases}
                     />
                 </Box>
-                <Box
-                    sx={{
-                        position: "relative",
-                        height: 120,
-                        marginTop: '20px',
-                        width: "100%",
-                    }}
-                >
-                    {/* CO₂ */}
-                    <SparkLineChart
-                        data={history.co2}
-                        height={100}
-                        curve="natural"
-                        color="orange"
-                        sx={{
-                            position: "absolute",
-                            inset: 0,
-                            opacity: 0.6,
-                        }}
-                    />
+                <Typography variant="subtitle1" fontWeight={600} mb={2} mt={2}>
+                    Sunrise & sunset
+                </Typography>
+                {/*<Box display="flex" gap={1.5} mt={0} justifyContent="space-between">*/}
+                {/*    <StatusPill*/}
+                {/*        icon={<ThermostatIcon fontSize="small"/>}*/}
+                {/*        value={dataPoint?.[otherDevice]?.["temp"]}*/}
+                {/*        unit="°C"*/}
+                {/*        color="#E53935"*/}
+                {/*    />*/}
 
-                    {/* TVOC */}
-                    <SparkLineChart
-                        data={history.tvoc}
-                        height={100}
-                        curve="natural"
-                        color="red"
-                        sx={{
-                            position: "absolute",
-                            inset: 0,
-                            opacity: 0.45,
-                        }}
-                    />
+                {/*    <StatusPill*/}
+                {/*        icon={<WaterDropIcon fontSize="small"/>}*/}
+                {/*        value={dataPoint?.[otherDevice]?.["humid"]}*/}
+                {/*        unit="%"*/}
+                {/*        color="#1E88E5"*/}
+                {/*    />*/}
 
-                    {/* CH₂O */}
-                    <SparkLineChart
-                        data={history.ch2o}
-                        height={100}
-                        color="green"
-                        curve="natural"
-                        sx={{
-                            position: "absolute",
-                            inset: 0,
-                            opacity: 0.35,
-                        }}
-                    />
+                {/*    <StatusPill*/}
+                {/*        icon={<Lightbulb fontSize="small"/>}*/}
+                {/*        value={dataPoint?.[otherDevice]?.["lux"]}*/}
+                {/*        color="#fff"*/}
+                {/*    />*/}
+                {/*</Box>*/}
+                <Box>
+                    <SunriseSunsetCard/>
                 </Box>
             </CardContent>
         </Card>
