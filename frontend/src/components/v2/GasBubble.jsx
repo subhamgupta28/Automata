@@ -1,5 +1,5 @@
 import Typography from "@mui/material/Typography";
-import {Box, LinearProgress} from "@mui/material";
+import {Box, Card, LinearProgress} from "@mui/material";
 
 const LEVEL_COLORS = {
     success: "#4caf50",
@@ -31,8 +31,8 @@ const getLevelColor = (value, type) => {
             if (value < 0.1) return "warning";
             return "error";
         case "pm25":
-            if (value < 5) return "success";
-            if (value < 15) return "warning";
+            if (value < 25) return "success";
+            if (value < 50) return "warning";
             return "error";
         default:
             return "success";
@@ -79,27 +79,34 @@ export const GasBubble = ({
         </Box>
     );
 };
-export const GasLegend = ({ items }) => {
+export const GasLegend = ({items}) => {
     return (
-        <Box display="flex" justifyContent="center" gap={3} mt={3}>
-            {items.map(({ label, value, type, color }, index) => {
+        <Box display="flex" justifyContent="center" gap={1} mt={3}>
+            {items.map(({label, value, type, color, units}, index) => {
                 const level = getLevelColor(value, type);
                 // const color = LEVEL_COLORS[level];
 
                 return (
-                    <Box key={index} display="flex" alignItems="center" gap={1}>
-                        <Box
-                            sx={{
-                                width: 12,
-                                height: 12,
-                                borderRadius: "50%",
-                                backgroundColor: color,
-                            }}
-                        />
+                    <Card variant="outlined" style={{padding:"10px", borderRadius:"10px", backgroundColor:"#000"}} key={index}
+                          display="flex" alignItems="center" justifyContent="center"  flexDirection="column"
+                    >
+                        <div style={{display:"flex", gap: "10px", alignItems:"center"}}>
+                            <Box
+                                sx={{
+                                    width: 12,
+                                    height: 12,
+                                    borderRadius: "50%",
+                                    backgroundColor: color,
+                                }}
+                            />
+                            <Typography variant="caption" fontWeight={600}>
+                                {label}
+                            </Typography>
+                        </div>
                         <Typography variant="caption" fontWeight={600}>
-                            {label}
+                            {value}{" "}{units}
                         </Typography>
-                    </Box>
+                    </Card>
                 );
             })}
         </Box>

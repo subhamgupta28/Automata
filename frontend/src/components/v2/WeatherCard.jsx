@@ -8,10 +8,6 @@ import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {useEffect, useState} from "react";
 import dayjs from "dayjs";
 import {Lightbulb} from "@mui/icons-material";
-import ThermostatIcon from "@mui/icons-material/Thermostat";
-import WaterDropIcon from "@mui/icons-material/WaterDrop";
-import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
-import SunriseSunsetCard from "./SunriseSunsetCard.jsx";
 import {GasBubble, GasLegend} from "./GasBubble.jsx";
 
 const getWeatherIcon = (condition) => {
@@ -159,7 +155,7 @@ const GasQualitySection = ({gases}) => {
                     label="PM2.5"
                     value={gases.pm25}
                     unit="ug/m³"
-                    max={1}
+                    max={350}
                     color={'#a2292a'}
                     type="pm25"
                     size={60}
@@ -313,9 +309,13 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
     // }
     return (
         <Card
+            elevation={0}
             sx={{
+                background: 'transparent',
+                backgroundColor: 'rgb(0 0 0 / 60%)',
                 borderRadius: '10px',
                 width: 400,
+                height: {height},
                 p: 1,
             }}
         >
@@ -391,10 +391,10 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                     />
                     <GasLegend
                         items={[
-                            {label: "CO₂", value: weather.gases.co2, type: "co2", color: '#42a5f5'},
-                            {label: "CH₂O", value: weather.gases.ch20, type: "ch20", color: '#2ca02c'},
-                            {label: "TVOC", value: weather.gases.tvoc, type: "tvoc", color: '#ff7f0e'},
-                            {label: "PM2.5", value: weather.gases.pm25, type: "pm25", color: '#d62728'},
+                            {label: "CO₂", value: weather.gases.co2, type: "co2", color: '#42a5f5', units:"ppm"},
+                            {label: "CH₂O", value: weather.gases.ch20, type: "ch20", color: '#2ca02c', units:"ppb"},
+                            {label: "TVOC", value: weather.gases.tvoc, type: "tvoc", color: '#ff7f0e', units:"mg/m³"},
+                            {label: "PM2.5", value: weather.gases.pm25, type: "pm25", color: '#d62728', units:"ug/m³"},
                         ]}
                     />
                 </Box>

@@ -12,6 +12,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import IconButton from "@mui/material/IconButton";
 import {CustomModal} from "../home/Nodes.jsx";
 import ChartDetail from "../charts/ChartDetail.jsx";
+import ThermostatCard from "./ThermostatCard.jsx";
 
 export const combineAttributes = (attributesByDevice) => {
     const map = new Map();
@@ -84,7 +85,11 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
             {/*/>*/}
 
 
-            <Card style={{minHeight: '100px', height: '100%', minWidth: width, borderRadius: '10px',padding: '0px',}}>
+            <Card style={{
+                background: 'transparent',
+                backgroundColor: 'rgb(0 0 0 / 60%)',
+                minHeight: '100px', height: '100%', minWidth: width, borderRadius: '10px',padding: '0px',
+            }}>
 
                 <div
                     style={{
@@ -96,21 +101,22 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                         justifyContent: 'space-between'
                     }}>
                     <Typography
+                        variant="body2"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             marginLeft: '18px',
-                            fontWeight: 'bold',
-                            fontSize: '18px',
+                            // fontWeight: 'bold',
+                            // fontSize: '18px',
                             marginRight: '10px'
                         }}
                     >
                         {name}
                     </Typography>
-                    <IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}}>
-                        <SettingsIcon/>
-                    </IconButton>
+                    {/*<IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}}>*/}
+                    {/*    <SettingsIcon/>*/}
+                    {/*</IconButton>*/}
                 </div>
                 <div
                     style={{
@@ -130,12 +136,17 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                     <div style={{
                         gridTemplateColumns: 'repeat(2, 1fr)',
                         display: 'grid',
-                        gap: '4px',
+                        // gap: '2px',
                     }}>
                         {deviceList.length !== 0 ? deviceList.map(device => (
                             <div key={device.id}>
                                 {device.type === "WLED" && (
                                     <Wled device={device} messages={messages}/>
+                                )}
+                                {device.type === "HVAC" && (
+                                    <ThermostatCard
+                                        device={device} messages={messages}
+                                    />
                                 )}
                             </div>
                         )) : (

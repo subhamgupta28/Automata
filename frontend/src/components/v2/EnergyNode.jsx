@@ -20,24 +20,21 @@ export const cdata = [
 
 ];
 
-const STORAGE_KEY = "energy_stats_history";
-
 function useEnergyStats(deviceIds) {
     const [statsData, setStatsData] = useState(() => ({
         totalWh: 0,
         peakWh: 0,
         lowestWh: 0,
-        chargeLowestWh: 0, chargePeakWh: 0, chargeTotalWh: 0,
-        percent: 0
+        chargeTotalWh: 0,
+        chargePeakWh: 0,
+        chargeLowestWh: 0,
+        percent: 0,
+        // NEW trend fields
+        totalWhTrend: 0,
+        peakWhTrend: 0,
+        lowestWhTrend: 0,
+        percentTrend: 0,
     }));
-
-    const [history, setHistory] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        } catch {
-            return [];
-        }
-    });
 
     useEffect(() => {
         if (!deviceIds?.length) return;
@@ -56,28 +53,36 @@ function useEnergyStats(deviceIds) {
                         chargeTotalWh: acc.chargeTotalWh + Number(res?.chargeTotalWh || 0),
                         chargePeakWh: acc.chargePeakWh + Number(res?.chargePeakWh || 0),
                         chargeLowestWh: acc.chargeLowestWh + Number(res?.chargeLowestWh || 0),
+                        // Trends now come from backend
+                        totalWhTrend: acc.totalWhTrend + Number(res?.totalWhTrend || 0),
+                        peakWhTrend: acc.peakWhTrend + Number(res?.peakWhTrend || 0),
+                        lowestWhTrend: acc.lowestWhTrend + Number(res?.lowestWhTrend || 0),
+                        percentTrend: acc.percentTrend + Number(res?.percentTrend || 0),
                         percent: acc.percent + Number(res?.percent || 0),
                     }),
                     {
                         totalWh: 0,
                         peakWh: 0,
                         lowestWh: 0,
-                        chargeLowestWh: 0,
-                        chargePeakWh: 0,
                         chargeTotalWh: 0,
-                        percent: 0
+                        chargePeakWh: 0,
+                        chargeLowestWh: 0,
+                        totalWhTrend: 0,
+                        peakWhTrend: 0,
+                        lowestWhTrend: 0,
+                        percentTrend: 0,
+                        percent: 0,
                     }
                 );
-                if (combined?.percent)
-                    combined.percent = combined.percent / results.length
-                console.log("combined", combined)
-                setHistory(prev => {
-                    const next = [...prev, statsData].slice(-10);
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-                    return next;
-                });
-                setStatsData(combined);
 
+                if (combined.percent) {
+                    combined.percent = combined.percent / results.length;
+                    combined.percentTrend = (combined.percentTrend < 0 ?
+                        Math.abs(combined.percentTrend) : combined.percentTrend);
+
+                }
+
+                setStatsData(combined);
             } catch (err) {
                 console.error("Energy stats fetch failed", err);
             }
@@ -89,10 +94,7 @@ function useEnergyStats(deviceIds) {
         return () => clearInterval(id);
     }, [deviceIds]);
 
-    return {
-        statsData,
-        prevData: history,
-    };
+    return {statsData};
 }
 
 
@@ -119,8 +121,8 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
         y,
     } = data.value;
     // console.log("energy", data.value)
-    const {statsData, prevData} = useEnergyStats(deviceIds);
-    console.log("deviceList", deviceList[0]?.lastData?.status)
+    const {statsData} = useEnergyStats(deviceIds);
+    // console.log("deviceList", deviceList[0]?.lastData?.status)
     // useEffect(()=>{
     //     console.log("att", combineAttributes(attributes))
     //     if (deviceIds && deviceIds.includes(messages.deviceId)) {
@@ -142,6 +144,15 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
             );
             const percentMap = {};
 
+            let grid = [];
+
+            if (focusDevices[0]?.lastData?.status !== "DISCHARGE") {
+                grid = focusDevices.map(d => [
+                    d.name,
+                    "Grid",
+                    parseInt(d['lastData']['power'])
+                ])
+            }
 
             const items = [
                 ["From", "To", ""],
@@ -150,11 +161,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                     "System",
                     parseInt(d['lastData']['percent'])
                 ]),
-                ...focusDevices.map(d => [
-                    d.name,
-                    "Grid",
-                    parseInt(d['lastData']['power'])
-                ]),
+                ...grid,
                 ...otherDevices.map(d => [
                     "System",
                     d.name,
@@ -209,7 +216,11 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                 minWidth={width}
                 minHeight={height}
             />
-            <Card style={{minHeight: '340px', height: '100%', minWidth: width, padding: '10px', borderRadius: '12px'}}>
+            <Card elevation={0} style={{
+                background: 'transparent',
+                backgroundColor: 'rgb(0 0 0 / 60%)',
+                minHeight: '340px', height: '100%', minWidth: width, padding: '10px', borderRadius: '12px'
+            }}>
 
                 <div style={{display: 'flex'}}>
                     <Typography
@@ -240,19 +251,19 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                                 <StatItem
                                     label="Total charged today"
                                     value={statsData.chargeTotalWh}
-                                    prevValue={avg(prevData, "chargeTotalWh")}
+                                    prevValue={statsData.totalWhTrend}
                                     unit="Wh"
                                 />
                                 <StatItem
                                     label="Peak hour consumption"
                                     value={statsData.chargePeakWh}
-                                    prevValue={avg(prevData, "chargePeakWh")}
+                                    prevValue={statsData.peakWhTrend}
                                     unit="Wh"
                                 />
                                 <StatItem
                                     label="Lowest hourly usage"
                                     value={statsData.chargeLowestWh}
-                                    prevValue={avg(prevData, "chargeLowestWh")}
+                                    prevValue={statsData.lowestWhTrend}
                                     unit="Wh"
                                 />
                             </>
@@ -261,19 +272,19 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                                 <StatItem
                                     label="Total usage today"
                                     value={statsData.totalWh}
-                                    prevValue={avg(prevData, "totalWh")}
+                                    prevValue={statsData.totalWhTrend}
                                     unit="Wh"
                                 />
                                 <StatItem
                                     label="Peak hour consumption"
                                     value={statsData.peakWh}
-                                    prevValue={avg(prevData, "peakWh")}
+                                    prevValue={statsData.peakWhTrend}
                                     unit="Wh"
                                 />
                                 <StatItem
                                     label="Lowest hourly usage"
                                     value={statsData.lowestWh}
-                                    prevValue={avg(prevData, "lowestWh")}
+                                    prevValue={statsData.lowestWhTrend}
                                     unit="Wh"
                                 />
                             </>
@@ -281,13 +292,13 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                         <StatItem
                             label="Percent"
                             value={statsData.percent}
-                            prevValue={statsData.percent - 1}
+                            prevValue={statsData.percentTrend}
                             unit="%"
                         />
                     </Stack>
                     {chartData.length <= 1 ? (
                         <CircularProgress color="inherit"/>
-                    ):(
+                    ) : (
                         <Box>
                             <Chart
                                 chartType="Sankey"
@@ -305,21 +316,21 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
 
     )
 });
-const avg = (arr, key) => {
-    if (!arr?.length) return null;
-    const valid = arr.map(d => Number(d?.[key])).filter(v => !isNaN(v));
-    return valid.length
-        ? valid.reduce((s, v) => s + v, 0) / valid.length
-        : null;
-};
+
 
 const StatItem = ({label, value, prevValue, unit}) => {
     const animated = useAnimatedNumber(value ?? 0);
-
+    if (prevValue === 0) {
+        prevValue = value - 1;
+    } else
+        prevValue = value + prevValue;
     const hasPrev =
         prevValue !== null &&
         prevValue !== undefined &&
         prevValue !== 0;
+
+    // console.log(label, value, prevValue);
+
 
     const diff = hasPrev ? value - prevValue : 0;
     const percentChange = hasPrev ? (diff / prevValue) * 100 : 0;

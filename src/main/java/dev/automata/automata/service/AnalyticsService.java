@@ -57,7 +57,7 @@ public class AnalyticsService {
         } else {
             Duration duration = switch (range.toLowerCase()) {
                 case "hour" -> Duration.ofHours(1);
-                case "day" -> Duration.ofHours(30);
+                case "day" -> Duration.ofHours(24);
                 case "week" -> Duration.ofDays(7);
                 default -> Duration.ofHours(8);
             };

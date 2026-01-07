@@ -1,5 +1,6 @@
 package dev.automata.automata.controller;
 
+import dev.automata.automata.model.EnergyStat;
 import dev.automata.automata.model.VirtualDevice;
 import dev.automata.automata.service.VirtualDeviceService;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,7 @@ public class VirtualDeviceController {
     }
 
     @GetMapping("energyStats/{id}")
-    public ResponseEntity<Map<String, Double>> getEnergyStats(@PathVariable String id) {
+    public ResponseEntity<EnergyStat> getEnergyStats(@PathVariable String id) {
         return ResponseEntity.ok(virtualDeviceService.getTodayStats(id));
     }
 }

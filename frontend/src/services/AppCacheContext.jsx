@@ -1,55 +1,53 @@
-import React, {createContext, useState, useContext, useEffect} from 'react';
+import React, {createContext, useContext, useEffect, useState} from "react";
 import {getDevices} from "./apis.jsx";
 
+const AppCacheContext = createContext(null);
 
-export const useCachedDevices = () => {
-    const {cache, cacheData} = useAppCache();
-    const [devices, setData] = useState(null);
+export const AppCacheProvider = ({children}) => {
+    const [devices, setDevices] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        // Check if data is already cached
-        if (cache["devices"]) {
-            setData(cache["devices"]);
-            console.log("cached")
-        } else {
-            setLoading(true);
-            const fetch = async () => {
-                console.log("not cached")
-                // If not, fetch data from the API
-                const res = await getDevices();
-                if (res) {
-                    setData(res);
-                    cacheData("devices", res);  // Cache the fetched data
+        let mounted = true;
 
-                } else {
+        const fetchDevices = async () => {
+            try {
+                const res = await getDevices();
+                if (mounted) {
+                    setDevices(res);
+                }
+            } catch (e) {
+                if (mounted) {
                     setError("Something went wrong");
                 }
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
             }
-            fetch();
-        }
-        setLoading(false);
-    }, [cache, cacheData]);
+        };
 
-    return {devices, loading, error};
-};
+        fetchDevices();
 
-// Create the context for API cache
-const AppCacheContext = createContext([]);
+        return () => {
+            mounted = false;
+        };
+    }, []); // 👈 runs once
 
-export const useAppCache = () => {
-    return useContext(AppCacheContext);
-};
-
-export const AppCacheProvider = ({children}) => {
-    const [cache, setCache] = useState({});
-
-    const cacheData = (key, data) => {
-        setCache((prevCache) => ({...prevCache, [key]: data}));
-    };
-
-    return (<AppCacheContext.Provider value={{cache, cacheData}}>
+    return (
+        <AppCacheContext.Provider value={{devices, loading, error}}>
             {children}
-        </AppCacheContext.Provider>);
+        </AppCacheContext.Provider>
+    );
+};
+
+export const useCachedDevices = () => {
+    const context = useContext(AppCacheContext);
+
+    if (!context) {
+        throw new Error("useCachedDevices must be used inside AppCacheProvider");
+    }
+
+    return context;
 };

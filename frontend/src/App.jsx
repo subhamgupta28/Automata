@@ -6,7 +6,7 @@ import {BrowserRouter} from "react-router-dom";
 import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
 import {AuthProvider} from "./components/auth/AuthContext.jsx";
 import useWebSocket from "./services/useWebSocket.jsx";
-import HealthCheck from "./services/HealthCheck.jsx";
+
 // import Silk from "./components/dashboard/Silk.jsx";
 
 // import './components/dashboard/Exp.css'

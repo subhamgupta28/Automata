@@ -54,6 +54,8 @@ public class SecurityConfiguration {
             "/devices", // for root
             "/signin", // for root
             "/signup", // for root
+            "/dashoard", // for root
+            "/virtual", // for root
             "/configure/**", // for root
             "/actions/**", // for root
             "/analytics/**", // for root

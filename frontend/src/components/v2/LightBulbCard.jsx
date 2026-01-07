@@ -45,7 +45,7 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
 
     return (
         <Card
-            elevation={0}
+            variant="outlined"
             sx={{
                 margin: '6px',
                 width: 220,
