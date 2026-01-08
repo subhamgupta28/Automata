@@ -8,7 +8,7 @@ import {
     useNodesState, useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import {getDashboardDevices, getMainNodePos, rebootAllDevices} from "../../services/apis.jsx";
+import {getMainNodePos, rebootAllDevices} from "../../services/apis.jsx";
 // import useWebSocket from "../../services/useWebSocket.jsx";
 
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
@@ -18,6 +18,7 @@ import {Backdrop, Button, CircularProgress} from "@mui/material";
 import NodeInspector from "./NodeInspector.jsx";
 import {ZoomSlider} from "./ZoomSlider.jsx";
 import ContextMenu from "./ContextMenu.jsx";
+import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {
@@ -29,6 +30,7 @@ const nodeTypes = {
 const DeviceNodes = () => {
     const [openBackdrop, setOpenBackdrop] = useState(false);
     // const {messages} = useWebSocket('/topic/data');
+    const {devices, loading, error} = useCachedDevices();
     const [rfInstance, setRfInstance] = useState(null);
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
@@ -72,23 +74,23 @@ const DeviceNodes = () => {
     }
 
     useEffect(() => {
-        setOpenBackdrop(true);
+        setOpenBackdrop(loading);
         const fetchData = async () => {
             try {
                 const pos = await getMainNodePos();
-                const devices = await getDashboardDevices();
-                // const dev = devices.filter((d) => d.showInDashboard === true);
-                setNodes(createNodes(devices, [], pos.x, pos.y));
-                setEdges(createEdges(devices, []));
-                setOpenBackdrop(false);
+                // const devices = await getDashboardDevices();
+                const dev = devices.filter((d) => d.showInDashboard === true);
+                setNodes(createNodes(dev, [], pos.x, pos.y));
+                setEdges(createEdges(dev, []));
+                setOpenBackdrop(loading);
             } catch (err) {
-                setOpenBackdrop(false);
+                setOpenBackdrop(loading);
                 console.error("Failed to fetch devices:", err);
             }
         };
 
         fetchData();
-    }, [setNodes, setEdges]);
+    }, [setNodes, setEdges, devices, loading]);
 
     const onNodesChange = useCallback(
         (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),

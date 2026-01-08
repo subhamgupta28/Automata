@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {getDashboardDevices} from "../../services/apis.jsx";
+
 import ChartDetail from "../charts/ChartDetail.jsx";
 import {
     Box,
@@ -10,6 +10,7 @@ import {
     CircularProgress,
     useTheme, Backdrop, Tabs, Tab,
 } from "@mui/material";
+import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 
 function CustomTabPanel(props) {
     const { children, value, index, ...other } = props;
@@ -27,7 +28,8 @@ function CustomTabPanel(props) {
     );
 }
 export default function AnalyticsView() {
-    const [devices, setDevices] = useState([]);
+    const [devicesList, setDevices] = useState([]);
+    const {devices, loading, error} = useCachedDevices();
     const [openBackdrop, setOpenBackdrop] = useState(false);
     const theme = useTheme();
     const [value, setValue] = useState(0);
@@ -39,12 +41,12 @@ export default function AnalyticsView() {
     useEffect(() => {
         setOpenBackdrop(true)
         const fetchDevices = async () => {
-            const result = await getDashboardDevices();
-            setDevices(result.filter((t) => t.analytics));
+            // const result = await getDashboardDevices();
+            setDevices(devices.filter((t) => t.analytics));
             setOpenBackdrop(false);
         };
         fetchDevices();
-    }, []);
+    }, [devices]);
 
     return (
         <Box
@@ -68,12 +70,12 @@ export default function AnalyticsView() {
                     backgroundColor: 'rgb(255 255 255 / 8%)',
                 }}>
                     <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
-                        {devices.map((device) => (
+                        {devicesList.map((device) => (
                             <Tab label={device.name}  />
                         ))}
                     </Tabs>
                 </Box>
-                {devices.map((device, i) => (
+                {devicesList.map((device, i) => (
                     <CustomTabPanel value={value} index={i}>
                         <ChartDetail deviceId={device.id} name={device.name} width={1000} height={500} deviceAttributes={device.attributes}/>
                     </CustomTabPanel>
