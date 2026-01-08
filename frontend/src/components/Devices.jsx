@@ -10,7 +10,7 @@ import {
     Snackbar,
     CircularProgress, Backdrop
 } from '@mui/material';
-import {getDevices, updateAttribute, updateShowInDashboard} from "../services/apis.jsx";
+import {updateAttribute, updateShowInDashboard} from "../services/apis.jsx";
 import { styled } from '@mui/material/styles';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -19,6 +19,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
+import {useCachedDevices} from "../services/AppCacheContext.jsx";
 
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -42,17 +43,18 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
 }));
 
 export default function Devices() {
+    const {devices, loading, error} = useCachedDevices();
     const [devicesData, setDevicesData] = useState([]);
     const [showInDashboard, setShowInDashboard] = useState(false);
     const [openBackdrop, setOpenBackdrop] = useState(false);
 
     useEffect(() => {
-        setOpenBackdrop(true)
+        setOpenBackdrop(loading)
         const fetchData = async () => {
             try {
-                const devices = await getDevices();
+
                 setDevicesData(devices);
-                setOpenBackdrop(false)
+                setOpenBackdrop(loading)
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
             }
