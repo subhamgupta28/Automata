@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import {
     Card,
     CardContent,
@@ -13,10 +13,23 @@ import RemoveIcon from "@mui/icons-material/Remove";
 export default function ThermostatCard({device, messages}) {
     const [temp, setTemp] = useState(21.0);
     const [data, setData] = useState({
-        room: "Upstairs",
+        room: device?.name,
         mode: "Eco",
         currentTemp: 21.7,
     });
+    useEffect(()=>{
+        if (messages.deviceId && messages.deviceId === device.id){
+            const data = messages.data;
+            if (data){
+                setData(prev=>{
+                    return{
+                        ...prev,
+                        currentTemp: data["temp"]
+                    }
+                })
+            }
+        }
+    }, [messages])
 
     const onDecrease = () => {
         setTemp(p => p - 1)

@@ -271,8 +271,8 @@ public class MainService {
             newAttrs.add(a);
         });
         device.setAttributes(newAttrs);
-        var lastData = getLastData(device.getId());
-        device.setLastData(lastData);
+//        var lastData = getLastData(device.getId());
+//        device.setLastData(lastData);
         deviceList.add(device);
     }
 

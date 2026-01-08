@@ -14,6 +14,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -34,13 +35,40 @@ public class VirtualDeviceService {
     private final DataRepository dataRepository;
     private final MongoTemplate mongoTemplate;
     private final EnergyStatRepository energyStatRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public VirtualDevice getVirtualDevice(String vid) {
         return virtualDeviceRepository.findById(vid).orElse(null);
     }
 
     public List<VirtualDevice> getVirtualDeviceList() {
+//        var list = virtualDeviceRepository.findAll();
+//        var finalList = new ArrayList<VirtualDevice>();
+//        ObjectMapper mapper = new ObjectMapper();
+//        for (var device : list){
+//            if (device.getTag().equals("Energy")){
+//                var energy = getLastEnergyStat(device);
+//                device.setRecentData(mapper.convertValue(energy, Map.class));
+//            }
+//            if (device.getTag().equals("Weather")){
+//                device.setRecentData(getRecentDeviceData(device.getDeviceIds()));
+//            }
+//            finalList.add(device);
+//        }
         return virtualDeviceRepository.findAll();
+    }
+    public Map<String, Object> getLastData(String deviceId) {
+        var data = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId).orElse(new Data());
+        return data.getData();
+    }
+
+    public Map<String, Object> getRecentDeviceData(List<String> deviceIds){
+        var map = new HashMap<String, Object>();
+        for (var id : deviceIds){
+            map.put(id, getLastData(id));
+        }
+
+        return map;
     }
 
     public VirtualDevice createVirtualDevice(VirtualDevice virtualDevice) {
@@ -111,10 +139,43 @@ public class VirtualDeviceService {
         return "success";
     }
 
-    //    @Scheduled(fixedRate = 10000)
-//    public void test(){
-//        System.err.println(getTodayStats("67dafae9fa67e36c0a25687e"));
+    private EnergyStat getLastEnergyStat(VirtualDevice virtualDevice){
+        double percent = 0;
+        var energyStat = new EnergyStat();
+        for (var item : virtualDevice.getDeviceIds()) {
+            var res = getTodayStats(item);
+            energyStat.setTotalWh(energyStat.getTotalWh() + res.getTotalWh());
+            energyStat.setPeakWh(energyStat.getPeakWh() + res.getPeakWh());
+            energyStat.setLowestWh(energyStat.getLowestWh() + res.getLowestWh());
+            energyStat.setTotalWhTrend(energyStat.getTotalWhTrend() + res.getTotalWhTrend());
+            energyStat.setPeakWhTrend(energyStat.getPeakWhTrend() + res.getPeakWhTrend());
+            energyStat.setLowestWhTrend(energyStat.getLowestWhTrend() + res.getLowestWhTrend());
+            energyStat.setPercentTrend(energyStat.getPercentTrend() + res.getPercentTrend());
+            percent += res.getPercent();
+            energyStat.setChargeLowestWh(energyStat.getChargeLowestWh() + res.getChargeLowestWh());
+            energyStat.setChargePeakWh(energyStat.getChargePeakWh() + res.getChargePeakWh());
+            energyStat.setChargeTotalWh(energyStat.getChargeTotalWh() + res.getChargeTotalWh());
+        }
+        percent = percent / virtualDevice.getDeviceIds().size();
+        energyStat.setPercentTrend(energyStat.getPercentTrend() < 0 ? Math.abs(energyStat.getPercentTrend()) : energyStat.getPercentTrend());
+        energyStat.setPercent(percent);
+        return energyStat;
+    }
+
+    @Scheduled(fixedRate = 2 * 60 * 1000) // every 2 min
+    public void updateEnergyStat() {
+        var virtualDevice = virtualDeviceRepository.findAllByTag("Energy");
+        var device = virtualDevice.getFirst();
+        var energyStat = getLastEnergyStat(device);
+        messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", energyStat));
+    }
+
+//    public Map<String, Object> getLastEnergyStat(String deviceId) {
+//        var data = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId).orElse(new Data());
+//        return data.getData();
 //    }
+
+
     private double recomputeDischargeEnergyWh(
             String deviceId,
             long fromEpochSec,

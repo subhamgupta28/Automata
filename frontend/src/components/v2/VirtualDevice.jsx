@@ -12,7 +12,10 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import IconButton from "@mui/material/IconButton";
 import {CustomModal} from "../home/Nodes.jsx";
 import ChartDetail from "../charts/ChartDetail.jsx";
-import ThermostatCard from "./ThermostatCard.jsx";
+import ThermostatCard from "../device_types/ThermostatCard.jsx";
+import WledDevices from "../device_types/WledDevices.jsx";
+import HVACDevices from "../device_types/HVACDevices.jsx";
+import SystemDevice from "../device_types/SystemDevice.jsx";
 
 export const combineAttributes = (attributesByDevice) => {
     const map = new Map();
@@ -69,9 +72,36 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
             console.log("res", res)
             setDeviceList(res);
 
+
         }
 
     }, [devices])
+
+    const {
+        hvacDevices,
+        wledDevices,
+        systemDevices,
+        chartDevices,
+        otherDevices,
+    } = useMemo(() => {
+        const grouped = {
+            hvacDevices: [],
+            wledDevices: [],
+            systemDevices: [],
+            chartDevices: [],
+            otherDevices: [],
+        };
+
+        for (const attr of deviceList) {
+            if (attr.type === 'HVAC') grouped.hvacDevices.push(attr);
+            else if (attr.type === 'WLED') grouped.wledDevices.push(attr);
+            else if (attr.type === 'System') grouped.systemDevices.push(attr);
+            else if (attr.type === 'CHART') grouped.chartDevices.push(attr);
+            else grouped.otherDevices.push(attr);
+        }
+
+        return grouped;
+    }, [deviceList]);
 
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
@@ -88,7 +118,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
             <Card style={{
                 background: 'transparent',
                 backgroundColor: 'rgb(0 0 0 / 60%)',
-                minHeight: '100px', height: '100%', minWidth: width, borderRadius: '10px',padding: '0px',
+                minHeight: height, height: '100%', minWidth: width, borderRadius: '10px', padding: '0px',
             }}>
 
                 <div
@@ -133,37 +163,26 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                         </Card>
                     )}
 
-                    <div style={{
-                        gridTemplateColumns: 'repeat(2, 1fr)',
-                        display: 'grid',
-                        // gap: '2px',
-                    }}>
-                        {deviceList.length !== 0 ? deviceList.map(device => (
-                            <div key={device.id}>
-                                {device.type === "WLED" && (
-                                    <Wled device={device} messages={messages}/>
-                                )}
-                                {device.type === "HVAC" && (
-                                    <ThermostatCard
-                                        device={device} messages={messages}
-                                    />
-                                )}
+                    <div>
+                        {deviceList.length !== 0 ? (
+                            <div>
+                                <WledDevices devices={wledDevices} messages={messages}/>
+                                <HVACDevices
+                                    devices={hvacDevices} messages={messages}
+                                />
+                                {/*<SystemDevice devices={systemDevices} messages={messages}/>*/}
                             </div>
-                        )) : (
+                        ) : (
                             <CircularProgress color="inherit"/>
                         )}
                     </div>
-                    {deviceList.length !== 0 &&
-                        deviceList.map(device => (
-                            <div key={device.id}>
-                                {device.type === "CHART" && (
-                                    <ChartDetail deviceId={device.attributes[0].extras.id} name={""} width={500}
-                                                 height={220}
-                                                 deviceAttributes={devices.filter(d => d.id === device.attributes[0].extras.id)[0].attributes}/>
-                                )}
-                            </div>
-                        ))
-                    }
+                    {chartDevices.map(device => (
+                        <div key={device.id}>
+                            <ChartDetail deviceId={device.attributes[0].extras.id} name={""} width={500}
+                                         height={220}
+                                         deviceAttributes={devices.filter(d => d.id === device.attributes[0].extras.id)[0].attributes}/>
+                        </div>
+                    ))}
                     {isModalOpen && (
                         <CustomModal
                             map={null}
@@ -180,107 +199,5 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
     )
 }
 
-const DetailMenu = ({anchorEl, setAnchorEl, sliderData, presetButtons, deviceId, deviceType, liveData}) => {
 
-    const open = Boolean(anchorEl);
-    const handleClose = () => {
-        setAnchorEl(null);
-    };
-    return (
-        <div>
-            <Menu
-                id="basic-menu"
-                style={{
-                    borderRadius: '12px',
-                    width: '260px'
-                }}
-                anchorEl={anchorEl}
-                open={open}
-                onClose={handleClose}
-                slotProps={{
-                    list: {
-                        'aria-labelledby': 'basic-button',
-                    },
-                }}
-            >
-                <div style={{padding: '10px'}}>
-                    {sliderData.map((s) => (
-                        <CustomSlider
-                            key={s.key}
-                            value={liveData?.[s.key]}
-                            deviceId={deviceId}
-                            type={deviceType}
-                            data={s}
-                            displayName={s.displayName}
-                        />
-                    ))}
 
-                    {presetButtons.map((p) => (
-                        <Presets
-                            key={p.key}
-                            value={liveData}
-                            deviceId={deviceId}
-                            type={deviceType}
-                            data={p}
-                            displayName={p.displayName}
-                        />
-                    ))}
-                </div>
-            </Menu>
-        </div>
-    )
-}
-
-const Wled = ({device, messages}) => {
-    // console.log("wled", device)
-    const [liveData, setLiveData] = useState(device.lastData);
-    const [anchorEl, setAnchorEl] = React.useState(null);
-    useEffect(() => {
-        if (device.id === messages.deviceId) {
-            if (messages.data) setLiveData(messages.data);
-        }
-    }, [messages, device.id]);
-    const {
-        sliderData,
-        switchButtons,
-        presetButtons,
-    } = useMemo(() => {
-        const grouped = {
-            sliderData: [],
-            switchButtons: [],
-            presetButtons: [],
-        };
-
-        for (const attr of device.attributes) {
-            if (attr.type === 'ACTION|SLIDER') grouped.sliderData.push(attr);
-            else if (attr.type.startsWith('ACTION|SWITCH')) grouped.switchButtons.push(attr);
-            else if (attr.type.startsWith('ACTION|PRESET')) grouped.presetButtons.push(attr);
-        }
-
-        return grouped;
-    }, [device.attributes]);
-
-    const handleClick = (event) => {
-        setAnchorEl(event.currentTarget);
-    };
-    return (
-        <div>
-            <DetailMenu
-                anchorEl={anchorEl}
-                setAnchorEl={setAnchorEl}
-                presetButtons={presetButtons}
-                sliderData={sliderData}
-                deviceType={device.type}
-                deviceId={device.id}
-                liveData={liveData}
-            />
-
-            {switchButtons.map((s) => (
-                <LightBulbCard onClick={handleClick} key={s.key} data={s} lastOnline={device.lastOnline}
-                               value={liveData?.[s.key]}
-                               name={device.name} deviceId={device.id} type={device.type}/>
-            ))}
-
-        </div>
-    )
-}

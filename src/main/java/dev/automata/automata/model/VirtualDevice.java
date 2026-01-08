@@ -29,4 +29,5 @@ public class VirtualDevice {
 
     private List<String> deviceIds;
     private Map<String, List<Attribute>> attributes;
+    private Map<String, Object> recentData;
 }

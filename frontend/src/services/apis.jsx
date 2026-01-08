@@ -183,6 +183,18 @@ export const refreshDeviceById = async (deviceId) => {
     return response.data;
 }
 
+export const getRecentDeviceData = async (deviceIds) => {
+    const params = new URLSearchParams();
+    deviceIds.forEach(id => params.append("deviceIds", id));
+    const response = await api.get(`virtual/recentData?${params.toString()}`, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+
+        },
+    });
+    return response.data;
+}
 export const getVirtualDeviceList = async () => {
     const response = await api.get("virtual/deviceList", {
         headers: {
@@ -256,6 +268,16 @@ export const getAutomationDetail = async (id) => {
 }
 export const saveAutomationDetail = async (payload) => {
     const response = await api.post("action/saveAutomationDetail", payload, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+
+        },
+    });
+    return response.data;
+}
+export const getLastData = async (deviceId) => {
+    const response = await api.get("main/lastData/" + deviceId, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization

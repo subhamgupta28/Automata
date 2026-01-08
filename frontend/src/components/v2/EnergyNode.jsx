@@ -7,8 +7,9 @@ import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import Stack from "@mui/material/Stack";
-import {getEnergyStats} from "../../services/apis.jsx";
-import {useAnimatedNumber} from "../../utils/Helper.jsx";
+import {useAnimatedNumber, useEnergyStats} from "../../utils/Helper.jsx";
+import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
+import {getEnergyStats, getRecentDeviceData} from "../../services/apis.jsx";
 
 export const cdata = [
     ["From", "To", ""],
@@ -20,7 +21,12 @@ export const cdata = [
 
 ];
 
-function useEnergyStats(deviceIds) {
+
+export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
+    const {devices, loading, error} = useCachedDevices();
+    const {messages} = useDeviceLiveData();
+    const [chartData, setChartData] = useState([]);
+    const [deviceList, setDeviceList] = useState([]);
     const [statsData, setStatsData] = useState(() => ({
         totalWh: 0,
         peakWh: 0,
@@ -36,79 +42,6 @@ function useEnergyStats(deviceIds) {
         percentTrend: 0,
     }));
 
-    useEffect(() => {
-        if (!deviceIds?.length) return;
-
-        const fetchStats = async () => {
-            try {
-                const results = await Promise.all(
-                    deviceIds.map(id => getEnergyStats(id))
-                );
-
-                const combined = results.reduce(
-                    (acc, res) => ({
-                        totalWh: acc.totalWh + Number(res?.totalWh || 0),
-                        peakWh: acc.peakWh + Number(res?.peakWh || 0),
-                        lowestWh: acc.lowestWh + Number(res?.lowestWh || 0),
-                        chargeTotalWh: acc.chargeTotalWh + Number(res?.chargeTotalWh || 0),
-                        chargePeakWh: acc.chargePeakWh + Number(res?.chargePeakWh || 0),
-                        chargeLowestWh: acc.chargeLowestWh + Number(res?.chargeLowestWh || 0),
-                        // Trends now come from backend
-                        totalWhTrend: acc.totalWhTrend + Number(res?.totalWhTrend || 0),
-                        peakWhTrend: acc.peakWhTrend + Number(res?.peakWhTrend || 0),
-                        lowestWhTrend: acc.lowestWhTrend + Number(res?.lowestWhTrend || 0),
-                        percentTrend: acc.percentTrend + Number(res?.percentTrend || 0),
-                        percent: acc.percent + Number(res?.percent || 0),
-                    }),
-                    {
-                        totalWh: 0,
-                        peakWh: 0,
-                        lowestWh: 0,
-                        chargeTotalWh: 0,
-                        chargePeakWh: 0,
-                        chargeLowestWh: 0,
-                        totalWhTrend: 0,
-                        peakWhTrend: 0,
-                        lowestWhTrend: 0,
-                        percentTrend: 0,
-                        percent: 0,
-                    }
-                );
-
-                if (combined.percent) {
-                    combined.percent = combined.percent / results.length;
-                    combined.percentTrend = (combined.percentTrend < 0 ?
-                        Math.abs(combined.percentTrend) : combined.percentTrend);
-
-                }
-
-                setStatsData(combined);
-            } catch (err) {
-                console.error("Energy stats fetch failed", err);
-            }
-        };
-
-        fetchStats();
-        const id = setInterval(fetchStats, 60_000);
-
-        return () => clearInterval(id);
-    }, [deviceIds]);
-
-    return {statsData};
-}
-
-
-export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
-    const {devices, loading, error} = useCachedDevices();
-    // const {messages} = useDeviceLiveData();
-    const [chartData, setChartData] = useState([]);
-    const [deviceList, setDeviceList] = useState([]);
-
-    const [topCards, setTopCards] = useState({
-        "totalWh": 0,
-        "peakWh": 0,
-        "lowestWh": 0,
-    })
     const {
         attributes,
         deviceIds,
@@ -117,22 +50,23 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
         name,
         tag,
         width,
+        recentData,
         x,
         y,
     } = data.value;
     // console.log("energy", data.value)
-    const {statsData} = useEnergyStats(deviceIds);
+    // const {statsData} = useEnergyStats(deviceIds);
     // console.log("deviceList", deviceList[0]?.lastData?.status)
-    // useEffect(()=>{
-    //     console.log("att", combineAttributes(attributes))
-    //     if (deviceIds && deviceIds.includes(messages.deviceId)) {
-    //         if (messages.data) {
-    //             const data = messages.data;
-    //             console.log("bat", data)
-    //
-    //         }
-    //     }
-    // }, [messages])
+    useEffect(() => {
+        if (messages && messages.deviceId === id) {
+            if (messages.data) {
+                const data = messages.data;
+                // console.log("bat", data)
+                setStatsData(data);
+            }
+        }
+        // }
+    }, [messages])
 
     useEffect(() => {
         if (devices) {
@@ -150,7 +84,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                 grid = focusDevices.map(d => [
                     d.name,
                     "Grid",
-                    parseInt(d['lastData']['power'])
+                    (d["lastData"] !== null) ? parseInt(d['lastData']['power']) : 20
                 ])
             }
 
@@ -159,7 +93,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                 ...focusDevices.map(d => [
                     d.name,
                     "System",
-                    parseInt(d['lastData']['percent'])
+                    (d["lastData"] !== null) ? parseInt(d['lastData']['power']) : 20
                 ]),
                 ...grid,
                 ...otherDevices.map(d => [
@@ -168,8 +102,16 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                     20
                 ])
             ];
+            const get = async () => {
+                const res = await useEnergyStats(deviceIds);
+                console.log("sts", res)
+                setStatsData(res);
+            }
+
+            get();
             setDeviceList(focusDevices);
             setChartData(items);
+
         }
 
     }, [devices])
@@ -210,12 +152,12 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
 
     return (
         <>
-            <NodeResizer
-                color="#ff0000"
-                isVisible={selected}
-                minWidth={width}
-                minHeight={height}
-            />
+            {/*<NodeResizer*/}
+            {/*    color="#ff0000"*/}
+            {/*    isVisible={selected}*/}
+            {/*    minWidth={width}*/}
+            {/*    minHeight={height}*/}
+            {/*/>*/}
             <Card elevation={0} style={{
                 background: 'transparent',
                 backgroundColor: 'rgb(0 0 0 / 60%)',

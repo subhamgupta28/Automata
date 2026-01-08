@@ -2,7 +2,7 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Handle, Position} from "@xyflow/react";
 import '/src/App.css'
 import {
-    getChartData,
+    getChartData, getLastData,
     getPieChartData,
     refreshDeviceById,
     sendAction,
@@ -297,6 +297,18 @@ export const Device = React.memo(({id, data, isConnectable}) => {
     const {messages} = useDeviceLiveData();
     const cardRef = useRef(null);
     useCardGlowEffect(cardRef);
+    useEffect(() => {
+        const id = data.value.id;
+
+        const get = async () => {
+            return await getLastData(id);
+        }
+        if (id) {
+            get().then(res=>{
+               setLiveData(res);
+            });
+        }
+    }, [data.value]);
 
     useEffect(() => {
         if (id === messages.deviceId) {
@@ -570,11 +582,9 @@ export const Device = React.memo(({id, data, isConnectable}) => {
             </div>
 
 
-
-
             {isConnectable &&
                 data?.value?.x !== undefined &&
-                data?.value?.y !== undefined && data.value.x < 900  && <Handle
+                data?.value?.y !== undefined && data.value.x < 900 && <Handle
                     type="source"
                     position={Position.Right}
                     id="b"

@@ -9,6 +9,8 @@ import {useEffect, useState} from "react";
 import dayjs from "dayjs";
 import {Lightbulb} from "@mui/icons-material";
 import {GasBubble, GasLegend} from "./GasBubble.jsx";
+import {all} from "axios";
+import {getRecentDeviceData} from "../../services/apis.jsx";
 
 const getWeatherIcon = (condition) => {
     const c = condition.toLowerCase();
@@ -207,6 +209,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
         deviceIds,
         height,
         lastModified,
+        recentData,
         name,
         tag,
         width,
@@ -219,11 +222,20 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
         // get all devices that expose CO2
         const co2DeviceIds = getDevicesWithCO2(attributes);
         if (co2DeviceIds.length !== 0) {
-
-            setMainDevice(co2DeviceIds[0])
+            const deviceId = co2DeviceIds[0];
+            setMainDevice(deviceId)
             const other = deviceIds.filter(d => d !== co2DeviceIds[0]);
             if (other.length)
                 setOtherDevice(other[0])
+
+            const get = async () => {
+                return await getRecentDeviceData(deviceIds);
+            }
+            get().then(res=>{
+                setDatapoint(res);
+                setLiveDataHandle(deviceId, res[deviceId]);
+            });
+
         }
 
         console.log("CO2 devices:", co2DeviceIds);
@@ -231,33 +243,34 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
     }, [attributes, deviceIds]);
 
     useEffect(() => {
-        if (!messages?.data || !messages?.deviceId) return;
+        if (messages?.data && messages.deviceId && deviceIds?.includes(messages.deviceId)) {
+            const deviceId = messages.deviceId;
+            // ignore devices we don't care about
+            if (!deviceIds?.includes(deviceId)) return;
+            const attrs = attributes?.[deviceId];
+            if (!Array.isArray(attrs)) return;
+            const allData = attrs.reduce((acc, m) => {
+                if (messages.data[m.key] !== undefined) {
+                    acc[m.key] = messages.data[m.key];
+                }
+                return acc;
+            }, {});
+            // update per-device datapoint
+            setDatapoint(prev => ({
+                ...prev,
+                [deviceId]: {
+                    ...(prev[deviceId] || {}),
+                    ...allData,
+                },
+            }));
 
-        const deviceId = messages.deviceId;
+            setLiveDataHandle(deviceId, allData)
+        }
 
-        // ignore devices we don't care about
-        if (!deviceIds?.includes(deviceId)) return;
 
-        const attrs = attributes?.[deviceId];
-        if (!Array.isArray(attrs)) return;
+    }, [messages, attributes, deviceIds, mainDevice, recentData]);
 
-        // build datapoint object
-        const dt = attrs.reduce((acc, m) => {
-            if (messages.data[m.key] !== undefined) {
-                acc[m.key] = messages.data[m.key];
-            }
-            return acc;
-        }, {});
-
-        // update per-device datapoint
-        setDatapoint(prev => ({
-            ...prev,
-            [deviceId]: {
-                ...(prev[deviceId] || {}),
-                ...dt,
-            },
-        }));
-
+    const setLiveDataHandle = (deviceId, allData) => {
         // only update live weather if this is the main device
         if (deviceId !== mainDevice) return;
 
@@ -270,7 +283,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
             ch2o,
             lux,
             pm25
-        } = dt;
+        } = allData;
 
         setLiveData(prev => ({
             ...prev,
@@ -287,10 +300,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
             },
             time: dayjs().format("dddd, h:mm A"),
         }));
-
-
-    }, [messages, attributes, deviceIds, mainDevice]);
-
+    }
 
     // const weather = {
     //     location: "Cortes, Madrid, Spain",

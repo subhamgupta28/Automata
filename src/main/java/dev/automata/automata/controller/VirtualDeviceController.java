@@ -43,6 +43,11 @@ public class VirtualDeviceController {
         return ResponseEntity.ok(virtualDeviceService.updateDevicePosition(vid, x, y, width, height));
     }
 
+    @GetMapping("/recentData")
+    public ResponseEntity<?> getRecentDeviceData(@RequestParam List<String> deviceIds){
+        return ResponseEntity.ok(virtualDeviceService.getRecentDeviceData(deviceIds));
+    }
+
     @GetMapping("energyStats/{id}")
     public ResponseEntity<EnergyStat> getEnergyStats(@PathVariable String id) {
         return ResponseEntity.ok(virtualDeviceService.getTodayStats(id));

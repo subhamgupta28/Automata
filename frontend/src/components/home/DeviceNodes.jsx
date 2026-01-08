@@ -89,6 +89,7 @@ const DeviceNodes = () => {
             }
         };
 
+        if (devices)
         fetchData();
     }, [setNodes, setEdges, devices, loading]);
 
