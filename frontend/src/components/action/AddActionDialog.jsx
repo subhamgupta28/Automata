@@ -11,25 +11,26 @@ import {
     Typography
 } from "@mui/material";
 import React, {useEffect, useState} from "react";
-import {getDevices} from "../../services/apis.jsx";
+// import {getDevices} from "../../services/apis.jsx";
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
+import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 
 export default function AddActionDialog({isOpen, onClose}){
-    const [devices, setDevices] = useState([]);
-    useEffect(() => {
-        const fetchDevices = async () => {
-            try {
-                const devices = await getDevices();
-                console.log("devices", devices);
-                setDevices(devices);
-            } catch (err) {
-                console.error("Failed to fetch devices:", err);
-            }
-        };
-
-        fetchDevices();
-    }, []);
+    const {devices, loading, error} = useCachedDevices();
+    // useEffect(() => {
+    //     const fetchDevices = async () => {
+    //         try {
+    //             const devices = await getDevices();
+    //             console.log("devices", devices);
+    //             setDevices(devices)
+    //         } catch (err) {
+    //             console.error("Failed to fetch devices:", err);
+    //         }
+    //     };
+    //
+    //     fetchDevices();
+    // }, []);
     return(
         <Modal onClose={onClose} open={isOpen} >
             <div style={{overflow: 'auto', padding:'20px', backdropFilter: 'blur(1px)'}}>

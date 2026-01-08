@@ -258,6 +258,7 @@ public class MainService {
             }
             getDeviceAttributes(chartAttr, deviceList, device);
         });
+        deviceList.sort(Comparator.comparingDouble(Device::getY).thenComparingDouble(Device::getX));
         return deviceList;
     }
 
