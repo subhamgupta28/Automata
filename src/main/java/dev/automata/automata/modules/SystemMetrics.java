@@ -163,6 +163,7 @@ public class SystemMetrics {
         mainService.registerDevice(device);
     }
 
+    @Scheduled(fixedRate = 30000)
     public void getNgrokDetails() {
         try (HttpClient client = HttpClient.newHttpClient()) {
             HttpRequest request = HttpRequest.newBuilder()
@@ -177,20 +178,20 @@ public class SystemMetrics {
 
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode root = mapper.readTree(response.body());
-
+                System.err.println(response.body());
                 for (JsonNode tunnel : root.get("tunnels")) {
                     String publicUrl = tunnel.get("public_url").asText();
                     System.out.println("Ngrok Public URL: " + publicUrl);
                 }
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                System.err.println(e);
             }
         }
     }
 
     @Scheduled(fixedRate = 360000)
     public void save() {
-        getNgrokDetails();
+
         var data = getData();
         if (data != null) {
             mainService.saveData(deviceId, data);

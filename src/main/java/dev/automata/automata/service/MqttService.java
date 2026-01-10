@@ -30,7 +30,7 @@ public class MqttService {
 
     @ServiceActivator(inputChannel = "sendData")
     public void sendData(Map<String, Object> payload) {
-        System.out.println("📡 Data: " + payload);
+//        System.out.println("📡 Data: " + payload);
         String deviceId = payload.get("device_id").toString();
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("No device found");
