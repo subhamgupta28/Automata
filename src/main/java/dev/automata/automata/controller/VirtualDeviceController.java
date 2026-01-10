@@ -42,7 +42,10 @@ public class VirtualDeviceController {
 
         return ResponseEntity.ok(virtualDeviceService.updateDevicePosition(vid, x, y, width, height));
     }
-
+    @GetMapping("/energyAnalytics")
+    public ResponseEntity<?> getEnergyStatAnalytics(@RequestParam List<String> deviceIds){
+        return ResponseEntity.ok(virtualDeviceService.getEnergyStatAnalytics(deviceIds));
+    }
     @GetMapping("/recentData")
     public ResponseEntity<?> getRecentDeviceData(@RequestParam List<String> deviceIds){
         return ResponseEntity.ok(virtualDeviceService.getRecentDeviceData(deviceIds));

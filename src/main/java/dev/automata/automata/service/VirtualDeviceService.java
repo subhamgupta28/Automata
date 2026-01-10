@@ -1,7 +1,6 @@
 package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.automata.automata.model.Dashboard;
 import dev.automata.automata.model.Data;
 import dev.automata.automata.model.EnergyStat;
 import dev.automata.automata.model.VirtualDevice;
@@ -57,14 +56,19 @@ public class VirtualDeviceService {
 //        }
         return virtualDeviceRepository.findAll();
     }
+
     public Map<String, Object> getLastData(String deviceId) {
         var data = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId).orElse(new Data());
         return data.getData();
     }
 
-    public Map<String, Object> getRecentDeviceData(List<String> deviceIds){
+    public List<EnergyStat> getEnergyStatAnalytics(List<String> deviceIds){
+        return energyStatRepository.findAllByDeviceIdIn(deviceIds);
+    }
+
+    public Map<String, Object> getRecentDeviceData(List<String> deviceIds) {
         var map = new HashMap<String, Object>();
-        for (var id : deviceIds){
+        for (var id : deviceIds) {
             map.put(id, getLastData(id));
         }
 
@@ -139,7 +143,7 @@ public class VirtualDeviceService {
         return "success";
     }
 
-    private EnergyStat getLastEnergyStat(VirtualDevice virtualDevice){
+    private EnergyStat getLastEnergyStat(VirtualDevice virtualDevice) {
         double percent = 0;
         var energyStat = new EnergyStat();
         for (var item : virtualDevice.getDeviceIds()) {
@@ -155,6 +159,7 @@ public class VirtualDeviceService {
             energyStat.setChargeLowestWh(energyStat.getChargeLowestWh() + res.getChargeLowestWh());
             energyStat.setChargePeakWh(energyStat.getChargePeakWh() + res.getChargePeakWh());
             energyStat.setChargeTotalWh(energyStat.getChargeTotalWh() + res.getChargeTotalWh());
+            energyStat.setStatus(res.getStatus());
         }
         percent = percent / virtualDevice.getDeviceIds().size();
         energyStat.setPercentTrend(energyStat.getPercentTrend() < 0 ? Math.abs(energyStat.getPercentTrend()) : energyStat.getPercentTrend());
@@ -165,9 +170,10 @@ public class VirtualDeviceService {
     @Scheduled(fixedRate = 2 * 60 * 1000) // every 2 min
     public void updateEnergyStat() {
         var virtualDevice = virtualDeviceRepository.findAllByTag("Energy");
-        var device = virtualDevice.getFirst();
-        var energyStat = getLastEnergyStat(device);
-        messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", energyStat));
+        for (var device : virtualDevice) {
+            var energyStat = getLastEnergyStat(device);
+            messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", energyStat));
+        }
     }
 
 //    public Map<String, Object> getLastEnergyStat(String deviceId) {
@@ -176,12 +182,12 @@ public class VirtualDeviceService {
 //    }
 
 
-    private double recomputeDischargeEnergyWh(
+    private Map<String, Double> recomputeEnergyWh(
             String deviceId,
             long fromEpochSec,
             long toEpochSec
     ) {
-        if (toEpochSec <= fromEpochSec) return 0.0;
+        if (toEpochSec <= fromEpochSec) return Map.of("DISCHARGE", 0.0, "CHARGING", 0.0);
 
         Query query = new Query(
                 Criteria.where("deviceId").is(deviceId)
@@ -194,16 +200,15 @@ public class VirtualDeviceService {
                 .include("data.power");
 
         List<Data> records = mongoTemplate.find(query, Data.class);
-        if (records.size() < 2) return 0.0;
+        if (records.size() < 2) return Map.of("DISCHARGE", 0.0, "CHARGING", 0.0);
 
         double totalWh = 0.0;
+        double chargeTotalWh = 0.0;
 
         for (int i = 1; i < records.size(); i++) {
             Data prev = records.get(i - 1);
             Data curr = records.get(i);
 
-            if (!"DISCHARGE".equals(String.valueOf(prev.getData().get("status"))))
-                continue;
 
             Object p = prev.getData().get("power");
             if (p == null) continue;
@@ -219,19 +224,23 @@ public class VirtualDeviceService {
             if (delta <= 0) continue;
 
             if (delta > 3600) delta = 3600;
+            if ("DISCHARGE".equals(String.valueOf(prev.getData().get("status")))) {
 
-            totalWh += power * (delta / 3600.0);
+                totalWh += power * (delta / 3600.0);
+            } else {
+                chargeTotalWh += power * (delta / 3600.0);
+            }
         }
 
-        return totalWh;
+        return Map.of("DISCHARGE", totalWh, "CHARGING", chargeTotalWh);
     }
 
 
     private static class EnergyCacheEntry {
-        final double value;
+        final Map<String, Double> value;
         final long createdAt;
 
-        EnergyCacheEntry(double value) {
+        EnergyCacheEntry(Map<String, Double> value) {
             this.value = value;
             this.createdAt = System.currentTimeMillis();
         }
@@ -242,7 +251,7 @@ public class VirtualDeviceService {
 
     private static final long CACHE_TTL_MS = 2 * 60 * 1000;
 
-    private double recomputeDischargeEnergyCached(
+    private Map<String, Double> recomputeEnergyCached(
             String deviceId,
             long fromEpochSec,
             long toEpochSec,
@@ -254,7 +263,7 @@ public class VirtualDeviceService {
             return cached.value;
         }
 
-        double value = recomputeDischargeEnergyWh(deviceId, fromEpochSec, toEpochSec);
+        var value = recomputeEnergyWh(deviceId, fromEpochSec, toEpochSec);
         energyCache.put(cacheKey, new EnergyCacheEntry(value));
         return value;
     }
@@ -280,21 +289,23 @@ public class VirtualDeviceService {
         String yesterdayCacheKey =
                 deviceId + ":yesterday:" + LocalDate.now(zone) + ":" + (secondsIntoDay / 300);
 
-        double todayDischargeWh = recomputeDischargeEnergyCached(
+        var todayWh = recomputeEnergyCached(
                 deviceId,
                 todayStart,
                 now,
                 todayCacheKey
         );
 
-        double yesterdayDischargeWh = recomputeDischargeEnergyCached(
+        var yesterdayWh = recomputeEnergyCached(
                 deviceId,
                 yesterdayStart,
                 yesterdayStart + secondsIntoDay,
                 yesterdayCacheKey
         );
 
-        double totalWhTrend = todayDischargeWh - yesterdayDischargeWh;
+
+        double totalWhTrend = todayWh.get("DISCHARGE") - yesterdayWh.get("DISCHARGE");
+        double chargeTotalWhTrend = todayWh.get("CHARGING") - yesterdayWh.get("CHARGING");
 
         // ---- LIVE HOURLY STATS (single scan, today only) ----
         Query query = new Query(
@@ -327,6 +338,7 @@ public class VirtualDeviceService {
             }
         }
 
+        String status = "";
         for (int i = 1; i < records.size(); i++) {
 
             Data prev = records.get(i - 1);
@@ -362,7 +374,7 @@ public class VirtualDeviceService {
                 }
             }
 
-            String status = statusObj.toString();
+            status = statusObj.toString();
 
             if ("DISCHARGE".equals(status)) {
                 dischargeHourly.merge(hour, energyWh, Double::sum);
@@ -380,32 +392,18 @@ public class VirtualDeviceService {
             hourlyPercent.remove(currentHour);
 
         // ---- PEAK / LOW / TRENDS ----
-        double peakWh = 0;
-        double lowestWh = 0;
-        double peakTrend = 0;
-        double lowestTrend = 0;
+        PeakLowStat dischargeStat = computePeakLowStats(dischargeHourly);
+        PeakLowStat chargeStat = computePeakLowStats(chargeHourly);
 
-        if (!dischargeHourly.isEmpty()) {
+        double peakWh = dischargeStat.peakWh;
+        double lowestWh = dischargeStat.lowestWh;
+        double peakTrend = dischargeStat.peakTrend;
+        double lowestTrend = dischargeStat.lowestTrend;
 
-            double sum = 0;
-            peakWh = Double.MIN_VALUE;
-            lowestWh = Double.MAX_VALUE;
-
-            for (double hourlyWh : dischargeHourly.values()) {
-//                System.err.println("hourly " + hourlyWh);
-                sum += hourlyWh;
-                peakWh = Math.max(peakWh, hourlyWh);
-                lowestWh = Math.min(lowestWh, hourlyWh);
-            }
-
-            double avg = sum / dischargeHourly.size();
-            peakTrend = peakWh - avg;
-            lowestTrend = lowestWh - avg;
-
-            if (peakWh == Double.MIN_VALUE) peakWh = 0;
-            if (lowestWh == Double.MAX_VALUE) lowestWh = 0;
-        }
-
+        double chargePeakWh = chargeStat.peakWh;
+        double chargeLowestWh = chargeStat.lowestWh;
+        double chargePeakTrend = chargeStat.peakTrend;
+        double chargeLowestTrend = chargeStat.lowestTrend;
 
         double percentTrend = 0;
         if (hourlyPercent.size() >= 2) {
@@ -421,14 +419,20 @@ public class VirtualDeviceService {
         EnergyStat stat = EnergyStat.builder()
                 .deviceId(deviceId)
                 .timestamp(now)
-                .totalWh(round(todayDischargeWh))
+                .totalWh(round(todayWh.get("DISCHARGE")))
                 .totalWhTrend(round(totalWhTrend))
                 .peakWh(round(peakWh))
                 .lowestWh(round(lowestWh))
                 .peakWhTrend(round(peakTrend))
                 .lowestWhTrend(round(lowestTrend))
                 .chargeTotalWh(round(chargeTotalWh))
+                .chargeLowestWh(round(chargeLowestWh))
+                .chargePeakWh(round(chargePeakWh))
+                .chargeLowestWhTrend(chargeLowestTrend)
+                .chargePeakWhTrend(chargePeakTrend)
+                .chargeTotalWhTrend(chargeTotalWhTrend)
                 .percent(percent)
+                .status(status)
                 .percentTrend(round(percentTrend))
                 .updateDate(new Date())
                 .build();
@@ -445,20 +449,61 @@ public class VirtualDeviceService {
                 .set("peakWh", stat.getPeakWh())
                 .set("lowestWh", stat.getLowestWh())
                 .set("chargeTotalWh", stat.getChargeTotalWh())
+                .set("chargeLowestWh", stat.getChargeLowestWh())
+                .set("chargePeakWh", stat.getChargePeakWh())
+                .set("chargeTotalWhTrend", stat.getChargeTotalWhTrend())
+                .set("chargePeakTrend", stat.getChargePeakWhTrend())
+                .set("chargeLowestTrend", stat.getChargeLowestWhTrend())
                 .set("totalWhTrend", stat.getTotalWhTrend())
                 .set("peakWhTrend", stat.getPeakWhTrend())
                 .set("lowestWhTrend", stat.getLowestWhTrend())
                 .set("percent", percent)
                 .set("percentTrend", stat.getPercentTrend())
                 .set("updateDate", new Date())
+                .set("status", stat.getStatus())
                 .setOnInsert("deviceId", deviceId)
                 .setOnInsert("timestamp", todayStart);
+
 
         mongoTemplate.upsert(upsertQuery, update, EnergyStat.class);
 
         return stat;
     }
 
+    public record PeakLowStat(double peakWh, double lowestWh, double peakTrend, double lowestTrend) {
+    }
+
+    private PeakLowStat computePeakLowStats(Map<Integer, Double> hourlyEnergy) {
+
+        if (hourlyEnergy == null || hourlyEnergy.isEmpty()) {
+            return new PeakLowStat(0, 0, 0, 0);
+        }
+
+        double sum = 0;
+        double peak = Double.MIN_VALUE;
+        double lowest = Double.MAX_VALUE;
+
+        for (double wh : hourlyEnergy.values()) {
+            sum += wh;
+            peak = Math.max(peak, wh);
+            lowest = Math.min(lowest, wh);
+        }
+
+        double avg = sum / hourlyEnergy.size();
+
+        double peakTrend = peak - avg;
+        double lowestTrend = lowest - avg;
+
+        if (peak == Double.MIN_VALUE) peak = 0;
+        if (lowest == Double.MAX_VALUE) lowest = 0;
+
+        return new PeakLowStat(
+                peak,
+                lowest,
+                peakTrend,
+                lowestTrend
+        );
+    }
 
     private double round(double value) {
         return Math.round(value * 100.0) / 100.0;

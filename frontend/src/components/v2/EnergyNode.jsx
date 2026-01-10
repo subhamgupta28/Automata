@@ -10,6 +10,7 @@ import Stack from "@mui/material/Stack";
 import {useAnimatedNumber, useEnergyStats} from "../../utils/Helper.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {getEnergyStats, getRecentDeviceData} from "../../services/apis.jsx";
+import EnergyOverview from "./EnergyOverview.jsx";
 
 export const cdata = [
     ["From", "To", ""],
@@ -35,6 +36,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
         chargePeakWh: 0,
         chargeLowestWh: 0,
         percent: 0,
+        status: "",
         // NEW trend fields
         totalWhTrend: 0,
         peakWhTrend: 0,
@@ -61,7 +63,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
         if (messages && messages.deviceId === id) {
             if (messages.data) {
                 const data = messages.data;
-                // console.log("bat", data)
+                console.log("bat", data)
                 setStatsData(data);
             }
         }
@@ -80,7 +82,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
 
             let grid = [];
 
-            if (focusDevices[0]?.lastData?.status !== "DISCHARGE") {
+            if (statsData.status !== "DISCHARGE") {
                 grid = focusDevices.map(d => [
                     d.name,
                     "Grid",
@@ -180,7 +182,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                         {name}
                     </Typography>
                     <Typography variant="caption">
-                        {deviceList.length !== 0 && deviceList[0]?.lastData?.status}
+                        {statsData.status}
                     </Typography>
                 </div>
 
@@ -188,7 +190,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
 
 
                     <Stack direction="row" spacing={4} style={{padding: '14px'}}>
-                        {(deviceList.length !== 0 && deviceList[0]?.lastData?.status === "CHARGING") ? (
+                        {(deviceList.length !== 0 && statsData.status === "CHARGING") ? (
                             <>
                                 <StatItem
                                     label="Total charged today"
@@ -251,7 +253,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                             />
                         </Box>
                     )}
-
+                    {/*<EnergyOverview/>*/}
                 </Stack>
             </Card>
         </>
@@ -260,24 +262,20 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
 });
 
 
-const StatItem = ({label, value, prevValue, unit}) => {
-    const animated = useAnimatedNumber(value ?? 0);
-    if (prevValue === 0) {
-        prevValue = value - 1;
-    } else
-        prevValue = value + prevValue;
-    const hasPrev =
+const StatItem = ({ label, value = 0, prevValue = 0, unit }) => {
+    const animated = useAnimatedNumber(value);
+
+    const hasTrend =
         prevValue !== null &&
         prevValue !== undefined &&
         prevValue !== 0;
 
-    // console.log(label, value, prevValue);
+    const positive = prevValue > 0;
+    const absDiff = Math.abs(prevValue);
 
-
-    const diff = hasPrev ? value - prevValue : 0;
-    const percentChange = hasPrev ? (diff / prevValue) * 100 : 0;
-
-    const positive = diff > 0;
+    // Percent change is relative to current value (safe + meaningful)
+    const percentChange =
+        value !== 0 ? (absDiff / Math.abs(value)) * 100 : 0;
 
     return (
         <Box>
@@ -288,20 +286,20 @@ const StatItem = ({label, value, prevValue, unit}) => {
                 </Typography>
             </Typography>
 
-            {hasPrev && diff !== 0 && (
+            {hasTrend && (
                 <Box display="flex" alignItems="center" gap={0.5}>
                     {positive ? (
-                        <ArrowUpwardIcon sx={{fontSize: 16, color: "success.main"}}/>
+                        <ArrowUpwardIcon sx={{ fontSize: 16, color: "success.main" }} />
                     ) : (
-                        <ArrowDownwardIcon sx={{fontSize: 16, color: "error.main"}}/>
+                        <ArrowDownwardIcon sx={{ fontSize: 16, color: "error.main" }} />
                     )}
 
                     <Typography
                         variant="caption"
-                        sx={{color: positive ? "success.main" : "error.main"}}
+                        sx={{ color: positive ? "success.main" : "error.main" }}
                     >
-                        {Math.abs(diff).toFixed(2)} {unit} (
-                        {Math.abs(percentChange).toFixed(1)}%)
+                        {absDiff.toFixed(2)} {unit} (
+                        {percentChange.toFixed(1)}%)
                     </Typography>
                 </Box>
             )}
@@ -312,3 +310,4 @@ const StatItem = ({label, value, prevValue, unit}) => {
         </Box>
     );
 };
+

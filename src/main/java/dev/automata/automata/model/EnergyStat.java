@@ -24,6 +24,7 @@ public class EnergyStat {
     @Indexed
     private Date updateDate;
 
+    private String status;
     private double totalWh;
     private double peakWh;
     private double lowestWh;
@@ -37,5 +38,8 @@ public class EnergyStat {
     private double totalWhTrend;
     private double peakWhTrend;
     private double lowestWhTrend;
+    private double chargeTotalWhTrend;
+    private double chargePeakWhTrend;
+    private double chargeLowestWhTrend;
     private double percentTrend;
 }
