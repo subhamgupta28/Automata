@@ -53,6 +53,6 @@ public class VirtualDeviceController {
 
     @GetMapping("energyStats/{id}")
     public ResponseEntity<EnergyStat> getEnergyStats(@PathVariable String id) {
-        return ResponseEntity.ok(virtualDeviceService.getTodayStats(id));
+        return ResponseEntity.ok(virtualDeviceService.getEnergyStatById(id));
     }
 }

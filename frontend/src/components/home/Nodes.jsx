@@ -684,12 +684,12 @@ export const MainNode = React.memo(({data, isConnectable}) => {
                         // marginLeft: '10px', display: 'grid', marginTop: '15px',
                         // marginRight: '50px',
                         padding: '8px',
-                        width: '1200px',
+                        width: '1500px',
                         gridTemplateColumns: 'repeat(1, 1fr)', /* 4 columns */
                         gap: '10px', /* Space between items */
                     }}>
                         {charts && charts.map((device, index) => (
-                            <ChartDetail deviceId={device.id} name={device.name} width={1000} height={360}
+                            <ChartDetail deviceId={device.id} name={device.name} width={1400} height={360}
                                          deviceAttributes={device.attributes}/>
                             // <BarChartComp key={device.id} chartDevice={device}/>
                         ))}

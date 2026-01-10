@@ -7,20 +7,10 @@ import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import Stack from "@mui/material/Stack";
-import {useAnimatedNumber, useEnergyStats} from "../../utils/Helper.jsx";
+import {useAnimatedNumber} from "../../utils/Helper.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
-import {getEnergyStats, getRecentDeviceData} from "../../services/apis.jsx";
-import EnergyOverview from "./EnergyOverview.jsx";
+import {getEnergyStats} from "../../services/apis.jsx";
 
-export const cdata = [
-    ["From", "To", ""],
-    ["Battery 1", "System", 15],
-    ["Battery 2", "System", 18],
-    ["System", "Light", 10],
-    ["System", "Sensor", 9],
-    ["System", "Fan", 9],
-
-];
 
 
 export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
@@ -63,7 +53,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
         if (messages && messages.deviceId === id) {
             if (messages.data) {
                 const data = messages.data;
-                console.log("bat", data)
+                // console.log("bat", data)
                 setStatsData(data);
             }
         }
@@ -105,8 +95,8 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                 ])
             ];
             const get = async () => {
-                const res = await useEnergyStats(deviceIds);
-                console.log("sts", res)
+                const res = await getEnergyStats(id);
+                // console.log("sts", res)
                 setStatsData(res);
             }
 

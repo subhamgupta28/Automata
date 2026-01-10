@@ -291,7 +291,6 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
             humidity: humid,
             aqi,
             lux,
-
             gases: {
                 co2: s_co2,
                 tvoc,
@@ -402,7 +401,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                     <GasLegend
                         items={[
                             {label: "CO₂", value: weather.gases.co2, type: "co2", color: '#42a5f5', units:"ppm"},
-                            {label: "CH₂O", value: weather.gases.ch20, type: "ch20", color: '#2ca02c', units:"ppb"},
+                            {label: "CH₂O", value: weather.gases.ch2o, type: "ch20", color: '#2ca02c', units:"ppb"},
                             {label: "TVOC", value: weather.gases.tvoc, type: "tvoc", color: '#ff7f0e', units:"mg/m³"},
                             {label: "PM2.5", value: weather.gases.pm25, type: "pm25", color: '#d62728', units:"ug/m³"},
                         ]}

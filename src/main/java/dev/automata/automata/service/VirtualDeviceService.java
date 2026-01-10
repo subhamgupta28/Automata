@@ -62,7 +62,7 @@ public class VirtualDeviceService {
         return data.getData();
     }
 
-    public List<EnergyStat> getEnergyStatAnalytics(List<String> deviceIds){
+    public List<EnergyStat> getEnergyStatAnalytics(List<String> deviceIds) {
         return energyStatRepository.findAllByDeviceIdIn(deviceIds);
     }
 
@@ -174,6 +174,13 @@ public class VirtualDeviceService {
             var energyStat = getLastEnergyStat(device);
             messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", energyStat));
         }
+    }
+
+    public EnergyStat getEnergyStatById(String vid) {
+        var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
+        if (virtualDevice != null)
+            return getLastEnergyStat(virtualDevice);
+        return null;
     }
 
 //    public Map<String, Object> getLastEnergyStat(String deviceId) {

@@ -142,10 +142,10 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
 
     return (
         <Card elevation={0} style={{
-            // background: 'transparent',
+            background: 'transparent',
             borderRadius: '12px',
             // backdropFilter: 'blur(8px)',
-            // backgroundColor: 'rgb(255 255 255 / 8%)',
+            backgroundColor: 'rgb(0,0,0)',
         }}>
             <CardContent>
                 <Box

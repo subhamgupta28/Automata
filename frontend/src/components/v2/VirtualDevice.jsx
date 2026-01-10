@@ -170,7 +170,8 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                                 <HVACDevices
                                     devices={hvacDevices} messages={messages}
                                 />
-                                {/*<SystemDevice devices={systemDevices} messages={messages}/>*/}
+                                {systemDevices.length > 0 &&
+                                    <SystemDevice devices={systemDevices} messages={messages}/>}
                             </div>
                         ) : (
                             <CircularProgress color="inherit"/>
@@ -178,8 +179,8 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                     </div>
                     {chartDevices.map(device => (
                         <div key={device.id}>
-                            <ChartDetail deviceId={device.attributes[0].extras.id} name={""} width={500}
-                                         height={220}
+                            <ChartDetail deviceId={device.attributes[0].extras.id} name={""} width={700}
+                                         height={300}
                                          deviceAttributes={devices.filter(d => d.id === device.attributes[0].extras.id)[0].attributes}/>
                         </div>
                     ))}
