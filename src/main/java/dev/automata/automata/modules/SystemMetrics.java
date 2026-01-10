@@ -166,7 +166,7 @@ public class SystemMetrics {
     public void getNgrokDetails() {
         try (HttpClient client = HttpClient.newHttpClient()) {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("http://127.0.0.1:4040/api/tunnels"))
+                    .uri(URI.create("http://host.docker.internal:4040/api/tunnels"))
                     .GET()
                     .build();
 

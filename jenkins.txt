@@ -53,6 +53,7 @@ pipeline {
                 docker run -d --name ${CONTAINER_NAME} \
                 --restart unless-stopped \
                 --network ${NETWORK_NAME} \
+                --add-host=host.docker.internal:host-gateway \
                 -p 8010:8010 myapp
                 '''
                 // Connect the running container to the second network
