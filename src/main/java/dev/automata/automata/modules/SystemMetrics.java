@@ -1,5 +1,7 @@
 package dev.automata.automata.modules;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Status;
@@ -17,7 +19,12 @@ import oshi.hardware.GlobalMemory;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +38,7 @@ public class SystemMetrics {
     private static String deviceId = "";
     private final SimpMessagingTemplate messagingTemplate;
     private RestTemplate restTemplate;
+
     private void registerSystemMetrics() {
         var device = RegisterDevice.builder()
                 .name("System")
@@ -155,26 +163,54 @@ public class SystemMetrics {
         mainService.registerDevice(device);
     }
 
+    public void getNgrokDetails() {
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://127.0.0.1:4040/api/tunnels"))
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response =
+                    null;
+            try {
+                response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode root = mapper.readTree(response.body());
+
+                for (JsonNode tunnel : root.get("tunnels")) {
+                    String publicUrl = tunnel.get("public_url").asText();
+                    System.out.println("Ngrok Public URL: " + publicUrl);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     @Scheduled(fixedRate = 360000)
     public void save() {
+        getNgrokDetails();
         var data = getData();
-        if (data!=null){
+        if (data != null) {
             mainService.saveData(deviceId, data);
         }
         var res = mainService.getShutdownStatus();
-        if (res.equals("Y")){
+        if (res.equals("Y")) {
             shutdownSystem();
         }
     }
-    private void shutdownSystem(){
+
+    private void shutdownSystem() {
         try {
 
 
-        }catch (Exception e){
+        } catch (Exception e) {
             System.err.println(e);
         }
 
     }
+
     private final SystemInfo systemInfo = new SystemInfo();
 
 
@@ -204,20 +240,26 @@ public class SystemMetrics {
     public String formatPercent(double value) {
         return String.format("%.2f%%", value);
     }
+
     public String getUptimeHuman() {
         long uptimeSec = systemInfo.getOperatingSystem().getSystemUptime();
         long hours = uptimeSec / 3600;
         long minutes = (uptimeSec % 3600) / 60;
         return hours + "h " + minutes + "m";
     }
+
     public String getCpuUsagePercent() {
         CentralProcessor processor = systemInfo.getHardware().getProcessor();
         long[] prevTicks = processor.getSystemCpuLoadTicks();
-        try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException ignored) {
+        }
         long[] ticks = processor.getSystemCpuLoadTicks();
         double cpu = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100;
         return formatPercent(cpu);
     }
+
     private HashMap<String, Object> getData() {
         try {
 
@@ -240,7 +282,7 @@ public class SystemMetrics {
 
 //            System.out.println(Arrays.toString(systemInfo.getHardware().getSensors().getFanSpeeds()));
             var power = systemInfo.getHardware().getPowerSources();
-            if (power!=null && !power.isEmpty()) {
+            if (power != null && !power.isEmpty()) {
                 data.put("battery_percent", power.getFirst().getRemainingCapacityPercent());
                 data.put("power", power.getFirst().getPowerUsageRate());
                 data.put("time_remaining", power.getFirst().getTimeRemainingEstimated());
@@ -267,17 +309,16 @@ public class SystemMetrics {
 //        try{
 //            restTemplate = new RestTemplate();
 //            var res = restTemplate.getForObject("http://raspberry.local:8010/api/v1/main/healthCheck", String.class);
-////            System.err.println("Health Check: "+res);
+
+    /// /            System.err.println("Health Check: "+res);
 //        }catch (Exception e){
 //            System.err.println(e);
 //        }
 //    }
-
-
     @Scheduled(fixedRate = 10000)
     public void getInfo() {
         var data = getData();
-        if (data != null){
+        if (data != null) {
             var map = new HashMap<String, Object>();
             map.put("deviceId", deviceId);
             map.put("data", data);
