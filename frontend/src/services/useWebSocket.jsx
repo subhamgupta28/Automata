@@ -7,7 +7,7 @@ import Stomp from 'stompjs';
 
 const url = __API_MODE__ === 'serve'
     ? 'http://localhost:8010/ws'
-    : window.location.href + "ws";
+    : window.location.protocol + "//" + window.location.host + "/ws";
 
 // const url = 'http://localhost:8010/ws';
 
