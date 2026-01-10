@@ -75,6 +75,7 @@ public class SecurityConfiguration {
             "/queue/**",
             "/user/**",
             "/api/v1/main/register/**",
+            "/api/v1/main/serverCreds/**",
             "/api/v1/action/sendAction/**",
             "/api/v1/utils/test/**",
             "/api/v1/main/healthCheck/**",
