@@ -392,7 +392,7 @@ public class VirtualDeviceService {
             lowestWh = Double.MAX_VALUE;
 
             for (double hourlyWh : dischargeHourly.values()) {
-                System.err.println("hourly " + hourlyWh);
+//                System.err.println("hourly " + hourlyWh);
                 sum += hourlyWh;
                 peakWh = Math.max(peakWh, hourlyWh);
                 lowestWh = Math.min(lowestWh, hourlyWh);

@@ -26,10 +26,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -164,9 +161,10 @@ public class SystemMetrics {
         mainService.registerDevice(device);
     }
 
-    @Scheduled(fixedRate = 30000)
-    public void getNgrokDetails() {
+
+    public static Map<String, Object > getNgrokDetails() {
         try {
+            var map = new HashMap<String, Object>();
             String response = new RestTemplate().getForObject("http://host.docker.internal:4040/api/tunnels", String.class);
 
             ObjectMapper mapper = new ObjectMapper();
@@ -175,10 +173,20 @@ public class SystemMetrics {
             for (JsonNode tunnel : root.get("tunnels")) {
                 String publicUrl = tunnel.get("public_url").asText();
                 System.out.println("Ngrok Public URL: " + publicUrl);
+                // Parse host and port from URL
+                URI uri = new URI(publicUrl);
+                String host = uri.getHost();
+                int port = uri.getPort();
+
+                // Put values in map
+                map.put("MQTT_HOST", host);
+                map.put("MQTT_PORT", port);
             }
+            return map;
         } catch (Exception e) {
             System.err.println(e);
         }
+        return Map.of("msg", "error");
     }
 
     @Scheduled(fixedRate = 360000)

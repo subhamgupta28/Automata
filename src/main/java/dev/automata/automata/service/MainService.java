@@ -2,6 +2,7 @@ package dev.automata.automata.service;
 
 import dev.automata.automata.dto.*;
 import dev.automata.automata.model.*;
+import dev.automata.automata.modules.SystemMetrics;
 import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -104,10 +105,10 @@ public class MainService {
             device.setAttributes(atr);
             dev = deviceRepository.save(device);
             System.err.println("Already registered device: " + deviceMapper.apply(device));
-            notificationService.sendNotification("Device: "+device.getName()+"  is back online", "low");
+            notificationService.sendNotification("Device: " + device.getName() + "  is back online", "low");
             return deviceMapper.apply(device);
-        }else{
-            notificationService.sendNotification("New device registered: "+device.getName(), "low");
+        } else {
+            notificationService.sendNotification("New device registered: " + device.getName(), "low");
         }
 
 
@@ -534,7 +535,7 @@ public class MainService {
     public Object getMasterList() {
         var req = masterOptionRepository.findAll();
         var list = new ArrayList<>();
-        for (var i: req){
+        for (var i : req) {
             list.add(
                     Map.of(
                             "id", i.getDeviceId(),
@@ -544,5 +545,13 @@ public class MainService {
             );
         }
         return list;
+    }
+
+    public Map<String, Object> getServerCreds() {
+        var res = SystemMetrics.getNgrokDetails();
+        if (res.containsKey("msg"))
+            return Map.of("MQTT_HOST", "raspberry.local", "MQTT_PORT", "1883");
+        else
+            return res;
     }
 }
