@@ -5,7 +5,10 @@ export default function ({devices, messages}){
     return(
         <>
             {devices.map(device=>(
-                <ThermostatCard device={device} messages={messages}/>
+                <div key={device.id}>
+                    <ThermostatCard  device={device} messages={messages}/>
+                </div>
+
             ))}
         </>
     )

@@ -31,7 +31,7 @@ export const Presets = React.memo(({data, type, value, deviceId, displayName}) =
             >
                 {Object.values(data.extras).map((ex) => (
                     <IconButton key={ex} onClick={()=>send(ex)}>
-                        <Avatar  sx={{ width: 26, height: 26, background: ex === value.presets? "orange":"", fontWeight: 'bold' }}>{ex}</Avatar>
+                        <Avatar  sx={{ width: 26, height: 26, background: ex === value?.presets? "orange":"", fontWeight: 'bold' }}>{ex}</Avatar>
                     </IconButton>
                 ))}
             </div>

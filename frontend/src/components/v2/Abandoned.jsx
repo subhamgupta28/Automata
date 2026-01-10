@@ -1,7 +1,8 @@
 import {NodeResizer, useEdges, useNodes, useReactFlow} from "@xyflow/react";
-import React, {useEffect} from "react";
-import {Card} from "@mui/material";
+import React, {useEffect, useMemo, useState} from "react";
+import {Card, CardContent} from "@mui/material";
 import Typography from "@mui/material/Typography";
+import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 
 export function EnergyChildNode({id, data, isConnectable, selected}) {
     const {messages} = useDeviceLiveData();

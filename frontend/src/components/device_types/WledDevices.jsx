@@ -13,7 +13,9 @@ export default function WledDevices ({devices, messages}){
             // gap: '2px',
         }}>
             {devices.map(device=>(
-                <Wled device={device} messages={messages}/>
+                <div key={device.id}>
+                    <Wled device={device} messages={messages}/>
+                </div>
             ))}
         </div>
     )
@@ -52,7 +54,7 @@ const Wled = ({device, messages}) => {
         setAnchorEl(event.currentTarget);
     };
     return (
-        <div>
+        <div key={device.id}>
             <DetailMenu
                 anchorEl={anchorEl}
                 setAnchorEl={setAnchorEl}

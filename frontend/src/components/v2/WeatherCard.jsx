@@ -330,7 +330,9 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
         >
             <CardContent>
                 {/* Header */}
-                <Box display="flex" justifyContent="space-between">
+                <Box style={{
+                    display:"flex", justifyContent:"space-between"
+                }}>
                     <Box>
                         <Typography fontWeight={600}>
                             {weather.location}
@@ -349,9 +351,13 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                 <Divider sx={{mb: 2}}/>
 
                 {/* Main Content */}
-                <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box style={{
+                    display:"flex", justifyContent:"space-between", alignItems:"center"
+                }}>
                     {/* Left */}
-                    <Box display="flex" alignItems="center" gap={2}>
+                    <Box style={{
+                        display:"flex", alignItems:"center", gap:2
+                    }}>
                         {getWeatherIcon(weather.condition)}
 
                         <Typography variant="h2" fontWeight={600}>
@@ -368,21 +374,27 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
 
                     {/* Right Stats */}
                     <Stack spacing={1}>
-                        <Box display="flex" alignItems="center" gap={1}>
+                        <Box style={{
+                            display:"flex", alignItems:"center", gap:1
+                        }}>
                             <OpacityIcon fontSize="small"/>
                             <Typography variant="body2">
                                 Humidity: {weather.humidity}%
                             </Typography>
                         </Box>
 
-                        <Box display="flex" alignItems="center" gap={1}>
+                        <Box style={{
+                            display:"flex", alignItems:"center", gap:1
+                        }}>
                             <Lightbulb fontSize="small"/>
                             <Typography variant="body2">
                                 Indoor Light: {weather.lux}
                             </Typography>
                         </Box>
 
-                        <Box display="flex" alignItems="center" gap={1}>
+                        <Box style={{
+                            display:"flex", alignItems:"center", gap:1
+                        }}>
                             <AirIcon fontSize="small"/>
                             <Typography variant="body2">
                                 Wind: {weather.wind} mph
