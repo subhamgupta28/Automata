@@ -167,20 +167,31 @@ public class VirtualDeviceService {
         return energyStat;
     }
 
+    private List<EnergyStat> getStatsList(List<String> deviceIds){
+        var list = new ArrayList<EnergyStat>();
+        for (var item : deviceIds) {
+            var res = getTodayStats(item);
+            list.add(res);
+        }
+        return list;
+    }
+
     @Scheduled(fixedRate = 2 * 60 * 1000) // every 2 min
     public void updateEnergyStat() {
         var virtualDevice = virtualDeviceRepository.findAllByTag("Energy");
         for (var device : virtualDevice) {
-            var energyStat = getLastEnergyStat(device);
+//            var energyStat = getLastEnergyStat(device);
+            var energyStat = getStatsList(device.getDeviceIds());
             messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", energyStat));
         }
     }
 
     public EnergyStat getEnergyStatById(String vid) {
-        var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
-        if (virtualDevice != null)
-            return getLastEnergyStat(virtualDevice);
-        return null;
+
+//        var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
+//        if (virtualDevice != null)
+//            return getLastEnergyStat(virtualDevice);
+        return getTodayStats(vid);
     }
 
 //    public Map<String, Object> getLastEnergyStat(String deviceId) {

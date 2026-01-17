@@ -10,7 +10,7 @@ import Stack from "@mui/material/Stack";
 import {useAnimatedNumber} from "../../utils/Helper.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {getEnergyStats} from "../../services/apis.jsx";
-
+import Carousel from "./Carousel.jsx";
 
 
 export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
@@ -18,21 +18,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
     const {messages} = useDeviceLiveData();
     const [chartData, setChartData] = useState([]);
     const [deviceList, setDeviceList] = useState([]);
-    const [statsData, setStatsData] = useState(() => ({
-        totalWh: 0,
-        peakWh: 0,
-        lowestWh: 0,
-        chargeTotalWh: 0,
-        chargePeakWh: 0,
-        chargeLowestWh: 0,
-        percent: 0,
-        status: "",
-        // NEW trend fields
-        totalWhTrend: 0,
-        peakWhTrend: 0,
-        lowestWhTrend: 0,
-        percentTrend: 0,
-    }));
+
 
     const {
         attributes,
@@ -49,16 +35,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
     // console.log("energy", data.value)
     // const {statsData} = useEnergyStats(deviceIds);
     // console.log("deviceList", deviceList[0]?.lastData?.status)
-    useEffect(() => {
-        if (messages && messages.deviceId === id) {
-            if (messages.data) {
-                const data = messages.data;
-                // console.log("bat", data)
-                setStatsData(data);
-            }
-        }
-        // }
-    }, [messages])
+
 
     useEffect(() => {
         if (devices) {
@@ -72,13 +49,13 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
 
             let grid = [];
 
-            if (statsData.status !== "DISCHARGE") {
-                grid = focusDevices.map(d => [
-                    d.name,
-                    "Grid",
-                    (d["lastData"] !== null) ? parseInt(d['lastData']['power']) : 20
-                ])
-            }
+            // if (statsData.status !== "DISCHARGE") {
+            //     grid = focusDevices.map(d => [
+            //         d.name,
+            //         "Grid",
+            //         (d["lastData"] !== null) ? parseInt(d['lastData']['power']) : 20
+            //     ])
+            // }
 
             const items = [
                 ["From", "To", ""],
@@ -94,13 +71,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                     20
                 ])
             ];
-            const get = async () => {
-                const res = await getEnergyStats(id);
-                // console.log("sts", res)
-                setStatsData(res);
-            }
 
-            get();
             setDeviceList(focusDevices);
             setChartData(items);
 
@@ -118,6 +89,20 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
         batteryDischarge: 4.2,
     };
 
+    const slides = deviceIds.map(m => {
+        return {
+            component: ConsumptionCard,
+            props:
+                {
+                    deviceId: m,
+                    messages,
+                    vid: id,
+                    name: devices?.filter(d => m === d.id)[0]?.name
+                }
+        }
+    })
+
+    // console.log("slides", slides)
 
     const options = {
         sankey: {
@@ -171,65 +156,19 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                     >
                         {name}
                     </Typography>
-                    <Typography variant="caption">
-                        {statsData.status}
-                    </Typography>
+
                 </div>
 
                 <Stack direction="column" spacing={4}>
 
-
-                    <Stack direction="row" spacing={4} style={{padding: '14px'}}>
-                        {(deviceList.length !== 0 && statsData.status === "CHARGING") ? (
-                            <>
-                                <StatItem
-                                    label="Total charged today"
-                                    value={statsData.chargeTotalWh}
-                                    prevValue={statsData.totalWhTrend}
-                                    unit="Wh"
-                                />
-                                <StatItem
-                                    label="Peak hour consumption"
-                                    value={statsData.chargePeakWh}
-                                    prevValue={statsData.peakWhTrend}
-                                    unit="Wh"
-                                />
-                                <StatItem
-                                    label="Lowest hourly usage"
-                                    value={statsData.chargeLowestWh}
-                                    prevValue={statsData.lowestWhTrend}
-                                    unit="Wh"
-                                />
-                            </>
-                        ) : (
-                            <>
-                                <StatItem
-                                    label="Total usage today"
-                                    value={statsData.totalWh}
-                                    prevValue={statsData.totalWhTrend}
-                                    unit="Wh"
-                                />
-                                <StatItem
-                                    label="Peak hour consumption"
-                                    value={statsData.peakWh}
-                                    prevValue={statsData.peakWhTrend}
-                                    unit="Wh"
-                                />
-                                <StatItem
-                                    label="Lowest hourly usage"
-                                    value={statsData.lowestWh}
-                                    prevValue={statsData.lowestWhTrend}
-                                    unit="Wh"
-                                />
-                            </>
-                        )}
-                        <StatItem
-                            label="Percent"
-                            value={statsData.percent}
-                            prevValue={statsData.percentTrend}
-                            unit="%"
-                        />
-                    </Stack>
+                    <Carousel
+                        slides={slides}
+                        autoPlay
+                        width={width - 20}
+                        interval={8000}
+                        height={200}
+                    />
+                    {/*<ConsumptionCard deviceId={""} messages={messages}/>*/}
                     {chartData.length <= 1 ? (
                         <CircularProgress color="inherit"/>
                     ) : (
@@ -251,8 +190,122 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
     )
 });
 
+const ConsumptionCard = ({deviceId, messages, vid, name}) => {
+    const [statsData, setStatsData] = useState(() => ({
+        totalWh: 0,
+        peakWh: 0,
+        lowestWh: 0,
+        chargeTotalWh: 0,
+        chargePeakWh: 0,
+        chargeLowestWh: 0,
+        percent: 0,
+        status: "",
+        // NEW trend fields
+        totalWhTrend: 0,
+        peakWhTrend: 0,
+        lowestWhTrend: 0,
+        percentTrend: 0,
+    }));
+    const [live, setLive] = useState({});
 
-const StatItem = ({ label, value = 0, prevValue = 0, unit }) => {
+    useEffect(() => {
+        const get = async () => {
+            const res = await getEnergyStats(deviceId);
+            // console.log("sts", res)
+            setStatsData(res);
+        }
+
+        get();
+    }, [])
+
+    useEffect(() => {
+        if (messages && messages.data) {
+            if (messages.deviceId === vid) {
+                const data = messages.data;
+                // if (data.filter())
+                // console.log("bat",deviceId, data.filter(d => d.deviceId === deviceId)[0])
+                setStatsData(data.filter(d => d.deviceId === deviceId)[0]);
+            }
+            if (messages.deviceId === deviceId) {
+                setLive(messages.data);
+            }
+        }
+        // }
+    }, [messages])
+    return (
+        <>
+
+            <div style={{
+                marginLeft: '12px'
+            }}>
+                <Typography variant="caption" color="primary">
+                    {name}
+                </Typography>
+                <Typography
+                    variant="caption"
+                    sx={{marginLeft: "20px", color: statsData.status === "CHARGING" ? "success.main" : "error.main"}}
+                >
+                    {"Status: "} {statsData.status.toLowerCase()}
+                    {", Realtime Power Utilization: "}{live["power"]}{" W"}
+                </Typography>
+            </div>
+            <Stack direction="row" spacing={4} style={{padding: '14px'}}>
+                {(statsData.status === "CHARGING") ? (
+                    <>
+                        <StatItem
+                            label="Total charged today"
+                            value={statsData.chargeTotalWh}
+                            prevValue={statsData.totalWhTrend}
+                            unit="Wh"
+                        />
+                        <StatItem
+                            label="Peak hour consumption"
+                            value={statsData.chargePeakWh}
+                            prevValue={statsData.peakWhTrend}
+                            unit="Wh"
+                        />
+                        <StatItem
+                            label="Lowest hourly usage"
+                            value={statsData.chargeLowestWh}
+                            prevValue={statsData.lowestWhTrend}
+                            unit="Wh"
+                        />
+                    </>
+                ) : (
+                    <>
+                        <StatItem
+                            label="Total usage today"
+                            value={statsData.totalWh}
+                            prevValue={statsData.totalWhTrend}
+                            unit="Wh"
+                        />
+                        <StatItem
+                            label="Peak hour consumption"
+                            value={statsData.peakWh}
+                            prevValue={statsData.peakWhTrend}
+                            unit="Wh"
+                        />
+                        <StatItem
+                            label="Lowest hourly usage"
+                            value={statsData.lowestWh}
+                            prevValue={statsData.lowestWhTrend}
+                            unit="Wh"
+                        />
+                    </>
+                )}
+                <StatItem
+                    label="Percent"
+                    value={statsData.percent}
+                    prevValue={statsData.percentTrend}
+                    unit="%"
+                />
+            </Stack>
+        </>
+    )
+}
+
+
+const StatItem = ({label, value = 0, prevValue = 0, unit}) => {
     const animated = useAnimatedNumber(value);
 
     const hasTrend =
@@ -279,14 +332,14 @@ const StatItem = ({ label, value = 0, prevValue = 0, unit }) => {
             {hasTrend && (
                 <Box display="flex" alignItems="center" gap={0.5}>
                     {positive ? (
-                        <ArrowUpwardIcon sx={{ fontSize: 16, color: "success.main" }} />
+                        <ArrowUpwardIcon sx={{fontSize: 16, color: "success.main"}}/>
                     ) : (
-                        <ArrowDownwardIcon sx={{ fontSize: 16, color: "error.main" }} />
+                        <ArrowDownwardIcon sx={{fontSize: 16, color: "error.main"}}/>
                     )}
 
                     <Typography
                         variant="caption"
-                        sx={{ color: positive ? "success.main" : "error.main" }}
+                        sx={{color: positive ? "success.main" : "error.main"}}
                     >
                         {absDiff.toFixed(2)} {unit} (
                         {percentChange.toFixed(1)}%)
