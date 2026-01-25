@@ -41,7 +41,6 @@ export default function ThermostatCard({device, messages}) {
 
     return (
         <Card
-            variant="outlined"
             sx={{
                 width: 220,
                 borderRadius: '8px',

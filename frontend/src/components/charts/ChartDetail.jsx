@@ -59,7 +59,7 @@ const solidColors = [
     '#f7b6d2', // light pink
     '#c49c94', // muted brown
 ];
-export default function ChartDetail({deviceId, name, height = 450, width = 1000, deviceAttributes}) {
+export default function ChartDetail({deviceId, name, height = 450, width = 1000, deviceAttributes, props}) {
     const [data, setData] = useState([]);
     const [attributes, setAttributes] = useState([]);
     const [range, setRange] = useState("day");
@@ -146,6 +146,7 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
             borderRadius: '12px',
             // backdropFilter: 'blur(8px)',
             backgroundColor: 'rgb(0,0,0)',
+            ...props,
         }}>
             <CardContent>
                 <Box

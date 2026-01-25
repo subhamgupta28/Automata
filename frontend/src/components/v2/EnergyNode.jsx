@@ -135,10 +135,10 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
             {/*    minWidth={width}*/}
             {/*    minHeight={height}*/}
             {/*/>*/}
-            <Card elevation={0} style={{
+            <Card variant="outlined" style={{
                 background: 'transparent',
-                backgroundColor: 'rgb(0 0 0 / 60%)',
-                minHeight: '340px', height: '100%', minWidth: width, padding: '10px', borderRadius: '12px'
+                backgroundColor: 'rgb(0 0 0 / 0%)',
+                minHeight: height, height: '100%', minWidth: width, padding: '10px', borderRadius: '12px'
             }}>
 
                 <div style={{display: 'flex'}}>
@@ -166,16 +166,16 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                         autoPlay
                         width={width - 20}
                         interval={8000}
-                        height={200}
+                        height={140}
                     />
                     {/*<ConsumptionCard deviceId={""} messages={messages}/>*/}
                     {chartData.length <= 1 ? (
                         <CircularProgress color="inherit"/>
                     ) : (
-                        <Box>
+                        <Box style={{display:'flex', alignItems:'center', justifyContent:'center'}}>
                             <Chart
                                 chartType="Sankey"
-                                width="500px"
+                                width="600px"
                                 height="120px"
                                 data={chartData}
                                 options={options}
@@ -236,6 +236,8 @@ const ConsumptionCard = ({deviceId, messages, vid, name}) => {
         <>
 
             <div style={{
+                paddingTop:'6px',
+
                 marginLeft: '12px'
             }}>
                 <Typography variant="caption" color="primary">

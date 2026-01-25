@@ -110,8 +110,10 @@ function DashboardDetail() {
                 style={{
                     backgroundColor: 'transparent'
                 }}
+                autoPanOnNodeFocus
+                snapToGrid
                 // edgeTypes={edgeTypes}
-                // nodesDraggable={false}
+                nodesDraggable={editUi}
                 // onNodeClick={handleNodeClick}
                 // fitView
                 // fitViewOptions={{ nodes: [{ id: '' }] }}

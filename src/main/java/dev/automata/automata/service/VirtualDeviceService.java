@@ -54,7 +54,7 @@ public class VirtualDeviceService {
 //            }
 //            finalList.add(device);
 //        }
-        return virtualDeviceRepository.findAll();
+        return virtualDeviceRepository.findAllByActive(true);
     }
 
     public Map<String, Object> getLastData(String deviceId) {

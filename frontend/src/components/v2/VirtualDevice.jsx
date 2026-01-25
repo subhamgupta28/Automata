@@ -115,15 +115,15 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
             {/*/>*/}
 
 
-            <Card style={{
+            <Card variant="outlined" style={{
                 background: 'transparent',
-                backgroundColor: 'rgb(0 0 0 / 60%)',
+                // backgroundColor: 'rgb(0 0 0 / 20%)',
                 minHeight: height, height: '100%', minWidth: width, borderRadius: '10px', padding: '0px',
             }}>
 
                 <div
                     style={{
-                        padding: '0px', width: '100%', height: '100%', marginTop: '8px',
+                        padding: '0px', width: '100%', height: '100%',
                         paddingRight: '6px',
                         borderRadius: '12px 12px 0px 0px',
                         background: 'transparent',
@@ -139,7 +139,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                             marginLeft: '18px',
                             // fontWeight: 'bold',
                             // fontSize: '18px',
-                            marginRight: '10px'
+                            paddingTop: '12px'
                         }}
                     >
                         {name}
@@ -179,8 +179,11 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                     </div>
                     {chartDevices.map(device => (
                         <div key={device.id}>
-                            <ChartDetail deviceId={device.attributes[0].extras.id} name={""} width={700}
-                                         height={300}
+                            <ChartDetail deviceId={device.attributes[0].extras.id} name={""} width={900}
+                                         height={310}
+                                         props={{
+                                             backgroundColor: "transparent"
+                                         }}
                                          deviceAttributes={devices.filter(d => d.id === device.attributes[0].extras.id)[0].attributes}/>
                         </div>
                     ))}

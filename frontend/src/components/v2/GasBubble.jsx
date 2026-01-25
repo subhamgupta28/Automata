@@ -87,9 +87,10 @@ export const GasLegend = ({items}) => {
                 // const color = LEVEL_COLORS[level];
 
                 return (
-                    <Card variant="outlined" style={{padding:"10px", borderRadius:"10px", backgroundColor:"#000"}} key={index}
-                          display="flex" alignItems="center" justifyContent="center"  flexDirection="column"
-                    >
+                    <div style={{
+                        padding:"10px", borderRadius:"10px",
+                        backgroundColor: 'rgb(0 0 0 / 20%)',
+                    }} key={index}>
                         <div style={{display:"flex", gap: "10px", alignItems:"center"}}>
                             <Box
                                 sx={{
@@ -106,7 +107,7 @@ export const GasLegend = ({items}) => {
                         <Typography variant="caption" fontWeight={600}>
                             {value}{" "}{units}
                         </Typography>
-                    </Card>
+                    </div>
                 );
             })}
         </Box>

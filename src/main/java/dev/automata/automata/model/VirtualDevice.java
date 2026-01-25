@@ -26,6 +26,7 @@ public class VirtualDevice {
     private double height;
     private Date lastModified;
     private String tag;
+    private boolean active = true;
 
     private List<String> deviceIds;
     private Map<String, List<Attribute>> attributes;

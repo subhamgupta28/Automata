@@ -1,13 +1,13 @@
 import React, {useState, useEffect} from "react";
 import {Box, IconButton} from "@mui/material";
-import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
-import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
 const Carousel = ({
                       slides = [],
                       autoPlay = false,
                       interval = 8000,
-                      height = 300,
+                      height = 200,
                       width
                   }) => {
     const [index, setIndex] = useState(0);
@@ -31,23 +31,25 @@ const Carousel = ({
                 position: "relative",
                 overflow: "hidden",
                 width,
-                // height,
+                height,
                 borderRadius: 2,
             }}
         >
             {/* Slides container */}
             <Box
+                // onTransitionEnd={handleTransitionEnd}
                 sx={{
                     display: "flex",
+                    flexDirection: "column",
                     height: "100%",
-                    transform: `translateX(-${index * 100}%)`,
-                    transition: "transform 1.5s ease",
+                    transform: `translateY(-${index * 100}%)`,
+                    transition: "transform 0.8s ease",
                 }}
             >
                 {slides.map((slide, i) => {
                     const SlideComponent = slide.component;
                     return (
-                        <Box key={i} sx={{minWidth: "100%", height: "100%"}}>
+                        <Box key={i} sx={{ minHeight: "100%", height: "100%" }}>
                             <SlideComponent {...slide.props} />
                         </Box>
                     );
@@ -64,11 +66,11 @@ const Carousel = ({
                             top: "35%",
                             right: 8,
                             transform: "translateY(-50%)",
-                            bgcolor: "rgba(0,0,0,0.4)",
+                            backgroundColor: "rgba(0,0,0,0.4)",
                             color: "white",
                         }}
                     >
-                        <ArrowBackIosNewIcon fontSize="small"/>
+                        <ArrowUpwardIcon  fontSize="small"/>
                     </IconButton>
 
                     <IconButton
@@ -78,11 +80,11 @@ const Carousel = ({
                             top: "65%",
                             right: 8,
                             transform: "translateY(-50%)",
-                            bgcolor: "rgba(0,0,0,0.4)",
+                            backgroundColor: "rgba(0,0,0,0.4)",
                             color: "white",
                         }}
                     >
-                        <ArrowForwardIosIcon fontSize="small"/>
+                        <ArrowDownwardIcon  fontSize="small"/>
                     </IconButton>
                 </>
             )}

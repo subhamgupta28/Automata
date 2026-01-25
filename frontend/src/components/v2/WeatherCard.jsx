@@ -1,4 +1,4 @@
-import {Box, Card, CardContent, Divider, LinearProgress, Slider, Stack, Typography,} from "@mui/material";
+import {Box, Card, CardContent, Divider, Slider, Stack, Typography,} from "@mui/material";
 import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import CloudIcon from "@mui/icons-material/Cloud";
 import GrainIcon from "@mui/icons-material/Grain";
@@ -7,18 +7,17 @@ import OpacityIcon from "@mui/icons-material/Opacity";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {useEffect, useState} from "react";
 import dayjs from "dayjs";
-import {Lightbulb} from "@mui/icons-material";
+import {Lightbulb, Thermostat} from "@mui/icons-material";
 import {GasBubble, GasLegend} from "./GasBubble.jsx";
-import {all} from "axios";
 import {getRecentDeviceData} from "../../services/apis.jsx";
 
-const getWeatherIcon = (condition) => {
-    const c = condition.toLowerCase();
-    if (c.includes("sun") || c.includes("clear"))
+const getWeatherIcon = (condition, humid) => {
+    const c = condition;
+    if (c >= 30)
         return <WbSunnyIcon sx={{fontSize: 48, color: "#f9a825"}}/>;
-    if (c.includes("cloud"))
+    if (c < 30)
         return <CloudIcon sx={{fontSize: 48, color: "#90a4ae"}}/>;
-    if (c.includes("rain"))
+    if (humid > 70)
         return <GrainIcon sx={{fontSize: 48, color: "#4fc3f7"}}/>;
 
     return <WbSunnyIcon sx={{fontSize: 48}}/>;
@@ -231,7 +230,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
             const get = async () => {
                 return await getRecentDeviceData(deviceIds);
             }
-            get().then(res=>{
+            get().then(res => {
                 setDatapoint(res);
                 setLiveDataHandle(deviceId, res[deviceId]);
             });
@@ -318,12 +317,12 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
     // }
     return (
         <Card
-            elevation={0}
+            variant="outlined"
             sx={{
                 background: 'transparent',
-                backgroundColor: 'rgb(0 0 0 / 60%)',
+                backgroundColor: 'rgb(0 0 0 / 0%)',
                 borderRadius: '10px',
-                width: 400,
+                width: 420,
                 height: {height},
                 p: 1,
             }}
@@ -331,7 +330,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
             <CardContent>
                 {/* Header */}
                 <Box style={{
-                    display:"flex", justifyContent:"space-between"
+                    display: "flex", justifyContent: "space-between"
                 }}>
                     <Box>
                         <Typography fontWeight={600}>
@@ -342,23 +341,36 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                         </Typography>
                     </Box>
                 </Box>
-                <Box mb={2}>
+                <Box mb={2} style={{
+                    display: "flex", alignItems: "center", gap: 2
+                }}>
+                    <Typography>
+                        Outdoor
+                    </Typography>
+                    <Thermostat style={{height: "18px"}}/>
                     <Typography variant="body2" color="text.secondary" maxWidth={500}>
-                        Outdoor: {dataPoint?.[otherDevice]?.["temp"]} °C
-                        {" H: "}{dataPoint?.[otherDevice]?.["humid"]}%
+                        {dataPoint?.[otherDevice]?.["temp"]} °C
+                    </Typography>
+                    <OpacityIcon style={{height: "18px"}}/>
+                    <Typography variant="body2" color="text.secondary" maxWidth={500}>
+                        {dataPoint?.[otherDevice]?.["humid"]}%
+                    </Typography>
+                    <Lightbulb style={{height: "18px"}}/>
+                    <Typography variant="body2" color="text.secondary" maxWidth={500}>
+                        {dataPoint?.[otherDevice]?.["lux"]}
                     </Typography>
                 </Box>
                 <Divider sx={{mb: 2}}/>
 
                 {/* Main Content */}
                 <Box style={{
-                    display:"flex", justifyContent:"space-between", alignItems:"center"
+                    display: "flex", justifyContent: "space-between", alignItems: "center"
                 }}>
                     {/* Left */}
                     <Box style={{
-                        display:"flex", alignItems:"center", gap:2
+                        display: "flex", alignItems: "center", gap: 8
                     }}>
-                        {getWeatherIcon(weather.condition)}
+                        {getWeatherIcon(weather.temp, weather.humidity)}
 
                         <Typography variant="h2" fontWeight={600}>
                             {weather.temp}
@@ -375,7 +387,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                     {/* Right Stats */}
                     <Stack spacing={1}>
                         <Box style={{
-                            display:"flex", alignItems:"center", gap:1
+                            display: "flex", alignItems: "center", gap: 1
                         }}>
                             <OpacityIcon fontSize="small"/>
                             <Typography variant="body2">
@@ -384,7 +396,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                         </Box>
 
                         <Box style={{
-                            display:"flex", alignItems:"center", gap:1
+                            display: "flex", alignItems: "center", gap: 1
                         }}>
                             <Lightbulb fontSize="small"/>
                             <Typography variant="body2">
@@ -393,7 +405,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                         </Box>
 
                         <Box style={{
-                            display:"flex", alignItems:"center", gap:1
+                            display: "flex", alignItems: "center", gap: 1
                         }}>
                             <AirIcon fontSize="small"/>
                             <Typography variant="body2">
@@ -412,40 +424,13 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                     />
                     <GasLegend
                         items={[
-                            {label: "CO₂", value: weather.gases.co2, type: "co2", color: '#42a5f5', units:"ppm"},
-                            {label: "CH₂O", value: weather.gases.ch2o, type: "ch20", color: '#2ca02c', units:"ppb"},
-                            {label: "TVOC", value: weather.gases.tvoc, type: "tvoc", color: '#ff7f0e', units:"mg/m³"},
-                            {label: "PM2.5", value: weather.gases.pm25, type: "pm25", color: '#d62728', units:"ug/m³"},
+                            {label: "CO₂", value: weather.gases.co2, type: "co2", color: '#42a5f5', units: "ppm"},
+                            {label: "CH₂O", value: weather.gases.ch2o, type: "ch20", color: '#2ca02c', units: "ppb"},
+                            {label: "TVOC", value: weather.gases.tvoc, type: "tvoc", color: '#ff7f0e', units: "mg/m³"},
+                            {label: "PM2.5", value: weather.gases.pm25, type: "pm25", color: '#d62728', units: "ug/m³"},
                         ]}
                     />
                 </Box>
-                {/*<Typography variant="subtitle1" fontWeight={600} mb={2} mt={2}>*/}
-                {/*    Sunrise & sunset*/}
-                {/*</Typography>*/}
-                {/*<Box display="flex" gap={1.5} mt={0} justifyContent="space-between">*/}
-                {/*    <StatusPill*/}
-                {/*        icon={<ThermostatIcon fontSize="small"/>}*/}
-                {/*        value={dataPoint?.[otherDevice]?.["temp"]}*/}
-                {/*        unit="°C"*/}
-                {/*        color="#E53935"*/}
-                {/*    />*/}
-
-                {/*    <StatusPill*/}
-                {/*        icon={<WaterDropIcon fontSize="small"/>}*/}
-                {/*        value={dataPoint?.[otherDevice]?.["humid"]}*/}
-                {/*        unit="%"*/}
-                {/*        color="#1E88E5"*/}
-                {/*    />*/}
-
-                {/*    <StatusPill*/}
-                {/*        icon={<Lightbulb fontSize="small"/>}*/}
-                {/*        value={dataPoint?.[otherDevice]?.["lux"]}*/}
-                {/*        color="#fff"*/}
-                {/*    />*/}
-                {/*</Box>*/}
-                {/*<Box>*/}
-                {/*    <SunriseSunsetCard/>*/}
-                {/*</Box>*/}
             </CardContent>
         </Card>
     );
