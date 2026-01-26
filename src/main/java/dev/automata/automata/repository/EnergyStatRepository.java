@@ -13,4 +13,6 @@ public interface EnergyStatRepository extends MongoRepository<EnergyStat, String
     List<EnergyStat> findAllByDeviceIdAndTimestampBetween(String deviceId, Long timestampAfter, Long timestampBefore);
 
     List<EnergyStat> findAllByDeviceIdIn(Collection<String> deviceIds);
+
+    List<EnergyStat> findAllByDeviceIdInAndTimestampBetween(Collection<String> deviceIds, Long timestampAfter, Long timestampBefore);
 }

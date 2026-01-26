@@ -111,11 +111,11 @@ function DashboardDetail() {
                     backgroundColor: 'transparent'
                 }}
                 autoPanOnNodeFocus
-                snapToGrid
+                // snapToGrid
                 // edgeTypes={edgeTypes}
                 nodesDraggable={editUi}
                 // onNodeClick={handleNodeClick}
-                // fitView
+                fitView
                 // fitViewOptions={{ nodes: [{ id: '' }] }}
                 // onPaneClick={onPaneClick}
                 // onNodeContextMenu={onNodeContextMenu}

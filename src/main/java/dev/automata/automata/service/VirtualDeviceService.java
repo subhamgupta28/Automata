@@ -2,9 +2,11 @@ package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.model.Data;
+import dev.automata.automata.model.Device;
 import dev.automata.automata.model.EnergyStat;
 import dev.automata.automata.model.VirtualDevice;
 import dev.automata.automata.repository.DataRepository;
+import dev.automata.automata.repository.DeviceRepository;
 import dev.automata.automata.repository.EnergyStatRepository;
 import dev.automata.automata.repository.VirtualDeviceRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,12 +26,14 @@ import java.net.http.HttpResponse;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class VirtualDeviceService {
 
     private final VirtualDeviceRepository virtualDeviceRepository;
+    private final DeviceRepository deviceRepository;
     private final NotificationService notificationService;
     private final DataRepository dataRepository;
     private final MongoTemplate mongoTemplate;
@@ -56,6 +60,106 @@ public class VirtualDeviceService {
 //        }
         return virtualDeviceRepository.findAllByActive(true);
     }
+
+    private double extractParamValue(EnergyStat stat, String param) {
+
+        return switch (param) {
+
+            case "totalWh" -> stat.getTotalWh();
+            case "peakWh" -> stat.getPeakWh();
+            case "lowestWh" -> stat.getLowestWh();
+
+            case "chargeTotalWh" -> stat.getChargeTotalWh();
+            case "chargePeakWh" -> stat.getChargePeakWh();
+            case "chargeLowestWh" -> stat.getChargeLowestWh();
+
+            case "percent" -> stat.getPercent();
+
+            case "totalWhTrend" -> stat.getTotalWhTrend();
+            case "peakWhTrend" -> stat.getPeakWhTrend();
+            case "lowestWhTrend" -> stat.getLowestWhTrend();
+
+            case "chargeTotalWhTrend" -> stat.getChargeTotalWhTrend();
+            case "chargePeakWhTrend" -> stat.getChargePeakWhTrend();
+            case "chargeLowestWhTrend" -> stat.getChargeLowestWhTrend();
+
+            case "percentTrend" -> stat.getPercentTrend();
+
+            default -> 0.0; // or throw exception
+        };
+    }
+
+    public Map<String, Object> getEnergyAnalyticsChart(String vid, String param) {
+
+        var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
+        LocalDate today = LocalDate.now(zone);
+        long todayStart = Instant.now().getEpochSecond();
+        long weekStart = today.minusDays(7).atStartOfDay(zone).toEpochSecond();
+
+        if (virtualDevice == null) {
+            return Map.of("msg", "Error, device not found", "status", "error");
+        }
+
+        var deviceList = deviceRepository.findAllById(virtualDevice.getDeviceIds());
+        var deviceNames = deviceList.stream().collect(Collectors.toMap(device -> device.getId(), device -> device.getName()));
+
+        var stats = energyStatRepository
+                .findAllByDeviceIdInAndTimestampBetween(
+                        virtualDevice.getDeviceIds(),
+                        weekStart,
+                        todayStart
+                );
+
+        // Group by deviceId
+        Map<String, List<EnergyStat>> grouped =
+                stats.stream()
+                        .collect(Collectors.groupingBy(EnergyStat::getDeviceId, LinkedHashMap::new, Collectors.toList()));
+
+        List<Map<String, Object>> response = new ArrayList<>();
+
+        for (var entry : grouped.entrySet()) {
+
+            String deviceId = entry.getKey();
+            List<EnergyStat> deviceStats = entry.getValue();
+
+            // Sort by timestamp so chart is in correct order
+            deviceStats.sort(Comparator.comparingLong(EnergyStat::getTimestamp));
+
+            List<Double> values = new ArrayList<>();
+
+            for (EnergyStat stat : deviceStats) {
+                values.add(extractParamValue(stat, param));
+            }
+
+            Map<String, Object> series = new HashMap<>();
+            series.put("label", deviceNames.get(deviceId));
+            series.put("data", values);
+            series.put("id", deviceId);
+
+            response.add(series);
+        }
+
+        return Map.of(
+                "status", "success",
+                "data", response
+        );
+    }
+
+//    public Map<String, Object> getEnergyAnalyticsChart(String vid) {
+//        var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
+//        ZoneId zone = ZoneId.of("Asia/Kolkata");
+//        LocalDate today = LocalDate.now(zone);
+//        long todayStart = Instant.now().getEpochSecond();
+//        long weekStart = today.minusDays(7).atStartOfDay(zone).toEpochSecond();
+//
+//        if (virtualDevice != null) {
+//            var data = energyStatRepository.findAllByDeviceIdInAndTimestampBetween(virtualDevice.getDeviceIds(), weekStart, todayStart);
+//            System.err.println(data);
+//
+//        }
+//        return Map.of("msg", "Error, device not found", "status", "error");
+//    }
 
     public Map<String, Object> getLastData(String deviceId) {
         var data = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId).orElse(new Data());
@@ -167,7 +271,7 @@ public class VirtualDeviceService {
         return energyStat;
     }
 
-    private List<EnergyStat> getStatsList(List<String> deviceIds){
+    private List<EnergyStat> getStatsList(List<String> deviceIds) {
         var list = new ArrayList<EnergyStat>();
         for (var item : deviceIds) {
             var res = getTodayStats(item);

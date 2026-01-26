@@ -11,6 +11,7 @@ import {useAnimatedNumber} from "../../utils/Helper.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {getEnergyStats} from "../../services/apis.jsx";
 import Carousel from "./Carousel.jsx";
+import {CompactWeeklyEnergyRadarWidget} from "../charts/CompactWeeklyEnergyRadarWidget.jsx";
 
 
 export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
@@ -159,30 +160,36 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
 
                 </div>
 
-                <Stack direction="column" spacing={4}>
+                <Stack direction="row" style={{
+                    justifyContent:'space-between'
+                }}>
+                    <Stack direction="column" spacing={4} width={700}>
 
-                    <Carousel
-                        slides={slides}
-                        autoPlay
-                        width={width - 20}
-                        interval={8000}
-                        height={140}
-                    />
-                    {/*<ConsumptionCard deviceId={""} messages={messages}/>*/}
-                    {chartData.length <= 1 ? (
-                        <CircularProgress color="inherit"/>
-                    ) : (
-                        <Box style={{display:'flex', alignItems:'center', justifyContent:'center'}}>
-                            <Chart
-                                chartType="Sankey"
-                                width="600px"
-                                height="120px"
-                                data={chartData}
-                                options={options}
-                            />
-                        </Box>
-                    )}
-                    {/*<EnergyOverview/>*/}
+                        <Carousel
+                            slides={slides}
+                            autoPlay
+                            width={750}
+                            interval={8000}
+                            height={140}
+                        />
+                        {/*<ConsumptionCard deviceId={""} messages={messages}/>*/}
+                        {chartData.length <= 1 ? (
+                            <CircularProgress color="inherit"/>
+                        ) : (
+                            <Box style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                <Chart
+                                    chartType="Sankey"
+                                    width="600px"
+                                    height="120px"
+                                    data={chartData}
+                                    options={options}
+                                />
+                            </Box>
+                        )}
+                        {/*<EnergyOverview/>*/}
+
+                    </Stack>
+                    <CompactWeeklyEnergyRadarWidget vid={id}/>
                 </Stack>
             </Card>
         </>
@@ -236,7 +243,7 @@ const ConsumptionCard = ({deviceId, messages, vid, name}) => {
         <>
 
             <div style={{
-                paddingTop:'6px',
+                paddingTop: '6px',
 
                 marginLeft: '12px'
             }}>

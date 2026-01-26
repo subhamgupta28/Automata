@@ -322,7 +322,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                 background: 'transparent',
                 backgroundColor: 'rgb(0 0 0 / 0%)',
                 borderRadius: '10px',
-                width: 420,
+                width,
                 height: {height},
                 p: 1,
             }}

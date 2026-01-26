@@ -24,6 +24,11 @@ public class VirtualDeviceController {
         return ResponseEntity.ok(virtualDeviceService.getVirtualDevice(vid));
     }
 
+    @GetMapping("energyChart/{vid}/{param}")
+    public ResponseEntity<?> getEnergyAnalyticsChart(@PathVariable String vid, @PathVariable String param){
+        return ResponseEntity.ok(virtualDeviceService.getEnergyAnalyticsChart(vid, param));
+    }
+
     @GetMapping("deviceList")
     public ResponseEntity<List<VirtualDevice>> getVirtualDeviceList() {
         return ResponseEntity.ok(virtualDeviceService.getVirtualDeviceList());

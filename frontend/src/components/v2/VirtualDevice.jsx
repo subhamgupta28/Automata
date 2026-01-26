@@ -151,8 +151,9 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                 <div
                     style={{
                         width: '100%',
+                        // display:'flex',
                         alignItems: 'center',
-                        padding: '8px',
+                        padding:'8px',
                         paddingBottom: '10px',
                         justifyContent: 'center'
                     }}>
