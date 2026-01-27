@@ -79,7 +79,7 @@ function DashboardDetail() {
     useEffect(() => {
         const fetch = async () => {
             const list = await getVirtualDeviceList();
-            console.log(list)
+
             setVirtualDevice(list);
             // const weatherCards = [];
             // const energyCards = [];
@@ -115,7 +115,7 @@ function DashboardDetail() {
                 // edgeTypes={edgeTypes}
                 nodesDraggable={editUi}
                 // onNodeClick={handleNodeClick}
-                fitView
+                // fitView
                 // fitViewOptions={{ nodes: [{ id: '' }] }}
                 // onPaneClick={onPaneClick}
                 // onNodeContextMenu={onNodeContextMenu}

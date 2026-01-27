@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 
-function CustomTabPanel(props) {
+export function CustomTabPanel(props) {
     const { children, value, index, ...other } = props;
 
     return (
@@ -77,7 +77,7 @@ export default function AnalyticsView() {
                 </Box>
                 {devicesList.map((device, i) => (
                     <CustomTabPanel value={value} index={i}>
-                        <ChartDetail deviceId={device.id} name={device.name} width={1000} height={500} deviceAttributes={device.attributes}/>
+                        <ChartDetail deviceId={device.id} name={device.name} width={1000} height={600} deviceAttributes={device.attributes}/>
                     </CustomTabPanel>
                 ))}
             </Box>

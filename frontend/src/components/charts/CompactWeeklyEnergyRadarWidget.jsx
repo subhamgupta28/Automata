@@ -14,17 +14,19 @@ function valueFormatter(v) {
 export function CompactWeeklyEnergyRadarWidget({vid}) {
 
     const [series, setSeries] = useState([]);
+    const [labels, setLabels] = useState([]);
 
     useEffect(() => {
         const fetch = async () => {
             const res = await getEnergyAnalytics(vid, "totalWh");
-            console.log("data", res)
+            console.log("data", res.data[0].labels)
+            setLabels(res.data[0].labels);
             setSeries(res.data);
         }
         fetch();
     }, [vid])
 
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     const [highlightedItem, setHighlightedItem] = React.useState(null);
 

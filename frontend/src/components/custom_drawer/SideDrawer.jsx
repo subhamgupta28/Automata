@@ -43,8 +43,9 @@ import {useIsMobile} from "../../utils/useIsMobile.jsx";
 import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
 import VirtualDeviceForm from "../v2/VirtualDeviceForm.jsx";
-import {CalendarViewMonthRounded, Dashboard, GridView} from "@mui/icons-material";
+import {CalendarViewMonthRounded, Dashboard, GridView, PlayCircleFilled} from "@mui/icons-material";
 import DashboardV2 from "../v2/DashboardV2.jsx";
+import Presentation from "../demo/Presentation.jsx";
 
 const drawerWidth = 200;
 
@@ -128,6 +129,7 @@ export default function SideDrawer() {
         {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
         {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
         {name: 'Configure', url: '/configure', icon: <SettingsIcon/>},
+        {name: 'Presentation', url: '/presentation', icon: <PlayCircleFilled/>},
     ];
 
     const authActions = isEmpty(user)
@@ -281,11 +283,12 @@ export default function SideDrawer() {
                                     <Route path="signin" element={<SignIn/>}/>
                                     {/*protected*/}
 
-                                    <Route index element={<PrivateRoute element={<DeviceNodes/>}/>}/>
+                                    <Route index element={<PrivateRoute element={<DashboardV2/>}/>}/>
                                     {/*<Route path="/" element={<PrivateRoute element={<DeviceNodes/>}/>}/>*/}
                                     <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
+                                    <Route path="presentation" element={<PrivateRoute element={<Presentation/>}/>}/>
                                     <Route path="virtual" element={<PrivateRoute element={<VirtualDeviceForm/>}/>}/>
-                                    <Route path="dashboard" element={<PrivateRoute element={<DashboardV2/>}/>}/>
+                                    <Route path="dashboard" element={<PrivateRoute element={<DeviceNodes/>}/>}/>
                                     <Route path="actions" element={<PrivateRoute element={<ActionBoard />}/>}/>
                                     <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>
                                     <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>

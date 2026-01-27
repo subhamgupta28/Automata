@@ -23,6 +23,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.text.SimpleDateFormat;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -117,7 +118,7 @@ public class VirtualDeviceService {
                         .collect(Collectors.groupingBy(EnergyStat::getDeviceId, LinkedHashMap::new, Collectors.toList()));
 
         List<Map<String, Object>> response = new ArrayList<>();
-
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE", Locale.ENGLISH);
         for (var entry : grouped.entrySet()) {
 
             String deviceId = entry.getKey();
@@ -127,14 +128,17 @@ public class VirtualDeviceService {
             deviceStats.sort(Comparator.comparingLong(EnergyStat::getTimestamp));
 
             List<Double> values = new ArrayList<>();
+            List<String> labels = new ArrayList<>();
 
             for (EnergyStat stat : deviceStats) {
                 values.add(extractParamValue(stat, param));
+                labels.add(sdf.format(stat.getUpdateDate()));
             }
 
             Map<String, Object> series = new HashMap<>();
             series.put("label", deviceNames.get(deviceId));
             series.put("data", values);
+            series.put("labels", labels);
             series.put("id", deviceId);
 
             response.add(series);

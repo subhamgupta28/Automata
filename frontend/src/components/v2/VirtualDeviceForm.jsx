@@ -9,7 +9,7 @@ import {
     InputLabel,
     FormControl,
     OutlinedInput,
-    Typography, CircularProgress, Alert, Card,
+    Typography, CircularProgress, Alert, Card, Switch,
 } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
@@ -172,7 +172,9 @@ const DashboardEditor = ({change, existingDevice}) => {
         )
         setSelectedDeviceIds([]);
     }
+    const handleDisable = async (e) => {
 
+    }
     if (loading) return <CircularProgress/>;
     if (error) return <Alert severity="error">Failed to load devices</Alert>;
 
@@ -271,9 +273,18 @@ const DashboardEditor = ({change, existingDevice}) => {
                 Save Virtual Device
             </Button>
             {selectedDeviceIds.length !== 0 && (
-                <Button variant="contained" size="small" fullWidth onClick={handleClear} style={{marginTop: '20px'}}>
-                    Clear Selection
-                </Button>
+                <div>
+                    <Button variant="contained" size="small" fullWidth onClick={handleClear} style={{marginTop: '20px'}}>
+                        Clear Selection
+                    </Button>
+                    <Typography style={{marginTop:'14px'}}>
+                        Show in dashboard:
+                        <Switch defaultChecked size="small"
+                                value={existingDevice.active}
+                                onChange={handleDisable}/>
+                    </Typography>
+
+                </div>
             )}
 
         </div>

@@ -1,6 +1,6 @@
 import {NodeResizer,} from "@xyflow/react";
 import React, {useEffect, useState} from "react";
-import {Box, Card, CircularProgress} from "@mui/material";
+import {Box, Card, CircularProgress, LinearProgress} from "@mui/material";
 import Typography from "@mui/material/Typography";
 import {Chart} from "react-google-charts";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
@@ -12,6 +12,9 @@ import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {getEnergyStats} from "../../services/apis.jsx";
 import Carousel from "./Carousel.jsx";
 import {CompactWeeklyEnergyRadarWidget} from "../charts/CompactWeeklyEnergyRadarWidget.jsx";
+import IconButton from "@mui/material/IconButton";
+import SettingsIcon from "@mui/icons-material/Settings";
+import {CustomModal} from "../home/CustomModal.jsx";
 
 
 export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
@@ -19,7 +22,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
     const {messages} = useDeviceLiveData();
     const [chartData, setChartData] = useState([]);
     const [deviceList, setDeviceList] = useState([]);
-
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const {
         attributes,
@@ -127,7 +130,8 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
             },
         },
     };
-
+    const handleOpenModal = () => setIsModalOpen(true);
+    const handleCloseModal = () => setIsModalOpen(false);
     return (
         <>
             {/*<NodeResizer*/}
@@ -157,9 +161,19 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                     >
                         {name}
                     </Typography>
-
+                    <IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}} size="small">
+                        <SettingsIcon style={{fontSize: '18px'}}/>
+                    </IconButton>
                 </div>
-
+                {isModalOpen && (
+                    <CustomModal
+                        map={null}
+                        isOpen={isModalOpen}
+                        messages={messages}
+                        onClose={handleCloseModal}
+                        devices={deviceList}
+                    />
+                )}
                 <Stack direction="row" style={{
                     justifyContent:'space-between'
                 }}>
@@ -174,7 +188,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                         />
                         {/*<ConsumptionCard deviceId={""} messages={messages}/>*/}
                         {chartData.length <= 1 ? (
-                            <CircularProgress color="inherit"/>
+                            <LinearProgress color="inherit"/>
                         ) : (
                             <Box style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                                 <Chart

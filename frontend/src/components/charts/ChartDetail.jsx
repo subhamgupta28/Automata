@@ -145,7 +145,7 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
             background: 'transparent',
             borderRadius: '12px',
             // backdropFilter: 'blur(8px)',
-            backgroundColor: 'rgb(0,0,0)',
+            backgroundColor: 'rgb(0 0 0 / 20%)',
             ...props,
         }}>
             <CardContent>

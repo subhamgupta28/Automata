@@ -10,12 +10,12 @@ import {SwitchButton} from "../charts/SwitchButton.jsx";
 import LightBulbCard from "./LightBulbCard.jsx";
 import SettingsIcon from "@mui/icons-material/Settings";
 import IconButton from "@mui/material/IconButton";
-import {CustomModal} from "../home/Nodes.jsx";
 import ChartDetail from "../charts/ChartDetail.jsx";
 import ThermostatCard from "../device_types/ThermostatCard.jsx";
 import WledDevices from "../device_types/WledDevices.jsx";
 import HVACDevices from "../device_types/HVACDevices.jsx";
 import SystemDevice from "../device_types/SystemDevice.jsx";
+import {CustomModal} from "../home/CustomModal.jsx";
 
 export const combineAttributes = (attributesByDevice) => {
     const map = new Map();
@@ -123,10 +123,12 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
 
                 <div
                     style={{
-                        padding: '0px', width: '100%', height: '100%',
-                        paddingRight: '6px',
-                        borderRadius: '12px 12px 0px 0px',
-                        background: 'transparent',
+                        // padding: '0px', width: '100%', height: '100%',
+                        // paddingRight: '6px',
+                        // borderRadius: '12px 12px 0px 0px',
+                        // background: 'transparent',
+                        marginRight:'4px',
+                        alignItems:'center',
                         display: 'flex',
                         justifyContent: 'space-between'
                     }}>
@@ -144,9 +146,9 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                     >
                         {name}
                     </Typography>
-                    {/*<IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}}>*/}
-                    {/*    <SettingsIcon/>*/}
-                    {/*</IconButton>*/}
+                    <IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}} size="small">
+                        <SettingsIcon style={{fontSize: '18px'}}/>
+                    </IconButton>
                 </div>
                 <div
                     style={{
@@ -175,7 +177,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                                     <SystemDevice devices={systemDevices} messages={messages}/>}
                             </div>
                         ) : (
-                            <CircularProgress color="inherit"/>
+                            <LinearProgress color="inherit"/>
                         )}
                     </div>
                     {chartDevices.map(device => (
@@ -192,9 +194,9 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                         <CustomModal
                             map={null}
                             isOpen={isModalOpen}
-                            liveData={messages?.data}
+                            messages={messages}
                             onClose={handleCloseModal}
-                            device={deviceList?.[0]}
+                            devices={deviceList}
                         />
                     )}
 
