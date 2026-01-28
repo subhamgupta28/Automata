@@ -54,7 +54,7 @@ const createNodes = (virtualDevices) => {
 
 
 function DashboardDetail() {
-    const [virtualDevice, setVirtualDevice] = useState([]);
+    // const [virtualDevice, setVirtualDevice] = useState([]);
     const [rfInstance, setRfInstance] = useState(null);
     const ref = useRef(null);
     const {fitView} = useReactFlow();
@@ -80,7 +80,7 @@ function DashboardDetail() {
         const fetch = async () => {
             const list = await getVirtualDeviceList();
 
-            setVirtualDevice(list);
+            // setVirtualDevice(list);
             // const weatherCards = [];
             // const energyCards = [];
             // const otherCards = [];

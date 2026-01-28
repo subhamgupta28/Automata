@@ -43,7 +43,7 @@ const Carousel = ({
                     flexDirection: "column",
                     height: "100%",
                     transform: `translateY(-${index * 100}%)`,
-                    transition: "transform 0.8s ease",
+                    transition: "transform 0.3s ease",
                 }}
             >
                 {slides.map((slide, i) => {

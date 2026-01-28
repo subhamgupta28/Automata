@@ -173,8 +173,8 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                                 <HVACDevices
                                     devices={hvacDevices} messages={messages}
                                 />
-                                {systemDevices.length > 0 &&
-                                    <SystemDevice devices={systemDevices} messages={messages}/>}
+                                {/*{systemDevices.length > 0 &&*/}
+                                {/*    <SystemDevice devices={systemDevices} messages={messages}/>}*/}
                             </div>
                         ) : (
                             <LinearProgress color="inherit"/>

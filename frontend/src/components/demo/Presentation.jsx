@@ -2,96 +2,107 @@ import {addEdge, applyEdgeChanges, applyNodeChanges, ReactFlow, useEdgesState, u
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {getVirtualDeviceList} from "../../services/apis.jsx";
 import NodeInspector from "../home/NodeInspector.jsx";
+import VirtualDevice from "../v2/VirtualDevice.jsx";
+import WeatherCard from "../v2/WeatherCard.jsx";
+import {EnergyNode} from "../v2/EnergyNode.jsx";
+import {MainNode} from "./MainNode.jsx";
 
-const nodeTypes = {}
+const nodeTypes = {
+    main: MainNode,
+    virtualDeviceNode: VirtualDevice,
+    weatherNode: WeatherCard,
+    energyNode: EnergyNode,
+}
 const dashboards = [
     {
         id: "home",
         name: "Home",
         type: "main",
-        x: 150,
-        y: 300,
-        data: {}
+        x: 50,
+        y: 50,
+        data: {name:'Home'}
     },
     {
         id: "analytics",
         name: "Analytics",
         type: "main",
-        x: 400,
-        y: 200,
-        data: {}
+        x: 1500,
+        y: -1000,
+        data: {name:'Analytics'}
     },
     {
         id: "devices",
         name: "Devices",
         type: "main",
-        x: 400,
-        y: 400,
-        data: {}
+        x: 1500,
+        y: 1200,
+        data: {name:'Devices'}
     },
     {
         id: "automations",
         name: "Automations",
         type: "main",
-        x: 600,
-        y: 100,
-        data: {}
+        x: 3500,
+        y: -1000,
+        data: {name: 'Automations'}
     },
     {
         id: "virtual",
         name: "Virtual Device",
         type: "main",
-        x: 600,
-        y: 300,
-        data: {}
+        x: 4000,
+        y: 50,
+        data: {name:'Virtual Device'}
     },
     {
         id: "dashboard",
         name: "Dashboard",
         type: "main",
-        x: 600,
-        y: 500,
-        data: {}
+        x: 3500,
+        y: 1200,
+        data: {name: 'Dashboard'}
     },
     {
         id: "configure",
         name: "Configure",
         type: "main",
-        x: 800,
-        y: 200,
-        data: {}
+        x: 5500,
+        y: 1200,
+        data: {name: 'Configure'}
     },
     {
         id: "automata",
         name: "Automata",
         type: "main",
-        x: 800,
-        y: 400,
-        data: {}
+        x: 2000,
+        y: 50,
+        data: {name: 'Automata'}
     },
 ]
-const createMainNodes = () => {
-    let index = 0;
-
+const createMainNodes = (virtualDevices) => {
     let nodes = [];
 
     dashboards.map(device => {
         nodes.push({
             id: device.id,
-            // type: tp,
+            type: device.type,
             position: {x: device.x, y: device.y},
             data: {value: {...device}},
         });
-        index += 400;
+
     })
-    // weather.map(we=>{
-    //     nodes.push({
-    //         id: we.id,
-    //         type: 'weatherNode',
-    //         position: {x: 10, y: 10},
-    //         data: {value: {...we}},
-    //     });
-    // })
+    virtualDevices.map(device => {
+        const tp = (device.tag === "Energy") ? "energyNode" : (device.tag === "Weather") ? "weatherNode" : "virtualDeviceNode";
+        nodes.push({
+            id: device.id,
+            type: tp,
+            parentId: 'home',
+            extent: 'parent',
+            position: {x: device.x, y: device.y},
+            data: {value: {...device}},
+        });
+
+    })
 
     return [...nodes];
 }
@@ -113,14 +124,14 @@ function Presentation({}) {
         (connection) => setEdges((eds) => addEdge(connection, eds)),
         [setEdges],
     );
-    const defaultViewport = useMemo(() => ({x: 0, y: 40, zoom: 0.10}), []);
+    const defaultViewport = useMemo(() => ({x: 0, y: 40, zoom: 0.80}), []);
 
     useEffect(() => {
         const fetch = async () => {
-            // const list = await getVirtualDeviceList();
+            const list = await getVirtualDeviceList();
             // console.log(list)
 
-            setNodes(createMainNodes())
+            setNodes(createMainNodes(list))
         }
 
         fetch();

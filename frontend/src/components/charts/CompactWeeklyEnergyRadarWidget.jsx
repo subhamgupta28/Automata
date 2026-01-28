@@ -49,11 +49,11 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
     };
     return (
         <div style={{
-            padding:'8px'
+            padding:'8px',
+            display: 'flex',
+            flexDirection: 'column',
         }}>
-            <Typography>
-                Last 7 days energy usage
-            </Typography>
+
             <div style={{
                 display: 'flex',
                 flexDirection: 'row',
@@ -99,6 +99,9 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
                     ))}
                 </ToggleButtonGroup>
             </div>
+            <Typography>
+                Last 7 days energy usage
+            </Typography>
         </div>
     );
 }
