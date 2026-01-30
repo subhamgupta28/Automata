@@ -15,8 +15,8 @@ function valueFormatter(v) {
 export function CompactWeeklyEnergyRadarWidget({vid}) {
 
     const [series, setSeries] = useState([]);
-    const [labels, setLabels] = useState([]);
-    const [isReady, setReady] = useState(false);
+    const [labels, setLabels] = useState(["0"]);
+    const [max, setMax] = useState(200);
 
     useEffect(() => {
         const fetch = async () => {
@@ -25,9 +25,6 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
             const {labels, data} = res;
             setLabels(labels);
             setSeries(data);
-            setReady(
-                labels.length > 0 &&
-                data.length > 0);
         }
         fetch();
     }, [])
@@ -68,7 +65,7 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
                 justifyContent: 'center',
                 alignItems: 'center'
             }}>
-                {isReady && (
+                {series.length > 0 && labels.length > 0 && (
                     <RadarChart
                         height={260}
                         highlight="series"
@@ -82,7 +79,7 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
                         series={withOptions(series)}
                         radar={{
                             startAngle: 25,
-
+                            // max: 250,
                             metrics: labels,
                         }}
                     />
