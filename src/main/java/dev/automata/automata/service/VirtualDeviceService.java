@@ -119,6 +119,7 @@ public class VirtualDeviceService {
 
         List<Map<String, Object>> response = new ArrayList<>();
         SimpleDateFormat sdf = new SimpleDateFormat("EEE", Locale.ENGLISH);
+        var labels = new LinkedHashSet<String>();
         for (var entry : grouped.entrySet()) {
 
             String deviceId = entry.getKey();
@@ -128,7 +129,7 @@ public class VirtualDeviceService {
             deviceStats.sort(Comparator.comparingLong(EnergyStat::getTimestamp));
 
             List<Double> values = new ArrayList<>();
-            List<String> labels = new ArrayList<>();
+
 
             for (EnergyStat stat : deviceStats) {
                 values.add(extractParamValue(stat, param));
@@ -138,13 +139,13 @@ public class VirtualDeviceService {
             Map<String, Object> series = new HashMap<>();
             series.put("label", deviceNames.get(deviceId));
             series.put("data", values);
-            series.put("labels", labels);
             series.put("id", deviceId);
 
             response.add(series);
         }
 
         return Map.of(
+                "labels", labels,
                 "status", "success",
                 "data", response
         );
