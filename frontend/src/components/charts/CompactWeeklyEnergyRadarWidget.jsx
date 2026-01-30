@@ -27,7 +27,7 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
             setSeries(data);
             setReady(
                 labels.length > 0 &&
-                series.length > 0);
+                data.length > 0);
         }
         fetch();
     }, [])
