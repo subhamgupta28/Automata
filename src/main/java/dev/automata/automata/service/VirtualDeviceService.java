@@ -1,6 +1,8 @@
 package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.automata.automata.dto.DeviceTrendDTO;
+import dev.automata.automata.dto.TimeSeriesTrendDTO;
 import dev.automata.automata.model.Data;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.EnergyStat;
@@ -12,6 +14,7 @@ import dev.automata.automata.repository.VirtualDeviceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -118,7 +121,7 @@ public class VirtualDeviceService {
                         .collect(Collectors.groupingBy(EnergyStat::getDeviceId, LinkedHashMap::new, Collectors.toList()));
 
         List<Map<String, Object>> response = new ArrayList<>();
-        SimpleDateFormat sdf = new SimpleDateFormat("EEE", Locale.ENGLISH);
+        SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM", Locale.ENGLISH);
         var labels = new LinkedHashSet<String>();
         for (var entry : grouped.entrySet()) {
 
@@ -126,7 +129,7 @@ public class VirtualDeviceService {
             List<EnergyStat> deviceStats = entry.getValue();
 
             // Sort by timestamp so chart is in correct order
-            deviceStats.sort(Comparator.comparingLong(EnergyStat::getTimestamp));
+            deviceStats.sort(Comparator.comparingLong(EnergyStat::getTimestamp).reversed());
 
             List<Double> values = new ArrayList<>();
 
@@ -149,6 +152,125 @@ public class VirtualDeviceService {
                 "status", "success",
                 "data", response
         );
+    }
+
+    /* =====================================================
+       HEALTH SCORE ENGINE
+       ===================================================== */
+    public int healthScore(double aqi, double pm25, double co2, double tvoc) {
+
+        double score =
+                (Math.min(aqi / 300, 1) * 40) +
+                        (Math.min(pm25 / 250, 1) * 30) +
+                        (Math.min(co2 / 2000, 1) * 20) +
+                        (Math.min(tvoc / 1.0, 1) * 10);
+
+        return (int) Math.max(0, 100 - score);
+    }
+
+    public String healthStatus(int score) {
+        if (score >= 80) return "EXCELLENT";
+        if (score >= 60) return "GOOD";
+        if (score >= 40) return "MODERATE";
+        if (score >= 20) return "POOR";
+        return "DANGEROUS";
+    }
+
+    /* =====================================================
+       DEVICE LEVEL TREND + AQI DIRECTION
+       ===================================================== */
+    public List<DeviceTrendDTO> getDeviceTrend(
+            String deviceId
+    ) {
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
+        LocalDate today = LocalDate.now(zone);
+        var to = Instant.now();
+        var from = today.minusDays(7).atStartOfDay(zone);
+
+        MatchOperation match = Aggregation.match(
+                Criteria.where("deviceId").is(deviceId)
+                        .and("updateDate").gte(from).lte(to)
+        );
+
+        // Safely extract numeric fields
+        ProjectionOperation project = Aggregation.project()
+                .andExpression("{$dateToString: { format: '%Y-%m-%d %H:00', date: '$updateDate' }}")
+                .as("hour")
+
+                .and(ConvertOperators.ToDouble.toDouble("$data.temp"))
+                .as("temp")
+
+                .and(ConvertOperators.ToDouble.toDouble("$data.humid"))
+                .as("humid")
+
+                .and(ConvertOperators.ToDouble.toDouble("$data.aqi"))
+                .as("aqi")
+
+                .and(ConvertOperators.ToDouble.toDouble("$data.pm25"))
+                .as("pm25")
+
+                .and(ConvertOperators.ToDouble.toDouble("$data.co2"))
+                .as("co2");
+
+        GroupOperation group = Aggregation.group("hour")
+                .avg("temp").as("avgTemp")
+                .avg("humid").as("avgHumidity")
+                .avg("aqi").as("avgAqi")
+                .avg("pm25").as("avgPm25")
+                .avg("co2").as("avgCo2");
+
+        ProjectionOperation finalProject = Aggregation.project()
+                .and("_id").as("hour")
+                .andExclude("_id")
+                .andInclude("avgTemp", "avgHumidity", "avgAqi", "avgPm25", "avgCo2");
+
+        Aggregation aggregation = Aggregation.newAggregation(
+                match,
+                project,
+                group,
+                finalProject,
+                Aggregation.sort(Sort.Direction.ASC, "hour")
+        );
+
+        return mongoTemplate.aggregate(
+                aggregation,
+                "data",
+                DeviceTrendDTO.class
+        ).getMappedResults();
+    }
+
+    /* =====================================================
+       HOURLY TIME-SERIES (CHART READY)
+       ===================================================== */
+    public List<TimeSeriesTrendDTO> hourlyTrend(String deviceId) {
+
+        Aggregation agg = Aggregation.newAggregation(
+
+                Aggregation.match(Criteria.where("deviceId").is(deviceId)),
+
+                Aggregation.project()
+                        .andExpression("dateToString('%Y-%m-%d %H', updateDate)").as("hour")
+                        .and(ConvertOperators.ToDouble.toDouble("$data.aqi")).as("aqi")
+                        .and(ConvertOperators.ToDouble.toDouble("$data.pm25")).as("pm25")
+                        .and(ConvertOperators.ToDouble.toDouble("$data.temp")).as("temp")
+                        .and(ConvertOperators.ToDouble.toDouble("$data.humid")).as("humid"),
+
+                Aggregation.group("hour")
+                        .avg("aqi").as("avgAqi")
+                        .avg("pm25").as("avgPm25")
+                        .avg("temp").as("avgTemp")
+                        .avg("humid").as("avgHumidity"),
+
+                Aggregation.project()
+                        .and("_id").as("timeBucket")
+                        .andInclude("avgAqi", "avgPm25", "avgTemp", "avgHumidity"),
+
+                Aggregation.sort(Sort.Direction.ASC, "timeBucket")
+        );
+
+        return mongoTemplate
+                .aggregate(agg, "data", TimeSeriesTrendDTO.class)
+                .getMappedResults();
     }
 
 //    public Map<String, Object> getEnergyAnalyticsChart(String vid) {

@@ -60,4 +60,20 @@ public class VirtualDeviceController {
     public ResponseEntity<EnergyStat> getEnergyStats(@PathVariable String id) {
         return ResponseEntity.ok(virtualDeviceService.getEnergyStatById(id));
     }
+
+    /* =====================================================
+   DEVICE SUMMARY
+   ===================================================== */
+    @GetMapping("env/{deviceId}")
+    public ResponseEntity<?> deviceTrend(@PathVariable String deviceId) {
+        return ResponseEntity.ok(virtualDeviceService.getDeviceTrend(deviceId));
+    }
+
+    /* =====================================================
+       CHART-READY HOURLY DATA
+       ===================================================== */
+    @GetMapping("env/hourly/{deviceId}")
+    public ResponseEntity<?> hourlyTrend(@PathVariable String deviceId) {
+        return ResponseEntity.ok(virtualDeviceService.hourlyTrend(deviceId));
+    }
 }

@@ -11,21 +11,26 @@ function valueFormatter(v) {
     }
     return `${v.toLocaleString()} Wh`;
 }
+
 export function CompactWeeklyEnergyRadarWidget({vid}) {
 
     const [series, setSeries] = useState([]);
     const [labels, setLabels] = useState([]);
+    const [isReady, setReady] = useState(false);
 
     useEffect(() => {
         const fetch = async () => {
             const res = await getEnergyAnalytics(vid, "totalWh");
             console.log("data", res)
-            const { labels, data } = res;
+            const {labels, data} = res;
             setLabels(labels);
             setSeries(data);
+            setReady(
+                labels.length > 0 &&
+                series.length > 0);
         }
         fetch();
-    }, [vid])
+    }, [])
 
     // const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -49,15 +54,10 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
         }
     };
 
-    const isReady =
-        labels.length > 0 &&
-        series.length > 0 &&
-        series.every(
-            s => Array.isArray(s.data) && s.data.length === labels.length
-        );
+
     return (
         <div style={{
-            padding:'8px',
+            padding: '8px',
             display: 'flex',
             flexDirection: 'column',
         }}>
