@@ -31,6 +31,7 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -96,22 +97,16 @@ public class VirtualDeviceService {
     public Map<String, Object> getEnergyAnalyticsChart(String vid, String param) {
 
         var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
-        ZoneId zone = ZoneId.of("Asia/Kolkata");
-
-// Today in IST
+        ZoneId zone = ZoneId.of("Asia/Kolkata");   // local business timezone
         LocalDate today = LocalDate.now(zone);
 
-// Start = 6 days ago at 00:00 IST
-        long weekStart = today
-                .minusDays(6)
-                .atStartOfDay(zone)
-                .toEpochSecond();
-
-// End = end of today (23:59:59 IST)
-        long todayEnd = today
+        long todayStart = today
                 .plusDays(1)
                 .atStartOfDay(zone)
-                .toEpochSecond() - 1;
+                .toEpochSecond();
+        long weekStart = today.minusDays(7)
+                .atStartOfDay(zone)
+                .toEpochSecond();
 
         if (virtualDevice == null) {
             return Map.of("msg", "Error, device not found", "status", "error");
@@ -124,7 +119,7 @@ public class VirtualDeviceService {
                 .findAllByDeviceIdInAndTimestampBetween(
                         virtualDevice.getDeviceIds(),
                         weekStart,
-                        todayEnd
+                        todayStart
                 );
 
         // Group by deviceId
@@ -134,7 +129,14 @@ public class VirtualDeviceService {
 
         List<Map<String, Object>> response = new ArrayList<>();
         SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM", Locale.ENGLISH);
-        var labels = new LinkedHashSet<String>();
+        List<LocalDate> days = IntStream.range(0, 7)
+                .mapToObj(today::minusDays)
+                .toList();
+
+        LinkedHashSet<String> labels = new LinkedHashSet<>();
+        for (LocalDate d : days) {
+            labels.add(sdf.format(Date.from(d.atStartOfDay(zone).toInstant())));
+        }
         for (var entry : grouped.entrySet()) {
 
             String deviceId = entry.getKey();
@@ -148,7 +150,6 @@ public class VirtualDeviceService {
 
             for (EnergyStat stat : deviceStats) {
                 values.add(extractParamValue(stat, param));
-                labels.add(sdf.format(stat.getUpdateDate()));
             }
 
             Map<String, Object> series = new HashMap<>();
