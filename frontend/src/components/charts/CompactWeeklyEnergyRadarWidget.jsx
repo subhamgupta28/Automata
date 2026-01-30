@@ -48,6 +48,13 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
             }));
         }
     };
+
+    const isReady =
+        labels.length > 0 &&
+        series.length > 0 &&
+        series.every(
+            s => Array.isArray(s.data) && s.data.length === labels.length
+        );
     return (
         <div style={{
             padding:'8px',
@@ -61,23 +68,26 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
                 justifyContent: 'center',
                 alignItems: 'center'
             }}>
-                <RadarChart
-                    height={260}
-                    highlight="series"
-                    shape="circular"
-                    hideLegend
-                    highlightedItem={highlightedItem}
-                    onHighlightChange={setHighlightedItem}
-                    slotProps={{
-                        tooltip: {trigger: 'item'},
-                    }}
-                    series={withOptions(series)}
-                    radar={{
-                        startAngle: 25,
+                {isReady && (
+                    <RadarChart
+                        height={260}
+                        highlight="series"
+                        shape="circular"
+                        hideLegend
+                        highlightedItem={highlightedItem}
+                        onHighlightChange={setHighlightedItem}
+                        slotProps={{
+                            tooltip: {trigger: 'item'},
+                        }}
+                        series={withOptions(series)}
+                        radar={{
+                            startAngle: 25,
 
-                        metrics: labels,
-                    }}
-                />
+                            metrics: labels,
+                        }}
+                    />
+                )}
+
                 <ToggleButtonGroup
                     value={highlightedItem?.seriesId ?? null}
                     exclusive
