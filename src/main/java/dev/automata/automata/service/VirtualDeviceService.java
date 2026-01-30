@@ -97,19 +97,18 @@ public class VirtualDeviceService {
 
         var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
         ZoneId zone = ZoneId.of("Asia/Kolkata");
-        LocalDate today = LocalDate.now(zone);
+        ZonedDateTime today = ZonedDateTime.now(zone);
         long todayStart = today
                 .plusDays(1)
-                .atStartOfDay(zone)
                 .toEpochSecond();
-        long weekStart = today.minusDays(7).atStartOfDay(zone).toEpochSecond();
+        long weekStart = today.minusDays(7).toEpochSecond();
 
         if (virtualDevice == null) {
             return Map.of("msg", "Error, device not found", "status", "error");
         }
 
         var deviceList = deviceRepository.findAllById(virtualDevice.getDeviceIds());
-        var deviceNames = deviceList.stream().collect(Collectors.toMap(device -> device.getId(), device -> device.getName()));
+        var deviceNames = deviceList.stream().collect(Collectors.toMap(Device::getId, Device::getName));
 
         var stats = energyStatRepository
                 .findAllByDeviceIdInAndTimestampBetween(
