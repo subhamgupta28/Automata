@@ -97,11 +97,21 @@ public class VirtualDeviceService {
 
         var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
         ZoneId zone = ZoneId.of("Asia/Kolkata");
-        ZonedDateTime today = ZonedDateTime.now(zone);
-        long todayStart = today
-                .plusDays(1)
+
+// Today in IST
+        LocalDate today = LocalDate.now(zone);
+
+// Start = 6 days ago at 00:00 IST
+        long weekStart = today
+                .minusDays(6)
+                .atStartOfDay(zone)
                 .toEpochSecond();
-        long weekStart = today.minusDays(7).toEpochSecond();
+
+// End = end of today (23:59:59 IST)
+        long todayEnd = today
+                .plusDays(1)
+                .atStartOfDay(zone)
+                .toEpochSecond() - 1;
 
         if (virtualDevice == null) {
             return Map.of("msg", "Error, device not found", "status", "error");
@@ -114,7 +124,7 @@ public class VirtualDeviceService {
                 .findAllByDeviceIdInAndTimestampBetween(
                         virtualDevice.getDeviceIds(),
                         weekStart,
-                        todayStart
+                        todayEnd
                 );
 
         // Group by deviceId
