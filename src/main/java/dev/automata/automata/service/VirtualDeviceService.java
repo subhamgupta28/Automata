@@ -98,7 +98,10 @@ public class VirtualDeviceService {
         var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
         ZoneId zone = ZoneId.of("Asia/Kolkata");
         LocalDate today = LocalDate.now(zone);
-        long todayStart = Instant.now().getEpochSecond();
+        long todayStart = today
+                .plusDays(1)
+                .atStartOfDay(zone)
+                .toEpochSecond();
         long weekStart = today.minusDays(7).atStartOfDay(zone).toEpochSecond();
 
         if (virtualDevice == null) {
