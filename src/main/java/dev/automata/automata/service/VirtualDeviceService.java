@@ -101,7 +101,6 @@ public class VirtualDeviceService {
         LocalDate today = LocalDate.now(zone);
 
         long todayStart = today
-                .plusDays(1)
                 .atStartOfDay(zone)
                 .toEpochSecond();
         long weekStart = today.minusDays(7)

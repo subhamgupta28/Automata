@@ -197,6 +197,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                             messages={messages}
                             onClose={handleCloseModal}
                             devices={deviceList}
+                            version="v2"
                         />
                     )}
 

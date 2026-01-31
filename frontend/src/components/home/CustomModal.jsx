@@ -16,7 +16,7 @@ import {CustomTabPanel} from "../dashboard/AnalyticsView.jsx";
 
 dayjs.extend(relativeTime);
 
-export const CustomModal = ({isOpen, onClose, devices, messages, map}) => {
+export const CustomModal = ({isOpen, onClose, devices, messages, map, version="v1"}) => {
 
 
     const [value, setValue] = useState(0);
@@ -78,7 +78,7 @@ export const CustomModal = ({isOpen, onClose, devices, messages, map}) => {
 
                 {devices.map((device, i) => (
                     <CustomTabPanel value={value} index={i}>
-                        <ModelContent device={device} onClose={onClose} messages={messages} map={map}/>
+                        <ModelContent device={device} onClose={onClose} messages={messages} map={map} version={version}/>
                     </CustomTabPanel>
                 ))}
 
@@ -94,7 +94,7 @@ export const CustomModal = ({isOpen, onClose, devices, messages, map}) => {
     );
 };
 
-const ModelContent = ({device, onClose, messages, map}) => {
+const ModelContent = ({device, onClose, messages, map, version}) => {
     const [attrs, setAttrs] = useState(device.attributes);
     const [liveData, setLiveData] = useState({});
     const [showCharts, setShowCharts] = useState(device.showCharts);
@@ -103,6 +103,7 @@ const ModelContent = ({device, onClose, messages, map}) => {
     const radarData = device.attributes.filter((t) => t.type === "DATA|RADAR");
     const switchButtons = device.attributes.filter((t) => t.type === "ACTION|MENU|SWITCH");
     const deviceInfo = device.attributes.filter((t) => t.type === "DATA|INFO");
+    const mainData = device.attributes.filter((t) => t.type === "DATA|MAIN");
 
     useEffect(() => {
         if (device.id === messages.deviceId) {
@@ -238,7 +239,7 @@ const ModelContent = ({device, onClose, messages, map}) => {
                         }}>
 
                             {device.attributes.map(attribute => (
-                                (attribute.type !== "DATA|MAIN" && attribute.type !== "DATA|INFO") && (
+                                (attribute.type !== "DATA|MAIN" && attribute.type !== "DATA|INFO") ? (
                                     <Card key={attribute.id} elevation={0} style={{
                                         borderRadius: '8px',
                                         padding: '6px',
@@ -251,6 +252,28 @@ const ModelContent = ({device, onClose, messages, map}) => {
                                             variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>
                                         <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
                                     </Card>
+                                ):(version === "v2" &&
+                                    (
+                                        <Card
+                                            key={attribute.id}
+                                            elevation={0}
+                                            style={{
+                                                borderRadius: '8px',
+                                                padding: '4px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}
+                                        >
+
+                                            <Typography style={{display: 'flex', fontSize: '18px'}} color="primary"
+                                                        fontWeight="bold">
+                                                {liveData?.[attribute.key]} {attribute.units}
+                                            </Typography>
+                                            <Typography>{attribute.displayName}</Typography>
+                                        </Card>
+                                    )
                                 )
                             ))}
                         </div>

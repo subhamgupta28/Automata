@@ -172,6 +172,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                         messages={messages}
                         onClose={handleCloseModal}
                         devices={deviceList}
+                        version="v2"
                     />
                 )}
                 <Stack direction="row" style={{

@@ -8,6 +8,50 @@ import {RadarAxis} from "@mui/x-charts";
 import {CompactWeeklyEnergyRadarWidget} from "../charts/CompactWeeklyEnergyRadarWidget.jsx";
 // Dummy data following the EnergyStat Java model (one entry per day)
 // Dummy data following the EnergyStat Java model (one entry per day)
+import { Card, CardContent, Typography, Box, LinearProgress } from "@mui/material";
+import { styled } from "@mui/material/styles";
+
+const BatteryBar = styled(LinearProgress)(({ theme, value }) => {
+    let color = theme.palette.success.main;
+    if (value < 20) color = theme.palette.error.main;
+    else if (value < 50) color = theme.palette.warning.main;
+
+    return {
+        height: 50,
+        borderRadius: 8,
+        backgroundColor: theme.palette.grey[300],
+        "& .MuiLinearProgress-bar": {
+            borderRadius: 8,
+            backgroundColor: color,
+        },
+    };
+});
+
+function BatteryGaugeCard({ level = 75 }) {
+    return (
+        <Card
+            sx={{
+                width: "100%",
+                maxWidth: 420,
+                borderRadius: 3,
+            }}
+            elevation={3}
+        >
+            <CardContent>
+                <Box display="flex" justifyContent="space-between" mb={1}>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                        Battery Level
+                    </Typography>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                        {level}%
+                    </Typography>
+                </Box>
+
+                <BatteryBar variant="determinate" value={level} />
+            </CardContent>
+        </Card>
+    );
+}
 
 const series = [
     {label: 'Battery 250Wh', data: [2000, 1700, 1400, 1159,1850, 1653]},
@@ -31,8 +75,8 @@ const Exp = () => {
 
 
     return (
-        <div>
-            <CompactWeeklyEnergyRadarWidget series={series}/>
+        <div style={{marginTop:'100px'}}>
+            <BatteryGaugeCard level={50}/>
 
 
         </div>
