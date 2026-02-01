@@ -15,6 +15,7 @@ import {CompactWeeklyEnergyRadarWidget} from "../charts/CompactWeeklyEnergyRadar
 import IconButton from "@mui/material/IconButton";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {CustomModal} from "../home/CustomModal.jsx";
+import CustomLineChart from "../charts/CustomLineChart.jsx";
 
 
 export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
@@ -183,7 +184,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                         <Carousel
                             slides={slides}
                             autoPlay
-                            width={750}
+                            width={700}
                             interval={8000}
                             height={140}
                         />
@@ -204,13 +205,15 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                         {/*<EnergyOverview/>*/}
 
                     </Stack>
-                    <CompactWeeklyEnergyRadarWidget vid={id}/>
+                    {/*<CustomLineChart vid={id}/>*/}
+                    <CompactWeeklyEnergyRadarWidget vid={id} status="CHARGING"/>
                 </Stack>
             </Card>
         </>
 
     )
 });
+
 
 const ConsumptionCard = ({deviceId, messages, vid, name}) => {
     const [statsData, setStatsData] = useState(() => ({

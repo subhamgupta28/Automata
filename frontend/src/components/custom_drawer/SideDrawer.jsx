@@ -217,7 +217,7 @@ export default function SideDrawer() {
                             </IconButton>
                         </DrawerHeader>
 
-                        <List sx={{flexGrow: 1}}>
+                        <List sx={{flexGrow: 1, display:'flex', flexDirection:'column', justifyContent:'center'}}>
                             {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
                         </List>
 
@@ -234,40 +234,40 @@ export default function SideDrawer() {
 
             <Box component="main" sx={{flexGrow: 1, }}>
 
-                <Card
-                    elevation={10}
-                    sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
-                    style={{
-                        marginLeft: "10px",
-                        position: 'absolute',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        padding: '1px 2px 2px 1px',
-                        backgroundColor: 'rgba(200, 200, 200, 0.0)',
-                        backdropFilter: 'blur(4px)',
-                        borderRadius: '0px 0px 10px 10px'
-                    }}
-                >
-                    <AdbIcon sx={{display: {md: 'flex'}}}/>
-                    <Typography
-                        variant="h6"
-                        noWrap
-                        component="a"
-                        href="/"
-                        sx={{
+                {/*<Card*/}
+                {/*    elevation={10}*/}
+                {/*    sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}*/}
+                {/*    style={{*/}
+                {/*        marginLeft: "10px",*/}
+                {/*        position: 'absolute',*/}
+                {/*        display: 'flex',*/}
+                {/*        justifyContent: 'center',*/}
+                {/*        alignItems: 'center',*/}
+                {/*        padding: '1px 2px 2px 1px',*/}
+                {/*        backgroundColor: 'rgba(200, 200, 200, 0.0)',*/}
+                {/*        backdropFilter: 'blur(4px)',*/}
+                {/*        borderRadius: '0px 0px 10px 10px'*/}
+                {/*    }}*/}
+                {/*>*/}
+                {/*    <AdbIcon sx={{display: {md: 'flex'}}}/>*/}
+                {/*    <Typography*/}
+                {/*        variant="h6"*/}
+                {/*        noWrap*/}
+                {/*        component="a"*/}
+                {/*        href="/"*/}
+                {/*        sx={{*/}
 
-                            display: {md: 'flex'},
-                            fontFamily: 'monospace',
-                            fontWeight: 700,
-                            letterSpacing: '.3rem',
-                            color: 'inherit',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        Automata
-                    </Typography>
-                </Card>
+                {/*            display: {md: 'flex'},*/}
+                {/*            fontFamily: 'monospace',*/}
+                {/*            fontWeight: 700,*/}
+                {/*            letterSpacing: '.3rem',*/}
+                {/*            color: 'inherit',*/}
+                {/*            textDecoration: 'none',*/}
+                {/*        }}*/}
+                {/*    >*/}
+                {/*        Automata*/}
+                {/*    </Typography>*/}
+                {/*</Card>*/}
 
                 {/*<div style={{position: 'relative', zIndex: 2}}>*/}
                     <AppCacheProvider>

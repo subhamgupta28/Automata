@@ -13,21 +13,21 @@ function valueFormatter(v) {
 }
 
 export function CompactWeeklyEnergyRadarWidget({vid}) {
-
+    const [status, setStatus] = useState("DISCHARGE")
     const [series, setSeries] = useState([]);
     const [labels, setLabels] = useState(["0"]);
     const [max, setMax] = useState(200);
 
     useEffect(() => {
         const fetch = async () => {
-            const res = await getEnergyAnalytics(vid, "totalWh");
+            const res = await getEnergyAnalytics(vid, status === "DISCHARGE" ? "totalWh" : "chargeTotalWh");
             console.log("data", res)
             const {labels, data} = res;
             setLabels(labels);
             setSeries(data);
         }
         fetch();
-    }, [])
+    }, [status])
 
     // const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -50,7 +50,9 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
             }));
         }
     };
-
+    const handleChange = (event, newAlignment) => {
+        setStatus(newAlignment);
+    };
 
     return (
         <div style={{
@@ -67,7 +69,7 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
             }}>
                 {series.length > 0 && labels.length > 0 && (
                     <RadarChart
-                        height={260}
+                        height={240}
                         highlight="series"
                         shape="circular"
                         hideLegend
@@ -107,9 +109,23 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
                     ))}
                 </ToggleButtonGroup>
             </div>
-            <Typography>
-                Last 7 days energy usage
-            </Typography>
+            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                <Typography>
+                    Weekly energy usage
+                </Typography>
+                <ToggleButtonGroup
+                    color="primary"
+                    value={status}
+                    size="small"
+                    exclusive
+                    onChange={handleChange}
+                    aria-label="status"
+                >
+                    <ToggleButton value="DISCHARGE">Discharge</ToggleButton>
+                    <ToggleButton value="CHARGING">Charge</ToggleButton>
+                </ToggleButtonGroup>
+            </div>
+
         </div>
     );
 }

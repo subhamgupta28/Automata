@@ -34,7 +34,7 @@ export default function NodeInspector({dashboard}) {
 
     return (
         <div>
-            <Button size="small" variant='outlined' color="primary" style={{marginLeft: '10px'}} aria-label="add"
+            <Button size="small" variant='outlined' style={{marginLeft: '10px'}} aria-label="add"
                     onClick={handleUpdate}>
                 <SaveIcon/> Save
             </Button>

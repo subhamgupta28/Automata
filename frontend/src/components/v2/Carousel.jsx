@@ -30,6 +30,8 @@ const Carousel = ({
             sx={{
                 position: "relative",
                 overflow: "hidden",
+                display:'flex',
+                flexDirection: "row",
                 width,
                 height,
                 borderRadius: 2,
@@ -58,14 +60,18 @@ const Carousel = ({
 
             {/* Controls */}
             {slides.length > 1 && (
-                <>
+                <div style={{
+                    display:'flex',
+                    flexDirection:'column',
+                    justifyContent:'space-evenly',
+                }}>
                     <IconButton
                         onClick={prev}
                         sx={{
-                            position: "absolute",
-                            top: "35%",
-                            right: 8,
-                            transform: "translateY(-50%)",
+                            // position: "absolute",
+                            // top: "35%",
+                            // right: 8,
+                            // transform: "translateY(-50%)",
                             backgroundColor: "rgba(0,0,0,0.4)",
                             color: "white",
                         }}
@@ -76,17 +82,17 @@ const Carousel = ({
                     <IconButton
                         onClick={next}
                         sx={{
-                            position: "absolute",
-                            top: "65%",
-                            right: 8,
-                            transform: "translateY(-50%)",
+                            // position: "absolute",
+                            // top: "65%",
+                            // right: 8,
+                            // transform: "translateY(-50%)",
                             backgroundColor: "rgba(0,0,0,0.4)",
                             color: "white",
                         }}
                     >
                         <ArrowDownwardIcon  fontSize="small"/>
                     </IconButton>
-                </>
+                </div>
             )}
         </Box>
     );

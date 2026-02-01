@@ -16,7 +16,7 @@ import {CustomTabPanel} from "../dashboard/AnalyticsView.jsx";
 
 dayjs.extend(relativeTime);
 
-export const CustomModal = ({isOpen, onClose, devices, messages, map, version="v1"}) => {
+export const CustomModal = ({isOpen, onClose, devices, messages, map, version = "v1"}) => {
 
 
     const [value, setValue] = useState(0);
@@ -33,6 +33,7 @@ export const CustomModal = ({isOpen, onClose, devices, messages, map, version="v
         try {
             await sendAction(device.id, {key: action, [action]: true, device_id: device.id, direct: true}, device.type);
         } catch (err) {
+            console.log(err)
             // Handle action error
         }
     };
@@ -75,17 +76,20 @@ export const CustomModal = ({isOpen, onClose, devices, messages, map, version="v
             <DialogContent style={{overflow: 'auto',}}>
 
 
-
                 {devices.map((device, i) => (
                     <CustomTabPanel value={value} index={i}>
-                        <ModelContent device={device} onClose={onClose} messages={messages} map={map} version={version}/>
+                        <ModelContent
+                            device={device} onClose={onClose} messages={messages}
+                            map={map} version={version}
+                            handleAction={handleAction}
+                        />
                     </CustomTabPanel>
                 ))}
 
             </DialogContent>
             <DialogActions>
-                <Button onClick={()=>handleReboot(devices[value])}>Reboot</Button>
-                <Button style={{marginLeft: '12px'}} onClick={()=>handleUpdate(devices[0].id)}>Update</Button>
+                <Button onClick={() => handleReboot(devices[value])}>Reboot</Button>
+                <Button style={{marginLeft: '12px'}} onClick={() => handleUpdate(devices[0].id)}>Update</Button>
                 <div style={{flexGrow: 1}}/>
                 <Button variant="secondary" onClick={onClose}>Close</Button>
                 <Button variant="primary" onClick={onClose}>Save Changes</Button>
@@ -94,7 +98,7 @@ export const CustomModal = ({isOpen, onClose, devices, messages, map, version="v
     );
 };
 
-const ModelContent = ({device, onClose, messages, map, version}) => {
+const ModelContent = ({device, onClose, messages, map, version, handleAction}) => {
     const [attrs, setAttrs] = useState(device.attributes);
     const [liveData, setLiveData] = useState({});
     const [showCharts, setShowCharts] = useState(device.showCharts);
@@ -186,7 +190,7 @@ const ModelContent = ({device, onClose, messages, map, version}) => {
                                 aria-label="delete"
                                 variant="contained"
                                 style={{marginTop: "12px"}}
-                                onClick={() => handleAction(btn["key"])}
+                                onClick={() => handleAction(btn["key"], device)}
                             >
                                 {btn["displayName"]}
                             </Button>
@@ -252,7 +256,7 @@ const ModelContent = ({device, onClose, messages, map, version}) => {
                                             variant='subtitle2'>{liveData && liveData[attribute["key"]]} {attribute["units"]}</Typography>
                                         <Typography variant="subtitle2">{attribute["displayName"]}</Typography>
                                     </Card>
-                                ):(version === "v2" &&
+                                ) : (version === "v2" && attribute.type === "DATA|MAIN" &&
                                     (
                                         <Card
                                             key={attribute.id}
@@ -279,6 +283,12 @@ const ModelContent = ({device, onClose, messages, map, version}) => {
                         </div>
                     )}
                     <Divider style={{marginTop: '10px', marginBottom: '5px'}}></Divider>
+                    {deviceInfo.length > 0 && (
+                        <Typography color="primary">
+                            Configuration
+                        </Typography>
+                    )}
+
                     <table>
                         <tbody>
                         {deviceInfo.map((t) => (

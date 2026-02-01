@@ -4,7 +4,7 @@ import {getVirtualDeviceList} from "../../services/apis.jsx";
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Panel,
+    applyNodeChanges, Controls, Panel,
     ReactFlow,
     useEdgesState,
     useNodesState,
@@ -16,6 +16,9 @@ import {EnergyNode} from "./EnergyNode.jsx";
 import NodeInspector from "../home/NodeInspector.jsx";
 import {Button} from "@mui/material";
 import {ZoomSlider} from "../home/ZoomSlider.jsx";
+import {Edit} from "@mui/icons-material";
+import IconButton from "@mui/material/IconButton";
+
 
 
 const nodeTypes = {
@@ -127,10 +130,12 @@ function DashboardDetail() {
             >
                 <Panel position="bottom-right" style={{marginRight: '80px', display: 'flex'}}>
                     {editUi && <NodeInspector dashboard={"v2"}/>}
-                    <Button variant='outlined' size='small' onClick={handleEdit} style={{marginLeft: '10px'}}>
-                        Edit</Button>
+                    <IconButton variant="outlined" size='small' color="primary" onClick={handleEdit} style={{marginLeft: '10px'}}>
+                        <Edit fontSize="small" />
+                        </IconButton>
                 </Panel>
-                <ZoomSlider position="bottom-left"/>
+                <Controls orientation="horizontal"/>
+                {/*<ZoomSlider position="bottom-left"/>*/}
             </ReactFlow>
 
         </div>
