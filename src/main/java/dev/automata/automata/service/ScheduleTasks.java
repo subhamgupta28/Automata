@@ -98,7 +98,7 @@ public class ScheduleTasks {
             var entity = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(device.getId()).orElse(new Data());
             if (entity.getTimestamp() != null) {
 //                System.err.println(entity);
-                Duration diff = Duration.between(entity.getUpdateDate().toInstant(), now);
+                Duration diff = Duration.between(entity.getUpdateDate(), now);
                 var newStatus = diff.toMinutes() <= 10 ? Status.ONLINE : Status.OFFLINE;
 //                System.err.println(diff.toMinutes());
                 if (!device.getStatus().equals(newStatus))

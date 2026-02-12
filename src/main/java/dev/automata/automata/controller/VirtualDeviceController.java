@@ -33,7 +33,10 @@ public class VirtualDeviceController {
     public ResponseEntity<List<VirtualDevice>> getVirtualDeviceList() {
         return ResponseEntity.ok(virtualDeviceService.getVirtualDeviceList());
     }
-
+    @GetMapping("/showVirtualDevice/{vid}/{isVisible}")
+    public ResponseEntity<String> showVirtualDevice(@PathVariable String vid, @PathVariable String isVisible) {
+        return ResponseEntity.ok(virtualDeviceService.showCharts(vid, isVisible));
+    }
     @PostMapping("create")
     public ResponseEntity<VirtualDevice> createVirtualDevice(@RequestBody VirtualDevice virtualDevice) {
         return ResponseEntity.ok(virtualDeviceService.createVirtualDevice(virtualDevice));

@@ -14,7 +14,7 @@ import {
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
-import {getVirtualDeviceList, saveVirtualDevice} from "../../services/apis.jsx";
+import {getVirtualDeviceList, saveVirtualDevice, updateShowVirtualDevice} from "../../services/apis.jsx";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import List from "@mui/material/List";
@@ -173,7 +173,7 @@ const DashboardEditor = ({change, existingDevice}) => {
         setSelectedDeviceIds([]);
     }
     const handleDisable = async (e) => {
-
+        await updateShowVirtualDevice(existingDevice.id, e.target.checked)
     }
     if (loading) return <CircularProgress/>;
     if (error) return <Alert severity="error">Failed to load devices</Alert>;
@@ -280,7 +280,7 @@ const DashboardEditor = ({change, existingDevice}) => {
                     <Typography style={{marginTop:'14px'}}>
                         Show in dashboard:
                         <Switch defaultChecked size="small"
-                                value={existingDevice.active}
+                                checked={existingDevice.active}
                                 onChange={handleDisable}/>
                     </Typography>
 

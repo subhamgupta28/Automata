@@ -151,7 +151,15 @@ export const updateAttrCharts = async (deviceId, attribute, isVisible) => {
     });
     return response.data;
 }
-
+export const updateShowVirtualDevice = async (vid, isVisible) => {
+    const response = await api.get("virtual/showVirtualDevice/" + vid + "/" + isVisible, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
 export const updateShowCharts = async (deviceId, isVisible) => {
     const response = await api.get("main/showCharts/" + deviceId + "/" + isVisible, {
         headers: {

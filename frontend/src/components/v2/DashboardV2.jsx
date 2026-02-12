@@ -20,7 +20,6 @@ import {Edit} from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
 
 
-
 const nodeTypes = {
     virtualDeviceNode: VirtualDevice,
     weatherNode: WeatherCard,
@@ -41,7 +40,7 @@ const createNodes = (virtualDevices) => {
             position: {x: device.x, y: device.y},
             data: {value: {...device}},
         });
-        index+=400;
+        index += 400;
     })
     // weather.map(we=>{
     //     nodes.push({
@@ -95,7 +94,7 @@ function DashboardDetail() {
             // const weather = list.filter((f) => f.name.toLowerCase().includes("weather"));
             // const others = list.filter((f) => !f.name.toLowerCase().includes("weather"));
             // console.log("weather", weather)
-            setNodes(createNodes(list))
+            setNodes(createNodes(list.filter(f => f.active)))
         }
 
         fetch();
@@ -130,9 +129,10 @@ function DashboardDetail() {
             >
                 <Panel position="bottom-right" style={{marginRight: '80px', display: 'flex'}}>
                     {editUi && <NodeInspector dashboard={"v2"}/>}
-                    <IconButton variant="outlined" size='small' color="primary" onClick={handleEdit} style={{marginLeft: '10px'}}>
-                        <Edit fontSize="small" />
-                        </IconButton>
+                    <IconButton variant="outlined" size='small' color="primary" onClick={handleEdit}
+                                style={{marginLeft: '10px'}}>
+                        <Edit fontSize="small"/>
+                    </IconButton>
                 </Panel>
                 <Controls orientation="horizontal"/>
                 {/*<ZoomSlider position="bottom-left"/>*/}

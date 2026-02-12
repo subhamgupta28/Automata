@@ -6,9 +6,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
-import java.util.Date;
+import java.time.Instant;
 import java.util.Map;
 
 @Document(collection = "data")
@@ -31,5 +29,5 @@ public class Data {
     private Long timestamp;
 
     @Indexed
-    private Date updateDate;
+    private Instant updateDate;
 }

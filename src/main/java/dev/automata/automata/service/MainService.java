@@ -150,20 +150,21 @@ public class MainService {
 
     public String saveData(String deviceId, Map<String, Object> payload) {
 //        TimeZone.setDefault(TimeZone.getTimeZone("GMT+5:30"));
+        ZoneId userZone = ZoneId.of("Asia/Kolkata");
+        var instant = Instant.now();
+        ZonedDateTime dateTime =
+                instant.atZone(userZone);
 
-        ZonedDateTime dateTime = ZonedDateTime.now();
 
-        Date date = new Date();
-        LocalDateTime localDateTime = LocalDateTime.now(ZoneId.systemDefault());
+        DateTimeFormatter formatter =
+                DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-
-        String formattedDate = sdf.format(date);
+        String formattedDate = dateTime.format(formatter);
         var data = Data.builder()
                 .deviceId(deviceId)
                 .dateTime(formattedDate)
                 .data(payload)
-                .updateDate(date)
+                .updateDate(dateTime.toInstant())
                 .timestamp(dateTime.toInstant().getEpochSecond())
                 .build();
         dataRepository.save(data);

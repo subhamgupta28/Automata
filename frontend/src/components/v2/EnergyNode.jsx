@@ -177,14 +177,14 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                     />
                 )}
                 <Stack direction="row" style={{
-                    justifyContent:'space-between'
+                    justifyContent: 'space-between'
                 }}>
-                    <Stack direction="column" spacing={4} width={700}>
+                    <Stack direction="column" spacing={4} width={740}>
 
                         <Carousel
                             slides={slides}
                             autoPlay
-                            width={700}
+                            width={740}
                             interval={8000}
                             height={140}
                         />
@@ -262,7 +262,7 @@ const ConsumptionCard = ({deviceId, messages, vid, name}) => {
 
             <div style={{
                 paddingTop: '6px',
-
+                width: '100%',
                 marginLeft: '12px'
             }}>
                 <Typography variant="caption" color="primary">
@@ -276,7 +276,7 @@ const ConsumptionCard = ({deviceId, messages, vid, name}) => {
                     {", Realtime Power Utilization: "}{live["power"]}{" W"}
                 </Typography>
             </div>
-            <Stack direction="row" spacing={4} style={{padding: '14px'}}>
+            <Stack direction="row" spacing={4} style={{padding: '14px', width: '100%'}}>
                 {(statsData.status === "CHARGING") ? (
                     <>
                         <StatItem

@@ -63,7 +63,7 @@ public class VirtualDeviceService {
 //            }
 //            finalList.add(device);
 //        }
-        return virtualDeviceRepository.findAllByActive(true);
+        return virtualDeviceRepository.findAll();
     }
 
     private double extractParamValue(EnergyStat stat, String param) {
@@ -496,6 +496,19 @@ public class VirtualDeviceService {
         return Map.of("DISCHARGE", totalWh, "CHARGING", chargeTotalWh);
     }
 
+    public String showCharts(String vid, String isVisible) {
+        var isShow = Boolean.parseBoolean(isVisible);
+        var device = virtualDeviceRepository.findById(vid).orElse(null);
+        if (device != null) {
+            device.setActive(isShow);
+            virtualDeviceRepository.save(device);
+            notificationService.sendNotification("Device is" + (isShow ? " visible " : " not visible ") + "in dashboard", "success");
+            return "success";
+        }
+
+        return "error";
+    }
+
 
     private static class EnergyCacheEntry {
         final Map<String, Double> value;
@@ -676,7 +689,10 @@ public class VirtualDeviceService {
             }
             percentTrend = curr - prev;
         }
-
+        ZoneId userZone = ZoneId.of("Asia/Kolkata");
+        var instant = Instant.now();
+        ZonedDateTime dateTime =
+                instant.atZone(userZone);
         EnergyStat stat = EnergyStat.builder()
                 .deviceId(deviceId)
                 .timestamp(now)
@@ -695,7 +711,7 @@ public class VirtualDeviceService {
                 .percent(percent)
                 .status(status)
                 .percentTrend(round(percentTrend))
-                .updateDate(new Date())
+                .updateDate(dateTime.toInstant())
                 .build();
 
         // ---- DAILY UPSERT (rollup only) ----

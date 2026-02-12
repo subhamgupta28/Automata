@@ -1,5 +1,5 @@
 import { Handle, Position, useNodes, useReactFlow } from "@xyflow/react";
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import { useCachedDevices } from "../../services/AppCacheContext.jsx";
 import {
     Card,
@@ -27,7 +27,10 @@ const triggerStyle = {
 
 export const TriggerNode = ({ id, data, isConnectable }) => {
     const nodes = useNodes();
-    const conditionNodes = nodes.filter(node => node.type === 'condition');
+    const conditionNodes = useMemo(
+        () => nodes.filter(n => n.type === 'condition'),
+        [nodes]
+    );
 
     const initialTriggerData = data.triggerData || {
         name: '',
@@ -57,35 +60,47 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
 
     // Sync number of keys with number of condition nodes
     useEffect(() => {
-        const updatedKeys = [];
+        const updated = conditionNodes.map(node => {
+            const existing = triggerKeys.find(
+                tk => tk.conditionId === node.id
+            );
 
-        for (let i = 0; i < conditionNodes.length; i++) {
-            const existing = triggerKeys.find(tk => tk.conditionId === conditionNodes[i].id);
-            if (existing) {
-                updatedKeys.push(existing);
-            } else {
-                updatedKeys.push({
-                    conditionId: conditionNodes[i].id,
-                    key: '',
-                    value: ''
-                });
-            }
+            return existing || {
+                conditionId: node.id,
+                key: '',
+                value: ''
+            };
+        });
+
+        const changed =
+            JSON.stringify(updated) !== JSON.stringify(triggerKeys);
+
+        if (changed) {
+            setTriggerKeys(updated);
         }
 
-        setTriggerKeys(updatedKeys);
-    }, [conditionNodes]);
+    }, [conditionNodes, triggerKeys]);
+
+    const lastDataRef = useRef(null);
 
     useEffect(() => {
-        const data = {
+        const newData = {
             triggerData: {
                 deviceId: selectedDevice?.id || '',
                 type,
                 name,
                 keys: triggerKeys
             }
+        };
+
+        const serialized = JSON.stringify(newData);
+
+        if (serialized !== lastDataRef.current) {
+            lastDataRef.current = serialized;
+            updateNodeData(id, newData);
         }
-        updateNodeData(id, data);
-    }, [selectedDevice, triggerKeys, name, type]);
+
+    }, [selectedDevice?.id, triggerKeys, name, type]);
 
     const selectTriggerDevice = (e) => {
         const dev = devices.find(d => d.id === e.target.value);
@@ -118,6 +133,7 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
             </IconButton>
 
             <TextField
+                className="nodrag"
                 size='small'
                 label="Name for the trigger"
                 fullWidth

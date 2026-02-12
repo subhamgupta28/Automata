@@ -46,6 +46,7 @@ import VirtualDeviceForm from "../v2/VirtualDeviceForm.jsx";
 import {CalendarViewMonthRounded, Dashboard, GridView, PlayCircleFilled} from "@mui/icons-material";
 import DashboardV2 from "../v2/DashboardV2.jsx";
 import Presentation from "../demo/Presentation.jsx";
+import AppIcon from "../../../public/icon-color.png"
 
 const drawerWidth = 200;
 
@@ -213,7 +214,7 @@ export default function SideDrawer() {
                     <Box sx={{display: 'flex', flexDirection: 'column', height: '100%'}}>
                         <DrawerHeader>
                             <IconButton onClick={handleDrawerClose}>
-                                {open ? <ChevronLeftIcon/> : <MenuIcon/>}
+                                {open ? <ChevronLeftIcon/> : <img src={AppIcon} alt="home" style={{height:'28px'}}/>}
                             </IconButton>
                         </DrawerHeader>
 

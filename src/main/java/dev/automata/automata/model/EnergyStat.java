@@ -5,6 +5,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Document(collection = "energyStat")
@@ -22,7 +23,7 @@ public class EnergyStat {
     private String deviceId;
     private Long timestamp;
     @Indexed
-    private Date updateDate;
+    private Instant updateDate;
 
     private String status;
     private double totalWh;
