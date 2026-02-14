@@ -53,13 +53,13 @@ public class AutomationService {
 //    }
     @Scheduled(fixedRate = 10000)
     public void updateWLEDDevices() {
-//        var w = new Wled("");
+//        var w = new Wled("", mqttOutboundChannel);
 //        mainService.registerDevice(w.newDevice());
         var devices = deviceRepository.findAllByType("WLED");
         devices.forEach(device -> {
             try {
                 var deviceId = device.getId();
-                var wled = new Wled(device.getAccessUrl());
+                var wled = new Wled(device.getAccessUrl(), mqttOutboundChannel);
                 var data = wled.getInfo(device.getAccessUrl(), null);
                 mainService.saveData(deviceId, data);
 //                System.err.println("WLED: " + data);
@@ -113,7 +113,7 @@ public class AutomationService {
         if (payload.containsKey("automation")) {
             var id = payload.get(payload.get("key").toString()).toString();
             automationRepository.findById(id).ifPresent((automation) -> {
-                executeActions(automation, user);
+                executeActions(automation, user, new HashMap<>());
             });
             return "success";
         }
@@ -149,6 +149,25 @@ public class AutomationService {
         return "Action successfully sent!";
     }
 
+//    @Scheduled(fixedRate = 1000)
+//    public void sendWled(){
+//        sendToTopic( "wled/ring", "8");
+//        sendToTopic( "wled/all/col", Wled.rgbToHex(0, 10, 200));
+
+    /// /        sendToTopic( "wled/ring/v", "<xml>...</xml>");
+//    }
+//    private void sendToTopic(String topic, String payload) {
+//        try {
+//            mqttOutboundChannel.send(
+//                    MessageBuilder.withPayload(payload)
+//                            .setHeader("mqtt_topic", topic)
+//                            .build()
+//            );
+//            System.out.println("📤 Sent to " + topic + " => " + payload);
+//        } catch (Exception e) {
+//            System.err.println(e);
+//        }
+//    }
     private void sendToTopic(String topic, Map<String, Object> payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);
@@ -201,13 +220,14 @@ public class AutomationService {
         if (device == null) return "Not found";
 
         try {
-            var wled = new Wled(device.getAccessUrl());
+            var wled = new Wled(device.getAccessUrl(), mqttOutboundChannel);
             var key = payload.get("key").toString();
             String result = switch (key) {
                 case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString())).resultNow();
                 case "onOff" -> wled.powerOnOff(Boolean.parseBoolean(payload.get(key).toString())).resultNow();
                 case "toggle" -> wled.toggleOnOff().resultNow();
                 case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString())).resultNow();
+                case "color" -> wled.setRGBHexColor(payload.get(key).toString());
                 default -> "No action found for key: " + key;
             };
 //            CompletableFuture.runAsync(() -> {
@@ -290,7 +310,7 @@ public class AutomationService {
             automationCache.setLastUpdate(now); // update last execution time
             System.err.println("Executing automation: " + automation.getName() + " with payload: " + payload);
             notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
-            executeActions(automation, user);
+            executeActions(automation, user, payload);
         } else {
             automation.setIsActive(false);
         }
@@ -460,7 +480,7 @@ public class AutomationService {
     }
 
 
-    private void executeActions(Automation automation, String user) {
+    private void executeActions(Automation automation, String user, Map<String, Object> value) {
         for (Automation.Action action : automation.getActions()) {
             if (Boolean.FALSE.equals(action.getIsEnabled())) continue;
 
@@ -475,7 +495,7 @@ public class AutomationService {
             if ("alert".equals(action.getKey())) {
                 notificationService.sendAlert("Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
             } else if ("app_notify".equals(action.getKey())) {
-                notificationService.sendNotify("Automation", action.getData(), "low");
+                notificationService.sendNotify("Automation", action.getData() + "and live data for: " + action.getKey() + " is " + value.get(action.getKey()), "low");
             } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
                 handleWLED(action.getDeviceId(), new HashMap<>(payload), user);
             } else {

@@ -1,18 +1,19 @@
 import React, {useEffect, useMemo, useState} from "react";
 import LightBulbCard from "../v2/LightBulbCard.jsx";
-import {Menu} from "@mui/material";
+import {Menu, Popover} from "@mui/material";
 import {CustomSlider} from "../charts/CustomSlider.jsx";
 import {Presets} from "../charts/Presets.jsx";
+import ColorPicker from "../charts/ColorPicker.jsx";
 
-export default function WledDevices ({devices, messages}){
+export default function WledDevices({devices, messages}) {
 
-    return(
+    return (
         <div style={{
             gridTemplateColumns: 'repeat(2, 1fr)',
             display: 'grid',
             // gap: '2px',
         }}>
-            {devices.map(device=>(
+            {devices.map(device => (
                 <div key={device.id}>
                     <Wled device={device} messages={messages}/>
                 </div>
@@ -82,12 +83,13 @@ const DetailMenu = ({anchorEl, setAnchorEl, sliderData, presetButtons, deviceId,
         setAnchorEl(null);
     };
     return (
-        <div>
-            <Menu
+        <>
+            <Popover
                 id="basic-menu"
                 style={{
                     borderRadius: '12px',
-                    width: '260px'
+                    width: '260px',
+                    backgroundColor: "transparent"
                 }}
                 anchorEl={anchorEl}
                 open={open}
@@ -120,8 +122,15 @@ const DetailMenu = ({anchorEl, setAnchorEl, sliderData, presetButtons, deviceId,
                             displayName={p.displayName}
                         />
                     ))}
+
+
+                    <ColorPicker
+                        value={liveData?.["color"]}
+                        deviceId={deviceId}
+                        type={deviceType}
+                        />
                 </div>
-            </Menu>
-        </div>
+            </Popover>
+        </>
     )
 }

@@ -1,12 +1,18 @@
 package dev.automata.automata.modules;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.dto.WledResponse;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.DeviceActionState;
 import dev.automata.automata.model.Status;
+import org.springframework.data.mongodb.core.messaging.Message;
 import org.springframework.http.*;
+import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
+import org.springframework.integration.mqtt.support.MqttHeaders;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.client.RestTemplate;
 import org.w3c.dom.Document;
@@ -24,10 +30,44 @@ import java.util.concurrent.CompletableFuture;
 public class Wled {
     private final String ipAddress;
     private static final HashMap<String, Object> lastState = new HashMap<>();
+    private final MessageChannel mqttOutboundChannel;
+
+    public String setRGBHexColor(String color) {
+        System.err.println("Color "+color);
+        sendToTopic( "wled/all/col", color);
+        return "success";
+    }
+
+    public String setRGB(int r, int g, int b) {
+        validate(r);
+        validate(g);
+        validate(b);
+        sendToTopic( "wled/all/col", String.format("#%02X%02X%02X", r, g, b));
+        return "success";
+    }
+
+    private static void validate(int value) {
+        if (value < 0 || value > 255) {
+            throw new IllegalArgumentException("Color values must be 0-255");
+        }
+    }
 
 
-    public Wled(String ipAddress) {
+    private void sendToTopic(String topic, String payload) {
+        try {
+            mqttOutboundChannel.send(
+                    MessageBuilder.withPayload(payload)
+                            .setHeader("mqtt_topic", topic)
+                            .build()
+            );
+            System.out.println("📤 Sent to " + topic + " => " + payload);
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+    }
+    public Wled(String ipAddress, MessageChannel mqttOutboundChannel) {
         this.ipAddress = ipAddress + "/json/state";
+        this.mqttOutboundChannel = mqttOutboundChannel;
     }
 /// [
 ///{
@@ -43,11 +83,11 @@ public class Wled {
 
     public RegisterDevice newDevice() {
         return RegisterDevice.builder()
-                .name("Matrix")
+                .name("Ring Light")
                 .sleep(false)
                 .reboot(false)
-                .host("matrix")
-                .macAddr("8C:A3:99:CF:FB:SG")
+                .host("wled-ring")
+                .macAddr("DC:54:75:EB:6C:F4")
                 .accessUrl("http://192.168.1.65")
                 .type("WLED")
                 .status(Status.ONLINE)
@@ -66,6 +106,14 @@ public class Wled {
                                         .key("toggle")
                                         .displayName("Toggle")
                                         .type("ACTION|OUT")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("color")
+                                        .displayName("Color")
+                                        .type("ACTION|COLOR")
                                         .units("")
                                         .extras(new HashMap<>())
                                         .visible(true)
@@ -137,6 +185,7 @@ public class Wled {
 
     @Async
     public CompletableFuture<String> toggleOnOff() {
+        sendToTopic( "wled/ring", "T");
         try {
             var r = """
                     {"on": "t"}
@@ -153,7 +202,7 @@ public class Wled {
     @Async
     public CompletableFuture<String> powerOnOff(boolean on) {
         lastState.put("onOff", on);
-
+        sendToTopic( "wled/ring", String.valueOf(on));
         try {
             var r = """
                     {"on": v}
@@ -170,6 +219,7 @@ public class Wled {
     @Async
     public CompletableFuture<String> setBrightness(int brightness) {
         lastState.put("bright", brightness);
+        sendToTopic( "wled/ring", String.valueOf(brightness));
         try {
             var r = """
                     {"bri": v}
@@ -196,9 +246,9 @@ public class Wled {
         }
     }
 
-    public String setRGB(int red, int green, int blue) {
-        return new RestTemplate().getForObject(ipAddress + "&R=" + red + "&G=" + green + "&B=" + blue, String.class);
-    }
+//    public String setRGB(int red, int green, int blue) {
+//        return new RestTemplate().getForObject(ipAddress + "&R=" + red + "&G=" + green + "&B=" + blue, String.class);
+//    }
 
     public String setEffect(int effect) {
         return new RestTemplate().getForObject(ipAddress + "&FX=" + effect, String.class);
