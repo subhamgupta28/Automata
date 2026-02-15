@@ -550,7 +550,7 @@ public class MainService {
                 }
             }
         }
-        System.err.println(list);
+//        System.err.println(list);
 //        var list = new ArrayList<>();
 //        for (var i : req) {
 //            list.add(
