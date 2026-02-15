@@ -542,7 +542,7 @@ public class MainService {
                 if (att.getType().equals("ACTION|SLIDER")) {
                     list.add(
                             Map.of(
-                                    "id", att.getDeviceId(),
+                                    "id", device.getId(),
                                     "name", device.getName() + " " + att.getDisplayName(),
                                     "key", att.getKey()
                             )
