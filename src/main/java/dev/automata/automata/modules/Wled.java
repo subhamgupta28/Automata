@@ -21,6 +21,8 @@ import org.w3c.dom.NodeList;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,12 +31,13 @@ import java.util.concurrent.CompletableFuture;
 
 public class Wled {
     private final String ipAddress;
+    private String deviceTopic = "wled/all";
     private static final HashMap<String, Object> lastState = new HashMap<>();
     private final MessageChannel mqttOutboundChannel;
 
     public String setRGBHexColor(String color) {
-        System.err.println("Color "+color);
-        sendToTopic( "wled/all/col", color);
+        System.err.println("Color " + color);
+        sendToTopic(deviceTopic + "/col", color);
         return "success";
     }
 
@@ -42,8 +45,8 @@ public class Wled {
         validate(r);
         validate(g);
         validate(b);
-        sendToTopic( "wled/all/col", String.format("#%02X%02X%02X", r, g, b));
-        return "success";
+//        sendToTopic(deviceTopic + "/col", String.format("#%02X%02X%02X", r, g, b));
+        return String.format("#%02X%02X%02X", r, g, b);
     }
 
     private static void validate(int value) {
@@ -65,30 +68,40 @@ public class Wled {
             System.err.println(e);
         }
     }
-    public Wled(String ipAddress, MessageChannel mqttOutboundChannel) {
+
+    public Wled(String ipAddress, MessageChannel mqttOutboundChannel, Device device) {
         this.ipAddress = ipAddress + "/json/state";
         this.mqttOutboundChannel = mqttOutboundChannel;
+        if (device != null) {
+            var configs = device.getAttributes().stream().filter(f -> f.getType().equals("ACTION|CONFIG")).toList();
+            System.err.println(configs);
+            if (!configs.isEmpty()) {
+                deviceTopic = configs.getFirst().getExtras().get("deviceTopic").toString();
+            }
+        }
+
     }
-/// [
-///{
-///     "macAddr": "8C:A3:99:CF:FB:SG"
-///   },
-///   {
-///     "macAddr": "DC:54:75:EE:0F:7C"
-///   },
-///   {
-///     "macAddr": "DC:54:75:EB:6C:F4"
-///   }
-/// ]
+
+    /// [
+    ///{
+    ///     "macAddr": "8C:A3:99:CF:FB:SG"
+    ///   },
+    ///   {
+    ///     "macAddr": "DC:54:75:EE:0F:7C"
+    ///   },
+    ///   {
+    ///     "macAddr": "DC:54:75:EB:6C:F4"
+    ///   }
+    /// ]
 
     public RegisterDevice newDevice() {
         return RegisterDevice.builder()
-                .name("Ring Light")
+                .name("Light Strip")
                 .sleep(false)
                 .reboot(false)
-                .host("wled-ring")
-                .macAddr("DC:54:75:EB:6C:F4")
-                .accessUrl("http://192.168.1.65")
+                .host("bigled")
+                .macAddr("8C:A3:99:CF:FB:AC")
+                .accessUrl("http://192.168.1.55")
                 .type("WLED")
                 .status(Status.ONLINE)
                 .updateInterval(190000L)
@@ -133,6 +146,14 @@ public class Wled {
                                         .units("")
                                         .extras(Map.of("min", 0, "max", 255))
                                         .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("config")
+                                        .displayName("Config")
+                                        .type("ACTION|CONFIG")
+                                        .units("")
+                                        .extras(Map.of("deviceTopic", "wled/bigled"))
+                                        .visible(true)
                                         .build()
 
                         )
@@ -143,6 +164,7 @@ public class Wled {
 
     public Map<String, Object> getInfo(String deviceId, DeviceActionState deviceState) {
         var res = new RestTemplate().getForObject(ipAddress, WledResponse.class);
+//        System.err.println(res);
         if (res != null) {
             try {
 //                // Convert the XML string into a byte stream
@@ -158,13 +180,21 @@ public class Wled {
 
 //                boolean onOff = getTagValue(doc, "ac") > 0;
 //                int bright = getTagValue(doc, "ac");
+                var col = res.seg.getFirst().get("col");
+                System.err.println(col);
+                List<?> c = (List<?>) col;
+                List<?> first = (List<?>) c.get(0);
 
+                int r = (int) first.get(0);
+                int g = (int) first.get(1);
+                int b = (int) first.get(2);
                 if (deviceState != null)
                     lastState.putAll(deviceState.getPayload());
                 lastState.put("onOff", res.on);
                 lastState.put("bright", res.bri);
                 lastState.put("presets", res.ps);
                 lastState.put("device_id", deviceId);
+                lastState.put("color", setRGB(r, g, b));
                 return lastState;
                 // Get the root element
             } catch (Exception e) {
@@ -185,7 +215,7 @@ public class Wled {
 
     @Async
     public CompletableFuture<String> toggleOnOff() {
-        sendToTopic( "wled/ring", "T");
+        sendToTopic(deviceTopic, "T");
         try {
             var r = """
                     {"on": "t"}
@@ -202,7 +232,7 @@ public class Wled {
     @Async
     public CompletableFuture<String> powerOnOff(boolean on) {
         lastState.put("onOff", on);
-        sendToTopic( "wled/ring", String.valueOf(on));
+        sendToTopic(deviceTopic, String.valueOf(on));
         try {
             var r = """
                     {"on": v}
@@ -219,7 +249,7 @@ public class Wled {
     @Async
     public CompletableFuture<String> setBrightness(int brightness) {
         lastState.put("bright", brightness);
-        sendToTopic( "wled/ring", String.valueOf(brightness));
+        sendToTopic(deviceTopic, String.valueOf(brightness));
         try {
             var r = """
                     {"bri": v}

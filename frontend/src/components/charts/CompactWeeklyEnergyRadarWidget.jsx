@@ -21,7 +21,7 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
     useEffect(() => {
         const fetch = async () => {
             const res = await getEnergyAnalytics(vid, status === "DISCHARGE" ? "totalWh" : "chargeTotalWh");
-            console.log("data", res)
+            // console.log("data", res)
             const {labels, data} = res;
             setLabels(labels);
             setSeries(data);

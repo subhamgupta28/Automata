@@ -15,7 +15,6 @@ import {CompactWeeklyEnergyRadarWidget} from "../charts/CompactWeeklyEnergyRadar
 import IconButton from "@mui/material/IconButton";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {CustomModal} from "../home/CustomModal.jsx";
-import CustomLineChart from "../charts/CustomLineChart.jsx";
 
 
 export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {

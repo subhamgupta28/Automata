@@ -528,24 +528,41 @@ public class MainService {
                 .map(a -> a.getName() + ":" + a.getId())
                 .collect(Collectors.joining(","));
     }
-//    @Scheduled(fixedRate = 80000)
-//    public void executeInsert(){
-//        getMasterList();
-//    }
+
+    @Scheduled(fixedRate = 1000)
+    public void executeInsert() {
+        getMasterList();
+    }
 
     public Object getMasterList() {
-        var req = masterOptionRepository.findAll();
+        var req = deviceRepository.findAll();
         var list = new ArrayList<>();
-        for (var i : req) {
-            list.add(
-                    Map.of(
-                            "id", i.getDeviceId(),
-                            "name", i.getName(),
-                            "key", i.getKey()
-                    )
-            );
+        for (var device : req) {
+            for (var att : device.getAttributes()) {
+                if (att.getType().equals("ACTION|SLIDER")) {
+                    list.add(
+                            Map.of(
+                                    "id", att.getDeviceId(),
+                                    "name", device.getName() + " " + att.getDisplayName(),
+                                    "key", att.getKey()
+                            )
+                    );
+                }
+            }
         }
+        System.err.println(list);
+//        var list = new ArrayList<>();
+//        for (var i : req) {
+//            list.add(
+//                    Map.of(
+//                            "id", i.getDeviceId(),
+//                            "name", i.getName(),
+//                            "key", i.getKey()
+//                    )
+//            );
+//        }
         return list;
+//        return null;
     }
 
     public Map<String, Object> getServerCreds() {

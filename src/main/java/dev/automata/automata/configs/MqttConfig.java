@@ -44,7 +44,7 @@ public class MqttConfig {
     private final String topicSendData = "automata/sendData";
     private final String topicAction = "automata/action";
     private final String topicSys = "$SYS/broker/clients/123";
-    private final String wledDeviceTopic = "wled/ring";
+//    private final String wledDeviceTopic = "wled/ring";
     private final String wledGroupTopic = "wled/all";
 
     @Bean
@@ -76,7 +76,7 @@ public class MqttConfig {
                         topicAction,
                         topicDefault,
                         topicSys,
-                        wledDeviceTopic,
+//                        wledDeviceTopic,
                         wledGroupTopic
                 );
 
@@ -115,7 +115,7 @@ public class MqttConfig {
                                 .channelMapping(topicDefault, "mqttInputChannel")
                                 .channelMapping(topicAction, "action")
                                 .channelMapping(topicSys, "sysData")
-                                .channelMapping(wledDeviceTopic, "mqttInputChannel")
+//                                .channelMapping(wledDeviceTopic, "mqttInputChannel")
                                 .channelMapping(wledGroupTopic, "mqttInputChannel")
                 )
                 .get();

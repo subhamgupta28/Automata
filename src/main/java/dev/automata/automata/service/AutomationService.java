@@ -53,13 +53,13 @@ public class AutomationService {
 //    }
     @Scheduled(fixedRate = 10000)
     public void updateWLEDDevices() {
-//        var w = new Wled("", mqttOutboundChannel);
+//        var w = new Wled("", mqttOutboundChannel, null);
 //        mainService.registerDevice(w.newDevice());
         var devices = deviceRepository.findAllByType("WLED");
         devices.forEach(device -> {
             try {
                 var deviceId = device.getId();
-                var wled = new Wled(device.getAccessUrl(), mqttOutboundChannel);
+                var wled = new Wled(device.getAccessUrl(), mqttOutboundChannel, device);
                 var data = wled.getInfo(device.getAccessUrl(), null);
                 mainService.saveData(deviceId, data);
 //                System.err.println("WLED: " + data);
@@ -220,7 +220,7 @@ public class AutomationService {
         if (device == null) return "Not found";
 
         try {
-            var wled = new Wled(device.getAccessUrl(), mqttOutboundChannel);
+            var wled = new Wled(device.getAccessUrl(), mqttOutboundChannel, device);
             var key = payload.get("key").toString();
             String result = switch (key) {
                 case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString())).resultNow();
