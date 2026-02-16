@@ -28,6 +28,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.text.SimpleDateFormat;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -112,16 +113,7 @@ public class VirtualDeviceService {
         Instant startUtc = startUser.toInstant();
         Instant endUtc = endUser.toInstant();// local business timezone
         System.err.println("instant " + startUtc + " -- " + endUtc);
-        LocalDate today = LocalDate.now(zone);
 
-        long todayStart = today
-                .atStartOfDay(zone)
-                .plusDays(1)
-                .toEpochSecond();
-        long weekStart = today.minusDays(7)
-                .atStartOfDay(zone)
-                .toEpochSecond();
-        System.err.println("local " + weekStart + " -- " + todayStart);
 
         if (virtualDevice == null) {
             return Map.of("msg", "Error, device not found", "status", "error");
@@ -143,15 +135,16 @@ public class VirtualDeviceService {
                         .collect(Collectors.groupingBy(EnergyStat::getDeviceId, LinkedHashMap::new, Collectors.toList()));
 
         List<Map<String, Object>> response = new ArrayList<>();
-        SimpleDateFormat sdf = new SimpleDateFormat("dd-MMM", Locale.ENGLISH);
-        List<LocalDate> days = IntStream.range(0, 7)
-                .mapToObj(today::minusDays)
-                .toList();
 
-        LinkedHashSet<String> labels = new LinkedHashSet<>();
-        for (LocalDate d : days) {
-            labels.add(sdf.format(Date.from(d.atStartOfDay(zone).toInstant())));
-        }
+        DateTimeFormatter formatter =
+                DateTimeFormatter.ofPattern("dd-MMM", Locale.ENGLISH);
+
+        List<String> labels =
+                IntStream.range(0, 7)
+                        .mapToObj(todayUser::minusDays)
+                        .map(d -> d.format(formatter))
+                        .toList();
+        System.err.println("labels " + labels);
         for (var entry : grouped.entrySet()) {
 
             String deviceId = entry.getKey();

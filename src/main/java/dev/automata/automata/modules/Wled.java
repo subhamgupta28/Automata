@@ -36,7 +36,7 @@ public class Wled {
     private final MessageChannel mqttOutboundChannel;
 
     public String setRGBHexColor(String color) {
-        System.err.println("Color " + color);
+//        System.err.println("Color " + color);
         sendToTopic(deviceTopic + "/col", color);
         return "success";
     }
@@ -74,7 +74,7 @@ public class Wled {
         this.mqttOutboundChannel = mqttOutboundChannel;
         if (device != null) {
             var configs = device.getAttributes().stream().filter(f -> f.getType().equals("ACTION|CONFIG")).toList();
-            System.err.println(configs);
+//            System.err.println(configs);
             if (!configs.isEmpty()) {
                 deviceTopic = configs.getFirst().getExtras().get("deviceTopic").toString();
             }
@@ -181,7 +181,7 @@ public class Wled {
 //                boolean onOff = getTagValue(doc, "ac") > 0;
 //                int bright = getTagValue(doc, "ac");
                 var col = res.seg.getFirst().get("col");
-                System.err.println(col);
+//                System.err.println(col);
                 List<?> c = (List<?>) col;
                 List<?> first = (List<?>) c.get(0);
 
@@ -222,7 +222,7 @@ public class Wled {
                     """;
 
             var response = new RestTemplate().postForObject(ipAddress, r, Object.class);
-            System.err.println(response);
+//            System.err.println(response);
             return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
             return CompletableFuture.completedFuture("error");
@@ -239,7 +239,7 @@ public class Wled {
                     """;
 
             var response = new RestTemplate().postForObject(ipAddress, r.replace("v", String.valueOf(on)), Object.class);
-            System.err.println(response);
+//            System.err.println(response);
             return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
             return CompletableFuture.completedFuture("error");
@@ -256,7 +256,7 @@ public class Wled {
                     """;
 
             var response = new RestTemplate().postForObject(ipAddress, r.replace("v", String.valueOf(brightness)), Object.class);
-            System.err.println(response);
+//            System.err.println(response);
             return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
             return CompletableFuture.completedFuture("error");
@@ -269,7 +269,7 @@ public class Wled {
         try {
             String payload = String.format("{\"ps\": %d}", presets);
             var response = new RestTemplate().postForObject(ipAddress, payload, Object.class);
-            System.err.println(response);
+//            System.err.println(response);
             return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
             return CompletableFuture.completedFuture("error");
