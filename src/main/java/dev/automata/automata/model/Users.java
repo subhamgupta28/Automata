@@ -7,6 +7,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -25,8 +26,9 @@ public class Users implements UserDetails {
     private String lastName;
     private String password;
     private String email;
-    private Date timestamp;
+    private Instant timestamp;
     private Role role;
+    private String timezone = "Asia/Kolkata";
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
