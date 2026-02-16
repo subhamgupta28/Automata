@@ -82,8 +82,8 @@ public class AnalyticsService {
             else if (daysBetween <= 7) effectiveRange = "week";
             else effectiveRange = "month";
         }
-        System.err.println("daysBetween "+ daysBetween);
-        System.err.println("effectiveRange "+ effectiveRange);
+//        System.err.println("daysBetween "+ daysBetween);
+//        System.err.println("effectiveRange "+ effectiveRange);
         // Format based on range
         var dateFormat = switch (effectiveRange) {
             case "week" -> "%m-%d";

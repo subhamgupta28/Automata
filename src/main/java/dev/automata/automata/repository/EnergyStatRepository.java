@@ -3,6 +3,7 @@ package dev.automata.automata.repository;
 import dev.automata.automata.model.EnergyStat;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -15,4 +16,6 @@ public interface EnergyStatRepository extends MongoRepository<EnergyStat, String
     List<EnergyStat> findAllByDeviceIdIn(Collection<String> deviceIds);
 
     List<EnergyStat> findAllByDeviceIdInAndTimestampBetween(Collection<String> deviceIds, Long timestampAfter, Long timestampBefore);
+
+    List<EnergyStat> findAllByDeviceIdInAndUpdateDateBetween(Collection<String> deviceIds, Instant updateDateAfter, Instant updateDateBefore);
 }

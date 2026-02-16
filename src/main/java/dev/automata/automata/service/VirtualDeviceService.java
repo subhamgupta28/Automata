@@ -97,15 +97,31 @@ public class VirtualDeviceService {
     public Map<String, Object> getEnergyAnalyticsChart(String vid, String param) {
 
         var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
-        ZoneId zone = ZoneId.of("Asia/Kolkata");   // local business timezone
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
+
+        LocalDate todayUser = LocalDate.now(zone);
+
+        ZonedDateTime startUser =
+                todayUser.minusDays(6)
+                        .atStartOfDay(zone);
+
+        ZonedDateTime endUser =
+                todayUser.plusDays(1)
+                        .atStartOfDay(zone);
+
+        Instant startUtc = startUser.toInstant();
+        Instant endUtc = endUser.toInstant();// local business timezone
+        System.err.println("instant " + startUtc + " -- " + endUtc);
         LocalDate today = LocalDate.now(zone);
 
         long todayStart = today
                 .atStartOfDay(zone)
+                .plusDays(1)
                 .toEpochSecond();
         long weekStart = today.minusDays(7)
                 .atStartOfDay(zone)
                 .toEpochSecond();
+        System.err.println("local " + weekStart + " -- " + todayStart);
 
         if (virtualDevice == null) {
             return Map.of("msg", "Error, device not found", "status", "error");
@@ -115,10 +131,10 @@ public class VirtualDeviceService {
         var deviceNames = deviceList.stream().collect(Collectors.toMap(Device::getId, Device::getName));
 
         var stats = energyStatRepository
-                .findAllByDeviceIdInAndTimestampBetween(
+                .findAllByDeviceIdInAndUpdateDateBetween(
                         virtualDevice.getDeviceIds(),
-                        weekStart,
-                        todayStart
+                        startUtc,
+                        endUtc
                 );
 
         // Group by deviceId
