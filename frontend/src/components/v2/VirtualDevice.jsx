@@ -93,7 +93,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
         };
 
         for (const attr of deviceList) {
-            if (attr.type === 'HVAC') grouped.hvacDevices.push(attr);
+            if (attr.category === 'HVAC') grouped.hvacDevices.push(attr);
             else if (attr.type === 'WLED') grouped.wledDevices.push(attr);
             else if (attr.type === 'System') grouped.systemDevices.push(attr);
             else if (attr.type === 'CHART') grouped.chartDevices.push(attr);

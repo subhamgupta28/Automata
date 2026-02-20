@@ -11,18 +11,19 @@ import {
     CircularProgress, Backdrop
 } from '@mui/material';
 import {updateAttribute, updateShowInDashboard} from "../services/apis.jsx";
-import { styled } from '@mui/material/styles';
+import {styled} from '@mui/material/styles';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableCell, {tableCellClasses} from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import {useCachedDevices} from "../services/AppCacheContext.jsx";
+import dayjs from "dayjs";
 
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
+const StyledTableCell = styled(TableCell)(({theme}) => ({
     [`&.${tableCellClasses.head}`]: {
         backgroundColor: theme.palette.common.black,
         color: theme.palette.common.white,
@@ -32,7 +33,7 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
     },
 }));
 
-const StyledTableRow = styled(TableRow)(({ theme }) => ({
+const StyledTableRow = styled(TableRow)(({theme}) => ({
     '&:nth-of-type(odd)': {
         backgroundColor: theme.palette.action.hover,
     },
@@ -69,7 +70,7 @@ export default function Devices() {
                 await updateAttribute(device.id, attribute, checked);
                 setDevicesData(prevData =>
                     prevData.map(d =>
-                        d.id === device.id ? { ...d, [attribute]: checked } : d
+                        d.id === device.id ? {...d, [attribute]: checked} : d
                     )
                 );
             } catch (err) {
@@ -83,10 +84,33 @@ export default function Devices() {
     };
 
     return (
-        <div style={{paddingTop: '40px', paddingLeft: '40px', paddingRight: '40px',height:'100%',}}>
+        <div
+            style={{
+                padding: '20px',
+                height: '100vh',
+                width: '95vw',// Full viewport
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',   // Prevent page scroll
+                boxSizing: 'border-box',
+            }}
+        >
             {/*<Action/>*/}
-            <TableContainer component={Paper} style={{borderRadius:'10px', height:'90dvh',scrollbarWidth: "none"}}>
-                <Table sx={{ minWidth: 700 }} aria-label="customized table">
+            <TableContainer component={Paper}
+                            sx={{
+                                borderRadius: '10px',
+                                flex: 1,            // Take remaining space
+                                overflow: 'auto',   // Scroll only inside table
+                            }}
+            >
+                <Table
+                    stickyHeader              // 👈 enables sticky header
+                    sx={{
+                        minWidth: 1200,         // 👈 increase if you expect many columns
+                        whiteSpace: 'nowrap',   // 👈 prevents columns from wrapping
+                    }}
+                    aria-label="customized table"
+                >
                     <TableHead>
                         <TableRow>
                             <StyledTableCell>Device Name</StyledTableCell>
@@ -94,8 +118,11 @@ export default function Devices() {
                             <StyledTableCell align="right">Show In Dashboard</StyledTableCell>
                             <StyledTableCell align="right">Show Charts</StyledTableCell>
                             <StyledTableCell align="right">Analytics</StyledTableCell>
-                            <StyledTableCell align="right">Access URL:</StyledTableCell>
+                            <StyledTableCell align="right">Access URL</StyledTableCell>
                             <StyledTableCell align="right">Host</StyledTableCell>
+                            <StyledTableCell align="right">Mac Address</StyledTableCell>
+                            <StyledTableCell align="right">Last Online</StyledTableCell>
+                            <StyledTableCell align="right">Last Registered</StyledTableCell>
                             <StyledTableCell align="right">Update Interval(Min.)</StyledTableCell>
                             <StyledTableCell align="right">Type</StyledTableCell>
                         </TableRow>
@@ -120,25 +147,32 @@ export default function Devices() {
 
                                 <StyledTableCell align="right">
                                     <Switch defaultChecked size="small" checked={device.showInDashboard}
-                                            onChange={(e)=>handleChange(device, "showInDashboard", e.target.checked)}/>
+                                            onChange={(e) => handleChange(device, "showInDashboard", e.target.checked)}/>
                                 </StyledTableCell>
                                 <StyledTableCell align="right">
                                     <Switch defaultChecked size="small" checked={device.showCharts}
-                                            onChange={(e)=>handleChange(device, "showCharts", e.target.checked)}/>
+                                            onChange={(e) => handleChange(device, "showCharts", e.target.checked)}/>
                                 </StyledTableCell>
                                 <StyledTableCell align="right">
                                     <Switch defaultChecked size="small" checked={device.analytics}
-                                            onChange={(e)=>handleChange(device, "analytics", e.target.checked)}/>
+                                            onChange={(e) => handleChange(device, "analytics", e.target.checked)}/>
                                 </StyledTableCell>
                                 <StyledTableCell align="right">
                                     <a href={device.accessUrl} target="_blank"
-                                                                  rel="noopener noreferrer">{device.accessUrl}</a>
+                                       rel="noopener noreferrer">{device.accessUrl}</a>
                                 </StyledTableCell>
                                 <StyledTableCell align="right">
-                                    <a href={'http://'+device.host+'.local'} target="_blank"
+                                    <a href={'http://' + device.host + '.local'} target="_blank"
                                        rel="noopener noreferrer">{device.host}</a>
                                 </StyledTableCell>
-                                <StyledTableCell align="right">{device.updateInterval/1000/60} </StyledTableCell>
+                                <StyledTableCell align="right">{device.macAddr} </StyledTableCell>
+                                <StyledTableCell align="right">
+                                    {dayjs(device.lastOnline).format("MMMM D, YYYY h:mm A")} {" "} ({dayjs(device.lastOnline).fromNow()})
+                                </StyledTableCell>
+                                <StyledTableCell align="right">
+                                    {dayjs(device.lastRegistered).format("MMMM D, YYYY h:mm A")} {" "} ({dayjs(device.lastRegistered).fromNow()})
+                                </StyledTableCell>
+                                <StyledTableCell align="right">{device.updateInterval / 1000 / 60} </StyledTableCell>
                                 <StyledTableCell align="right">{device.type} </StyledTableCell>
                             </StyledTableRow>
                         ))}

@@ -13,6 +13,8 @@ import {styled} from "@mui/material/styles";
 import IconButton from "@mui/material/IconButton";
 import PaletteIcon from "@mui/icons-material/Palette";
 import ColorPicker from "../charts/ColorPicker.jsx";
+import LiquidFillGauge from "react-ts-liquid-gauge";
+import BatteryCard from "../v2/BatteryCard.jsx";
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
     let color = theme.palette.success.main;
@@ -80,7 +82,8 @@ const Exp = () => {
 
     return (
         <div style={{marginTop: '100px'}}>
-            <ColorPicker/>
+
+            <BatteryCard name={"battery"}/>
 
 
         </div>

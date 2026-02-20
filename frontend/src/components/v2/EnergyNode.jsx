@@ -15,6 +15,7 @@ import {CompactWeeklyEnergyRadarWidget} from "../charts/CompactWeeklyEnergyRadar
 import IconButton from "@mui/material/IconButton";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {CustomModal} from "../home/CustomModal.jsx";
+import BatteryCard from "./BatteryCard.jsx";
 
 
 export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
@@ -199,6 +200,12 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                                     data={chartData}
                                     options={options}
                                 />
+                                {/*{deviceList.map(d=>(*/}
+                                {/*    <BatteryCard name={d.name} value={parseInt(d.lastData?.["percent"])}/>*/}
+                                {/*))}*/}
+
+                                {/*<BatteryCard name={"battery2"} value={40}/>*/}
+                                {/*<BatteryCard name={"battery1"} value={80}/>*/}
                             </Box>
                         )}
                         {/*<EnergyOverview/>*/}

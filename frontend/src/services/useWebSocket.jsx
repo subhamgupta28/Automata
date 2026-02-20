@@ -24,6 +24,7 @@ const useWebSocket = (topic) => {
 
         client.connect({}, (frame) => {
             console.log("WebSocket connected:", frame);
+            setMessages({message: "Connected to server.", severity: "High"});
             stompClientRef.current = client;
 
             client.subscribe(topic, (message) => {
@@ -32,6 +33,7 @@ const useWebSocket = (topic) => {
 
         }, (error) => {
             console.warn("WebSocket connection error:", error);
+            setMessages({message: "Cannot reach server, retrying connection", severity: "High"});
             attemptReconnect();
         });
 

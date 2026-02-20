@@ -50,7 +50,7 @@ export default function Notifications() {
 
     useEffect(() => {
         if (messages.message) {
-            console.log(messages)
+            // console.log(messages)
             setOpen(true);
             enqueueSnackbar(messages.message);
         }

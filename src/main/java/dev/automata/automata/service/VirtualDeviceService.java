@@ -112,7 +112,7 @@ public class VirtualDeviceService {
 
         Instant startUtc = startUser.toInstant();
         Instant endUtc = endUser.toInstant();// local business timezone
-        System.err.println("instant " + startUtc + " -- " + endUtc);
+//        System.err.println("instant " + startUtc + " -- " + endUtc);
 
 
         if (virtualDevice == null) {
@@ -144,7 +144,7 @@ public class VirtualDeviceService {
                         .mapToObj(todayUser::minusDays)
                         .map(d -> d.format(formatter))
                         .toList();
-        System.err.println("labels " + labels);
+//        System.err.println("labels " + labels);
         for (var entry : grouped.entrySet()) {
 
             String deviceId = entry.getKey();

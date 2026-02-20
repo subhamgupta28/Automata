@@ -32,7 +32,7 @@ function App() {
 
     useEffect(() => {
         if (messages.severity) {
-            console.log("msg", messages.timestamp)
+            // console.log("msg", messages.timestamp)
             setAlertLevel(messages.severity);
         }
     }, [messages]);
@@ -42,7 +42,7 @@ function App() {
             const timer = setTimeout(() => {
                 setAlertLevel('');
             }, 20000);
-            console.log("msg", timer)
+            // console.log("msg", timer)
             return () => clearTimeout(timer);
         }
     }, [alertLevel]);
