@@ -419,7 +419,7 @@ export const MainNode = React.memo(({data, isConnectable}) => {
 
     // Fetch chart data when device or attribute is selected
     const cardRef = useRef(null);
-    const [cardHeight, setCardHeight] = useState(550);
+    const [cardHeight, setCardHeight] = useState(750);
 
     // Calculate top position for handles
     const handleSpacing = cardHeight / (numOfDevices + 1); // +1 to avoid handles being on the very top or bottom
@@ -481,10 +481,10 @@ export const MainNode = React.memo(({data, isConnectable}) => {
                                     left: isLeftHandle ? 0 : handleSpacing * (index + 1),
 
                                     background: '#fce02b',
-                                    width: isLeftHandle ? '6px' : '35px',
-                                    height: isLeftHandle ? '35px' : '6px',
+                                    width: isLeftHandle ? '6px' : '30px',
+                                    height: isLeftHandle ? '30px' : '6px',
                                     borderColor: '#fce02b',
-                                    borderRadius: '8px 0px 0px 8px',
+                                    borderRadius: '8px',
                                 }}
                                 isConnectable={isConnectable}
                             />
