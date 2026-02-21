@@ -221,7 +221,8 @@ function ActionBoardDetail() {
                         style={{
                             borderRadius:'10px',
                             backgroundColor: 'transparent',
-                            borderColor: 'grey',
+                            borderColor: 'rgb(255 255 255 / 18%)',
+                            borderWidth:'2px',
                             borderStyle:'dashed',
                             position: 'relative',
                             zIndex: 0,
@@ -276,8 +277,9 @@ function ActionBoardDetail() {
                         borderRadius:'10px',
                         background: 'transparent',
                         backdropFilter: 'blur(6px)',
-                        backgroundColor: 'rgb(255 255 255 / 8%)',
-                        borderColor: 'grey',
+                        // backgroundColor: 'rgb(255 255 255 / 8%)',
+                        borderColor: 'rgb(255 255 255 / 18%)',
+                        borderWidth:'2px',
                         borderStyle:'dashed',
                     }}>
                         <CardContent style={{
@@ -318,22 +320,6 @@ function ActionBoardDetail() {
                                     draggable
                                 >
                                     Add Action
-                                </div>
-                                <div style={{display: 'flex', flexDirection:'row', padding:'6px'}}>
-                                    <div
-                                        style={{...conditionStyle, margin: '4px', width:'100px'}}
-                                        onDragStart={(event) => onDragStart(event, 'and')}
-                                        draggable
-                                    >
-                                        And
-                                    </div>
-                                    <div
-                                        style={{...conditionStyle, margin: '4px', width:'100px'}}
-                                        onDragStart={(event) => onDragStart(event, 'or')}
-                                        draggable
-                                    >
-                                        Or
-                                    </div>
                                 </div>
                                 {/*<div*/}
                                 {/*    style={{...valueReaderStyle, marginTop: '10px'}}*/}

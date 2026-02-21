@@ -183,7 +183,7 @@ export default function Devices() {
                                                 <Stack direction="row"
                                                        divider={<Divider orientation="vertical" flexItem/>} spacing={2}
                                                 >
-                                                    <div style={{width: '55%'}}>
+                                                    <div style={{width: '50%'}}>
                                                         <Table size="small">
                                                             <TableBody>
 
@@ -249,7 +249,7 @@ export default function Devices() {
                                                         </Table>
 
                                                     </div>
-                                                    <Box sx={{padding: 2, width: '40%', height: "40dvh"}}>
+                                                    <Box sx={{padding: 2, width: '50%', height: "40dvh"}}>
                                                         <TableContainer
                                                             sx={{
                                                                 height: '100%',
@@ -262,6 +262,7 @@ export default function Devices() {
                                                                         <StyledTableCell>Name</StyledTableCell>
                                                                         <StyledTableCell>Key</StyledTableCell>
                                                                         <StyledTableCell>Units</StyledTableCell>
+                                                                        <StyledTableCell>Type</StyledTableCell>
                                                                     </TableRow>
                                                                 </TableHead>
 
@@ -271,6 +272,7 @@ export default function Devices() {
                                                                             <StyledTableCell>{att.displayName}</StyledTableCell>
                                                                             <StyledTableCell>{att.key}</StyledTableCell>
                                                                             <StyledTableCell>{att.units}</StyledTableCell>
+                                                                            <StyledTableCell>{att.type}</StyledTableCell>
                                                                         </StyledTableRow>
                                                                     ))}
                                                                 </TableBody>

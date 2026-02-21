@@ -110,7 +110,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
             {/*<NodeResizer*/}
             {/*    color="#ff0000"*/}
             {/*    isVisible={selected}*/}
-            {/*    minWidth={width}*/}
+            {/*    width={width}*/}
             {/*    minHeight={height}*/}
             {/*/>*/}
 

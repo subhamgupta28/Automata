@@ -37,7 +37,8 @@ public class Wled {
 
     public String setRGBHexColor(String color) {
 //        System.err.println("Color " + color);
-        sendToTopic(deviceTopic + "/col", color);
+//        sendToTopic(deviceTopic + "/col", color);
+        sendToTopic(deviceTopic + "/api", "FX=0&CL="+color);
         return "success";
     }
 

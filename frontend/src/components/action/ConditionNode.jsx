@@ -1,4 +1,11 @@
-import {Handle, Position, useHandleConnections, useNodes, useNodesData, useReactFlow} from "@xyflow/react";
+import {
+    Handle,
+    Position,
+    useNodeConnections,
+    useNodes,
+    useNodesData,
+    useReactFlow
+} from "@xyflow/react";
 import React, {useEffect, useState} from "react";
 import dayjs from "dayjs";
 import {Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
@@ -9,6 +16,7 @@ import Typography from "@mui/material/Typography";
 import {LocalizationProvider, MobileTimePicker} from "@mui/x-date-pickers";
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+
 dayjs.extend(customParseFormat);
 
 const conditionStyle = {
@@ -46,7 +54,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         conditionData.time ? dayjs(conditionData.time, "hh:mm:ss A") : dayjs()
     );
     const [type, setType] = useState(conditionData.type);
-    const connections = useHandleConnections({
+    const connections = useNodeConnections({
         type: 'target',
         id: 'cond-t'
     });
@@ -94,21 +102,32 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     }, [conditionNodes]);
 
     useEffect(() => {
+        const newData = {
+            condition,
+            triggerKey,
+            valueType: 'int',
+            below,
+            above,
+            type,
+            value: conditionValue,
+            isExact: isRange,
+            time: time.format("hh:mm:ss A")
+        };
 
-        updateNodeData(id, {
-            conditionData: {
-                condition: condition,
-                triggerKey: triggerKey,
-                valueType: 'int',
-                below: below,
-                above: above,
-                type: type,
-                value: conditionValue,
-                isExact: isRange,
-                time: time.format("hh:mm:ss A")
-            }
-        })
-    }, [condition, conditionValue, below, above, isRange, time, type, triggerKey]);
+        if (JSON.stringify(data.conditionData) !== JSON.stringify(newData)) {
+            updateNodeData(id, {conditionData: newData});
+        }
+
+    }, [
+        condition,
+        conditionValue,
+        below,
+        above,
+        isRange,
+        time,
+        type,
+        triggerKey
+    ]);
 
     const handleChange = (e, select) => {
         let value = e?.target?.value ?? e; // handles both normal events and dayjs objects
@@ -162,7 +181,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
             ) : (
                 <div style={{marginBottom: '18px'}}>
-                    <Typography variant="body1" fontWeight="bold" sx={{marginLeft:1}}>
+                    <Typography variant="body1" fontWeight="bold" sx={{marginLeft: 1}}>
                         When {triggerKey} is
                     </Typography>
                     <FormControl fullWidth className='nodrag' sx={{marginBottom: 2, marginTop: 2}}>
