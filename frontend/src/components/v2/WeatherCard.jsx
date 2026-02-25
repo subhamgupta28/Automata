@@ -5,11 +5,15 @@ import GrainIcon from "@mui/icons-material/Grain";
 import AirIcon from "@mui/icons-material/Air";
 import OpacityIcon from "@mui/icons-material/Opacity";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
-import {useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
 import dayjs from "dayjs";
 import {Lightbulb, Thermostat} from "@mui/icons-material";
 import {GasBubble, GasLegend} from "./GasBubble.jsx";
 import {getRecentDeviceData} from "../../services/apis.jsx";
+import IconButton from "@mui/material/IconButton";
+import SettingsIcon from "@mui/icons-material/Settings";
+import {CustomModal} from "../home/CustomModal.jsx";
+import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 
 const getWeatherIcon = (condition, humid) => {
     const c = condition;
@@ -186,8 +190,11 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
     const [dataPoint, setDatapoint] = useState({});
     const [mainDevice, setMainDevice] = useState("");
     const [otherDevice, setOtherDevice] = useState("");
+    const {devices, loading, error} = useCachedDevices();
+    const [deviceList, setDeviceList] = useState([])
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [weather, setLiveData] = useState({
-        location: "Khariar Road, Odisha",
+        location: "Hyderabad, Telangana",
         time: "Tuesday, 3:00 PM",
         temp: 0,
         condition: "Cloud",
@@ -299,7 +306,8 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
             time: dayjs().format("dddd, h:mm A"),
         }));
     }
-
+    const handleOpenModal = () => setIsModalOpen(true);
+    const handleCloseModal = () => setIsModalOpen(false);
     // const weather = {
     //     location: "Cortes, Madrid, Spain",
     //     time: "Tuesday, 3:00 PM",
@@ -315,6 +323,17 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
     //         ch2o: 0.07,
     //     }
     // }
+
+    useEffect(() => {
+        if (deviceIds && devices) {
+            const res = devices.filter(d => deviceIds.includes(d.id));
+            console.log("res", res)
+            setDeviceList(res);
+
+
+        }
+
+    }, [devices])
     return (
         <Card
             variant="outlined"
@@ -327,6 +346,16 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                 p: 1,
             }}
         >
+            {isModalOpen && (
+                <CustomModal
+                    map={null}
+                    isOpen={isModalOpen}
+                    messages={messages}
+                    onClose={handleCloseModal}
+                    devices={deviceList}
+                    version="v2"
+                />
+            )}
             <CardContent>
                 {/* Header */}
                 <Box style={{
@@ -340,6 +369,9 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                             {weather.time}
                         </Typography>
                     </Box>
+                    <IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}} size="small">
+                        <SettingsIcon style={{fontSize: '18px'}}/>
+                    </IconButton>
                 </Box>
                 <Box mb={2} style={{
                     display: "flex", alignItems: "center", gap: 2
