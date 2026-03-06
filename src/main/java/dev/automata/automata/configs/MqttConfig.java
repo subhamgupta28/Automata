@@ -34,6 +34,8 @@ public class MqttConfig {
     private final SafeJsonTransformer safeJsonTransformer;
     @Value("${application.mqtt.url}")
     private String brokerUrl; // Your MQTT broker
+    @Value("${application.mqtt.url_public}")
+    private String brokerUrlPublic;
     @Value("${application.mqtt.user}")
     private String user;
     @Value("${application.mqtt.password}")
@@ -47,15 +49,14 @@ public class MqttConfig {
 //    private final String wledDeviceTopic = "wled/ring";
     private final String wledGroupTopic = "wled/all";
 
-    @Bean
-    public MqttPahoClientFactory mqttClientFactory() {
+    private MqttPahoClientFactory createMqttClient(String brokerUrl){
         MqttConnectOptions options = new MqttConnectOptions();
         options.setServerURIs(new String[]{brokerUrl});
         options.setUserName(user);
         options.setPassword(password.toCharArray());
         options.setAutomaticReconnect(true);
 //        options.setConnectionTimeout(2);
-        options.setKeepAliveInterval(0);
+        options.setKeepAliveInterval(60);
         options.setCleanSession(false);
         options.setMaxInflight(10000);
 
@@ -64,6 +65,26 @@ public class MqttConfig {
         return factory;
     }
 
+    @Bean
+    public MqttPahoClientFactory mqttClientFactory() {
+        return createMqttClient(brokerUrlPublic);
+    }
+
+    @Bean
+    public MqttPahoClientFactory mqttClientFactoryPublic() {
+        return createMqttClient(brokerUrl);
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = "mqttOutboundChannel")
+    public MessageHandler mqttOutboundPublic() {
+        MqttPahoMessageHandler handler =
+                new MqttPahoMessageHandler(clientId + "-pub-public", mqttClientFactoryPublic());
+
+        handler.setAsync(true);
+        handler.setDefaultTopic(topicDefault);
+        return handler;
+    }
 
     @Bean
     public MqttPahoMessageDrivenChannelAdapter inbound() {
@@ -99,7 +120,7 @@ public class MqttConfig {
 
     @Bean
     public MessageChannel mqttOutboundChannel() {
-        return new DirectChannel();
+        return new org.springframework.integration.channel.PublishSubscribeChannel();
     }
 
 

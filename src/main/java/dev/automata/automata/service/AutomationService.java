@@ -509,6 +509,7 @@ public class AutomationService {
                 messagingTemplate.convertAndSend("/topic/action/" + action.getDeviceId(), payload);
                 sendToTopic("automata/action/" + action.getDeviceId(), payload);
             }
+
         }
     }
 
@@ -550,7 +551,7 @@ public class AutomationService {
 //        var auto = redisService.getAutomationByTriggerDevice(deviceId);
 //        if (deviceId.equals("670edfe8166ab22722fbf728"))
 //            System.err.println("Auto: " + auto);
-//        auto.forEach(k -> checkAndExecuteSingleAutomation(k.getAutomation(), payload, false));
+//        auto.forEach(k -> checkAndExecuteSingleAutomation(k.getAutomation(), payload, false, "system"));
 
     }
 

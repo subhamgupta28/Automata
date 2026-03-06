@@ -55,8 +55,8 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     );
     const [type, setType] = useState(conditionData.type);
     const connections = useNodeConnections({
-        type: 'target',
-        id: 'cond-t'
+        handleType: 'target',
+        handleId: 'b'
     });
     const nodesData = useNodesData(
         connections.map((connection) => connection.source),

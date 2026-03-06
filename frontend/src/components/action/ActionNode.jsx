@@ -36,8 +36,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
     const [actionType, setActionType] = useState("");
 
     const connections = useNodeConnections({
-        type: 'target',
-        id: 'b'
+        handleType: 'target',
+        handleId: 'b'
     });
 
     useEffect(() => {
@@ -76,7 +76,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
         }
         setActionType(action.type)
         switch (action[0].type) {
-            case "ACTION|MENU|SWITCH": //on/off
+            case "ACTION|MENU|SWITCH" || "ACTION|SWITCH": //on/off
                 setValueOptions(
                     [
                         {name: "On", value: "true"},
@@ -84,14 +84,14 @@ export const ActionNode = ({id, data, isConnectable}) => {
                     ]
                 )
                 break;
-            case "ACTION|SWITCH": // on/off
-                setValueOptions(
-                    [
-                        {name: "On", value: "true"},
-                        {name: "Off", value: "false"},
-                    ]
-                )
-                break;
+            // case "ACTION|SWITCH": // on/off
+            //     setValueOptions(
+            //         [
+            //             {name: "On", value: "true"},
+            //             {name: "Off", value: "false"},
+            //         ]
+            //     )
+            //     break;
             case "ACTION|IN": // on/off
                 if (action[0].key === "alert") {
                     setValueOptions(
@@ -106,20 +106,20 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 }
 
                 break;
-            case "ACTION|MENU|BTN": //push button
+            case "ACTION|MENU|BTN" || "ACTION|OUT": //push button
                 setValueOptions(
                     [
                         {name: "Toggle", value: "T"},
                     ]
                 )
                 break;
-            case "ACTION|OUT": // push button
-                setValueOptions(
-                    [
-                        {name: "Toggle", value: "T"},
-                    ]
-                )
-                break;
+            // case "ACTION|OUT": // push button
+            //     setValueOptions(
+            //         [
+            //             {name: "Toggle", value: "T"},
+            //         ]
+            //     )
+            //     break;
             case "ACTION|COLOR": // push button
                 setValueOptions([])
                 setActionType("COLOR")
@@ -221,7 +221,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
                         name="key"
                     >
                         {actionKeys && actionKeys.map((actionOption) => (
-                            <MenuItem key={actionOption.key} value={actionOption.key}>
+                            <MenuItem key={actionOption.id} value={actionOption.key}>
                                 {actionOption.displayName}
                             </MenuItem>
                         ))}
@@ -246,7 +246,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
                         </Select>
                     </FormControl>
                 ) : (
-                    actionType ==="COLOR" ? (
+                    actionType === "COLOR" ? (
                         <input
                             type="color"
                             value={value}
@@ -259,7 +259,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
                                 background: "none",
                             }}
                         />
-                    ):(
+                    ) : (
                         <TextField
                             size='small'
                             label="Value"
