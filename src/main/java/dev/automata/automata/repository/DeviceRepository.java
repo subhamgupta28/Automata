@@ -21,4 +21,6 @@ public interface DeviceRepository extends MongoRepository<Device, String> {
     Device findByName(String name);
 
     List<Device> findAllByType(String type);
+
+    Device findByCategory(String category);
 }

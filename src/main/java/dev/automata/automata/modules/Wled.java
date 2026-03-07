@@ -1,8 +1,10 @@
 package dev.automata.automata.modules;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.dto.WledResponse;
+import dev.automata.automata.dto.WledXmlResponse;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.DeviceActionState;
@@ -16,6 +18,7 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.client.RestTemplate;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -31,14 +34,14 @@ import java.util.concurrent.CompletableFuture;
 
 public class Wled {
     private final String ipAddress;
-    private String deviceTopic = "wled/all";
+    private String deviceTopic = "automata/all";
     private static final HashMap<String, Object> lastState = new HashMap<>();
     private final MessageChannel mqttOutboundChannel;
 
     public String setRGBHexColor(String color) {
 //        System.err.println("Color " + color);
 //        sendToTopic(deviceTopic + "/col", color);
-        sendToTopic(deviceTopic + "/api", "FX=0&CL="+color);
+        sendToTopic(deviceTopic + "/api", "FX=0&CL=" + color);
         return "success";
     }
 
@@ -55,6 +58,8 @@ public class Wled {
             throw new IllegalArgumentException("Color values must be 0-255");
         }
     }
+
+
 
 
     private void sendToTopic(String topic, String payload) {
@@ -82,6 +87,33 @@ public class Wled {
         }
 
     }
+
+    public WledResponse parseWledXml(String payload) {
+
+        try {
+            XmlMapper mapper = new XmlMapper();
+            WledXmlResponse xml = mapper.readValue(payload, WledXmlResponse.class);
+            WledResponse res = new WledResponse();
+
+            res.on = xml.ac > 0;
+            res.bri = xml.ac;
+            res.ps = xml.ps;
+
+            Map<String, Object> seg = new HashMap<>();
+            seg.put("fx", xml.fx);
+            seg.put("sx", xml.sx);
+            seg.put("ix", xml.ix);
+            seg.put("col", List.of(xml.cl, xml.cs));
+
+            res.seg = List.of(seg);
+
+            return res;
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+        return null;
+    }
+
 
     /// [
     ///{
@@ -163,34 +195,17 @@ public class Wled {
 
     }
 
-    public Map<String, Object> getInfo(String deviceId, DeviceActionState deviceState) {
-        var res = new RestTemplate().getForObject(ipAddress, WledResponse.class);
-//        System.err.println(res);
+    public Map<String, Object> convertToMap(WledResponse res, String deviceId){
+        var lastState = new HashMap<String, Object>();
         if (res != null) {
             try {
-//                // Convert the XML string into a byte stream
-//                ByteArrayInputStream input = new ByteArrayInputStream(res.getBytes());
-//
-//                // Initialize the XML Document Builder
-//                DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-//                DocumentBuilder builder = factory.newDocumentBuilder();
-//                Document doc = builder.parse(input);
-//
-//                // Normalize the document structure
-//                doc.getDocumentElement().normalize();
 
-//                boolean onOff = getTagValue(doc, "ac") > 0;
-//                int bright = getTagValue(doc, "ac");
                 var col = res.seg.getFirst().get("col");
-//                System.err.println(col);
                 List<?> c = (List<?>) col;
                 List<?> first = (List<?>) c.get(0);
-
                 int r = (int) first.get(0);
                 int g = (int) first.get(1);
                 int b = (int) first.get(2);
-                if (deviceState != null)
-                    lastState.putAll(deviceState.getPayload());
                 lastState.put("onOff", res.on);
                 lastState.put("bright", res.bri);
                 lastState.put("presets", res.ps);
@@ -203,6 +218,15 @@ public class Wled {
             }
 
         }
+        return lastState;
+    }
+    public void publishForInfo(String deviceId) {
+        sendToTopic(deviceTopic+"/api", "info");
+    }
+
+    public Map<String, Object> getInfo(String deviceId, DeviceActionState deviceState) {
+        var res = new RestTemplate().getForObject(ipAddress, WledResponse.class);
+        lastState.putAll(convertToMap(res, deviceId));
         return lastState;
     }
 

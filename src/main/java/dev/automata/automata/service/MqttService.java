@@ -1,11 +1,16 @@
 package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import dev.automata.automata.dto.LiveEvent;
+import dev.automata.automata.dto.WledResponse;
+import dev.automata.automata.dto.WledXmlResponse;
 import dev.automata.automata.model.Status;
+import dev.automata.automata.modules.Wled;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -25,7 +30,6 @@ public class MqttService {
     private final MainService mainService;
     private final AutomationService actionService;
     private final ApplicationEventPublisher publisher;
-
 
 
     @ServiceActivator(inputChannel = "sendData")
@@ -51,7 +55,8 @@ public class MqttService {
         System.err.println("got action message: " + payload);
         String deviceId = payload.get("device_id").toString();
         if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("Device Id not found");;
+            System.err.println("Device Id not found");
+            ;
         }
         actionService.handleAction(deviceId, payload, "", "device");
     }
@@ -62,18 +67,20 @@ public class MqttService {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("No device found");
         }
-        var event  = new LiveEvent();
+        var event = new LiveEvent();
         event.setPayload(payload);
         publisher.publishEvent(event);
         messagingTemplate.convertAndSend("/topic/data", getStringObjectMap(payload, deviceId));
 
     }
+
     private Map<String, Object> getStringObjectMap(@Payload Map<String, Object> payload, String deviceId) {
         var map = new HashMap<String, Object>();
         map.put("deviceId", deviceId);
         map.put("data", payload);
         return map;
     }
+
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public void handleAck(Map<String, Object> payload) {
         System.out.println("✅ Status: " + payload);
@@ -82,5 +89,36 @@ public class MqttService {
     @ServiceActivator(inputChannel = "sysData")
     public void sysData(Object payload) {
         System.out.println("✅ sysData: " + payload);
+    }
+
+    @ServiceActivator(inputChannel = "wledChannel")
+    public void handleWled(Message<?> message) {
+
+        String deviceName = (String) message.getHeaders().get("device");
+        String payload = message.getPayload().toString();
+        System.out.println("Device: " + deviceName);
+        System.out.println("Payload: " + payload);
+        if (deviceName == null)
+            return;
+        if (deviceName.endsWith("/v")){
+            deviceName = deviceName.replace("/v", "");
+            deviceName = deviceName.replaceAll("/", "");
+
+            var device = mainService.getDeviceByCategory(deviceName);
+            var wled = new Wled(device.getAccessUrl(), null, device);
+
+            WledResponse response = wled.parseWledXml(payload);
+            var data = wled.convertToMap(response, device.getId());
+            mainService.saveData(device.getId(), data);
+            messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", data));
+            System.err.println("WLED Response " + response);
+            if (response != null) {
+                System.out.println("Brightness: " + response.bri);
+                System.out.println("Preset: " + response.ps);
+            }
+        }
+
+
+
     }
 }

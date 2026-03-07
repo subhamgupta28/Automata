@@ -60,10 +60,11 @@ public class AutomationService {
             try {
                 var deviceId = device.getId();
                 var wled = new Wled(device.getAccessUrl(), mqttOutboundChannel, device);
-                var data = wled.getInfo(device.getAccessUrl(), null);
-                mainService.saveData(deviceId, data);
+                wled.publishForInfo(deviceId);
+//                var data = wled.getInfo(device.getAccessUrl(), null);
+//                mainService.saveData(deviceId, data);
 //                System.err.println("WLED: " + data);
-                messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
+//                messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
             } catch (Exception e) {
                 System.err.println(e.getMessage());
             }

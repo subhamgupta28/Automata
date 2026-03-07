@@ -402,7 +402,9 @@ public class MainService {
         }
         return Map.of("x", device.getX(), "y", device.getY());
     }
-
+    public Device getDeviceByCategory(String category) {
+        return deviceRepository.findByCategory(category);
+    }
     public Device getDeviceByName(String name) {
         return deviceRepository.findByName(name);
     }
