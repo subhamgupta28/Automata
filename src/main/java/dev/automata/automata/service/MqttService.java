@@ -8,6 +8,7 @@ import dev.automata.automata.dto.WledXmlResponse;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.modules.Wled;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.Message;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MqttService {
@@ -96,20 +98,26 @@ public class MqttService {
 
         String deviceName = (String) message.getHeaders().get("device");
         String payload = message.getPayload().toString();
-        System.out.println("Device: " + deviceName);
         System.out.println("Payload: " + payload);
-        if (deviceName == null)
+        if (deviceName == null) {
             return;
-        if (deviceName.endsWith("/v")){
+        }
+        if (deviceName.endsWith("/v")) {
             deviceName = deviceName.replace("/v", "");
             deviceName = deviceName.replaceAll("/", "");
 
+            System.out.println("Device: " + deviceName);
             var device = mainService.getDeviceByCategory(deviceName);
+
+            if (device == null)
+                return;
+
             var wled = new Wled(device.getAccessUrl(), null, device);
 
             WledResponse response = wled.parseWledXml(payload);
             var data = wled.convertToMap(response, device.getId());
             mainService.saveData(device.getId(), data);
+            System.err.println("Device data: " + data);
             messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", data));
             System.err.println("WLED Response " + response);
             if (response != null) {
@@ -117,7 +125,6 @@ public class MqttService {
                 System.out.println("Preset: " + response.ps);
             }
         }
-
 
 
     }

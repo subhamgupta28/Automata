@@ -51,7 +51,7 @@ public class AutomationService {
 //        taskScheduler.setPoolSize(10);
 //        taskScheduler.initialize();
 //    }
-    @Scheduled(fixedRate = 10000)
+//    @Scheduled(fixedRate = 10000)
     public void updateWLEDDevices() {
 //        var w = new Wled("", mqttOutboundChannel, null);
 //        mainService.registerDevice(w.newDevice());
@@ -232,18 +232,18 @@ public class AutomationService {
                 default -> "No action found for key: " + key;
             };
 //            CompletableFuture.runAsync(() -> {
-            var data = wled.getInfo(deviceId, null);
-            deviceActionStateRepository.save(DeviceActionState.builder()
-                    .user(user)
-                    .deviceId(deviceId)
-                    .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
-                    .payload(payload)
-                    .deviceType("WLED")
-                    .deviceCurrentState(data)
-                    .build());
-//                System.err.println(data);
-            mainService.saveData(deviceId, data);
-            messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
+//            var data = wled.getInfo(deviceId, null);
+//            deviceActionStateRepository.save(DeviceActionState.builder()
+//                    .user(user)
+//                    .deviceId(deviceId)
+//                    .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
+//                    .payload(payload)
+//                    .deviceType("WLED")
+//                    .deviceCurrentState(data)
+//                    .build());
+////                System.err.println(data);
+//            mainService.saveData(deviceId, data);
+//            messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
 //                sendToTopic("automata/data", Map.of("deviceId", deviceId, "data", data));
 
 //            });

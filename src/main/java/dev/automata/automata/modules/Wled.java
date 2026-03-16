@@ -34,7 +34,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class Wled {
     private final String ipAddress;
-    private String deviceTopic = "automata/all";
+    private String deviceTopic = "automata/all/";
     private static final HashMap<String, Object> lastState = new HashMap<>();
     private final MessageChannel mqttOutboundChannel;
 
@@ -221,7 +221,7 @@ public class Wled {
         return lastState;
     }
     public void publishForInfo(String deviceId) {
-        sendToTopic(deviceTopic+"/api", "info");
+        sendToTopic(deviceTopic, "{\"v\":true}");
     }
 
     public Map<String, Object> getInfo(String deviceId, DeviceActionState deviceState) {
