@@ -33,15 +33,18 @@ import java.util.concurrent.CompletableFuture;
 
 
 public class Wled {
-    private final String ipAddress;
     private String deviceTopic = "automata/all/";
-    private static final HashMap<String, Object> lastState = new HashMap<>();
     private final MessageChannel mqttOutboundChannel;
 
-    public String setRGBHexColor(String color) {
-//        System.err.println("Color " + color);
-//        sendToTopic(deviceTopic + "/col", color);
-        sendToTopic(deviceTopic + "/api", "FX=0&CL=" + color);
+    public String setRGBHexColor(String color, String key) {
+        var payload = switch (key) {
+            //FX=0&
+            case "color1" -> "CL=";
+            case "color2" -> "C2=";
+            case "color3" -> "C3=";
+            default -> "FX=0";
+        };
+        sendToTopic(deviceTopic + "/api", payload + color);
         return "success";
     }
 
@@ -60,8 +63,6 @@ public class Wled {
     }
 
 
-
-
     private void sendToTopic(String topic, String payload) {
         try {
             mqttOutboundChannel.send(
@@ -75,8 +76,7 @@ public class Wled {
         }
     }
 
-    public Wled(String ipAddress, MessageChannel mqttOutboundChannel, Device device) {
-        this.ipAddress = ipAddress + "/json/state";
+    public Wled(MessageChannel mqttOutboundChannel, Device device) {
         this.mqttOutboundChannel = mqttOutboundChannel;
         if (device != null) {
             var configs = device.getAttributes().stream().filter(f -> f.getType().equals("ACTION|CONFIG")).toList();
@@ -195,7 +195,7 @@ public class Wled {
 
     }
 
-    public Map<String, Object> convertToMap(WledResponse res, String deviceId){
+    public Map<String, Object> convertToMap(WledResponse res, String deviceId) {
         var lastState = new HashMap<String, Object>();
         if (res != null) {
             try {
@@ -206,11 +206,21 @@ public class Wled {
                 int r = (int) first.get(0);
                 int g = (int) first.get(1);
                 int b = (int) first.get(2);
+
+                if (c.size() > 1) {
+                    List<?> second = (List<?>) c.get(1);
+                    int r2 = (int) second.get(0);
+                    int g2 = (int) second.get(1);
+                    int b2 = (int) second.get(2);
+                    lastState.put("color2", setRGB(r2, g2, b2));
+                }
+
                 lastState.put("onOff", res.on);
                 lastState.put("bright", res.bri);
                 lastState.put("presets", res.ps);
                 lastState.put("device_id", deviceId);
-                lastState.put("color", setRGB(r, g, b));
+                lastState.put("color1", setRGB(r, g, b));
+
                 return lastState;
                 // Get the root element
             } catch (Exception e) {
@@ -220,15 +230,11 @@ public class Wled {
         }
         return lastState;
     }
+
     public void publishForInfo(String deviceId) {
         sendToTopic(deviceTopic, "{\"v\":true}");
     }
 
-    public Map<String, Object> getInfo(String deviceId, DeviceActionState deviceState) {
-        var res = new RestTemplate().getForObject(ipAddress, WledResponse.class);
-        lastState.putAll(convertToMap(res, deviceId));
-        return lastState;
-    }
 
     private int getTagValue(Document doc, String tagName) {
         NodeList nodeList = doc.getElementsByTagName(tagName);
@@ -240,14 +246,8 @@ public class Wled {
 
     @Async
     public CompletableFuture<String> toggleOnOff() {
-        sendToTopic(deviceTopic, "T");
         try {
-            var r = """
-                    {"on": "t"}
-                    """;
-
-            var response = new RestTemplate().postForObject(ipAddress, r, Object.class);
-//            System.err.println(response);
+            sendToTopic(deviceTopic, "T");
             return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
             return CompletableFuture.completedFuture("error");
@@ -256,15 +256,8 @@ public class Wled {
 
     @Async
     public CompletableFuture<String> powerOnOff(boolean on) {
-        lastState.put("onOff", on);
-        sendToTopic(deviceTopic, String.valueOf(on));
         try {
-            var r = """
-                    {"on": v}
-                    """;
-
-            var response = new RestTemplate().postForObject(ipAddress, r.replace("v", String.valueOf(on)), Object.class);
-//            System.err.println(response);
+            sendToTopic(deviceTopic, String.valueOf(on));
             return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
             return CompletableFuture.completedFuture("error");
@@ -273,15 +266,8 @@ public class Wled {
 
     @Async
     public CompletableFuture<String> setBrightness(int brightness) {
-        lastState.put("bright", brightness);
-        sendToTopic(deviceTopic, String.valueOf(brightness));
         try {
-            var r = """
-                    {"bri": v}
-                    """;
-
-            var response = new RestTemplate().postForObject(ipAddress, r.replace("v", String.valueOf(brightness)), Object.class);
-//            System.err.println(response);
+            sendToTopic(deviceTopic, String.valueOf(brightness));
             return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
             return CompletableFuture.completedFuture("error");
@@ -293,19 +279,11 @@ public class Wled {
     public CompletableFuture<String> setPresets(int presets) {
         try {
             String payload = String.format("{\"ps\": %d}", presets);
-            var response = new RestTemplate().postForObject(ipAddress, payload, Object.class);
-//            System.err.println(response);
+            sendToTopic(deviceTopic + "/api", "FX=" + presets);
             return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
             return CompletableFuture.completedFuture("error");
         }
     }
 
-//    public String setRGB(int red, int green, int blue) {
-//        return new RestTemplate().getForObject(ipAddress + "&R=" + red + "&G=" + green + "&B=" + blue, String.class);
-//    }
-
-    public String setEffect(int effect) {
-        return new RestTemplate().getForObject(ipAddress + "&FX=" + effect, String.class);
-    }
 }

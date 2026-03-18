@@ -59,7 +59,7 @@ public class AutomationService {
         devices.forEach(device -> {
             try {
                 var deviceId = device.getId();
-                var wled = new Wled(device.getAccessUrl(), mqttOutboundChannel, device);
+                var wled = new Wled(mqttOutboundChannel, device);
                 wled.publishForInfo(deviceId);
 //                var data = wled.getInfo(device.getAccessUrl(), null);
 //                mainService.saveData(deviceId, data);
@@ -221,14 +221,14 @@ public class AutomationService {
         if (device == null) return "Not found";
 
         try {
-            var wled = new Wled(device.getAccessUrl(), mqttOutboundChannel, device);
+            var wled = new Wled(mqttOutboundChannel, device);
             var key = payload.get("key").toString();
             String result = switch (key) {
                 case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString())).resultNow();
                 case "onOff" -> wled.powerOnOff(Boolean.parseBoolean(payload.get(key).toString())).resultNow();
                 case "toggle" -> wled.toggleOnOff().resultNow();
                 case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString())).resultNow();
-                case "color" -> wled.setRGBHexColor(payload.get(key).toString());
+                case "color1", "color2" -> wled.setRGBHexColor(payload.get(key).toString(), key);
                 default -> "No action found for key: " + key;
             };
 //            CompletableFuture.runAsync(() -> {

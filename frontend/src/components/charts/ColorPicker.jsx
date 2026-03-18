@@ -4,6 +4,7 @@ import {sendAction} from "../../services/apis.jsx";
 
 export default function ColorPicker({
                                         value,
+                                        keyName,
                                         deviceId,
                                         type,
                                         size = 36,
@@ -19,9 +20,10 @@ export default function ColorPicker({
     const send = async (e) => {
         try {
             let act = "color";
+            console.log(keyName)
             await sendAction(deviceId, {
-                "key": act,
-                [act]: e,
+                "key": keyName,
+                [keyName]: e,
                 "device_id": deviceId,
                 direct: true
             }, type);
@@ -39,9 +41,7 @@ export default function ColorPicker({
 
         }}>
             <Stack spacing={1}>
-                <Typography variant="body2" sx={{fontWeight: 500}}>
-                    Pick a color
-                </Typography>
+
 
                 <Stack direction="row" spacing={1} alignItems="center">
                     <input

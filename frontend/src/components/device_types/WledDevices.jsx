@@ -4,6 +4,7 @@ import {Menu, Popover} from "@mui/material";
 import {CustomSlider} from "../charts/CustomSlider.jsx";
 import {Presets} from "../charts/Presets.jsx";
 import ColorPicker from "../charts/ColorPicker.jsx";
+import Typography from "@mui/material/Typography";
 
 export default function WledDevices({devices, messages}) {
 
@@ -123,12 +124,21 @@ const DetailMenu = ({anchorEl, setAnchorEl, sliderData, presetButtons, deviceId,
                         />
                     ))}
 
-
+                    <Typography variant="body2" sx={{fontWeight: 500}}>
+                        Pick a color
+                    </Typography>
                     <ColorPicker
-                        value={liveData?.["color"]}
+                        value={liveData?.["color1"]}
+                        keyName="color1"
                         deviceId={deviceId}
                         type={deviceType}
                         />
+                    <ColorPicker
+                        value={liveData?.["color2"]}
+                        keyName="color2"
+                        deviceId={deviceId}
+                        type={deviceType}
+                    />
                 </div>
             </Popover>
         </>

@@ -112,7 +112,7 @@ public class MqttService {
             if (device == null)
                 return;
 
-            var wled = new Wled(device.getAccessUrl(), null, device);
+            var wled = new Wled(null, device);
 
             WledResponse response = wled.parseWledXml(payload);
             var data = wled.convertToMap(response, device.getId());
