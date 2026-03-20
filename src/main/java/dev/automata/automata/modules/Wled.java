@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 
 
 public class Wled {
-    private String deviceTopic = "automata/all/";
+    private String deviceTopic = "automata-wled/all/";
     private final MessageChannel mqttOutboundChannel;
 
     public String setRGBHexColor(String color, String key) {
