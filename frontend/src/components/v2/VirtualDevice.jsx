@@ -166,7 +166,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                         </Card>
                     )}
 
-                    <div>
+                    <div style={{display:'flex', justifyContent:'center'}}>
                         {deviceList.length !== 0 ? (
                             <div>
                                 <WledDevices devices={wledDevices} messages={messages}/>

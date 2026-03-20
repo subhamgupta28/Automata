@@ -10,7 +10,7 @@ export default function WledDevices({devices, messages}) {
 
     return (
         <div style={{
-            gridTemplateColumns: 'repeat(2, 1fr)',
+            gridTemplateColumns: 'repeat(1, 2fr)',
             display: 'grid',
             // gap: '2px',
         }}>
@@ -125,7 +125,7 @@ const DetailMenu = ({anchorEl, setAnchorEl, sliderData, presetButtons, deviceId,
                     ))}
 
                     <Typography variant="body2" sx={{fontWeight: 500}}>
-                        Pick a color
+                        Color palette
                     </Typography>
                     <ColorPicker
                         value={liveData?.["color1"]}

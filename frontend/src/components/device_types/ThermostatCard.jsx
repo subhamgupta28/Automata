@@ -9,33 +9,55 @@ import {
 import HomeIcon from "@mui/icons-material/Home";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
+import {sendAction} from "../../services/apis.jsx";
+import OpacityIcon from "@mui/icons-material/Opacity";
 
 export default function ThermostatCard({device, messages}) {
     const [temp, setTemp] = useState(21.0);
     const [data, setData] = useState({
         room: device?.name,
         mode: "Eco",
-        currentTemp: 21.7,
+        currentTemp: 0,
+        speed: 0,
     });
-    useEffect(()=>{
-        if (messages.deviceId && messages.deviceId === device.id){
+    useEffect(() => {
+        if (messages.deviceId === device.id) {
             const data = messages.data;
-            if (data){
-                setData(prev=>{
-                    return{
+            if (data) {
+                const speed = parseInt(data["speed"]);
+                setData(prev => {
+                    return {
                         ...prev,
-                        currentTemp: data["temp"]
+                        currentTemp: data["temp"],
+                        mode: speed > 100 ? "Cooling" : speed < 100 && speed > 50 ? "Eco" : "Idle",
+                        speed,
+                        humidity: data["humid"]
                     }
                 })
             }
         }
     }, [messages])
 
+    const send = async (e) => {
+        try {
+            let act = "speed";
+            await sendAction(device.id, {
+                "key": act,
+                [act]: e,
+                "device_id": device.id,
+                direct: true
+            }, device.type);
+        } catch (err) {
+            console.error("Action send failed", err);
+        }
+    };
     const onDecrease = () => {
-        setTemp(p => p - 1)
+        data.speed -= 5;
+        send(data.speed)
     }
     const onIncrease = () => {
-        setTemp(p => p + 1)
+        data.speed += 5;
+        send(data.speed)
     }
 
 
@@ -55,13 +77,24 @@ export default function ThermostatCard({device, messages}) {
                 </Box>
 
                 {/* Mode + current temp */}
-                <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    mb={2}
-                >
-                    {data.mode} · {data.currentTemp.toFixed(1)} °C
-                </Typography>
+                <div style={{
+                    display:'flex', justifyContent:'center',
+                    alignItems:'center', marginBottom:'10px'
+                }}>
+                    <Typography
+                        variant="body2"
+
+                    >
+                        {data.mode} · {data.currentTemp} °C  ·
+                    </Typography>
+                    <OpacityIcon fontSize="12" style={{marginLeft: '10px'}}/>
+
+                    <Typography
+                        variant="body2"
+                    >
+                        {data.humidity}%
+                    </Typography>
+                </div>
 
                 {/* Temperature control */}
                 <Box
@@ -79,7 +112,7 @@ export default function ThermostatCard({device, messages}) {
                     </IconButton>
 
                     <Typography fontWeight={600}>
-                        {temp.toFixed(1)} °C
+                        {(data.speed * 100 / 255).toFixed(1)} %
                     </Typography>
 
                     <IconButton onClick={onIncrease} size="small">

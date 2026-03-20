@@ -1,31 +1,19 @@
 package dev.automata.automata.modules;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.dto.WledResponse;
 import dev.automata.automata.dto.WledXmlResponse;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Device;
-import dev.automata.automata.model.DeviceActionState;
 import dev.automata.automata.model.Status;
-import org.springframework.data.mongodb.core.messaging.Message;
 import org.springframework.http.*;
-import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
-import org.springframework.integration.mqtt.support.MqttHeaders;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.web.client.RestTemplate;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.ByteArrayInputStream;
-import java.lang.reflect.Array;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -202,7 +190,7 @@ public class Wled {
 
                 var col = res.seg.getFirst().get("col");
                 List<?> c = (List<?>) col;
-                List<?> first = (List<?>) c.get(0);
+                List<?> first = (List<?>) c.getFirst();
                 int r = (int) first.get(0);
                 int g = (int) first.get(1);
                 int b = (int) first.get(2);

@@ -47,8 +47,8 @@ public class MqttConfig {
     private final String topicSendData = "automata/sendData";
     private final String topicAction = "automata/action";
     private final String topicSys = "$SYS/broker/clients/123";
-    private final String wledDeviceTopic = "automata/#";
-    private final String wledGroupTopic = "automata/all";
+    private final String wledDeviceTopic = "automata-wled/#";
+    private final String wledGroupTopic = "automata-wled/all";
 
     private MqttPahoClientFactory createMqttClient(String brokerUrl) {
         MqttConnectOptions options = new MqttConnectOptions();

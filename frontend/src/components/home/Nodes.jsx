@@ -160,7 +160,7 @@ export const Device = React.memo(({id, data, isConnectable}) => {
                     // borderColor: '#ff0000',
                     // borderWidth: '10px',
                     background: 'transparent',
-                    backgroundColor: 'rgb(0 0 0 / 60%)',
+                    backgroundColor: 'rgb(0 0 0 / 5%)',
                     // boxShadow: 'rgb(255 225 255 / 6%) 0px 0px 50px 15px'
                 }}>
 
@@ -441,7 +441,7 @@ export const MainNode = React.memo(({data, isConnectable}) => {
                     borderWidth: '0',
                     borderRadius: '12px',
                     background: 'transparent',
-                    backgroundColor: 'rgb(0 0 0 / 80%)',
+                    backgroundColor: 'rgb(0 0 0 / 5%)',
                     // boxShadow: 'rgb(255 255 255 / 8%) 0px 0px 50px 15px'
                 }}>
 
