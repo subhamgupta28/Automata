@@ -1,5 +1,6 @@
 package dev.automata.automata.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.dto.DataDto;
 import dev.automata.automata.dto.LiveEvent;
@@ -13,11 +14,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,21 +38,24 @@ public class MainController {
     private final AnalyticsService analyticsService;
     private final ApplicationEventPublisher publisher;
     private final NotificationService notificationService;
+    private final MessageChannel mqttOutboundChannel;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
 //    private final KafkaTemplate<String, String> kafkaTemplate;
 
     @GetMapping("healthCheck")
-    public ResponseEntity<?> healthCheck(){
+    public ResponseEntity<?> healthCheck() {
 //        mqttService.sendToTopic("automata/action/68c355de653e5d47410e878c", Map.of("key", "val"));
         return ResponseEntity.ok("ok");
     }
 
     @GetMapping("updateDevice")
-    public ResponseEntity<?> updateDevice(){
+    public ResponseEntity<?> updateDevice() {
         mainService.saveDevice();
 
         return ResponseEntity.ok("ok");
     }
+
     @PostMapping("serverCreds")
     public ResponseEntity<?> getServerCreds() {
         return ResponseEntity.ok(mainService.getServerCreds());
@@ -192,11 +198,13 @@ public class MainController {
 
         return ResponseEntity.ok(mainService.updateAttrCharts(deviceId, attribute, isVisible));
     }
+
     @PostMapping("/masterList")
     public ResponseEntity<?> getMasterList() {
 
         return ResponseEntity.ok(mainService.getMasterList());
     }
+
     @PostMapping("/automations")
     public ResponseEntity<String> getAutomations() {
 
@@ -221,7 +229,7 @@ public class MainController {
     }
 
     @GetMapping("/updateAttribute/{deviceId}/{attribute}/{isShow}")
-    public ResponseEntity<?> updateAttribute(@PathVariable String deviceId, @PathVariable String attribute, @PathVariable String isShow){
+    public ResponseEntity<?> updateAttribute(@PathVariable String deviceId, @PathVariable String attribute, @PathVariable String isShow) {
         return ResponseEntity.ok(mainService.updateAttribute(deviceId, attribute, isShow));
     }
 
@@ -244,8 +252,23 @@ public class MainController {
         map.put("deviceId", deviceId);
         map.put("data", payload);
         map.put("deviceConfig", device.get("deviceConfig"));
-        messagingTemplate.convertAndSend("/topic/data", map);
+//        messagingTemplate.convertAndSend("/topic/data", map);
+        sendToTopic("automata/sendData", payload);
         return map;
+    }
+
+    private void sendToTopic(String topic, Map<String, Object> payload) {
+        try {
+            String json = objectMapper.writeValueAsString(payload);
+            mqttOutboundChannel.send(
+                    MessageBuilder.withPayload(json)
+                            .setHeader("mqtt_topic", topic)
+                            .build()
+            );
+            System.out.println("📤 Sent to " + topic + " => " + json);
+        } catch (Exception e) {
+            System.err.println(e);
+        }
     }
 
     // for getting live data from devices
@@ -262,7 +285,7 @@ public class MainController {
     }
 
     @MessageMapping("/sendLiveData")
-    @SendTo("/topic/data")
+//    @SendTo("/topic/data")
     public Map<String, Object> sendLiveData(
             @Payload Map<String, Object> payload
     ) {
@@ -271,9 +294,10 @@ public class MainController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("No device found");
         }
-        var event  = new LiveEvent();
+        var event = new LiveEvent();
         event.setPayload(payload);
         publisher.publishEvent(event);
+        sendToTopic("automata/sendLiveData", payload);
         return getStringObjectMap(payload, deviceId);
     }
 
