@@ -253,7 +253,7 @@ public class MainController {
         map.put("data", payload);
         map.put("deviceConfig", device.get("deviceConfig"));
 //        messagingTemplate.convertAndSend("/topic/data", map);
-        sendToTopic("automata/sendData", payload);
+//        sendToTopic("automata/sendData", payload);
         return map;
     }
 
@@ -297,7 +297,7 @@ public class MainController {
         var event = new LiveEvent();
         event.setPayload(payload);
         publisher.publishEvent(event);
-        sendToTopic("automata/sendLiveData", payload);
+//        sendToTopic("automata/sendLiveData", payload);
         return getStringObjectMap(payload, deviceId);
     }
 
