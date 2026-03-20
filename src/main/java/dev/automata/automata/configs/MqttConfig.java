@@ -148,7 +148,7 @@ public class MqttConfig {
                         "device",
                         m -> {
                             String topic = (String) m.getHeaders().get("mqtt_receivedTopic");
-                            return topic != null ? topic.substring(8) : null;
+                            return topic != null ? topic.substring(13) : null;
                         }
                 ))
                 .channel("wledChannel")
