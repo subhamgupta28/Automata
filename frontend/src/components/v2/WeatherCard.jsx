@@ -1,7 +1,7 @@
 import {Box, Card, CardContent, Divider, Slider, Stack, Typography,} from "@mui/material";
 import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import CloudIcon from "@mui/icons-material/Cloud";
-import GrainIcon from "@mui/icons-material/Grain";
+import WaterDropIcon from "@mui/icons-material/WaterDrop";
 import AirIcon from "@mui/icons-material/Air";
 import OpacityIcon from "@mui/icons-material/Opacity";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
@@ -14,6 +14,8 @@ import IconButton from "@mui/material/IconButton";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {CustomModal} from "../home/CustomModal.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
+import GrainIcon from "@mui/icons-material/Grain";
+import ThunderstormIcon from "@mui/icons-material/Thunderstorm";
 
 const getWeatherIcon = (condition, humid) => {
     const c = condition;
@@ -51,18 +53,18 @@ const AQIBar = ({aqi}) => {
     return (
         <Box mt={3}>
             {/* Header */}
-            <Box display="flex" alignItems="center" gap={3} mb={2}>
+            <Box display="flex" alignItems="center" gap={2} mb={4}>
                 <Box>
-                    <Typography>
+                    <Typography variant="h6">
                         AQI
                     </Typography>
-                    <Typography variant="h4" fontWeight={600}>
+                    <Typography variant="h3" fontWeight={600}>
                         {aqi}
                     </Typography>
-                    <Typography color="text.secondary">{label}</Typography>
+                    <Typography>{label}</Typography>
                 </Box>
 
-                <Typography variant="body2" color="text.secondary" maxWidth={500}>
+                <Typography variant="body2"  maxWidth={500}>
                     {getAQIDescription(aqi)}
                 </Typography>
             </Box>
@@ -183,6 +185,13 @@ function getDevicesWithCO2(attributes) {
         )
         .map(([deviceId]) => deviceId);
 }
+
+const getHumidityIcon = (humidity) => {
+    if (humidity < 30) return <GrainIcon fontSize="large"/>;           // Dry
+    if (humidity < 60) return <OpacityIcon fontSize="large"/>;        // Normal
+    if (humidity < 80) return <WaterDropIcon fontSize="large"/>;      // Humid
+    return <ThunderstormIcon fontSize="large"/>;                      // Very humid
+};
 
 
 export default function WeatherCard({id, data, isConnectable, selected}) {
@@ -376,7 +385,7 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                 <Box mb={2} style={{
                     display: "flex", alignItems: "center", gap: 2
                 }}>
-                    <Typography>
+                    <Typography variant="body2" color="text.secondary">
                         Outdoor
                     </Typography>
                     <Thermostat style={{height: "18px"}}/>
@@ -396,7 +405,9 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
 
                 {/* Main Content */}
                 <Box style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "center"
+                    display: "flex", justifyContent: "space-between",
+                    // alignItems: "center",
+                    marginTop: "32px", marginBottom: "32px"
                 }}>
                     {/* Left */}
                     <Box style={{
@@ -404,47 +415,61 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
                     }}>
                         {getWeatherIcon(weather.temp, weather.humidity)}
 
-                        <Typography variant="h2" fontWeight={600}>
+                        <Typography variant="h1" color="white" fontWeight={600}>
                             {weather.temp}
                         </Typography>
 
-                        <Box>
+                        <Box style={{display: 'flex', height: '100%', paddingTop: '5px'}}>
                             <Typography variant="body" fontWeight={600}>
                                 °C
                             </Typography>
                         </Box>
                     </Box>
+                    <Box style={{
+                        display: "flex", alignItems: "center", gap: 8
+                    }}>
+                        {/*<OpacityIcon fontSize="large"/>*/}
+                        {getHumidityIcon(weather.humidity)}
 
+                        <Typography variant="h1" color="white" fontWeight={600}>
+                            {weather.humidity}
+                        </Typography>
+                        <Box style={{display: 'flex', height: '100%', paddingTop: '5px'}}>
+                            <Typography variant="body" fontWeight={600}>
+                                %
+                            </Typography>
+                        </Box>
+                    </Box>
 
                     {/* Right Stats */}
-                    <Stack spacing={1}>
-                        <Box style={{
-                            display: "flex", alignItems: "center", gap: 1
-                        }}>
-                            <OpacityIcon fontSize="small"/>
-                            <Typography variant="body2">
-                                Humidity: {weather.humidity}%
-                            </Typography>
-                        </Box>
+                    {/*<Stack spacing={1}>*/}
+                    {/*    <Box style={{*/}
+                    {/*        display: "flex", alignItems: "center", gap: 1*/}
+                    {/*    }}>*/}
+                    {/*        <OpacityIcon fontSize="small"/>*/}
+                    {/*        <Typography variant="body2">*/}
+                    {/*            Humidity: {weather.humidity}%*/}
+                    {/*        </Typography>*/}
+                    {/*    </Box>*/}
 
-                        <Box style={{
-                            display: "flex", alignItems: "center", gap: 1
-                        }}>
-                            <Lightbulb fontSize="small"/>
-                            <Typography variant="body2">
-                                Indoor Light: {weather.lux}
-                            </Typography>
-                        </Box>
+                    {/*    <Box style={{*/}
+                    {/*        display: "flex", alignItems: "center", gap: 1*/}
+                    {/*    }}>*/}
+                    {/*        <Lightbulb fontSize="small"/>*/}
+                    {/*        <Typography variant="body2">*/}
+                    {/*            Indoor Light: {weather.lux}*/}
+                    {/*        </Typography>*/}
+                    {/*    </Box>*/}
 
-                        <Box style={{
-                            display: "flex", alignItems: "center", gap: 1
-                        }}>
-                            <AirIcon fontSize="small"/>
-                            <Typography variant="body2">
-                                Wind: {weather.wind} mph
-                            </Typography>
-                        </Box>
-                    </Stack>
+                    {/*    <Box style={{*/}
+                    {/*        display: "flex", alignItems: "center", gap: 1*/}
+                    {/*    }}>*/}
+                    {/*        <AirIcon fontSize="small"/>*/}
+                    {/*        <Typography variant="body2">*/}
+                    {/*            Wind: {weather.wind} mph*/}
+                    {/*        </Typography>*/}
+                    {/*    </Box>*/}
+                    {/*</Stack>*/}
                 </Box>
 
                 <Box sx={{mt: 2}}>
