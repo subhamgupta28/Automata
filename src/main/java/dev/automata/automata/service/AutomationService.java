@@ -222,16 +222,17 @@ public class AutomationService {
 
         try {
             var wled = new Wled(mqttOutboundChannel, device);
-            var key = payload.get("key").toString();
-            String result = switch (key) {
-                case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString())).resultNow();
-                case "onOff" -> wled.powerOnOff(Boolean.parseBoolean(payload.get(key).toString())).resultNow();
-                case "toggle" -> wled.toggleOnOff().resultNow();
-                case "color1", "color2" -> wled.setRGBHexColor(payload.get(key).toString(), key);
-                case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString())).resultNow();
-                default -> "No action found for key: " + key;
-            };
-            return "success";
+
+//            var key = payload.get("key").toString();
+//            String result = switch (key) {
+//                case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString())).resultNow();
+//                case "onOff" -> wled.powerOnOff(Boolean.parseBoolean(payload.get(key).toString())).resultNow();
+//                case "toggle" -> wled.toggleOnOff().resultNow();
+//                case "color1", "color2" -> wled.setRGBHexColor(payload.get(key).toString(), key);
+//                case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString())).resultNow();
+//                default -> "No action found for key: " + key;
+//            };
+            return wled.handleAction(payload);
         } catch (Exception e) {
             System.err.println(e);
             return "Error";
@@ -347,12 +348,7 @@ public class AutomationService {
     private void restoreWledState(String deviceId, Map<String, Object> state, String user) {
         // Map the saved WLED snapshot back to your handleWLED method keys
         // If the snapshot has 'bright', we send a 'bright' action, etc.
-        state.forEach((key, value) -> {
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("key", key);
-            payload.put(key, value);
-            handleWLED(deviceId, payload, user);
-        });
+        handleWLED(deviceId, state, user);
     }
 
     // new version
@@ -468,7 +464,7 @@ public class AutomationService {
 
         double threshold = Double.parseDouble(condition.getValue());
         // Define a buffer (e.g., 10% of the threshold or a fixed value like 15)
-        double buffer = 15.0;
+        double buffer = 5.0;
 
         switch (condition.getCondition()) {
             case "above" -> {

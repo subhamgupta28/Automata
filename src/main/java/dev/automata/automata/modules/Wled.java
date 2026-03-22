@@ -102,6 +102,45 @@ public class Wled {
         return null;
     }
 
+    public String handleAction(Map<String, Object> input) {
+        try {
+            System.err.println("INPUT: " + input);
+            StringBuilder payload = new StringBuilder();
+
+            for (var entry : input.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+
+                switch (key) {
+                    case "bright" -> append(payload, "A=" + value);
+                    case "onOff" -> {
+                        int v = value.toString().equals("true") ? 1
+                                : value.toString().equals("false") ? 0
+                                : 2;
+                        append(payload, "T=" + v);
+                    }
+                    case "toggle" -> append(payload, "T");
+                    case "color1" -> append(payload, "CL=" + value);
+                    case "color2" -> append(payload, "C2=" + value);
+                    case "preset", "presets" -> append(payload, "FX=" + value);
+                }
+            }
+
+            sendToTopic(deviceTopic + "/api", payload.toString());
+
+        } catch (Exception e) {
+            System.err.println(e);
+            return null;
+        }
+        return "success";
+    }
+
+    private void append(StringBuilder sb, String value) {
+        if (!sb.isEmpty()) {
+            sb.append("&");
+        }
+        sb.append(value);
+    }
 
     /// [
     ///{
