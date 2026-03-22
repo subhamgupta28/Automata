@@ -227,8 +227,8 @@ public class AutomationService {
                 case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString())).resultNow();
                 case "onOff" -> wled.powerOnOff(Boolean.parseBoolean(payload.get(key).toString())).resultNow();
                 case "toggle" -> wled.toggleOnOff().resultNow();
-                case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString())).resultNow();
                 case "color1", "color2" -> wled.setRGBHexColor(payload.get(key).toString(), key);
+                case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString())).resultNow();
                 default -> "No action found for key: " + key;
             };
             return "success";
