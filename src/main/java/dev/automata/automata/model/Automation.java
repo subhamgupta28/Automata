@@ -66,6 +66,7 @@ public class Automation {
         private String data; //255
         private String name;
         private Boolean isEnabled;
+        private Boolean revert = false;
 
         // Getters and setters
     }

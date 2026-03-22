@@ -44,33 +44,6 @@ public class AutomationService {
     private final MessageChannel mqttOutboundChannel;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    //    private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
-//
-//    @PostConstruct
-//    public void init() {
-//        taskScheduler.setPoolSize(10);
-//        taskScheduler.initialize();
-//    }
-//    @Scheduled(fixedRate = 10000)
-    public void updateWLEDDevices() {
-//        var w = new Wled("", mqttOutboundChannel, null);
-//        mainService.registerDevice(w.newDevice());
-        var devices = deviceRepository.findAllByType("WLED");
-        devices.forEach(device -> {
-            try {
-                var deviceId = device.getId();
-                var wled = new Wled(mqttOutboundChannel, device);
-                wled.publishForInfo(deviceId);
-//                var data = wled.getInfo(device.getAccessUrl(), null);
-//                mainService.saveData(deviceId, data);
-//                System.err.println("WLED: " + data);
-//                messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
-            } catch (Exception e) {
-                System.err.println(e.getMessage());
-            }
-
-        });
-    }
 
     public List<Automation> findAll() {
         return automationRepository.findAll();
@@ -150,25 +123,7 @@ public class AutomationService {
         return "Action successfully sent!";
     }
 
-//    @Scheduled(fixedRate = 1000)
-//    public void sendWled(){
-//        sendToTopic( "wled/ring", "8");
-//        sendToTopic( "wled/all/col", Wled.rgbToHex(0, 10, 200));
 
-    /// /        sendToTopic( "wled/ring/v", "<xml>...</xml>");
-//    }
-//    private void sendToTopic(String topic, String payload) {
-//        try {
-//            mqttOutboundChannel.send(
-//                    MessageBuilder.withPayload(payload)
-//                            .setHeader("mqtt_topic", topic)
-//                            .build()
-//            );
-//            System.out.println("📤 Sent to " + topic + " => " + payload);
-//        } catch (Exception e) {
-//            System.err.println(e);
-//        }
-//    }
     private void sendToTopic(String topic, Map<String, Object> payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);
@@ -222,16 +177,6 @@ public class AutomationService {
 
         try {
             var wled = new Wled(mqttOutboundChannel, device);
-
-//            var key = payload.get("key").toString();
-//            String result = switch (key) {
-//                case "bright" -> wled.setBrightness(Integer.parseInt(payload.get(key).toString())).resultNow();
-//                case "onOff" -> wled.powerOnOff(Boolean.parseBoolean(payload.get(key).toString())).resultNow();
-//                case "toggle" -> wled.toggleOnOff().resultNow();
-//                case "color1", "color2" -> wled.setRGBHexColor(payload.get(key).toString(), key);
-//                case "preset" -> wled.setPresets(Integer.parseInt(payload.get(key).toString())).resultNow();
-//                default -> "No action found for key: " + key;
-//            };
             return wled.handleAction(payload);
         } catch (Exception e) {
             System.err.println(e);
@@ -239,15 +184,6 @@ public class AutomationService {
         }
     }
 
-//    public void checkAndExecuteAutomations() {
-//        automationRepository.findAll().forEach(automation -> {
-//            var payload = mainService.getLastData(automation.getTrigger().getDeviceId());
-//            if (isTriggered(automation, payload)) {
-//                notificationService.sendNotification("Executing automations: " + automation.getName(), "high");
-//                executeActions(automation);
-//            }
-//        });
-//    }
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data, boolean executeNow, String user) {
         var payload = new HashMap<String, Object>();
@@ -270,13 +206,16 @@ public class AutomationService {
         // Pass the previous state to the trigger check
         boolean isTriggeredNow = isTriggered(automation, payload, automationCache.isWasTriggeredPreviously());
         Date now = new Date();
-
+        String triggerType = automation.getTrigger().getType(); // "time", "state", "periodic"
         // SCENARIO 1: Condition just became TRUE (Trigger)
         if (isTriggeredNow && !automationCache.isWasTriggeredPreviously()) {
             System.out.println("🚀 Automation Triggered: " + automation.getName());
             notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
             // 1. Capture and Save "Before" State for all devices in this automation
-            saveStateSnapshots(automation);
+            // Only snapshot if it's NOT a time-based trigger
+            if (!"time".equals(triggerType)) {
+                saveStateSnapshots(automation);
+            }
 
             // 2. Execute the "Warning" actions
             executeActions(automation, user, payload);
@@ -290,8 +229,12 @@ public class AutomationService {
         else if (!isTriggeredNow && automationCache.isWasTriggeredPreviously()) {
             System.out.println("🔄 Automation Cleared: Reverting " + automation.getName());
 
-            // 1. Restore the saved state
-            restoreStateSnapshots(automation, user);
+            // Only restore if it's a state-based trigger (like AQI or Temp)
+            // We EXCLUDE "time" because we want those changes to stay
+            if ("state".equals(triggerType) || "periodic".equals(triggerType)) {
+                System.out.println("🔄 Restoring state for sensor-based automation");
+                restoreStateSnapshots(automation, user);
+            }
 
             automationCache.setWasTriggeredPreviously(false);
             automationCache.setLastUpdate(now);
@@ -321,6 +264,9 @@ public class AutomationService {
      */
     private void restoreStateSnapshots(Automation automation, String user) {
         for (Automation.Action action : automation.getActions()) {
+            if (!action.getRevert())
+                continue;
+
             String targetDeviceId = action.getDeviceId();
             String snapshotKey = "SNAPSHOT:" + automation.getId() + ":" + targetDeviceId;
             Map<String, Object> previousState = (Map<String, Object>) redisService.getRecentDeviceData(snapshotKey);
@@ -649,7 +595,14 @@ public class AutomationService {
                 .filter(n -> n.getData().getActionData() != null)
                 .map(n -> {
                     var a = n.getData().getActionData();
-                    return new Automation.Action(a.getKey(), a.getDeviceId(), a.getData(), a.getName(), a.getIsEnabled());
+                    return new Automation.Action(
+                            a.getKey(),
+                            a.getDeviceId(),
+                            a.getData(),
+                            a.getName(),
+                            a.getIsEnabled(),
+                            a.getRevert()
+                    );
                 }).toList();
 
         automationBuilder.actions(actions);

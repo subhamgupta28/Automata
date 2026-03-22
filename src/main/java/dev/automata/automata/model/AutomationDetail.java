@@ -145,6 +145,7 @@ public class AutomationDetail {
                 private String name;
                 private String data;
                 private Boolean isEnabled;
+                private Boolean revert = false;
             }
         }
 

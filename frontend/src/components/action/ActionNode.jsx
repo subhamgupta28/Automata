@@ -1,7 +1,7 @@
 import {Handle, Position, useNodeConnections, useReactFlow} from "@xyflow/react";
 import React, {useEffect, useState} from "react";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
-import {Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
+import {Card, FormControl, InputLabel, MenuItem, Select, Switch, TextField} from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
@@ -24,7 +24,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
         key: '',
         data: '',
         name: '',
-        deviceId: ''
+        deviceId: '',
+        revert: false
     };
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
     const {devices, loading, error} = useCachedDevices();
@@ -34,6 +35,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
     const [value, setValue] = useState(actionData.data);
     const [key, setKey] = useState(actionData.key);
     const [actionType, setActionType] = useState("");
+    const [revert, setRevert] = useState(false);
 
     const connections = useNodeConnections({
         handleType: 'target',
@@ -64,6 +66,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
             setValue(e.target.value);
         } else if (select === 'key') {
             setKey(e.target.value);
+        } else if (select === 'revert') {
+            setRevert(e.target.checked)
         }
     }
     const handleActionValues = (key) => {
@@ -74,9 +78,10 @@ export const ActionNode = ({id, data, isConnectable}) => {
             setActionType("")
             return;
         }
+        console.log("action", action)
         setActionType(action.type)
         switch (action[0].type) {
-            case "ACTION|MENU|SWITCH" || "ACTION|SWITCH": //on/off
+            case "ACTION|MENU|SWITCH": //on/off
                 setValueOptions(
                     [
                         {name: "On", value: "true"},
@@ -84,14 +89,14 @@ export const ActionNode = ({id, data, isConnectable}) => {
                     ]
                 )
                 break;
-            // case "ACTION|SWITCH": // on/off
-            //     setValueOptions(
-            //         [
-            //             {name: "On", value: "true"},
-            //             {name: "Off", value: "false"},
-            //         ]
-            //     )
-            //     break;
+            case "ACTION|SWITCH": // on/off
+                setValueOptions(
+                    [
+                        {name: "On", value: "true"},
+                        {name: "Off", value: "false"},
+                    ]
+                )
+                break;
             case "ACTION|IN": // on/off
                 if (action[0].key === "alert") {
                     setValueOptions(
@@ -106,20 +111,20 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 }
 
                 break;
-            case "ACTION|MENU|BTN" || "ACTION|OUT": //push button
+            case "ACTION|MENU|BTN": //push button
                 setValueOptions(
                     [
                         {name: "Toggle", value: "T"},
                     ]
                 )
                 break;
-            // case "ACTION|OUT": // push button
-            //     setValueOptions(
-            //         [
-            //             {name: "Toggle", value: "T"},
-            //         ]
-            //     )
-            //     break;
+            case "ACTION|OUT": // push button
+                setValueOptions(
+                    [
+                        {name: "Toggle", value: "T"},
+                    ]
+                )
+                break;
             case "ACTION|COLOR": // push button
                 setValueOptions([])
                 setActionType("COLOR")
@@ -137,6 +142,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 setValueOptions([])
                 break;
         }
+        // if (valueOptions.length > 0)
+        //     setValue(valueOptions[0])
     }
     const handleTriggerValue = (e, select) => {
         setValue(e.target.value);
@@ -155,13 +162,16 @@ export const ActionNode = ({id, data, isConnectable}) => {
             key,
             name: selectedDevice?.name,
             data: value,
-            isEnabled: connections.length > 0
+            isEnabled: connections.length > 0,
+            revert
         };
 
         // Only update if something actually changed
+        console.log(newData)
+        handleActionValues(key);
         if (JSON.stringify(data.actionData) !== JSON.stringify(newData)) {
             updateNodeData(id, {actionData: newData});
-            handleActionValues(key);
+
         }
 
     }, [
@@ -169,7 +179,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
         selectedDevice?.name,
         key,
         value,
-        connections.length
+        connections.length,
+        revert
     ]);
 
     const deleteNode = (nodeId) => {
@@ -271,7 +282,11 @@ export const ActionNode = ({id, data, isConnectable}) => {
                         />
                     )
                 )}
-
+                Revert to previous state
+                <Switch
+                    onChange={(e) => handleTriggerKey(e, 'revert')}
+                    checked={revert}
+                />
             </div>
         </Card>
     );
