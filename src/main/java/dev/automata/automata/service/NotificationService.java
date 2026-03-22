@@ -81,7 +81,7 @@ public class NotificationService {
 //        headers.add("Tags", "warning");
 
             HttpEntity<String> request = new HttpEntity<>(message, headers);
-            restTemplate.postForObject("http://ntfy/", request, String.class);
+            restTemplate.postForObject("http://ntfy/automata", request, String.class);
             System.err.println("NTFY sent: " + message);
         } catch (Exception e) {
             System.err.println(e);

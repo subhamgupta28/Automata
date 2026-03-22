@@ -274,7 +274,7 @@ public class AutomationService {
         // SCENARIO 1: Condition just became TRUE (Trigger)
         if (isTriggeredNow && !automationCache.isWasTriggeredPreviously()) {
             System.out.println("🚀 Automation Triggered: " + automation.getName());
-
+            notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
             // 1. Capture and Save "Before" State for all devices in this automation
             saveStateSnapshots(automation);
 
