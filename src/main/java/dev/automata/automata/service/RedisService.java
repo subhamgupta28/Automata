@@ -14,7 +14,8 @@ import java.util.*;
 public class RedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
-
+    private final Map<String, Map<String, Map<String, Object>>> deviceStates = new HashMap<>();
+    private final Set<String> activeAutomations = new HashSet<>();
     //    private final RedisTemplate<String, Map<String, Object>> dataRedisTemplate;
 //
     public Map<String, Object> getRecentDeviceData(String id) {
@@ -23,6 +24,34 @@ public class RedisService {
 
     public void setRecentDeviceData(String id, Map<String, Object> data) {
         redisTemplate.opsForValue().set("data_" + id, data);
+    }
+
+    // deviceId -> automationId -> state
+    public void saveAutomationState(String deviceId, String automationId,
+                                    Map<String, Object> state, Integer priority) {
+
+        deviceStates
+                .computeIfAbsent(deviceId, k -> new HashMap<>())
+                .put(automationId, state);
+
+        activeAutomations.add(automationId);
+    }
+
+    public void removeAutomationState(String deviceId, String automationId) {
+
+        if (deviceStates.containsKey(deviceId)) {
+            deviceStates.get(deviceId).remove(automationId);
+        }
+
+        activeAutomations.remove(automationId);
+    }
+
+    public Map<String, Map<String, Object>> getDeviceStates(String deviceId) {
+        return deviceStates.getOrDefault(deviceId, new HashMap<>());
+    }
+
+    public boolean isAutomationActive(String automationId) {
+        return activeAutomations.contains(automationId);
     }
 
     public AutomationCache getAutomationCache(String deviceId) {

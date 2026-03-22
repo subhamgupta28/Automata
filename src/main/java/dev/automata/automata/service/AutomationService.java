@@ -231,22 +231,6 @@ public class AutomationService {
                 case "color1", "color2" -> wled.setRGBHexColor(payload.get(key).toString(), key);
                 default -> "No action found for key: " + key;
             };
-//            CompletableFuture.runAsync(() -> {
-//            var data = wled.getInfo(deviceId, null);
-//            deviceActionStateRepository.save(DeviceActionState.builder()
-//                    .user(user)
-//                    .deviceId(deviceId)
-//                    .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
-//                    .payload(payload)
-//                    .deviceType("WLED")
-//                    .deviceCurrentState(data)
-//                    .build());
-////                System.err.println(data);
-//            mainService.saveData(deviceId, data);
-//            messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", deviceId, "data", data));
-//                sendToTopic("automata/data", Map.of("deviceId", deviceId, "data", data));
-
-//            });
             return "success";
         } catch (Exception e) {
             System.err.println(e);
@@ -265,60 +249,111 @@ public class AutomationService {
 //    }
 
     public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data, boolean executeNow, String user) {
-//        System.err.println("Checking automation: " + automation.getName());
         var payload = new HashMap<String, Object>();
         var deviceId = automation.getTrigger().getDeviceId();
-        if (data != null)
-            payload.putAll(data);
-        else {
-            payload.putAll((HashMap<String, Object>) mainService.getLastData(deviceId));
-        }
+
+        if (data != null) payload.putAll(data);
+        else payload.putAll(mainService.getLastData(deviceId));
 
         var type = automation.getTriggerDeviceType();
-//        System.err.println(automation.getName() + " " + type);
-        if (type != null && type.equals("System"))
-            payload = (HashMap<String, Object>) mainService.getLastData(deviceId);
-//        System.out.println(payload);
-
-
-        long COOLDOWN_MS = 60 * 1000;
-
-        String key = deviceId + ":" + automation.getId();
-        AutomationCache automationCache = redisService.getAutomationCache(key);
-        boolean isTriggeredNow = isTriggered(automation, payload);
-
-        Date now = new Date();
+        String cacheKey = deviceId + ":" + automation.getId();
+        AutomationCache automationCache = redisService.getAutomationCache(cacheKey);
 
         if (automationCache == null) {
             automationCache = AutomationCache.builder()
                     .id(automation.getId())
-                    .automation(automation)
-                    .isActive(false)
-                    .triggerDeviceId(deviceId)
                     .wasTriggeredPreviously(false)
-                    .triggerDeviceType(type)
-                    .lastUpdate(new Date(0)) // set to epoch to allow immediate first-time execution
+                    .lastUpdate(new Date(0))
                     .build();
         }
+        // Pass the previous state to the trigger check
+        boolean isTriggeredNow = isTriggered(automation, payload, automationCache.isWasTriggeredPreviously());
+        Date now = new Date();
 
-        boolean cooldownElapsed = now.getTime() - automationCache.getLastUpdate().getTime() >= COOLDOWN_MS;
-        boolean shouldExecute = isTriggeredNow && (!automationCache.isWasTriggeredPreviously() || executeNow);
-        automationCache.setWasTriggeredPreviously(isTriggeredNow); // for next call
+        // SCENARIO 1: Condition just became TRUE (Trigger)
+        if (isTriggeredNow && !automationCache.isWasTriggeredPreviously()) {
+            System.out.println("🚀 Automation Triggered: " + automation.getName());
 
-        if (shouldExecute) {
-            automation.setIsActive(true);
+            // 1. Capture and Save "Before" State for all devices in this automation
+            saveStateSnapshots(automation);
 
-            automationCache.setLastUpdate(now); // update last execution time
-            System.err.println("Executing automation: " + automation.getName() + " with payload: " + payload);
-            notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
+            // 2. Execute the "Warning" actions
             executeActions(automation, user, payload);
-        } else {
-            automation.setIsActive(false);
+
+            automationCache.setWasTriggeredPreviously(true);
+            automationCache.setLastUpdate(now);
+            redisService.setAutomationCache(cacheKey, automationCache);
         }
 
-        redisService.setAutomationCache(key, automationCache);
+        // SCENARIO 2: Condition just became FALSE (Restoration)
+        else if (!isTriggeredNow && automationCache.isWasTriggeredPreviously()) {
+            System.out.println("🔄 Automation Cleared: Reverting " + automation.getName());
+
+            // 1. Restore the saved state
+            restoreStateSnapshots(automation, user);
+
+            automationCache.setWasTriggeredPreviously(false);
+            automationCache.setLastUpdate(now);
+            redisService.setAutomationCache(cacheKey, automationCache);
+        }
     }
 
+    /**
+     * Saves the current state of all target devices before they get changed.
+     */
+    private void saveStateSnapshots(Automation automation) {
+        for (Automation.Action action : automation.getActions()) {
+            String targetDeviceId = action.getDeviceId();
+            // Get last known good state from Redis/MainService
+            Map<String, Object> currentState = (Map<String, Object>) mainService.getLastData(targetDeviceId);
+
+            if (currentState != null && !currentState.isEmpty()) {
+                String snapshotKey = "SNAPSHOT:" + automation.getId() + ":" + targetDeviceId;
+                redisService.setRecentDeviceData(snapshotKey, currentState);
+                System.out.println("📸 Snapshot saved for device: " + targetDeviceId + currentState);
+            }
+        }
+    }
+
+    /**
+     * Reverts devices to the state they were in before the automation fired.
+     */
+    private void restoreStateSnapshots(Automation automation, String user) {
+        for (Automation.Action action : automation.getActions()) {
+            String targetDeviceId = action.getDeviceId();
+            String snapshotKey = "SNAPSHOT:" + automation.getId() + ":" + targetDeviceId;
+            Map<String, Object> previousState = (Map<String, Object>) redisService.getRecentDeviceData(snapshotKey);
+
+            if (previousState != null) {
+                System.out.println("⏪ Restoring device: " + targetDeviceId + previousState);
+
+                // Logic to send the state back to the device
+                // We wrap the previous state in a format the device understands
+                var device = deviceRepository.findById(targetDeviceId).orElse(null);
+                if (device == null) continue;
+
+                if ("WLED".equals(device.getType())) {
+                    // Specific logic for WLED if you want to use the API
+                    restoreWledState(targetDeviceId, previousState, user);
+                } else {
+                    // Generic MQTT/WS restore for other devices
+                    messagingTemplate.convertAndSend("/topic/action/" + targetDeviceId, previousState);
+                    sendToTopic("automata/action/" + targetDeviceId, previousState);
+                }
+            }
+        }
+    }
+
+    private void restoreWledState(String deviceId, Map<String, Object> state, String user) {
+        // Map the saved WLED snapshot back to your handleWLED method keys
+        // If the snapshot has 'bright', we send a 'bright' action, etc.
+        state.forEach((key, value) -> {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("key", key);
+            payload.put(key, value);
+            handleWLED(deviceId, payload, user);
+        });
+    }
 
     // new version
     public Object sendConditionToDevice(String deviceId) {
@@ -358,7 +393,7 @@ public class AutomationService {
         return payload;
     }
 
-    private boolean isTriggeredOld(Automation automation, Map<String, Object> payload) {
+    private boolean isTriggeredOld(Automation automation, Map<String, Object> payload, boolean wasActive) {
         if ("time".equals(automation.getTrigger().getType())) {
             return isCurrentTime(automation.getConditions().get(0).getTime());
         }
@@ -372,7 +407,7 @@ public class AutomationService {
             var numericValue = Double.parseDouble(value);
 
             if ("state".equals(automation.getTrigger().getType()) || "periodic".equals(automation.getTrigger().getType())) {
-                truths.add(checkCondition(numericValue, value, condition));
+                truths.add(checkCondition(numericValue, condition, wasActive));
             }
         }
 
@@ -388,7 +423,7 @@ public class AutomationService {
         return input != null && input.matches("[a-zA-Z]+"); // only alphabets
     }
 
-    private boolean isTriggered(Automation automation, Map<String, Object> payload) {
+    private boolean isTriggered(Automation automation, Map<String, Object> payload, boolean wasActive) {
         if ("time".equals(automation.getTrigger().getType())) {
             return isCurrentTime(automation.getConditions().get(0).getTime());
         }
@@ -397,7 +432,7 @@ public class AutomationService {
         var triggerKeys = automation.getTrigger().getKeys(); // List<TriggerKey>
         var conditions = automation.getConditions();         // List<Condition>
         if (triggerKeys == null)
-            return isTriggeredOld(automation, payload);
+            return isTriggeredOld(automation, payload, wasActive);
 //        System.err.println(automation.getName());
 //        System.err.println(payload);
         var truths = new ArrayList<Boolean>();
@@ -414,9 +449,8 @@ public class AutomationService {
             if (condition == null) continue;
             if (isNumeric(value)) {
                 double numericValue = Double.parseDouble(value);
-                if ("state".equals(automation.getTrigger().getType()) || "periodic".equals(automation.getTrigger().getType())) {
-                    truths.add(checkCondition(numericValue, value, condition));
-                }
+                // Pass wasActive down to the individual condition check
+                truths.add(checkCondition(numericValue, condition, wasActive));
             } else {
                 truths.add(value.equals(condition.getValue()));
             }
@@ -427,22 +461,38 @@ public class AutomationService {
     }
 
 
-    private Boolean checkCondition(Double numericValue, String value, Automation.Condition condition) {
+    private Boolean checkCondition(Double numericValue, Automation.Condition condition, boolean wasActive) {
         if (condition.getIsExact()) {
-            return value.equals(condition.getValue());
+            return condition.getValue().equals(numericValue.toString());
         }
 
-        double above = Double.parseDouble(condition.getAbove());
-        double below = Double.parseDouble(condition.getBelow());
-//        System.err.println(below+" "+above+" "+Double.parseDouble(condition.getValue()));
+        double threshold = Double.parseDouble(condition.getValue());
+        // Define a buffer (e.g., 10% of the threshold or a fixed value like 15)
+        double buffer = 15.0;
+
         switch (condition.getCondition()) {
             case "above" -> {
-                return numericValue > Double.parseDouble(condition.getValue());
+                // If already active, stay active until it drops below (threshold - buffer)
+                if (wasActive) {
+                    return numericValue > (threshold - buffer);
+                }
+                // If not active, trigger only if it goes above the threshold
+                return numericValue > threshold;
             }
             case "below" -> {
-                return numericValue < Double.parseDouble(condition.getValue());
+                // If already active, stay active until it rises above (threshold + buffer)
+                if (wasActive) {
+                    return numericValue < (threshold + buffer);
+                }
+                return numericValue < threshold;
             }
             case "range" -> {
+                double above = Double.parseDouble(condition.getAbove());
+                double below = Double.parseDouble(condition.getBelow());
+                // For range, we can expand the boundaries slightly when active
+                if (wasActive) {
+                    return numericValue > (above - buffer) && numericValue < (below + buffer);
+                }
                 return numericValue > above && numericValue < below;
             }
         }

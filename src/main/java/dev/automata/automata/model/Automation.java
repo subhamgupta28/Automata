@@ -23,6 +23,8 @@ public class Automation {
     private Boolean isActive;
     private Long snoozeTime;
     private String triggerDeviceType;
+    private Integer priority = 5;
+    private List<String> targetDeviceIds;
 
     @JsonProperty("trigger")
     private Trigger trigger;
@@ -32,6 +34,12 @@ public class Automation {
     private List<Condition> conditions;
 
 
+    public List<String> getTargetDeviceIds() {
+        return actions.stream()
+                .map(Action::getDeviceId)
+                .distinct()
+                .toList();
+    }
 
     @Getter
     @Setter

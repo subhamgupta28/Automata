@@ -294,9 +294,9 @@ public class MainController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("No device found");
         }
-        var event = new LiveEvent();
-        event.setPayload(payload);
-        publisher.publishEvent(event);
+//        var event = new LiveEvent();
+//        event.setPayload(payload);
+//        publisher.publishEvent(event);
         sendToTopic("automata/sendLiveData", payload);
         return getStringObjectMap(payload, deviceId);
     }

@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
+import java.util.Map;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -27,4 +28,6 @@ public class AutomationCache {
     private boolean wasTriggeredPreviously;
     private Boolean isActive;
     private boolean enabled;
+    private Map<String, Object> previousState; // deviceId -> state
+    private boolean active; // already exists but use properly
 }
