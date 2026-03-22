@@ -58,7 +58,7 @@ public class Wled {
                             .setHeader("mqtt_topic", topic)
                             .build()
             );
-            System.out.println("📤 Sent to " + topic + " => " + payload);
+//            System.out.println("📤 Sent to " + topic + " => " + payload);
         } catch (Exception e) {
             System.err.println(e);
         }

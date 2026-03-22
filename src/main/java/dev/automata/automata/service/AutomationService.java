@@ -177,7 +177,7 @@ public class AutomationService {
                             .setHeader("mqtt_topic", topic)
                             .build()
             );
-            System.out.println("📤 Sent to " + topic + " => " + json);
+//            System.out.println("📤 Sent to " + topic + " => " + json);
         } catch (Exception e) {
             System.err.println(e);
         }
@@ -615,7 +615,8 @@ public class AutomationService {
     @Scheduled(fixedRate = 1000 * 60 * 5)
     private void updateRedisStorage() {
         automationRepository.findAll().forEach(a -> {
-            AutomationCache existing = redisService.getAutomationCache(a.getId());
+            var id = a.getTrigger().getDeviceId() + ":" + a.getId();
+            AutomationCache existing = redisService.getAutomationCache(id);
 
             AutomationCache updatedCache = AutomationCache.builder()
                     .id(a.getId())
@@ -628,7 +629,7 @@ public class AutomationService {
                     .lastUpdate(new Date())
                     .build();
 
-            redisService.setAutomationCache(a.getTrigger().getDeviceId() + ":" + a.getId(), updatedCache);
+            redisService.setAutomationCache(id, updatedCache);
 //            System.err.println("Redis: " + a.getTrigger().getDeviceId() + ":" + a.getId());
         });
     }

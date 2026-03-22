@@ -265,7 +265,7 @@ public class MainController {
                             .setHeader("mqtt_topic", topic)
                             .build()
             );
-            System.out.println("📤 Sent to " + topic + " => " + json);
+//            System.out.println("📤 Sent to " + topic + " => " + json);
         } catch (Exception e) {
             System.err.println(e);
         }
