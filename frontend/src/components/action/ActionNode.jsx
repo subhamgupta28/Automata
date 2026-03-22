@@ -35,7 +35,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
     const [value, setValue] = useState(actionData.data);
     const [key, setKey] = useState(actionData.key);
     const [actionType, setActionType] = useState("");
-    const [revert, setRevert] = useState(false);
+    const [revert, setRevert] = useState(actionData.revert);
 
     const connections = useNodeConnections({
         handleType: 'target',
