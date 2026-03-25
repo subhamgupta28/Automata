@@ -7,7 +7,6 @@ import dev.automata.automata.dto.WledXmlResponse;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
-import org.springframework.http.*;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Async;
@@ -106,6 +105,10 @@ public class Wled {
         try {
             System.err.println("INPUT: " + input);
             StringBuilder payload = new StringBuilder();
+            if (input.containsKey("reboot")){
+                reboot();
+                return "success";
+            }
 
             for (var entry : input.entrySet()) {
                 String key = entry.getKey();
@@ -269,6 +272,10 @@ public class Wled {
             return Integer.parseInt(nodeList.item(0).getTextContent()); // Return the text content of the first matching element
         }
         return -1; // Return null if the tag is not found
+    }
+
+    public void reboot() {
+        sendToTopic(deviceTopic + "/api", "RB");
     }
 
     @Async

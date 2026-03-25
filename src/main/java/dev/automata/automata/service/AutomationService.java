@@ -5,6 +5,7 @@ import dev.automata.automata.dto.AutomationCache;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationDetail;
+import dev.automata.automata.model.Device;
 import dev.automata.automata.model.DeviceActionState;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.*;
@@ -81,7 +82,8 @@ public class AutomationService {
         }
 
         if ("reboot".equals(payload.get("key"))) {
-            return rebootDevice(deviceId);
+            var device = mainService.getDevice(deviceId);
+            return rebootDevice(device);
         }
 
         if (payload.containsKey("automation")) {
@@ -146,18 +148,31 @@ public class AutomationService {
         }
     }
 
-    private String rebootDevice(String deviceId) {
-        var device = deviceRepository.findById(deviceId).orElse(null);
+    public String rebootAllDevices() {
+        var devices = deviceRepository.findAll();
+        RestTemplate restTemplate = new RestTemplate();
+        notificationService.sendNotification("Rebooting All Devices", "success");
+        devices.forEach(this::rebootDevice);
+        notificationService.sendNotification("Reboot Complete", "success");
+        return "success";
+    }
+
+    private String rebootDevice(Device device) {
         if (device == null) return "Device not found";
-        Map<String, Object> map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
-        messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
-        sendToTopic("automata/action/" + device.getId(), map);
-        try {
-            var res = new RestTemplate().getForObject( device.getAccessUrl() + "/restart", String.class);
-            System.err.println(res);
-        } catch (Exception e) {
-            System.err.println(e.getMessage());
-        }
+        RestTemplate restTemplate = new RestTemplate();
+
+            Map<String, Object> map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
+            messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
+            sendToTopic("automata/action/" + device.getId(), map);
+            try {
+                var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
+                System.err.println(res);
+            } catch (Exception e) {
+                notificationService.sendNotification("Reboot action failed for device: " + device.getName(), "error");
+                System.err.println(e.getMessage());
+            }
+
+
         return "Rebooting device";
     }
 
@@ -665,23 +680,5 @@ public class AutomationService {
         return "success";
     }
 
-    public String rebootAllDevices() {
-        var devices = deviceRepository.findAll();
-        RestTemplate restTemplate = new RestTemplate();
-        notificationService.sendNotification("Rebooting All Devices", "success");
-        devices.forEach(device -> {
-            Map<String, Object> map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
-            messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
-            sendToTopic("automata/action/" + device.getId(), map);
-            try {
-                var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
-                System.err.println(res);
-            } catch (Exception e) {
-                notificationService.sendNotification("Reboot action failed for device: " + device.getName(), "error");
-                System.err.println(e.getMessage());
-            }
-        });
-        notificationService.sendNotification("Reboot Complete", "success");
-        return "success";
-    }
+
 }
