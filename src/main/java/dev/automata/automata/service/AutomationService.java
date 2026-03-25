@@ -149,7 +149,9 @@ public class AutomationService {
     private String rebootDevice(String deviceId) {
         var device = deviceRepository.findById(deviceId).orElse(null);
         if (device == null) return "Device not found";
-
+        Map<String, Object> map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
+        messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
+        sendToTopic("automata/action/" + device.getId(), map);
         try {
             var res = new RestTemplate().getForObject( device.getAccessUrl() + "/restart", String.class);
             System.err.println(res);
