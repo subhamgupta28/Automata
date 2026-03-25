@@ -14,8 +14,6 @@ import {
 import VirtualDevice from "./VirtualDevice.jsx";
 import {EnergyNode} from "./EnergyNode.jsx";
 import NodeInspector from "../home/NodeInspector.jsx";
-import {Button} from "@mui/material";
-import {ZoomSlider} from "../home/ZoomSlider.jsx";
 import {Edit} from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
 
@@ -112,7 +110,7 @@ function DashboardDetail() {
                 style={{
                     backgroundColor: 'transparent'
                 }}
-                autoPanOnNodeFocus
+                // autoPanOnNodeFocus={false}
                 // snapToGrid
                 // edgeTypes={edgeTypes}
                 nodesDraggable={editUi}
@@ -121,7 +119,9 @@ function DashboardDetail() {
                 // fitViewOptions={{ nodes: [{ id: '' }] }}
                 // onPaneClick={onPaneClick}
                 // onNodeContextMenu={onNodeContextMenu}
+                zoomOnDoubleClick={false}
                 onNodesChange={onNodesChange}
+                deleteKeyCode={null}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 defaultViewport={defaultViewport}
@@ -134,7 +134,7 @@ function DashboardDetail() {
                         <Edit fontSize="small"/>
                     </IconButton>
                 </Panel>
-                <Controls orientation="horizontal"/>
+                <Controls orientation="horizontal" />
                 {/*<ZoomSlider position="bottom-left"/>*/}
             </ReactFlow>
 

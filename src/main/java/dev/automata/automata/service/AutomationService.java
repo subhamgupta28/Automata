@@ -151,7 +151,7 @@ public class AutomationService {
         if (device == null) return "Device not found";
 
         try {
-            var res = new RestTemplate().getForObject("http://" + device.getAccessUrl() + "/restart", String.class);
+            var res = new RestTemplate().getForObject( device.getAccessUrl() + "/restart", String.class);
             System.err.println(res);
         } catch (Exception e) {
             System.err.println(e.getMessage());

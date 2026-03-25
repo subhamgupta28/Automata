@@ -531,10 +531,10 @@ public class MainService {
                 .collect(Collectors.joining(","));
     }
 
-    @Scheduled(fixedRate = 1000)
-    public void executeInsert() {
-        getMasterList();
-    }
+//    @Scheduled(fixedRate = 1000)
+//    public void executeInsert() {
+//        getMasterList();
+//    }
 
     public Object getMasterList() {
         var req = deviceRepository.findAll();

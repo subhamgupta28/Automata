@@ -2,7 +2,6 @@ import {Box, Card, CardContent, Divider, Slider, Stack, Typography,} from "@mui/
 import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import CloudIcon from "@mui/icons-material/Cloud";
 import WaterDropIcon from "@mui/icons-material/WaterDrop";
-import AirIcon from "@mui/icons-material/Air";
 import OpacityIcon from "@mui/icons-material/Opacity";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import React, {useEffect, useState} from "react";

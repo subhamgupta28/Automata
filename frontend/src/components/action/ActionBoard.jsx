@@ -29,6 +29,7 @@ import {ActionNode} from "./ActionNode.jsx";
 import {ConditionNode} from "./ConditionNode.jsx";
 import {ValueReaderNode} from "./ValueReaderNode.jsx";
 import {And, Or} from "./Conditions.jsx";
+import useLayoutNodes from "./useLayoutNodes.jsx";
 
 const triggerStyle = {
     padding: '10px',
@@ -62,6 +63,7 @@ const getId = (type) => `node_${type}_${id++}`;
 function ActionBoardDetail() {
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
+    // useLayoutNodes();
     // const [isModalOpen, setIsModalOpen] = useState(false);
     const [automations, setAutomations] = useState([]);
     const [selectedAutomation, setSelectedAutomation] = useState({});
@@ -165,11 +167,18 @@ function ActionBoardDetail() {
         const detail = await getAutomationDetail(a.id);
         console.log("detail", detail);
         setAutomationDetail(detail);
-        setNodes(n => []);
-        setEdges(e => []);
+        // setNodes(n => []);
+        // setEdges(e => []);
+
+        // const updatedNodes = (detail.nodes || []).map(node => ({
+        //     ...node,
+        //     position: { x: 0, y: 0 }
+        // }));
         setNodes(detail.nodes || []);
         setEdges(detail.edges || []);
         id = detail.nodes.length + 1;
+
+
     }
 
     const clearBoard = () => {

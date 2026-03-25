@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useState} from "react";
 import LightBulbCard from "../v2/LightBulbCard.jsx";
-import {Menu, Popover} from "@mui/material";
+import {Popover} from "@mui/material";
 import {CustomSlider} from "../charts/CustomSlider.jsx";
 import {Presets} from "../charts/Presets.jsx";
 import ColorPicker from "../charts/ColorPicker.jsx";
