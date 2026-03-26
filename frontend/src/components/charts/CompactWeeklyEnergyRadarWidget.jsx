@@ -67,7 +67,7 @@ export function CompactWeeklyEnergyRadarWidget({vid}) {
                 justifyContent: 'center',
                 alignItems: 'center'
             }}>
-                {series.length > 0 && labels.length > 0 && (
+                {series.length > 0 && labels.length > 0 && series.every(s => s.data && s.data.length === labels.length) && (
                     <RadarChart
                         height={240}
                         highlight="series"

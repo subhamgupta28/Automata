@@ -143,24 +143,44 @@ public class VirtualDeviceService {
                         .mapToObj(todayUser::minusDays)
                         .map(d -> d.format(formatter))
                         .toList();
-//        System.err.println("labels " + labels);
-        for (var entry : grouped.entrySet()) {
 
-            String deviceId = entry.getKey();
-            List<EnergyStat> deviceStats = entry.getValue();
+        // Map for fast label lookup to date (ISO format or similar for consistent comparison)
+        Map<String, LocalDate> labelToDate = IntStream.range(0, 7)
+                .mapToObj(todayUser::minusDays)
+                .collect(Collectors.toMap(
+                        d -> d.format(formatter),
+                        d -> d,
+                        (existing, replacement) -> existing,
+                        LinkedHashMap::new
+                ));
 
-            // Sort by timestamp so chart is in correct order
-            deviceStats.sort(Comparator.comparingLong(EnergyStat::getTimestamp).reversed());
+        for (var device : deviceList) {
+            String deviceId = device.getId();
+            List<EnergyStat> deviceStats = grouped.getOrDefault(deviceId, Collections.emptyList());
+
+            // Map stats by date for easy filling
+            Map<LocalDate, EnergyStat> statsByDate = new HashMap<>();
+            for (EnergyStat s : deviceStats) {
+                if (s.getUpdateDate() != null) {
+                    statsByDate.put(LocalDateTime.ofInstant(s.getUpdateDate(), zone).toLocalDate(), s);
+                }
+            }
 
             List<Double> values = new ArrayList<>();
 
-
-            for (EnergyStat stat : deviceStats) {
-                values.add(extractParamValue(stat, param));
+            // Ensure values align exactly with labels
+            for (String label : labels) {
+                LocalDate date = labelToDate.get(label);
+                EnergyStat stat = statsByDate.get(date);
+                if (stat != null) {
+                    values.add(extractParamValue(stat, param));
+                } else {
+                    values.add(0.0);
+                }
             }
 
             Map<String, Object> series = new HashMap<>();
-            series.put("label", deviceNames.get(deviceId));
+            series.put("label", device.getName());
             series.put("data", values);
             series.put("id", deviceId);
 
