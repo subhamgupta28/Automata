@@ -119,7 +119,12 @@ public class AutomationService {
         }
 
         var automations = automationRepository.findByTrigger_DeviceId(deviceId);
-        automations.forEach(a -> checkAndExecuteSingleAutomation(a, payload, true, user));
+        System.err.println("Automations found: ");
+        automations.forEach(a -> {
+                    System.err.println(a.getName());
+                    checkAndExecuteSingleAutomation(a, payload, true, user);
+                }
+        );
 
         notificationService.sendNotification("Action applied", "success");
         return "Action successfully sent!";
@@ -161,16 +166,16 @@ public class AutomationService {
         if (device == null) return "Device not found";
         RestTemplate restTemplate = new RestTemplate();
 
-            Map<String, Object> map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
-            messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
-            sendToTopic("automata/action/" + device.getId(), map);
-            try {
-                var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
-                System.err.println(res);
-            } catch (Exception e) {
-                notificationService.sendNotification("Reboot action failed for device: " + device.getName(), "error");
-                System.err.println(e.getMessage());
-            }
+        Map<String, Object> map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
+        messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
+        sendToTopic("automata/action/" + device.getId(), map);
+        try {
+            var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
+            System.err.println(res);
+        } catch (Exception e) {
+            notificationService.sendNotification("Reboot action failed for device: " + device.getName(), "error");
+            System.err.println(e.getMessage());
+        }
 
 
         return "Rebooting device";
@@ -225,7 +230,7 @@ public class AutomationService {
         Date now = new Date();
         String triggerType = automation.getTrigger().getType(); // "time", "state", "periodic"
         // SCENARIO 1: Condition just became TRUE (Trigger)
-        if (isTriggeredNow && !automationCache.isWasTriggeredPreviously()) {
+        if (isTriggeredNow && !automationCache.isWasTriggeredPreviously() || executeNow) {
             System.out.println("🚀 Automation Triggered: " + automation.getName());
             notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
             // 1. Capture and Save "Before" State for all devices in this automation
