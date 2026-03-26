@@ -15,6 +15,12 @@ pipeline {
                 git 'https://github.com/subhamgupta28/Automata.git'
             }
         }
+        stage('Test') {
+            steps {
+                // Build the Docker image
+                echo "testing"
+            }
+        }
 
         stage('Build') {
             steps {
