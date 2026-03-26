@@ -164,3 +164,4 @@ No explicit license is declared in pom.xml (empty license stanza) and no LICENSE
 
 2026-26-03
 -  Added the webhook for jenkins
+- Testing webhook with commit
