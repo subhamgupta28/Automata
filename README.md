@@ -161,3 +161,6 @@ No explicit license is declared in pom.xml (empty license stanza) and no LICENSE
 2025-10-04
 - Rewrote README to reflect Spring Boot 3 on port 8010, React+Vite frontend, Mongo/Redis/MQTT usage.
 - Added setup, run, Docker, Kubernetes, env vars, scripts, tests, and TODOs for unknowns.
+
+2026-26-03
+-  Added the webhook
