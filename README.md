@@ -163,4 +163,4 @@ No explicit license is declared in pom.xml (empty license stanza) and no LICENSE
 - Added setup, run, Docker, Kubernetes, env vars, scripts, tests, and TODOs for unknowns.
 
 2026-26-03
--  Added the webhook
+-  Added the webhook for jenkins
