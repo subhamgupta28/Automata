@@ -9,6 +9,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
+import Tooltip from '@mui/material/Tooltip';
 import {Navigate, NavLink, Route, Routes, useLocation} from "react-router-dom";
 import DeviceNodes from "../home/DeviceNodes.jsx";
 import Devices from "../Devices.jsx";
@@ -27,7 +28,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import AdbIcon from "@mui/icons-material/Adb";
 import Notifications from "../Notifications.jsx";
 import {SnackbarProvider} from "notistack";
-import {Card} from "@mui/material";
+import {Card, tooltipClasses} from "@mui/material";
 import Exp from "../dashboard/Exp.jsx";
 import {DeviceDataProvider} from "../../services/DeviceDataProvider.jsx";
 import SignUp from "../auth/SignUp.jsx";
@@ -145,39 +146,45 @@ export default function SideDrawer() {
 
     const renderListItem = (item) => (
         <ListItem key={item.name} disablePadding sx={{display: 'block'}}>
-            {item.url ? (
-                <ListItemButton
-                    selected={location.pathname === item.url}
-                    component={NavLink}
-                    to={item.url}
-                    sx={{
-                        borderRadius: 2,
-                        margin: 1,
-                        px: 2.5,
-                        justifyContent: open ? 'initial' : 'center',
-                    }}
-                >
-                    <ListItemIcon sx={{minWidth: 0, justifyContent: 'center', mr: open ? 3 : 'auto'}}>
-                        {item.icon}
-                    </ListItemIcon>
-                    <ListItemText primary={item.name} sx={{opacity: open ? 1 : 0}}/>
-                </ListItemButton>
-            ) : (
-                <ListItemButton
-                    onClick={item.action}
-                    sx={{
-                        borderRadius: 2,
-                        margin: 1,
-                        px: 2.5,
-                        justifyContent: open ? 'initial' : 'center',
-                    }}
-                >
-                    <ListItemIcon sx={{minWidth: 0, justifyContent: 'center', mr: open ? 3 : 'auto'}}>
-                        {item.icon}
-                    </ListItemIcon>
-                    <ListItemText primary={item.name} sx={{opacity: open ? 1 : 0}}/>
-                </ListItemButton>
-            )}
+            <Tooltip
+                title={item.name} placement="right"
+                disableHoverListener={open} slotProps={{
+                tooltip: {sx: {fontSize: '1rem', color: '#ffd821', backgroundColor: 'rgb(255 255 255 / 10%)', backdropFilter: 'blur(3px)'}}
+            }}>
+                {item.url ? (
+                    <ListItemButton
+                        selected={location.pathname === item.url}
+                        component={NavLink}
+                        to={item.url}
+                        sx={{
+                            borderRadius: 2,
+                            margin: 1,
+                            px: 2.5,
+                            justifyContent: open ? 'initial' : 'center',
+                        }}
+                    >
+                        <ListItemIcon sx={{minWidth: 0, justifyContent: 'center', mr: open ? 3 : 'auto'}}>
+                            {item.icon}
+                        </ListItemIcon>
+                        <ListItemText primary={item.name} sx={{opacity: open ? 1 : 0}}/>
+                    </ListItemButton>
+                ) : (
+                    <ListItemButton
+                        onClick={item.action}
+                        sx={{
+                            borderRadius: 2,
+                            margin: 1,
+                            px: 2.5,
+                            justifyContent: open ? 'initial' : 'center',
+                        }}
+                    >
+                        <ListItemIcon sx={{minWidth: 0, justifyContent: 'center', mr: open ? 3 : 'auto'}}>
+                            {item.icon}
+                        </ListItemIcon>
+                        <ListItemText primary={item.name} sx={{opacity: open ? 1 : 0}}/>
+                    </ListItemButton>
+                )}
+            </Tooltip>
         </ListItem>
     );
 
@@ -203,7 +210,7 @@ export default function SideDrawer() {
                         style={{
                             // backgroundColor: 'rgba(0, 0, 0, 100%)',
                             backdropFilter: 'blur(7px)',
-                            background:'transparent',
+                            background: 'transparent',
                             // background: "linear-gradient(135deg, rgb(255 224 43 / 10%), rgb(169 104 241 / 10%), rgb(90 200 250 / 10%))",
                             // boxShadow: "0 0 30px rgb(211 244 122 / 40%)",
                             // height: '96dvh',
@@ -215,11 +222,11 @@ export default function SideDrawer() {
                     <Box sx={{display: 'flex', flexDirection: 'column', height: '100%'}}>
                         <DrawerHeader>
                             <IconButton onClick={handleDrawerClose}>
-                                {open ? <ChevronLeftIcon/> : <img src={AppIcon} alt="home" style={{height:'28px'}}/>}
+                                {open ? <ChevronLeftIcon/> : <img src={AppIcon} alt="home" style={{height: '28px'}}/>}
                             </IconButton>
                         </DrawerHeader>
 
-                        <List sx={{flexGrow: 1, display:'flex', flexDirection:'column', justifyContent:'center'}}>
+                        <List sx={{flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
                             {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
                         </List>
 
@@ -234,7 +241,7 @@ export default function SideDrawer() {
                 </Drawer>
             }
 
-            <Box component="main" sx={{flexGrow: 1, }}>
+            <Box component="main" sx={{flexGrow: 1,}}>
 
                 {/*<Card*/}
                 {/*    elevation={10}*/}
@@ -272,33 +279,33 @@ export default function SideDrawer() {
                 {/*</Card>*/}
 
                 {/*<div style={{position: 'relative', zIndex: 2}}>*/}
-                    <AppCacheProvider>
-                        <DeviceDataProvider key={location.pathname}>
-                            <ReactFlowProvider>
-                                <Routes location={location} key={location.pathname}>
-                                    {/*open*/}
-                                    <Route path="/welcome" element={<Welcome/>}/>
-                                    <Route path="/mob" element={<MobileView/>}/>
-                                    <Route path="/exp" element={<Exp/>}/>
-                                    <Route path="spotify" element={<SpotifyPlayer/>}/>
-                                    <Route path="signup" element={<SignUp/>}/>
-                                    <Route path="signin" element={<SignIn/>}/>
-                                    {/*protected*/}
+                <AppCacheProvider>
+                    <DeviceDataProvider key={location.pathname}>
+                        <ReactFlowProvider>
+                            <Routes location={location} key={location.pathname}>
+                                {/*open*/}
+                                <Route path="/welcome" element={<Welcome/>}/>
+                                <Route path="/mob" element={<MobileView/>}/>
+                                <Route path="/exp" element={<Exp/>}/>
+                                <Route path="spotify" element={<SpotifyPlayer/>}/>
+                                <Route path="signup" element={<SignUp/>}/>
+                                <Route path="signin" element={<SignIn/>}/>
+                                {/*protected*/}
 
-                                    <Route index element={<PrivateRoute element={<DashboardV2/>}/>}/>
-                                    {/*<Route path="/" element={<PrivateRoute element={<DeviceNodes/>}/>}/>*/}
-                                    <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
-                                    <Route path="presentation" element={<PrivateRoute element={<Presentation/>}/>}/>
-                                    <Route path="virtual" element={<PrivateRoute element={<VirtualDeviceForm/>}/>}/>
-                                    <Route path="dashboard" element={<PrivateRoute element={<DeviceNodes/>}/>}/>
-                                    <Route path="actions" element={<PrivateRoute element={<ActionBoard />}/>}/>
-                                    <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>
-                                    <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>
-                                    <Route path="configure" element={<PrivateRoute element={<ConfigurationView/>}/>}/>
-                                </Routes>
-                            </ReactFlowProvider>
-                        </DeviceDataProvider>
-                    </AppCacheProvider>
+                                <Route index element={<PrivateRoute element={<DashboardV2/>}/>}/>
+                                {/*<Route path="/" element={<PrivateRoute element={<DeviceNodes/>}/>}/>*/}
+                                <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
+                                <Route path="presentation" element={<PrivateRoute element={<Presentation/>}/>}/>
+                                <Route path="virtual" element={<PrivateRoute element={<VirtualDeviceForm/>}/>}/>
+                                <Route path="dashboard" element={<PrivateRoute element={<DeviceNodes/>}/>}/>
+                                <Route path="actions" element={<PrivateRoute element={<ActionBoard/>}/>}/>
+                                <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>
+                                <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>
+                                <Route path="configure" element={<PrivateRoute element={<ConfigurationView/>}/>}/>
+                            </Routes>
+                        </ReactFlowProvider>
+                    </DeviceDataProvider>
+                </AppCacheProvider>
                 {/*</div>*/}
 
                 <SnackbarProvider maxSnack={3} preventDuplicate>
