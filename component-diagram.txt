@@ -1,0 +1,68 @@
+Automata - Component Interaction Diagram
+========================================
+
+┌─────────────────┐    HTTP/WebSocket    ┌──────────────────────┐
+│   React Frontend│◄────────────────────►│  Spring Boot Backend │
+│   (Port 5173)   │                      │    (Port 8010)       │
+└─────────────────┘                      └──────────────────────┘
+         │                                       │
+         │                                       │
+         ▼                                       ▼
+┌─────────────────┐    MQTT Protocol     ┌──────────────────────┐
+│   IoT Devices   │◄────────────────────►│    MQTT Broker       │
+│  (ESP32, RPi)   │                      │  (HiveMQ/Mosquitto)  │
+└─────────────────┘                      └──────────────────────┘
+                                                   │
+                                                   │
+                                                   ▼
+                                          ┌──────────────────────┐
+                                          │   Data Stores        │
+                                          ├──────────────────────┤
+                                          │  MongoDB (Primary)   │
+                                          │  Redis (Cache)       │
+                                          └──────────────────────┘
+
+Key Interactions:
+================
+
+1. User Interface Flow:
+   Browser → React App → Axios → Spring Controllers → Services → Repositories → MongoDB
+   Real-time: WebSocket (STOMP) for live updates
+
+2. Device Communication Flow:
+   IoT Device → MQTT Publish → MQTT Broker → Spring MQTT Integration → Processing → Database
+   Commands: Spring → MQTT Publish → Broker → Device
+
+3. Data Flow:
+   Telemetry → MQTT → Spring → MongoDB (persistent) + Redis (cache)
+   Queries → Spring → Redis (cache hit) or MongoDB → Response
+
+4. Automation Flow:
+   Rules in MongoDB → Spring Scheduler → Condition Check → MQTT Action → Device
+   Notifications → WebSocket → Browser Alert
+
+Technology Stack:
+================
+
+Frontend Layer:
+- React 18 + Vite
+- Material-UI + Emotion
+- Chart.js, Recharts, Leaflet
+- Axios, SockJS, STOMP
+
+Backend Layer:
+- Spring Boot 3.3.x (Java 21)
+- Spring Web, Security, WebSocket
+- Spring Data MongoDB/Redis
+- Spring Integration MQTT
+- JWT Authentication
+
+Data Layer:
+- MongoDB: Documents, Time-series
+- Redis: Caching, Sessions
+- MQTT: Device messaging
+
+Infrastructure:
+- Docker: Containerization
+- Kubernetes: Orchestration
+- Jenkins: CI/CD

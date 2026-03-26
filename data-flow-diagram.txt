@@ -1,0 +1,94 @@
+Automata - Data Flow Diagram
+===========================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DATA INGESTION FLOW                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  IoT Device ──MQTT Publish──► MQTT Broker ──Subscribe──► Spring Integration │
+│      │                                │                          │          │
+│      │                                │                          │          │
+│      ▼                                ▼                          ▼          │
+│  Sensor Data                     Message Queue              Message Handler │
+│  (JSON/Temp/Humidity)            (automata/status)          (MqttService)  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DATA PROCESSING FLOW                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Raw Message ──Parse──► Data DTO ──Validate──► Business Logic ──Transform─► │
+│      │                │         │              │              │             │
+│      │                │         │              │              │             │
+│      ▼                ▼         ▼              ▼              ▼             │
+│  JSON String     DataDto   Validation     MainService   Processed Data     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DATA STORAGE FLOW                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Processed Data ──Split──► MongoDB ──Persist──► Collections ──Index──► Query │
+│      │                │         │              │              │             │
+│      │                │         │              │              │             │
+│      ▼                ▼         ▼              ▼              ▼             │
+│  Time Series     Device Data  Automation     data_hist      Optimized      │
+│  + Metadata      + Config     Rules         time_series     Access         │
+│                                                                             │
+│  Processed Data ──Cache──► Redis ──TTL──► Fast Access ──Expire──► Refresh  │
+│      │                │         │              │              │             │
+│      │                │         │              │              │             │
+│      ▼                ▼         ▼              ▼              ▼             │
+│  Hot Data       Cache Store   Expiration     Sub-second     Auto-cleanup   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DATA DELIVERY FLOW                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Stored Data ──Query──► API Response ──Serialize──► HTTP Response ──Send─► │
+│      │                │         │              │              │             │
+│      │                │         │              │              │             │
+│      ▼                ▼         ▼              ▼              ▼             │
+│  REST API       JSON Data   Jackson        HTTP 200       Browser/Client   │
+│                                                                             │
+│  Live Data ──WebSocket──► STOMP Message ──Broadcast──► Connected Clients   │
+│      │                │         │              │              │             │
+│      │                │         │              │              │             │
+│      ▼                ▼         ▼              ▼              ▼             │
+│  Real-time      SimpMessaging  Topic-based   Push Updates   UI Refresh     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Data Flow Summary:
+=================
+
+1. INGESTION: Device → MQTT → Spring → Processing
+2. STORAGE: Processing → MongoDB (persistent) + Redis (cache)
+3. DELIVERY: Storage → API/WebSocket → Client
+4. AUTOMATION: Rules → Monitoring → MQTT Commands → Device
+
+Key Data Types:
+==============
+
+- Telemetry Data: Temperature, humidity, sensor readings
+- Device Metadata: Configuration, status, capabilities
+- Automation Rules: Conditions, actions, triggers
+- User Data: Authentication, preferences, dashboards
+- Time Series: Historical data with timestamps
+- Cache Data: Frequently accessed computed results
+
+Performance Characteristics:
+==========================
+
+- MQTT: Low-latency, high-throughput device communication
+- WebSocket: Real-time bidirectional client updates
+- MongoDB: Flexible document storage, aggregation queries
+- Redis: Sub-millisecond cache access, TTL expiration
+- REST API: Standard HTTP with JSON payloads
