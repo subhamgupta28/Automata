@@ -232,9 +232,9 @@ public class AutomationService {
         boolean isTriggeredNow = isTriggered(automation, payload, automationCache.isTriggeredPreviously());
         Date now = new Date();
         String triggerType = automation.getTrigger().getType(); // "time", "state", "periodic"
-        System.err.println("Automations: isTriggeredNow " + isTriggeredNow);
-        System.err.println("Automations: isTriggeredPreviously " + automationCache.isTriggeredPreviously());
-        System.err.println("Automations: getPreviousExecutionTime " + automationCache.getPreviousExecutionTime());
+//        System.err.println("Automations: isTriggeredNow " + isTriggeredNow);
+//        System.err.println("Automations: isTriggeredPreviously " + automationCache.isTriggeredPreviously());
+//        System.err.println("Automations: getPreviousExecutionTime " + automationCache.getPreviousExecutionTime());
         // SCENARIO 1: Condition just became TRUE (Trigger)
         long diff = 0;
         if (automationCache.getPreviousExecutionTime() != null)
