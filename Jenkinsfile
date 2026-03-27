@@ -22,14 +22,17 @@ pipeline {
             }
         }
 
-        stage('Build UI') {
-            steps {
-                dir('frontend') {  // Change 'frontend' to your actual UI folder name
-                    sh 'npm ci'
-                    sh 'npm run build'
-                }
-            }
-        }
+       stage('Build UI') {
+           tools {
+               nodejs 'NodeJs25'  // Must match the name you set in Jenkins Global Tools
+           }
+           steps {
+               dir('frontend') {
+                   sh 'npm ci'
+                   sh 'npm run build'
+               }
+           }
+       }
 
         stage('Build') {
             steps {
