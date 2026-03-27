@@ -57,7 +57,7 @@ public class Wled {
                             .setHeader("mqtt_topic", topic)
                             .build()
             );
-//            System.out.println("📤 Sent to " + topic + " => " + payload);
+            System.out.println("📤 Sent to " + topic + " => " + payload);
         } catch (Exception e) {
             System.err.println(e);
         }
@@ -105,7 +105,7 @@ public class Wled {
         try {
             System.err.println("INPUT: " + input);
             StringBuilder payload = new StringBuilder();
-            if (input.containsKey("reboot")){
+            if (input.containsKey("reboot")) {
                 reboot();
                 return "success";
             }
@@ -119,7 +119,7 @@ public class Wled {
                     case "onOff" -> {
                         int v = value.toString().equals("true") ? 1
                                 : value.toString().equals("false") ? 0
-                                : 2;
+                                  : 2;
                         append(payload, "T=" + v);
                     }
                     case "toggle" -> append(payload, "T");
@@ -147,15 +147,15 @@ public class Wled {
 
     /// [
     ///{
-    ///     "macAddr": "8C:A3:99:CF:FB:SG"
-    ///   },
-    ///   {
-    ///     "macAddr": "DC:54:75:EE:0F:7C"
-    ///   },
-    ///   {
-    ///     "macAddr": "DC:54:75:EB:6C:F4"
-    ///   }
-    /// ]
+    ///     "macAddr":"8C:A3:99:CF:FB:SG"
+    ///},
+    ///{
+    ///     "macAddr":"DC:54:75:EE:0F:7C"
+    ///},
+    ///{
+    ///     "macAddr":"DC:54:75:EB:6C:F4"
+    ///}
+    ///]
 
     public RegisterDevice newDevice() {
         return RegisterDevice.builder()
