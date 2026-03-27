@@ -25,7 +25,6 @@ public class AutomationDetail {
     @JsonProperty("viewport")
     private Viewport viewport;
 
-
     @Getter
     @Setter
     @AllArgsConstructor
@@ -81,6 +80,17 @@ public class AutomationDetail {
             private ConditionData conditionData;
 //            @JsonProperty("actionData")
             private ActionData actionData;
+            private Operator operators;
+
+            @Getter
+            @Setter
+            @AllArgsConstructor
+            @NoArgsConstructor
+            @ToString
+            public static class Operator {
+                private String type;
+                private String logicType;
+            }
 
             @Getter
             @Setter
@@ -130,8 +140,13 @@ public class AutomationDetail {
                 private String above;
                 private String triggerKey;
                 private String value;
-                private String time;
                 private Boolean isExact;
+                private String time;
+                private String scheduleType;
+                private String fromTime;
+                private String toTime;
+                @JsonProperty("days")
+                private List<String> days;
             }
 
             @Getter

@@ -1,6 +1,6 @@
-import { Handle, Position, useNodes, useReactFlow } from "@xyflow/react";
+import {Handle, Position, useNodes, useReactFlow} from "@xyflow/react";
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import { useCachedDevices } from "../../services/AppCacheContext.jsx";
+import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import {
     Card,
     FormControl,
@@ -25,7 +25,7 @@ const triggerStyle = {
     backgroundColor: 'rgb(255 255 255 / 8%)',
 };
 
-export const TriggerNode = ({ id, data, isConnectable }) => {
+export const TriggerNode = ({id, data, isConnectable}) => {
     const nodes = useNodes();
     const conditionNodes = useMemo(
         () => nodes.filter(n => n.type === 'condition'),
@@ -39,13 +39,13 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
         keys: []
     };
 
-    const { updateNodeData, setEdges, setNodes } = useReactFlow();
-    const { devices, loading, error } = useCachedDevices();
+    const {updateNodeData, setEdges, setNodes} = useReactFlow();
+    const {devices, loading, error} = useCachedDevices();
 
     const [triggerKeys, setTriggerKeys] = useState(initialTriggerData.keys || []);
     const [name, setName] = useState(initialTriggerData.name);
     const [type, setType] = useState(initialTriggerData.type);
-    const [selectedDevice, setSelectedDevice] = useState({ id: initialTriggerData.deviceId, name: '' });
+    const [selectedDevice, setSelectedDevice] = useState({id: initialTriggerData.deviceId, name: ''});
 
     useEffect(() => {
         if (devices) {
@@ -60,17 +60,21 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
 
     // Sync number of keys with number of condition nodes
     useEffect(() => {
-        const updated = conditionNodes.map(node => {
-            const existing = triggerKeys.find(
-                tk => tk.conditionId === node.id
-            );
+        const updated = conditionNodes
+            .filter(node =>
+                node?.data?.conditionData?.condition !== "scheduled"
+            )
+            .map(node => {
+                const existing = triggerKeys.find(
+                    tk => tk.conditionId === node.id
+                );
 
-            return existing || {
-                conditionId: node.id,
-                key: '',
-                value: ''
-            };
-        });
+                return existing || {
+                    conditionId: node.id,
+                    key: '',
+                    value: ''
+                };
+            });
 
         const changed =
             JSON.stringify(updated) !== JSON.stringify(triggerKeys);
@@ -79,7 +83,7 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
             setTriggerKeys(updated);
         }
 
-    }, [conditionNodes, triggerKeys]);
+    }, [conditionNodes]);
 
     const lastDataRef = useRef(null);
 
@@ -124,12 +128,12 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
     };
 
     return (
-        <Card style={{ ...triggerStyle, padding: '10px' }}>
-            <Typography variant="body1" fontWeight="bold" sx={{marginLeft:1}}>
+        <Card style={{...triggerStyle, padding: '10px'}}>
+            <Typography variant="body1" fontWeight="bold" sx={{marginLeft: 1}}>
                 Trigger
             </Typography>
-            <IconButton onClick={() => deleteNode(id)} style={{ position: 'absolute', top: '0', right: '0' }}>
-                <DeleteIcon />
+            <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top: '0', right: '0'}}>
+                <DeleteIcon/>
             </IconButton>
 
             <TextField
@@ -139,10 +143,10 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
                 fullWidth
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                sx={{ marginBottom: 2, marginTop: 3 }}
+                sx={{marginBottom: 2, marginTop: 3}}
             />
 
-            <FormControl fullWidth className='nodrag' sx={{ marginBottom: 2 }}>
+            <FormControl fullWidth className='nodrag' sx={{marginBottom: 2}}>
                 <InputLabel id="type-select-label">Type</InputLabel>
                 <Select
                     labelId="type-select-label"
@@ -161,7 +165,7 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
 
             {type === 'time' && (
                 <div>
-                    <Typography variant="body2" sx={{ margin: 1 }}>
+                    <Typography variant="body2" sx={{margin: 1}}>
                         Value to be used to run automation and in condition
                     </Typography>
                     {triggerKeys.map((tk, idx) => (
@@ -172,7 +176,7 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
                             fullWidth
                             value={tk.value}
                             onChange={(e) => handleTriggerKeyChange(idx, 'value', e.target.value)}
-                            sx={{ marginBottom: 2 }}
+                            sx={{marginBottom: 2}}
                         />
                     ))}
                 </div>
@@ -180,7 +184,7 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
 
             {type === 'state' && (
                 <div>
-                    <FormControl fullWidth sx={{ marginTop: 1, marginBottom: 2 }} className='nodrag'>
+                    <FormControl fullWidth sx={{marginTop: 1, marginBottom: 2}} className='nodrag'>
                         <InputLabel>Trigger Device</InputLabel>
                         <Select
                             variant='outlined'
@@ -199,7 +203,7 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
 
                     {triggerKeys.map((tk, idx) => (
                         <React.Fragment key={idx}>
-                            <FormControl className='nodrag' fullWidth sx={{ marginTop: 2 }}>
+                            <FormControl className='nodrag' fullWidth sx={{marginTop: 2}}>
                                 <InputLabel>Trigger Key #{idx + 1}</InputLabel>
                                 <Select
                                     variant='outlined'
@@ -221,7 +225,7 @@ export const TriggerNode = ({ id, data, isConnectable }) => {
             )}
 
             <Handle
-                style={{ width: '18px', height: '18px', background: '#6DBF6D', opacity: 0 }}
+                style={{width: '18px', height: '18px', background: '#6DBF6D', opacity: 0}}
                 type="source"
                 position={Position.Right}
                 id="b"

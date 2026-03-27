@@ -23,11 +23,8 @@ public class Automation {
     private Boolean isActive;
     private Long snoozeTime;
     private String triggerDeviceType;
-    private String conditionLogic = "AND"; // AND / OR
 
-    private Long forDurationMs = 20000L;   // optional
-    private Long cooldownMs = 20000L;      // optional
-    private Integer priority = 5;
+
     private List<String> targetDeviceIds;
 
     @JsonProperty("trigger")
@@ -36,6 +33,9 @@ public class Automation {
     private List<Action> actions;
     @JsonProperty("conditions")
     private List<Condition> conditions;
+
+    @JsonProperty("operators")
+    private List<Operator> operators;
 
 
     public List<String> getTargetDeviceIds() {
@@ -89,10 +89,22 @@ public class Automation {
         private String time;
         private String triggerKey;
         private Boolean isExact; // true
+        private String scheduleType;  // "at" | "range"
+        private String fromTime;
+        private String toTime;
+        private List<String> days;
         // Getters and setters
     }
 
-
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @ToString
+    public static class Operator {
+        private String type;
+        private String logicType;
+    }
 
 }
 

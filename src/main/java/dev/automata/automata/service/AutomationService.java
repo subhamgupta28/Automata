@@ -3,10 +3,7 @@ package dev.automata.automata.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.AutomationCache;
 import dev.automata.automata.dto.LiveEvent;
-import dev.automata.automata.model.Automation;
-import dev.automata.automata.model.AutomationDetail;
-import dev.automata.automata.model.Device;
-import dev.automata.automata.model.DeviceActionState;
+import dev.automata.automata.model.*;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,7 +39,7 @@ public class AutomationService {
     private final DeviceActionStateRepository deviceActionStateRepository;
     private final MessageChannel mqttOutboundChannel;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
+    private final AutomationLogRepository automationLogRepository;
 
     public List<Automation> findAll() {
         return automationRepository.findAll();
@@ -215,10 +213,8 @@ public class AutomationService {
         if (data != null) payload.putAll(data);
         else payload.putAll(mainService.getLastData(deviceId));
 
-        var type = automation.getTriggerDeviceType();
         String cacheKey = deviceId + ":" + automation.getId();
         AutomationCache automationCache = redisService.getAutomationCache(cacheKey);
-        System.err.println("Automations: " + automation.getName());
 
         if (automationCache == null) {
             automationCache = AutomationCache.builder()
@@ -228,56 +224,154 @@ public class AutomationService {
                     .lastUpdate(new Date())
                     .build();
         }
-        // Pass the previous state to the trigger check
-        boolean isTriggeredNow = isTriggered(automation, payload, automationCache.isTriggeredPreviously());
+
+        List<AutomationLog.ConditionResult> conditionResults = new ArrayList<>();
+        boolean isTriggeredNow = isTriggered(automation, payload, automationCache.isTriggeredPreviously(), conditionResults);
+
         Date now = new Date();
-        String triggerType = automation.getTrigger().getType(); // "time", "state", "periodic"
-//        System.err.println("Automations: isTriggeredNow " + isTriggeredNow);
-//        System.err.println("Automations: isTriggeredPreviously " + automationCache.isTriggeredPreviously());
-//        System.err.println("Automations: getPreviousExecutionTime " + automationCache.getPreviousExecutionTime());
-        // SCENARIO 1: Condition just became TRUE (Trigger)
+        String triggerType = automation.getTrigger().getType();
+        String operatorLogic = "AND";
+        if (automation.getOperators() != null && !automation.getOperators().isEmpty()) {
+            operatorLogic = automation.getOperators().get(0).getLogicType();
+        }
+
         long diff = 0;
         if (automationCache.getPreviousExecutionTime() != null)
             diff = now.toInstant().getEpochSecond()
                     - automationCache.getPreviousExecutionTime().toInstant().getEpochSecond();
 
+        if (diff > 60 * 60)
+            automationCache.setTriggeredPreviously(false);
+
         if (isTriggeredNow && !automationCache.isTriggeredPreviously()) {
             System.out.println("🚀 Automation Triggered: " + automation.getName());
             notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
-            // 1. Capture and Save "Before" State for all devices in this automation
-            // Only snapshot if it's NOT a time-based trigger
-            if (!"time".equals(triggerType)) {
-                saveStateSnapshots(automation);
-            }
 
-            // 2. Execute the "Warning" actions
+            if (!"time".equals(triggerType)) saveStateSnapshots(automation);
             executeActions(automation, user, payload);
 
             automationCache.setTriggeredPreviously(true);
-            automationCache.setPreviousExecutionTime(new Date());
+            automationCache.setPreviousExecutionTime(now);
             automationCache.setLastUpdate(now);
             redisService.setAutomationCache(cacheKey, automationCache);
-        }
 
-        // SCENARIO 2: Condition just became FALSE (Restoration)
-        else if (!isTriggeredNow && automationCache.isTriggeredPreviously()) {
+            saveLog(AutomationLog.builder()
+                    .automationId(automation.getId())
+                    .automationName(automation.getName())
+                    .status(AutomationLog.LogStatus.TRIGGERED)
+                    .reason("All conditions met (" + operatorLogic + ") — actions executed")
+                    .conditionResults(conditionResults)
+                    .operatorLogic(operatorLogic)
+                    .payload(payload)
+                    .triggerType(triggerType)
+                    .triggerDeviceId(deviceId)
+                    .timestamp(now)
+                    .build());
+
+        } else if (!isTriggeredNow && automationCache.isTriggeredPreviously()) {
             System.out.println("🔄 Automation Cleared: Reverting " + automation.getName());
-
-            // Only restore if it's a state-based trigger (like AQI or Temp)
-            // We EXCLUDE "time" because we want those changes to stay
             notificationService.sendNotification("Restoring automation: " + automation.getName(), "low");
-            if (!"time".equals(triggerType)) {
-                System.out.println("🔄 Restoring state for sensor-based automation");
-                restoreStateSnapshots(automation, user);
-            }
+
+            if (!"time".equals(triggerType)) restoreStateSnapshots(automation, user);
 
             automationCache.setTriggeredPreviously(false);
             automationCache.setPreviousExecutionTime(null);
             automationCache.setLastUpdate(now);
             redisService.setAutomationCache(cacheKey, automationCache);
+
+            saveLog(AutomationLog.builder()
+                    .automationId(automation.getId())
+                    .automationName(automation.getName())
+                    .status(AutomationLog.LogStatus.RESTORED)
+                    .reason("Conditions no longer met — state restored")
+                    .conditionResults(conditionResults)
+                    .operatorLogic(operatorLogic)
+                    .payload(payload)
+                    .triggerType(triggerType)
+                    .triggerDeviceId(deviceId)
+                    .timestamp(now)
+                    .build());
+
+        } else if (!isTriggeredNow) {
+            saveLog(AutomationLog.builder()
+                    .automationId(automation.getId())
+                    .automationName(automation.getName())
+                    .status(AutomationLog.LogStatus.NOT_MET)
+                    .reason("Conditions not satisfied — no action taken")
+                    .conditionResults(conditionResults)
+                    .operatorLogic(operatorLogic)
+                    .payload(payload)
+                    .triggerType(triggerType)
+                    .triggerDeviceId(deviceId)
+                    .timestamp(now)
+                    .build());
+
+        } else {
+            // isTriggeredNow && wasTriggeredPreviously — still active, cooldown
+            saveLog(AutomationLog.builder()
+                    .automationId(automation.getId())
+                    .automationName(automation.getName())
+                    .status(AutomationLog.LogStatus.SKIPPED)
+                    .reason("Conditions still met but already triggered — cooldown active (diff=" + diff + "s)")
+                    .conditionResults(conditionResults)
+                    .operatorLogic(operatorLogic)
+                    .payload(payload)
+                    .triggerType(triggerType)
+                    .triggerDeviceId(deviceId)
+                    .timestamp(now)
+                    .build());
         }
     }
+    private void saveLog(AutomationLog log) {
+        // Avoid spamming NOT_MET logs — only save once per minute per automation
+        if (log.getStatus() == AutomationLog.LogStatus.NOT_MET) {
+            String debounceKey = "LOG_DEBOUNCE:" + log.getAutomationId();
+            if (redisService.exists(debounceKey)) return;
+            redisService.setWithExpiry(debounceKey, "1", 60); // 60 seconds TTL
+        }
+        automationLogRepository.save(log);
+    }
 
+    private AutomationLog.ConditionResult buildNumericConditionResult(
+            Automation.Condition condition, double actual, boolean passed, boolean wasActive) {
+
+        double buffer = 5.0;
+        String detail;
+        String expected;
+
+        switch (condition.getCondition()) {
+            case "above" -> {
+                double threshold = Double.parseDouble(condition.getValue());
+                expected = "> " + threshold;
+                detail = actual + " > " + (wasActive ? (threshold - buffer) + " (with buffer)" : threshold)
+                        + " → " + (passed ? "PASS" : "FAIL");
+            }
+            case "below" -> {
+                double threshold = Double.parseDouble(condition.getValue());
+                expected = "< " + threshold;
+                detail = actual + " < " + (wasActive ? (threshold + buffer) + " (with buffer)" : threshold)
+                        + " → " + (passed ? "PASS" : "FAIL");
+            }
+            case "range" -> {
+                expected = condition.getAbove() + " < x < " + condition.getBelow();
+                detail = "Value " + actual + " in range [" + condition.getAbove()
+                        + ", " + condition.getBelow() + "]" + " → " + (passed ? "PASS" : "FAIL");
+            }
+            default -> {
+                expected = condition.getValue();
+                detail = actual + " == " + expected + " → " + (passed ? "PASS" : "FAIL");
+            }
+        }
+
+        return AutomationLog.ConditionResult.builder()
+                .conditionType(condition.getCondition())
+                .triggerKey(condition.getTriggerKey())
+                .actualValue(String.valueOf(actual))
+                .expectedValue(expected)
+                .passed(passed)
+                .detail(detail)
+                .build();
+    }
     /**
      * Saves the current state of all target devices before they get changed.
      */
@@ -373,7 +467,7 @@ public class AutomationService {
 
     private boolean isTriggeredOld(Automation automation, Map<String, Object> payload, boolean wasActive) {
         if ("time".equals(automation.getTrigger().getType())) {
-            return isCurrentTime(automation.getConditions().get(0).getTime());
+            return isCurrentTime(automation.getConditions().get(0));  // ✅
         }
 
         var key = automation.getTrigger().getKeys();
@@ -401,41 +495,94 @@ public class AutomationService {
         return input != null && input.matches("[a-zA-Z]+"); // only alphabets
     }
 
-    private boolean isTriggered(Automation automation, Map<String, Object> payload, boolean wasActive) {
+    private boolean isTriggered(Automation automation, Map<String, Object> payload,
+                                boolean wasActive, List<AutomationLog.ConditionResult> results) {
         if ("time".equals(automation.getTrigger().getType())) {
-            return isCurrentTime(automation.getConditions().get(0).getTime());
+            var condition = automation.getConditions().get(0);
+            boolean passed = isCurrentTime(condition);
+            results.add(AutomationLog.ConditionResult.builder()
+                    .conditionType("time")
+                    .triggerKey("time")
+                    .expectedValue(condition.getTime())
+                    .actualValue(LocalTime.now(ZoneId.of("Asia/Kolkata")).toString())
+                    .passed(passed)
+                    .detail(passed ? "Current time matches trigger time" : "Current time does not match trigger time")
+                    .build());
+            return passed;
         }
 
+        var triggerKeys = automation.getTrigger().getKeys();
+        var conditions = automation.getConditions();
+        var operators = automation.getOperators();
 
-        var triggerKeys = automation.getTrigger().getKeys(); // List<TriggerKey>
-        var conditions = automation.getConditions();         // List<Condition>
         if (triggerKeys == null)
             return isTriggeredOld(automation, payload, wasActive);
-//        System.err.println(automation.getName());
-//        System.err.println(payload);
+
         var truths = new ArrayList<Boolean>();
 
-        for (var key : triggerKeys) {
+        for (var condition : conditions) {
+            if ("scheduled".equals(condition.getCondition())) {
+                boolean passed = isCurrentTime(condition);
+                results.add(AutomationLog.ConditionResult.builder()
+                        .conditionType("scheduled")
+                        .triggerKey("schedule")
+                        .expectedValue(condition.getScheduleType() + " @ " + condition.getTime())
+                        .actualValue(LocalTime.now(ZoneId.of("Asia/Kolkata")).toString())
+                        .passed(passed)
+                        .detail(passed ? "Schedule matched" : "Schedule not matched — days or time mismatch")
+                        .build());
+                truths.add(passed);
+                continue;
+            }
 
-            if (!payload.containsKey(key)) return false;
+            String key = condition.getTriggerKey();
+            if (key == null || key.isBlank() || !payload.containsKey(key)) {
+                results.add(AutomationLog.ConditionResult.builder()
+                        .conditionType(condition.getCondition())
+                        .triggerKey(key)
+                        .passed(false)
+                        .detail("Key '" + key + "' not found in payload")
+                        .build());
+                truths.add(false);
+                continue;
+            }
 
             String value = payload.get(key).toString();
-            var condition = conditions.stream()
-                    .filter(c -> c.getTriggerKey().equals(key))
-                    .findFirst()
-                    .orElse(null);
-            if (condition == null) continue;
+
             if (isNumeric(value)) {
                 double numericValue = Double.parseDouble(value);
-                // Pass wasActive down to the individual condition check
-                truths.add(checkCondition(numericValue, condition, wasActive));
+                boolean passed = checkCondition(numericValue, condition, wasActive);
+                results.add(buildNumericConditionResult(condition, numericValue, passed, wasActive));
+                truths.add(passed);
             } else {
-                truths.add(value.equals(condition.getValue()));
+                boolean passed = value.equals(condition.getValue());
+                results.add(AutomationLog.ConditionResult.builder()
+                        .conditionType("equal")
+                        .triggerKey(key)
+                        .actualValue(value)
+                        .expectedValue(condition.getValue())
+                        .passed(passed)
+                        .detail(passed ? "'" + value + "' equals expected" : "'" + value + "' does not equal '" + condition.getValue() + "'")
+                        .build());
+                truths.add(passed);
             }
         }
-//        System.err.println(truths.stream().allMatch(Boolean::booleanValue));
 
-        return truths.stream().allMatch(Boolean::booleanValue);
+        if (truths.isEmpty()) return false;
+
+        String globalLogic = (operators != null && !operators.isEmpty())
+                ? operators.get(0).getLogicType() : "AND";
+
+        return switch (globalLogic.toUpperCase()) {
+            case "OR"  -> truths.stream().anyMatch(Boolean::booleanValue);
+            case "AND" -> truths.stream().allMatch(Boolean::booleanValue);
+            default    -> truths.stream().allMatch(Boolean::booleanValue);
+        };
+    }
+
+    // Keep old internal call without results (used by isTriggeredOld)
+    private boolean isTriggered(Automation automation, Map<String, Object> payload, boolean wasActive) {
+        return isTriggered(automation, payload, wasActive, new ArrayList<>());
     }
 
 
@@ -477,35 +624,66 @@ public class AutomationService {
         return false;
     }
 
-    private boolean isCurrentTime(String triggerTime) {
+    private boolean isCurrentTime(Automation.Condition condition) {
         ZoneId istZone = ZoneId.of("Asia/Kolkata");
-        LocalTime current = LocalTime.now(istZone);
+        ZonedDateTime nowZdt = ZonedDateTime.now(istZone);
+        LocalTime current = nowZdt.toLocalTime();
 
-        // Clean up any stray whitespace just in case
-        String timeText = triggerTime == null ? "" : triggerTime.trim();
+        // Check day of week if days are specified
+        if (condition.getDays() != null && !condition.getDays().isEmpty()) {
+            String today = nowZdt.getDayOfWeek()
+                    .getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH)
+                    .substring(0, 3); // "Mon", "Tue" etc.
+            // capitalize first letter only
+            today = today.substring(0, 1).toUpperCase() + today.substring(1).toLowerCase();
+            if (!condition.getDays().contains(today)) return false;
+        }
 
-        LocalTime target = null;
+        String scheduleType = condition.getScheduleType();
 
-        try {
-            // Try parsing 24-hour format first: "HH:mm:ss"
-            target = LocalTime.parse(timeText, DateTimeFormatter.ofPattern("HH:mm:ss"));
-        } catch (Exception e1) {
-            try {
-                // Fallback to 12-hour format: "hh:mm:ss a"
-                DateTimeFormatter formatter12 = new DateTimeFormatterBuilder()
-                        .parseCaseInsensitive()
-                        .appendPattern("hh:mm:ss a")
-                        .toFormatter(Locale.ENGLISH);
-                target = LocalTime.parse(timeText, formatter12);
-            } catch (Exception e2) {
-                System.err.println("⚠️ Unable to parse triggerTime: '" + triggerTime + "'");
-                e2.printStackTrace();
-                return false; // or handle gracefully
+        if ("range".equals(scheduleType)) {
+            LocalTime from = parseTime(condition.getFromTime());
+            LocalTime to = parseTime(condition.getToTime());
+            if (from == null || to == null) return false;
+            // Handle overnight ranges e.g. 22:00 - 06:00
+            if (from.isBefore(to)) {
+                return !current.isBefore(from) && !current.isAfter(to);
+            } else {
+                return !current.isBefore(from) || !current.isAfter(to);
             }
         }
 
-        long diff = Math.abs(ChronoUnit.MINUTES.between(target, current));
-        return diff <= 1;
+        // Default: "at" — exact time match within 1 minute
+        LocalTime target = parseTime(condition.getTime());
+        if (target == null) return false;
+        return Math.abs(ChronoUnit.MINUTES.between(target, current)) <= 1;
+    }
+
+    // ✅ Keep old string-only overload for backward compat
+    private boolean isCurrentTime(String triggerTime) {
+        LocalTime target = parseTime(triggerTime);
+        if (target == null) return false;
+        ZoneId istZone = ZoneId.of("Asia/Kolkata");
+        LocalTime current = LocalTime.now(istZone);
+        return Math.abs(ChronoUnit.MINUTES.between(target, current)) <= 1;
+    }
+
+    private LocalTime parseTime(String timeText) {
+        if (timeText == null || timeText.isBlank()) return null;
+        try {
+            return LocalTime.parse(timeText.trim(), DateTimeFormatter.ofPattern("HH:mm:ss"));
+        } catch (Exception e1) {
+            try {
+                DateTimeFormatter fmt12 = new DateTimeFormatterBuilder()
+                        .parseCaseInsensitive()
+                        .appendPattern("hh:mm:ss a")
+                        .toFormatter(Locale.ENGLISH);
+                return LocalTime.parse(timeText.trim(), fmt12);
+            } catch (Exception e2) {
+                System.err.println("⚠️ Unable to parse time: '" + timeText + "'");
+                return null;
+            }
+        }
     }
 
 
@@ -651,11 +829,25 @@ public class AutomationService {
                         c.getValue(),
                         c.getTime(),
                         c.getTriggerKey(),
-                        c.getIsExact()
+                        c.getIsExact(),
+                        c.getScheduleType(),   // ✅ new
+                        c.getFromTime(),       // ✅ new
+                        c.getToTime(),         // ✅ new
+                        c.getDays()
                 ))
                 .collect(Collectors.toList());
 
         automationBuilder.conditions(conditionList);
+        var operators = detail.getNodes().stream()
+                .map(n -> n.getData().getOperators())
+                .filter(Objects::nonNull)
+                .map(c -> new Automation.Operator(
+                        c.getType(),
+                        c.getLogicType()
+                ))
+                .collect(Collectors.toList());
+        automationBuilder.operators(operators);
+
 
         var automation = automationBuilder.build();
         var device = mainService.getDevice(automation.getTrigger().getDeviceId());

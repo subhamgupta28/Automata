@@ -1,176 +1,54 @@
 [
   {
-    "_id": "node_trigger_0",
-    "type": "trigger",
-    "position": {
-      "x": 150,
-      "y": 135
-    },
-    "data": {
-      "value": {
-        "isNewNode": false,
-        "name": "trigger"
-      },
-      "triggerData": {
-        "deviceId": "670e9f4d4f15cd01e98640cf",
-        "type": "state",
-        "keys": [
-          {
-            "conditionId": "node_condition_1",
-            "value": "",
-            "key": "distance"
-          },
-          {
-            "conditionId": "node_condition_4",
-            "value": "",
-            "key": "lux"
-          }
-        ],
-        "name": "test25"
+    "_id": {"$oid": "69c6c1bd5f695c31bbc695e0"},
+    "_class": "dev.automata.automata.model.Automation",
+    "actions": [
+      {
+        "key": "bright",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "100",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false
       }
-    },
-    "measured": {
-      "width": new
-      NumberInt(
-      "220"
-      ),
-      "height": new
-      NumberInt(
-      "335"
-      )
-    },
-    "selected": false,
-    "dragging": false
-  },
-  {
-    "_id": "node_condition_1",
-    "type": "condition",
-    "position": {
-      "x": 479,
-      "y": 192.66666666666666
-    },
-    "data": {
-      "value": {
-        "isNewNode": false,
-        "name": "condition"
+    ],
+    "conditions": [
+      {
+        "condition": "scheduled",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "0",
+        "time": "02:20:05 AM",
+        "triggerKey": "",
+        "isExact": false
       },
-      "conditionData": {
+      {
         "condition": "above",
         "valueType": "int",
-        "below": "0",
         "above": "0",
-        "triggerKey": "distance",
-        "value": "1000",
-        "time": "Invalid Date",
+        "below": "0",
+        "value": "200",
+        "time": "02:20:05 AM",
+        "triggerKey": "aqi",
         "isExact": false
       }
+    ],
+    "isActive": false,
+    "isEnabled": true,
+    "name": "test",
+    "trigger": {
+      "deviceId": "670edfe8166ab22722fbf728",
+      "type": "state",
+      "keys": ["aqi"],
+      "name": "test"
     },
-    "measured": {
-      "width": new
-      NumberInt(
-      "220"
-      ),
-      "height": new
-      NumberInt(
-      "161"
-      )
-    },
-    "selected": false,
-    "dragging": false
-  },
-  {
-    "_id": "node_action_2",
-    "type": "action",
-    "position": {
-      "x": 1141,
-      "y": 176.66666666666666
-    },
-    "data": {
-      "value": {
-        "isNewNode": false,
-        "name": "action"
-      },
-      "actionData": {
-        "deviceId": "67571bf46f2d631aa77cc643",
-        "key": "bright",
-        "name": "WLED 2",
-        "data": "50",
-        "isEnabled": true
+    "triggerDeviceType": "sensor",
+    "operators": [
+      {
+        "type": "operator",
+        "logicType": "AND"
       }
-    },
-    "measured": {
-      "width": new
-      NumberInt(
-      "220"
-      ),
-      "height": new
-      NumberInt(
-      "203"
-      )
-    },
-    "selected": false,
-    "dragging": false
-  },
-  {
-    "_id": "node_and_3",
-    "type": "and",
-    "position": {
-      "x": 740,
-      "y": 53.000000000000014
-    },
-    "data": {
-      "value": {
-        "isNewNode": false,
-        "name": "and"
-      }
-    },
-    "measured": {
-      "width": new
-      NumberInt(
-      "100"
-      ),
-      "height": new
-      NumberInt(
-      "63"
-      )
-    },
-    "selected": false,
-    "dragging": false
-  },
-  {
-    "_id": "node_condition_4",
-    "type": "condition",
-    "position": {
-      "x": 857.3333333333335,
-      "y": 184.66666666666666
-    },
-    "data": {
-      "value": {
-        "isNewNode": false,
-        "name": "condition"
-      },
-      "conditionData": {
-        "condition": "below",
-        "valueType": "int",
-        "below": "0",
-        "above": "0",
-        "triggerKey": "lux",
-        "value": "40",
-        "time": "Invalid Date",
-        "isExact": false
-      }
-    },
-    "measured": {
-      "width": new
-      NumberInt(
-      "220"
-      ),
-      "height": new
-      NumberInt(
-      "161"
-      )
-    },
-    "selected": false,
-    "dragging": false
+    ]
   }
 ]
