@@ -232,9 +232,15 @@ public class AutomationService {
         boolean isTriggeredNow = isTriggered(automation, payload, automationCache.isTriggeredPreviously());
         Date now = new Date();
         String triggerType = automation.getTrigger().getType(); // "time", "state", "periodic"
-        System.err.println("Automations: isTriggeredNow " + isTriggeredNow);
-        System.err.println("Automations: isWasTriggeredPreviously " + automationCache.isTriggeredPreviously());
+//        System.err.println("Automations: isTriggeredNow " + isTriggeredNow);
+//        System.err.println("Automations: isTriggeredPreviously " + automationCache.isTriggeredPreviously());
+//        System.err.println("Automations: getPreviousExecutionTime " + automationCache.getPreviousExecutionTime());
         // SCENARIO 1: Condition just became TRUE (Trigger)
+        long diff = 0;
+        if (automationCache.getPreviousExecutionTime() != null)
+            diff = now.toInstant().getEpochSecond()
+                    - automationCache.getPreviousExecutionTime().toInstant().getEpochSecond();
+
         if (isTriggeredNow && !automationCache.isTriggeredPreviously()) {
             System.out.println("🚀 Automation Triggered: " + automation.getName());
             notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
@@ -259,7 +265,8 @@ public class AutomationService {
 
             // Only restore if it's a state-based trigger (like AQI or Temp)
             // We EXCLUDE "time" because we want those changes to stay
-            if ("state".equals(triggerType) || "periodic".equals(triggerType)) {
+            notificationService.sendNotification("Restoring automation: " + automation.getName(), "low");
+            if (!"time".equals(triggerType)) {
                 System.out.println("🔄 Restoring state for sensor-based automation");
                 restoreStateSnapshots(automation, user);
             }
@@ -568,13 +575,7 @@ public class AutomationService {
     public void onCustomEvent(LiveEvent event) {
         var payload = event.getPayload();
         var deviceId = payload.get("device_id").toString();
-//        System.err.println("Redis: " + deviceId);
         redisService.setRecentDeviceData(deviceId, payload);
-//        var auto = redisService.getAutomationByTriggerDevice(deviceId);
-//        if (deviceId.equals("670edfe8166ab22722fbf728"))
-//            System.err.println("Auto: " + auto);
-//        auto.forEach(k -> checkAndExecuteSingleAutomation(k.getAutomation(), payload, false, "system"));
-
     }
 
     @Scheduled(fixedRate = 8000)

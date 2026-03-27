@@ -31,4 +31,9 @@ public class AutomationCache {
     private boolean enabled;
     private Map<String, Object> previousState; // deviceId -> state
     private boolean active; // already exists but use properly
+
+    private Date lastExecutionTime;
+    private Date lastStateChangeTime;
+
+    private Long conditionFirstTrueAt;
 }
