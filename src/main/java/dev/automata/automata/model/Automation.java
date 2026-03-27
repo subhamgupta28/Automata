@@ -23,6 +23,10 @@ public class Automation {
     private Boolean isActive;
     private Long snoozeTime;
     private String triggerDeviceType;
+    private String conditionLogic = "AND"; // AND / OR
+
+    private Long forDurationMs = 20000L;   // optional
+    private Long cooldownMs = 20000L;      // optional
     private Integer priority = 5;
     private List<String> targetDeviceIds;
 
@@ -48,7 +52,7 @@ public class Automation {
     @ToString
     public static class Trigger {
         private String deviceId;
-        private String type; // state, time
+        private String type; // state, time, etc.
         private String value; // 300
         private String key; //range
         private List<String> keys; //range
