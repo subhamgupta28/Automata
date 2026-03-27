@@ -22,6 +22,15 @@ pipeline {
             }
         }
 
+        stage('Build UI') {
+            steps {
+                dir('frontend') {  // Change 'frontend' to your actual UI folder name
+                    sh 'npm ci'
+                    sh 'npm run build'
+                }
+            }
+        }
+
         stage('Build') {
             steps {
                 // Build the Spring Boot app using Maven
