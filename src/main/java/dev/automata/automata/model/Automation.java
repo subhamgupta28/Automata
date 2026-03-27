@@ -1,6 +1,5 @@
 package dev.automata.automata.model;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.springframework.data.annotation.Id;
@@ -57,6 +56,7 @@ public class Automation {
         private String key; //range
         private List<String> keys; //range
         private String name;
+        private int priority;
     }
 
     @Getter

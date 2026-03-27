@@ -1,11 +1,4 @@
-import {
-    Handle,
-    Position,
-    useNodeConnections,
-    useNodes,
-    useNodesData,
-    useReactFlow
-} from "@xyflow/react";
+import {Handle, Position, useNodeConnections, useNodes, useNodesData, useReactFlow} from "@xyflow/react";
 import React, {useEffect, useState} from "react";
 import dayjs from "dayjs";
 import {Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
@@ -13,7 +6,7 @@ import AddIcon from "@mui/icons-material/Add";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
-import {DesktopTimePicker, LocalizationProvider, MobileTimePicker, TimePicker} from "@mui/x-date-pickers";
+import {DesktopTimePicker, LocalizationProvider, TimePicker} from "@mui/x-date-pickers";
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 
@@ -22,7 +15,7 @@ dayjs.extend(customParseFormat);
 const conditionStyle = {
     padding: '10px',
     borderRadius: '10px',
-    width: '220px',
+    width: '260px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '2px solid #FFEB3B',
     background: 'transparent',
@@ -220,7 +213,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                         Run automation at specific time of the day
                     </Typography>
                     <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <DesktopTimePicker  format="hh:mm:ss A" value={time} onChange={(e) => handleChange(e, 'time')}/>
+                        <DesktopTimePicker format="hh:mm:ss A" value={time} onChange={(e) => handleChange(e, 'time')}/>
                     </LocalizationProvider>
 
                 </div>
@@ -251,12 +244,12 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
                     {condition === 'scheduled' ? (
                             <div>
-                                <Typography variant="body2" sx={{mb: 1}}>
+                                <Typography variant="body2" sx={{mb: 2}}>
                                     Schedule automation
                                 </Typography>
 
                                 {/* Schedule Type */}
-                                <FormControl  className='nodrag' fullWidth size="small" sx={{mb: 2}}>
+                                <FormControl className='nodrag' fullWidth size="small" sx={{mb: 2}}>
                                     <InputLabel>Schedule Type</InputLabel>
                                     <Select
                                         variant="outlined"
@@ -278,7 +271,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                             onChange={(e) => e?.isValid() && setTime(e)}
                                         />
                                     ) : (
-                                        <>
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
                                             <TimePicker
                                                 label="From"
                                                 value={fromTime}
@@ -289,16 +282,17 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                                 value={toTime}
                                                 onChange={(e) => e?.isValid() && setToTime(e)}
                                             />
-                                        </>
+                                        </div>
                                     )}
                                 </LocalizationProvider>
 
                                 {/* Days Selector */}
-                                <FormControl  className='nodrag' fullWidth size="small" sx={{mt: 2}}>
+                                <FormControl className='nodrag' fullWidth size="small" sx={{mt: 2}}>
                                     <InputLabel>Days</InputLabel>
                                     <Select
                                         variant="outlined"
                                         multiple
+                                        label="Days"
                                         value={days}
                                         onChange={(e) => setDays([...e.target.value])}
                                         renderValue={(selected) => selected.join(', ')}
