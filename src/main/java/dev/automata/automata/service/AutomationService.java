@@ -12,6 +12,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -22,12 +23,15 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AutomationService {
+
+    private ThreadPoolTaskExecutor taskExecutor; // or inject your custom executor
 
     private final DeviceRepository deviceRepository;
     private final AutomationRepository automationRepository;
@@ -215,6 +219,7 @@ public class AutomationService {
 
         String cacheKey = deviceId + ":" + automation.getId();
         AutomationCache automationCache = redisService.getAutomationCache(cacheKey);
+        System.err.println("Check automation: " + automation.getName());
 
         if (automationCache == null) {
             automationCache = AutomationCache.builder()
@@ -322,6 +327,7 @@ public class AutomationService {
                     .build());
         }
     }
+
     private void saveLog(AutomationLog log) {
         // Avoid spamming NOT_MET logs — only save once per minute per automation
         if (log.getStatus() == AutomationLog.LogStatus.NOT_MET) {
@@ -372,6 +378,7 @@ public class AutomationService {
                 .detail(detail)
                 .build();
     }
+
     /**
      * Saves the current state of all target devices before they get changed.
      */
@@ -574,9 +581,9 @@ public class AutomationService {
                 ? operators.get(0).getLogicType() : "AND";
 
         return switch (globalLogic.toUpperCase()) {
-            case "OR"  -> truths.stream().anyMatch(Boolean::booleanValue);
+            case "OR" -> truths.stream().anyMatch(Boolean::booleanValue);
             case "AND" -> truths.stream().allMatch(Boolean::booleanValue);
-            default    -> truths.stream().allMatch(Boolean::booleanValue);
+            default -> truths.stream().allMatch(Boolean::booleanValue);
         };
     }
 
@@ -756,11 +763,38 @@ public class AutomationService {
         redisService.setRecentDeviceData(deviceId, payload);
     }
 
-    @Scheduled(fixedRate = 8000)
+    private final Executor automationExecutor = new ThreadPoolExecutor(
+            10, 20, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(100),
+            new ThreadFactory() {
+                private final AtomicInteger count = new AtomicInteger();
+
+                public Thread newThread(Runnable r) {
+                    return new Thread(r, "automation-" + count.incrementAndGet());
+                }
+            },
+            new ThreadPoolExecutor.CallerRunsPolicy()
+    );
+
+    @Scheduled(fixedRate = 15000)
     private void triggerPeriodicAutomations() {
-        automationRepository.findByIsEnabledTrue().forEach(a ->
-                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId()), "system"));
+        List<CompletableFuture<Void>> futures = automationRepository.findByIsEnabledTrue()
+                .stream()
+                .map(a -> CompletableFuture.runAsync(() ->
+                        checkAndExecuteSingleAutomation(
+                                a,
+                                redisService.getRecentDeviceData(a.getTrigger().getDeviceId()),
+                                "system"
+                        ), automationExecutor))
+                .toList();
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     }
+//    @Scheduled(fixedRate = 8000)
+//    private void triggerPeriodicAutomations() {
+//        automationRepository.findByIsEnabledTrue().forEach(a ->
+//                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId()), "system"));
+//    }
 
     @Scheduled(fixedRate = 1000 * 60 * 5)
     private void updateRedisStorage() {
@@ -798,7 +832,12 @@ public class AutomationService {
 
         detail.getNodes().stream().filter(n -> n.getData().getTriggerData() != null).findFirst().ifPresent(triggerNode -> {
             var tData = triggerNode.getData().getTriggerData();
-            automationBuilder.trigger(new Automation.Trigger(tData.getDeviceId(), tData.getType(), tData.getValue(), tData.getKey(), tData.getKeys().stream().map(t -> t.getKey()).toList(), tData.getName()));
+            automationBuilder.trigger(new Automation.Trigger(
+                    tData.getDeviceId(), tData.getType(),
+                    tData.getValue(), tData.getKey(),
+                    tData.getKeys().stream().map(t -> t.getKey()).toList(),
+                    tData.getName(), tData.getPriority()
+            ));
             automationBuilder.name(tData.getName());
         });
 

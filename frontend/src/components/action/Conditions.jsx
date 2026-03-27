@@ -1,5 +1,5 @@
 import {Card, Typography} from "@mui/material";
-import {Handle, Position, useReactFlow, useNodeConnections} from "@xyflow/react";
+import {Handle, Position, useNodeConnections, useReactFlow} from "@xyflow/react";
 import AddIcon from "@mui/icons-material/Add";
 import React, {useEffect} from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -7,9 +7,9 @@ import IconButton from "@mui/material/IconButton";
 
 
 const conditionStyle = {
-    padding: '10px',
+    padding: '20px',
     borderRadius: '10px',
-    width: '100px',
+    width: '150px',
 
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '2px solid #FFEB3B',
@@ -33,7 +33,7 @@ export const And = ({id, data, isConnectable}) => {
     useEffect(() => {
         updateNodeData(id, {
             // ...data,
-            operators : {
+            operators: {
                 logicType: 'AND',
                 type: "operator"
             }
@@ -47,9 +47,20 @@ export const And = ({id, data, isConnectable}) => {
 
     return (
         <Card style={conditionStyle}>
-            <Handle type="target" position={Position.Left} />
 
-            <IconButton onClick={deleteNode} style={{position:'absolute', right:0}}>
+            <Handle
+                style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
+                type="target"
+                position={Position.Left}
+                id="cond-t"
+                isConnectable={isConnectable}
+            />
+            <AddIcon style={{
+                background: '#FFEB3B', top: '50%',
+                left: 0,
+                transform: 'translate(-50%, -50%)'
+            }} className='react-flow__handle'/>
+            <IconButton onClick={deleteNode} style={{position: 'absolute', right: 10}}>
                 <DeleteIcon/>
             </IconButton>
 
@@ -57,12 +68,21 @@ export const And = ({id, data, isConnectable}) => {
             <Typography variant="caption">
                 {connections.length} inputs
             </Typography>
+            <Handle
+                style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
+                type="source"
+                position={Position.Right}
+                isConnectable={isConnectable}
+            />
+            <AddIcon style={{
+                background: '#FFEB3B', top: '50%',
+                right: 0,
+                transform: 'translate(50%, -50%)'
+            }} className='react-flow__handle'/>
 
-            <Handle type="source" position={Position.Right} />
         </Card>
     );
 };
-
 
 
 export const Or = ({id, data, isConnectable}) => {
@@ -74,7 +94,7 @@ export const Or = ({id, data, isConnectable}) => {
 
     useEffect(() => {
         updateNodeData(id, {
-            operators : {
+            operators: {
                 logicType: 'OR',
                 type: "operator"
             }
@@ -88,9 +108,20 @@ export const Or = ({id, data, isConnectable}) => {
 
     return (
         <Card style={conditionStyle}>
-            <Handle type="target" position={Position.Left} />
+            <Handle
+                style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
+                type="target"
+                position={Position.Left}
+                id="cond-t"
+                isConnectable={isConnectable}
+            />
+            <AddIcon style={{
+                background: '#FFEB3B', top: '50%',
+                left: 0,
+                transform: 'translate(-50%, -50%)'
+            }} className='react-flow__handle'/>
 
-            <IconButton onClick={deleteNode} style={{position:'absolute', right:0}}>
+            <IconButton onClick={deleteNode} style={{position: 'absolute', right: 0}}>
                 <DeleteIcon/>
             </IconButton>
 
@@ -99,7 +130,17 @@ export const Or = ({id, data, isConnectable}) => {
                 {connections.length} inputs
             </Typography>
 
-            <Handle type="source" position={Position.Right} />
+            <Handle
+                style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
+                type="source"
+                position={Position.Right}
+                isConnectable={isConnectable}
+            />
+            <AddIcon style={{
+                background: '#FFEB3B', top: '50%',
+                right: 0,
+                transform: 'translate(50%, -50%)'
+            }} className='react-flow__handle'/>
         </Card>
     );
 };

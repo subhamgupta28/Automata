@@ -1,18 +1,12 @@
 import {Handle, Position, useNodes, useReactFlow} from "@xyflow/react";
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
-import {
-    Card,
-    FormControl,
-    InputLabel,
-    MenuItem,
-    Select,
-    TextField
-} from "@mui/material";
+import {Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
+import NumberSpinner from "../charts/NumberSpinner.jsx";
 
 const triggerStyle = {
     padding: '10px',
@@ -36,7 +30,8 @@ export const TriggerNode = ({id, data, isConnectable}) => {
         name: '',
         deviceId: '',
         type: 'state',
-        keys: []
+        keys: [],
+        priority: 5
     };
 
     const {updateNodeData, setEdges, setNodes} = useReactFlow();
@@ -45,6 +40,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
     const [triggerKeys, setTriggerKeys] = useState(initialTriggerData.keys || []);
     const [name, setName] = useState(initialTriggerData.name);
     const [type, setType] = useState(initialTriggerData.type);
+    const [priority, setPriority] = useState(initialTriggerData.priority || 5);
     const [selectedDevice, setSelectedDevice] = useState({id: initialTriggerData.deviceId, name: ''});
 
     useEffect(() => {
@@ -93,9 +89,11 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                 deviceId: selectedDevice?.id || '',
                 type,
                 name,
-                keys: triggerKeys
+                keys: triggerKeys,
+                priority
             }
         };
+        console.log("data", newData)
 
         const serialized = JSON.stringify(newData);
 
@@ -104,7 +102,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
             updateNodeData(id, newData);
         }
 
-    }, [selectedDevice?.id, triggerKeys, name, type]);
+    }, [selectedDevice?.id, triggerKeys, name, type, priority]);
 
     const selectTriggerDevice = (e) => {
         const dev = devices.find(d => d.id === e.target.value);
@@ -221,6 +219,14 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                             </FormControl>
                         </React.Fragment>
                     ))}
+                    <NumberSpinner
+                        label="Priority"
+                        min={0}
+                        max={10}
+                        value={priority}
+                        size="small"
+                        onChange={setPriority}
+                    />
                 </div>
             )}
 

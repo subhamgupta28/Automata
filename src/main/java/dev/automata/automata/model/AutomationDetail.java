@@ -74,11 +74,11 @@ public class AutomationDetail {
         public static class Data {
             @JsonProperty("value")
             private Value value;
-//            @JsonProperty("triggerData")
+            //            @JsonProperty("triggerData")
             private TriggerData triggerData;
-//            @JsonProperty("conditionData")
+            //            @JsonProperty("conditionData")
             private ConditionData conditionData;
-//            @JsonProperty("actionData")
+            //            @JsonProperty("actionData")
             private ActionData actionData;
             private Operator operators;
 
@@ -115,6 +115,7 @@ public class AutomationDetail {
                 private List<TriggerKeys> keys;
                 private String name;
                 private String value;
+                private int priority;
 
                 @Getter
                 @Setter
