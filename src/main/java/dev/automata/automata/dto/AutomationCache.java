@@ -25,7 +25,8 @@ public class AutomationCache {
     private String triggerDeviceType;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     private Date lastUpdate;
-    private boolean wasTriggeredPreviously;
+    private Date previousExecutionTime;
+    private boolean triggeredPreviously;
     private Boolean isActive;
     private boolean enabled;
     private Map<String, Object> previousState; // deviceId -> state

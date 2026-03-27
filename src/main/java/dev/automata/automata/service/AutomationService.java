@@ -14,7 +14,6 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -26,8 +25,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -122,7 +119,7 @@ public class AutomationService {
         System.err.println("Automations found: ");
         automations.forEach(a -> {
                     System.err.println(a.getName());
-                    checkAndExecuteSingleAutomation(a, payload, true, user);
+                    executeAutomationImmediate(a, payload, user);
                 }
         );
 
@@ -206,8 +203,12 @@ public class AutomationService {
         }
     }
 
+    private void executeAutomationImmediate(Automation automation, Map<String, Object> payload, String user) {
+        executeActions(automation, user, payload);
+    }
 
-    public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data, boolean executeNow, String user) {
+
+    public void checkAndExecuteSingleAutomation(Automation automation, Map<String, Object> data, String user) {
         var payload = new HashMap<String, Object>();
         var deviceId = automation.getTrigger().getDeviceId();
 
@@ -217,20 +218,24 @@ public class AutomationService {
         var type = automation.getTriggerDeviceType();
         String cacheKey = deviceId + ":" + automation.getId();
         AutomationCache automationCache = redisService.getAutomationCache(cacheKey);
+        System.err.println("Automations: " + automation.getName());
 
         if (automationCache == null) {
             automationCache = AutomationCache.builder()
                     .id(automation.getId())
-                    .wasTriggeredPreviously(false)
-                    .lastUpdate(new Date(0))
+                    .triggeredPreviously(false)
+                    .previousExecutionTime(null)
+                    .lastUpdate(new Date())
                     .build();
         }
         // Pass the previous state to the trigger check
-        boolean isTriggeredNow = isTriggered(automation, payload, automationCache.isWasTriggeredPreviously());
+        boolean isTriggeredNow = isTriggered(automation, payload, automationCache.isTriggeredPreviously());
         Date now = new Date();
         String triggerType = automation.getTrigger().getType(); // "time", "state", "periodic"
+        System.err.println("Automations: isTriggeredNow " + isTriggeredNow);
+        System.err.println("Automations: isWasTriggeredPreviously " + automationCache.isTriggeredPreviously());
         // SCENARIO 1: Condition just became TRUE (Trigger)
-        if (isTriggeredNow && !automationCache.isWasTriggeredPreviously() || executeNow) {
+        if (isTriggeredNow && !automationCache.isTriggeredPreviously()) {
             System.out.println("🚀 Automation Triggered: " + automation.getName());
             notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
             // 1. Capture and Save "Before" State for all devices in this automation
@@ -242,13 +247,14 @@ public class AutomationService {
             // 2. Execute the "Warning" actions
             executeActions(automation, user, payload);
 
-            automationCache.setWasTriggeredPreviously(true);
+            automationCache.setTriggeredPreviously(true);
+            automationCache.setPreviousExecutionTime(new Date());
             automationCache.setLastUpdate(now);
             redisService.setAutomationCache(cacheKey, automationCache);
         }
 
         // SCENARIO 2: Condition just became FALSE (Restoration)
-        else if (!isTriggeredNow && automationCache.isWasTriggeredPreviously()) {
+        else if (!isTriggeredNow && automationCache.isTriggeredPreviously()) {
             System.out.println("🔄 Automation Cleared: Reverting " + automation.getName());
 
             // Only restore if it's a state-based trigger (like AQI or Temp)
@@ -258,7 +264,8 @@ public class AutomationService {
                 restoreStateSnapshots(automation, user);
             }
 
-            automationCache.setWasTriggeredPreviously(false);
+            automationCache.setTriggeredPreviously(false);
+            automationCache.setPreviousExecutionTime(null);
             automationCache.setLastUpdate(now);
             redisService.setAutomationCache(cacheKey, automationCache);
         }
@@ -573,7 +580,7 @@ public class AutomationService {
     @Scheduled(fixedRate = 8000)
     private void triggerPeriodicAutomations() {
         automationRepository.findByIsEnabledTrue().forEach(a ->
-                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId()), false, "system"));
+                checkAndExecuteSingleAutomation(a, redisService.getRecentDeviceData(a.getTrigger().getDeviceId()), "system"));
     }
 
     @Scheduled(fixedRate = 1000 * 60 * 5)
@@ -581,15 +588,18 @@ public class AutomationService {
         automationRepository.findAll().forEach(a -> {
             var id = a.getTrigger().getDeviceId() + ":" + a.getId();
             AutomationCache existing = redisService.getAutomationCache(id);
-
+            if (existing == null)
+                return;
+            var lastExecutionTime = existing.getPreviousExecutionTime();
             AutomationCache updatedCache = AutomationCache.builder()
                     .id(a.getId())
                     .automation(a)
                     .triggerDeviceType(a.getTriggerDeviceType())
                     .enabled(a.getIsEnabled())
                     .triggerDeviceId(a.getTrigger().getDeviceId())
-                    .isActive(existing != null ? existing.getIsActive() : false)
-                    .wasTriggeredPreviously(existing != null && existing.isWasTriggeredPreviously())
+                    .isActive(existing.getIsActive())
+                    .triggeredPreviously(existing.isTriggeredPreviously())
+                    .previousExecutionTime(lastExecutionTime)
                     .lastUpdate(new Date())
                     .build();
 
