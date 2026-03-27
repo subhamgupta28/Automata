@@ -206,7 +206,8 @@ public class AutomationService {
     }
 
     private void executeAutomationImmediate(Automation automation, Map<String, Object> payload, String user) {
-        executeActions(automation, user, payload);
+        if (automation.getIsEnabled())
+            executeActions(automation, user, payload);
     }
 
 
