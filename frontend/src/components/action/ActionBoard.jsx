@@ -11,7 +11,7 @@ import {disableAutomation, getActions, getAutomationDetail, saveAutomationDetail
 import {
     Button,
     Card,
-    CardContent, Switch,
+    CardContent, Chip, Switch,
 } from "@mui/material";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
@@ -34,27 +34,27 @@ import useLayoutNodes from "./useLayoutNodes.jsx";
 const triggerStyle = {
     padding: '10px',
     borderRadius: '5px',
-    width: '220px',
+    width: '100%',
     border: '2px solid #6DBF6D',
 };
 
 const actionStyle = {
     padding: '10px',
     borderRadius: '5px',
-    width: '220px',
+    width: '100%',
     border: '2px solid #0288D1',
 };
 
 const conditionStyle = {
     padding: '10px',
     borderRadius: '5px',
-    width: '220px',
+    width: '100%',
     border: '2px solid #FFEB3B',
 };
 const valueReaderStyle = {
     padding: '10px',
     borderRadius: '5px',
-    width: '220px',
+    width: '100%',
     border: '2px solid #9C27B0', // Purple tone
 };
 let id = 0;
@@ -223,16 +223,17 @@ function ActionBoardDetail() {
         event.dataTransfer.effectAllowed = 'move';
     };
     return (
-        <div style={{position:'relative', zIndex: 0}}>
+        <div style={{position: 'relative', zIndex: 0}}>
             <Stack direction="row">
-                <div style={{width: '80%', height: '100dvh', borderRadius:'10px', padding:'10px 10px 10px 0px'}} className="reactflow-wrapper" ref={reactFlowWrapper}>
+                <div style={{width: '80%', height: '100dvh', borderRadius: '10px', padding: '10px 10px 10px 0px'}}
+                     className="reactflow-wrapper" ref={reactFlowWrapper}>
                     <ReactFlow
                         style={{
-                            borderRadius:'10px',
+                            borderRadius: '10px',
                             backgroundColor: 'transparent',
                             borderColor: 'rgb(255 255 255 / 18%)',
-                            borderWidth:'2px',
-                            borderStyle:'dashed',
+                            borderWidth: '2px',
+                            borderStyle: 'dashed',
                             position: 'relative',
                             zIndex: 0,
                         }}
@@ -272,8 +273,10 @@ function ActionBoardDetail() {
                         )}
                         <Panel position="bottom-right" style={{marginBottom: '20px'}}>
                             {/*<Button variant='outlined' onClick={onRestore}>Restore</Button>*/}
-                            <Button size="small" variant='outlined' onClick={onSave} style={{marginLeft: '10px'}}>Save</Button>
-                            <Button size="small" variant='outlined' onClick={clearBoard} style={{marginLeft: '10px'}}>Clear</Button>
+                            <Button size="small" variant='outlined' onClick={onSave}
+                                    style={{marginLeft: '10px'}}>Save</Button>
+                            <Button size="small" variant='outlined' onClick={clearBoard}
+                                    style={{marginLeft: '10px'}}>Clear</Button>
                         </Panel>
                     </ReactFlow>
                 </div>
@@ -282,34 +285,34 @@ function ActionBoardDetail() {
                         height: '97dvh',
                         display: 'flex',
                         flexDirection: 'column',
-                        margin:'10px 10px 10px 0px',
-                        borderRadius:'10px',
+                        margin: '10px 10px 10px 0px',
+                        borderRadius: '10px',
                         background: 'transparent',
                         backdropFilter: 'blur(6px)',
                         // backgroundColor: 'rgb(255 255 255 / 8%)',
                         borderColor: 'rgb(255 255 255 / 18%)',
-                        borderWidth:'2px',
-                        borderStyle:'dashed',
+                        borderWidth: '2px',
+                        borderStyle: 'dashed',
                     }}>
                         <CardContent style={{
                             flex: 1,
-                            padding: '6px',
+                            padding: '16px',
                             display: 'flex',
                             flexDirection: 'column',
                             overflow: 'hidden',
 
                         }}>
-                            {/*<Typography variant="h6" component="div">*/}
-                            {/*    Automation Playground*/}
-                            {/*</Typography>*/}
-                            {/*<Typography gutterBottom sx={{color: 'text.secondary', fontSize: 14}}>*/}
-                            {/*    Drag and drop nodes to create automations.*/}
-                            {/*</Typography>*/}
+                            <Typography variant="h6" component="div">
+                                Automation Playground
+                            </Typography>
+                            <Typography gutterBottom sx={{color: 'text.secondary', fontSize: 14}}>
+                                Drag and drop nodes to create automations.
+                            </Typography>
                             <div style={{
-                                padding:'10px',
+                                padding: '10px',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                alignItems:'center'
+                                alignItems: 'center'
                             }}>
 
                                 <div style={triggerStyle} onDragStart={(event) => onDragStart(event, 'trigger')}
@@ -330,16 +333,30 @@ function ActionBoardDetail() {
                                 >
                                     Add Action
                                 </div>
-                                {/*<div*/}
-                                {/*    style={{...valueReaderStyle, marginTop: '10px'}}*/}
-                                {/*    onDragStart={(event) => onDragStart(event, 'valueReader')}*/}
-                                {/*    draggable*/}
-                                {/*>*/}
-                                {/*    Add Value Reader*/}
-                                {/*</div>*/}
+                                <div
+                                    style={{...conditionStyle, marginTop: '10px'}}
+                                    onDragStart={(event) => onDragStart(event, 'and')}
+                                    draggable
+                                >
+                                    Add AND
+                                </div>
+
+                                <div
+                                    style={{...conditionStyle, marginTop: '10px'}}
+                                    onDragStart={(event) => onDragStart(event, 'or')}
+                                    draggable
+                                >
+                                    Add OR
+                                </div>
                             </div>
                             {/* Scrollable list container */}
-                            <div style={{flex: 1, overflow: 'auto', scrollbarWidth: "none", marginTop: '16px', padding: '10px'}}>
+                            <div style={{
+                                flex: 1,
+                                overflow: 'auto',
+                                scrollbarWidth: "none",
+                                marginTop: '16px',
+                                padding: '10px'
+                            }}>
 
                                 <Typography>Saved Automations</Typography>
                                 <List>
@@ -351,12 +368,19 @@ function ActionBoardDetail() {
                                                 padding: '6px', marginTop: '8px',
                                                 background: 'transparent',
                                                 backdropFilter: 'blur(6px)',
-                                                borderColor:'#ffffff',
+                                                borderColor: '#ffffff',
                                                 backgroundColor: 'rgb(255 255 255 / 8%)',
-                                        }}
+                                            }}
                                             key={a.id}
                                         >
                                             <ListItemText>{a.name}</ListItemText>
+                                            <Chip
+                                                size="small"
+                                                variant="outlined"
+                                                key={a.id}
+                                                color={a.isEnabled ? "primary" : "error"}
+                                                label={a.isEnabled ? "Enabled" : "Disabled"}>
+                                            </Chip>
                                             <Button size="small" onClick={() => openAutomation(a)}>
                                                 Open
                                             </Button>
@@ -392,11 +416,11 @@ const useDnD = () => {
 }
 const ActionBoard = () => (
 
-        // <ReactFlowProvider>
-            <DnDProvider>
-                <ActionBoardDetail/>
-            </DnDProvider>
-        // </ReactFlowProvider>
+    // <ReactFlowProvider>
+    <DnDProvider>
+        <ActionBoardDetail/>
+    </DnDProvider>
+    // </ReactFlowProvider>
 
 );
 export default React.memo(ActionBoard);

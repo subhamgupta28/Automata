@@ -13,7 +13,7 @@ import AddIcon from "@mui/icons-material/Add";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
-import {LocalizationProvider, MobileTimePicker} from "@mui/x-date-pickers";
+import {DesktopTimePicker, LocalizationProvider, MobileTimePicker, TimePicker} from "@mui/x-date-pickers";
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 
@@ -39,9 +39,21 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         value: '0',
         triggerKey: '',
         time: '2:20:05 AM',
-        isExact: false,
-        type: 'state'
+        isExact: true,
+        type: 'state',
+        scheduleType: 'at',
+        fromTime: '2:20:05 AM',
+        toTime: '2:20:05 AM',
+        days: []
     };
+    const [scheduleType, setScheduleType] = useState(conditionData.scheduleType); // 'at' | 'range'
+    const [fromTime, setFromTime] = useState(
+        conditionData.fromTime ? dayjs(conditionData.fromTime, "hh:mm:ss A") : dayjs()
+    );
+    const [toTime, setToTime] = useState(
+        conditionData.toTime ? dayjs(conditionData.toTime, "hh:mm:ss A") : dayjs()
+    );
+    const [days, setDays] = useState(conditionData.days); // ['Mon', 'Tue']
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
     const [triggerData, setTriggerData] = useState({})
     const [triggerKey, setTriggerKey] = useState(conditionData.triggerKey)
@@ -71,35 +83,56 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         setNodes((nodes) => nodes.filter((node) => node.id !== nodeId)); // Remove the node
         setEdges((eds) => eds.filter((edge) => edge.source !== nodeId && edge.target !== nodeId));
     }
+    const prevConditionDataRef = React.useRef(null);
     useEffect(() => {
         let cd = data.conditionData;
-        if (cd) {
-            setCondition(cd.condition);
-            setAbove(cd.above);
-            setBelow(cd.below);
-            setTriggerKey(cd.triggerKey)
-            setIsRange(cd.isExact);
-            setConditionValue(cd.value);
-            setTime(dayjs(cd.time, "hh:mm:ss A"));
-            setType(cd.type);
+        if (!cd) return;
+
+        // ✅ Only update if actually different
+        if (cd.condition !== condition) setCondition(cd.condition);
+        if (cd.above !== above) setAbove(cd.above);
+        if (cd.below !== below) setBelow(cd.below);
+        if (cd.triggerKey !== triggerKey) setTriggerKey(cd.triggerKey);
+        if (cd.isExact !== isRange) setIsRange(cd.isExact);
+        if (cd.value !== conditionValue) setConditionValue(cd.value);
+        if (cd.type !== type) setType(cd.type);
+
+        // ⚠️ time needs special handling
+        const newTime = dayjs(cd.time, "hh:mm:ss A");
+        if (!newTime.isSame(time)) setTime(newTime);
+
+        // ✅ NEW fields
+        if (cd.scheduleType !== scheduleType) setScheduleType(cd.scheduleType || 'at');
+
+        const newFrom = cd.fromTime ? dayjs(cd.fromTime, "hh:mm:ss A") : null;
+        if (newFrom && !newFrom.isSame(fromTime)) setFromTime(newFrom);
+
+        const newTo = cd.toTime ? dayjs(cd.toTime, "hh:mm:ss A") : null;
+        if (newTo && !newTo.isSame(toTime)) setToTime(newTo);
+
+        if (JSON.stringify(cd.days || []) !== JSON.stringify(days)) {
+            setDays(cd.days || []);
         }
 
-
-    }, [data.conditionData])
+    }, [data.conditionData]);
     useEffect(() => {
-        const triggerData = conditionNodes.length > 0 && conditionNodes[0].data.triggerData ? conditionNodes[0].data.triggerData : {
-            keys: [],
-            value: '',
-            name: '',
-            deviceId: '',
-            type: ''
-        };
-        if (triggerData.keys.length > 0)
-            setTriggerKey(triggerData.keys.filter(f => f.conditionId === id)[0].key)
+        const triggerData = conditionNodes.length > 0 && conditionNodes[0].data.triggerData
+            ? conditionNodes[0].data.triggerData
+            : {
+                keys: [],
+                value: '',
+                name: '',
+                deviceId: '',
+                type: ''
+            };
+
+        const matched = triggerData?.keys?.find(f => f.conditionId === id);
+
+        setTriggerKey(matched?.key || '');
         setTriggerData(triggerData);
         setType(triggerData.type);
 
-    }, [conditionNodes]);
+    }, [conditionNodes, id]);
 
     useEffect(() => {
         const newData = {
@@ -111,7 +144,11 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             type,
             value: conditionValue,
             isExact: isRange,
-            time: time.format("hh:mm:ss A")
+            time: time.format("hh:mm:ss A"),
+            scheduleType,
+            fromTime: fromTime.format("hh:mm:ss A"),
+            toTime: toTime.format("hh:mm:ss A"),
+            days
         };
 
         if (JSON.stringify(data.conditionData) !== JSON.stringify(newData)) {
@@ -126,7 +163,11 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         isRange,
         time,
         type,
-        triggerKey
+        triggerKey,
+        scheduleType,   // ✅ missing
+        fromTime,       // ✅ missing
+        toTime,         // ✅ missing
+        days            // ✅ missing
     ]);
 
     const handleChange = (e, select) => {
@@ -150,6 +191,11 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         }
     }
 
+    useEffect(() => {
+        if (scheduleType === 'range' && fromTime.isAfter(toTime)) {
+            console.warn("Invalid time range");
+        }
+    }, [fromTime, toTime]);
     return (
         <Card style={{...conditionStyle, padding: '10px'}}>
             <Handle
@@ -174,7 +220,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                         Run automation at specific time of the day
                     </Typography>
                     <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <MobileTimePicker format="hh:mm:ss A" value={time} onChange={(e) => handleChange(e, 'time')}/>
+                        <DesktopTimePicker  format="hh:mm:ss A" value={time} onChange={(e) => handleChange(e, 'time')}/>
                     </LocalizationProvider>
 
                 </div>
@@ -199,39 +245,104 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                             <MenuItem value={'range'}> between </MenuItem>
                             <MenuItem value={'above'}> above </MenuItem>
                             <MenuItem value={'below'}> below </MenuItem>
+                            <MenuItem value={'scheduled'}> Scheduled </MenuItem>
                         </Select>
                     </FormControl>
 
-                    {isRange || condition === 'above' || condition === 'below' ? (
-                        <TextField
-                            size='small'
-                            label="Value"
-                            fullWidth
-                            value={conditionValue}
-                            onChange={(e) => handleChange(e, 'value')}
-                            name="value"
-                        />
-                    ) : (
-                        <div>
+                    {condition === 'scheduled' ? (
+                            <div>
+                                <Typography variant="body2" sx={{mb: 1}}>
+                                    Schedule automation
+                                </Typography>
+
+                                {/* Schedule Type */}
+                                <FormControl  className='nodrag' fullWidth size="small" sx={{mb: 2}}>
+                                    <InputLabel>Schedule Type</InputLabel>
+                                    <Select
+                                        variant="outlined"
+                                        value={scheduleType}
+                                        label="Schedule Type"
+                                        onChange={(e) => setScheduleType(e.target.value)}
+                                    >
+                                        <MenuItem value="at">At specific time</MenuItem>
+                                        <MenuItem value="range">Between time range</MenuItem>
+                                    </Select>
+                                </FormControl>
+
+                                {/* Time Pickers */}
+                                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                    {scheduleType === 'at' ? (
+                                        <TimePicker
+                                            label="Time"
+                                            value={time}
+                                            onChange={(e) => e?.isValid() && setTime(e)}
+                                        />
+                                    ) : (
+                                        <>
+                                            <TimePicker
+                                                label="From"
+                                                value={fromTime}
+                                                onChange={(e) => e?.isValid() && setFromTime(e)}
+                                            />
+                                            <TimePicker
+                                                label="To"
+                                                value={toTime}
+                                                onChange={(e) => e?.isValid() && setToTime(e)}
+                                            />
+                                        </>
+                                    )}
+                                </LocalizationProvider>
+
+                                {/* Days Selector */}
+                                <FormControl  className='nodrag' fullWidth size="small" sx={{mt: 2}}>
+                                    <InputLabel>Days</InputLabel>
+                                    <Select
+                                        variant="outlined"
+                                        multiple
+                                        value={days}
+                                        onChange={(e) => setDays([...e.target.value])}
+                                        renderValue={(selected) => selected.join(', ')}
+                                    >
+                                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                                            <MenuItem key={day} value={day}>
+                                                {day}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </div>
+                        ) :
+                        (isRange || condition === 'above' || condition === 'below' ? (
                             <TextField
                                 size='small'
-                                label="Below"
+                                label="Value"
                                 fullWidth
-                                value={below}
-                                onChange={(e) => handleChange(e, 'below')}
-                                name="value"
-                                sx={{marginBottom: 2}}
-                            />
-                            <TextField
-                                size='small'
-                                label="Above"
-                                fullWidth
-                                value={above}
-                                onChange={(e) => handleChange(e, 'above')}
+                                value={conditionValue}
+                                onChange={(e) => handleChange(e, 'value')}
                                 name="value"
                             />
-                        </div>
-                    )}
+                        ) : (
+                            <div>
+                                <TextField
+                                    size='small'
+                                    label="Below"
+                                    fullWidth
+                                    value={below}
+                                    onChange={(e) => handleChange(e, 'below')}
+                                    name="value"
+                                    sx={{marginBottom: 2}}
+                                />
+                                <TextField
+                                    size='small'
+                                    label="Above"
+                                    fullWidth
+                                    value={above}
+                                    onChange={(e) => handleChange(e, 'above')}
+                                    name="value"
+                                />
+                            </div>
+                        ))
+                    }
                     {/*<Typography variant="body1" style={{margin: '18px'}}>*/}
                     {/*    trigger the actions.*/}
                     {/*</Typography>*/}

@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @AllArgsConstructor
@@ -90,5 +91,11 @@ public class RedisService {
             redisTemplate.delete(keys); // Delete all keys
         }
     }
+    public boolean exists(String key) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
 
+    public void setWithExpiry(String key, String value, long ttlSeconds) {
+        redisTemplate.opsForValue().set(key, value, ttlSeconds, TimeUnit.SECONDS);
+    }
 }
