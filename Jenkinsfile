@@ -24,7 +24,7 @@ pipeline {
 
        stage('Build UI') {
            tools {
-               nodejs 'NodeJS-20'
+               nodejs 'NodeJs25'
            }
            steps {
                dir('frontend') {
