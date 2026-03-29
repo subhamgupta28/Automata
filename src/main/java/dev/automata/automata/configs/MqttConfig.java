@@ -2,17 +2,15 @@ package dev.automata.automata.configs;
 
 import dev.automata.automata.mqtt.SafeJsonTransformer;
 import lombok.RequiredArgsConstructor;
-import org.eclipse.paho.client.mqttv3.*;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.integration.annotation.ServiceActivator;
-import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.ExecutorChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
-import org.springframework.integration.dsl.Transformers;
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
 import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
 import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannelAdapter;
@@ -23,16 +21,14 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @Configuration
 @RequiredArgsConstructor
 public class MqttConfig {
 
     private final SafeJsonTransformer safeJsonTransformer;
+    //tcp://192.168.1.54:1884
     @Value("${application.mqtt.url}")
     private String brokerUrl; // Your MQTT broker
     @Value("${application.mqtt.url_public}")
@@ -42,10 +38,10 @@ public class MqttConfig {
     @Value("${application.mqtt.password}")
     private String password;
     private final String clientId = "springboot-client-" + UUID.randomUUID();
-    private final String topicDefault = "automata/status";
-    private final String topicSendLiveData = "automata/sendLiveData";
-    private final String topicSendData = "automata/sendData";
-    private final String topicAction = "automata/action";
+    private final String topicDefault = "/topic/status/#";
+    //    private final String topicAction = "action/#";
+    private final String topicSendData = "sendData/#";
+    private final String topicSendLiveData = "sendLiveData/#";
     private final String topicSys = "$SYS/broker/clients/123";
     private final String wledDeviceTopic = "automata-wled/#";
     private final String wledGroupTopic = "automata-wled/all";
@@ -55,7 +51,7 @@ public class MqttConfig {
         options.setServerURIs(new String[]{brokerUrl});
         options.setUserName(user);
         options.setPassword(password.toCharArray());
-        options.setAutomaticReconnect(true);
+//        options.setAutomaticReconnect(true);
 //        options.setConnectionTimeout(2);
         options.setKeepAliveInterval(60);
         options.setCleanSession(true);
@@ -113,7 +109,7 @@ public class MqttConfig {
                         mqttClientFactory(),
                         topicSendLiveData,
                         topicSendData,
-                        topicAction,
+//                        topicAction,
                         topicDefault,
                         topicSys,
 //                        wledDeviceTopic,
@@ -141,6 +137,7 @@ public class MqttConfig {
     public MessageChannel mqttOutboundChannel() {
         return new org.springframework.integration.channel.PublishSubscribeChannel();
     }
+
     @Bean
     public IntegrationFlow wledFlow() {
         return IntegrationFlow.from(publicInbound())
@@ -152,7 +149,9 @@ public class MqttConfig {
                         }
                 ))
                 .channel("wledChannel")
-
+                .handle(message -> {
+                    System.out.println("Received: " + message.getPayload());
+                })
                 .get();
     }
 
@@ -166,7 +165,7 @@ public class MqttConfig {
                                 .channelMapping(topicSendLiveData, "sendLiveData")
                                 .channelMapping(topicSendData, "sendData")
                                 .channelMapping(topicDefault, "mqttInputChannel")
-                                .channelMapping(topicAction, "action")
+//                                .channelMapping(topicAction, "action")
                                 .channelMapping(topicSys, "sysData")
 //                                .channelMapping(wledGroupTopic, "mqttInputChannel")
                 )
