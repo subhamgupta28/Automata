@@ -1,22 +1,15 @@
 package dev.automata.automata.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.dto.WledResponse;
-import dev.automata.automata.dto.WledXmlResponse;
-import dev.automata.automata.model.Status;
 import dev.automata.automata.modules.Wled;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -66,6 +59,7 @@ public class MqttService {
     @ServiceActivator(inputChannel = "sendLiveData")
     public void sendLiveData(Map<String, Object> payload) {
         String deviceId = payload.get("device_id").toString();
+//        System.err.println("sendLiveData: " + payload);
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("No device found");
         }

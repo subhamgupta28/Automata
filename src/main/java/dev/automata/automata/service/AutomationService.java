@@ -138,7 +138,7 @@ public class AutomationService {
                             .setHeader("mqtt_topic", topic)
                             .build()
             );
-//            System.out.println("📤 Sent to " + topic + " => " + json);
+            System.out.println("📤 Sent to " + topic + " => " + json);
         } catch (Exception e) {
             System.err.println(e);
         }
@@ -166,8 +166,8 @@ public class AutomationService {
         RestTemplate restTemplate = new RestTemplate();
 
         Map<String, Object> map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
-        messagingTemplate.convertAndSend("/topic/action/" + device.getId(), map);
-        sendToTopic("automata/action/" + device.getId(), map);
+        messagingTemplate.convertAndSend("/topic/action." + device.getId(), map);
+        sendToTopic("action." + device.getId(), map);
         try {
             var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
             System.err.println(res);
@@ -185,8 +185,8 @@ public class AutomationService {
         var key = payload.get("key").toString();
         map.put(key, payload.get(key));
         map.put("key", key);
-        messagingTemplate.convertAndSend("/topic/action/" + deviceId, map);
-        sendToTopic("automata/action/" + deviceId, map);
+        messagingTemplate.convertAndSend("/topic/action." + deviceId, map);
+        sendToTopic("action." + deviceId, map);
         notificationService.sendNotification("Action applied", "success");
     }
 
@@ -220,7 +220,7 @@ public class AutomationService {
 
         String cacheKey = deviceId + ":" + automation.getId();
         AutomationCache automationCache = redisService.getAutomationCache(cacheKey);
-        System.err.println("Check automation: " + automation.getName());
+
 
         if (automationCache == null) {
             automationCache = AutomationCache.builder()
@@ -249,6 +249,16 @@ public class AutomationService {
         if (diff > 60 * 60)
             automationCache.setTriggeredPreviously(false);
 
+        var automationLog = AutomationLog.builder()
+                .automationId(automation.getId())
+                .automationName(automation.getName())
+                .conditionResults(conditionResults)
+                .operatorLogic(operatorLogic)
+                .payload(payload)
+                .triggerType(triggerType)
+                .triggerDeviceId(deviceId)
+                .timestamp(now);
+
         if (isTriggeredNow && !automationCache.isTriggeredPreviously()) {
             System.out.println("🚀 Automation Triggered: " + automation.getName());
             notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
@@ -261,18 +271,9 @@ public class AutomationService {
             automationCache.setLastUpdate(now);
             redisService.setAutomationCache(cacheKey, automationCache);
 
-            saveLog(AutomationLog.builder()
-                    .automationId(automation.getId())
-                    .automationName(automation.getName())
-                    .status(AutomationLog.LogStatus.TRIGGERED)
-                    .reason("All conditions met (" + operatorLogic + ") — actions executed")
-                    .conditionResults(conditionResults)
-                    .operatorLogic(operatorLogic)
-                    .payload(payload)
-                    .triggerType(triggerType)
-                    .triggerDeviceId(deviceId)
-                    .timestamp(now)
-                    .build());
+            automationLog.status(AutomationLog.LogStatus.TRIGGERED)
+                    .reason("All conditions met (" + operatorLogic + ") — actions executed");
+
 
         } else if (!isTriggeredNow && automationCache.isTriggeredPreviously()) {
             System.out.println("🔄 Automation Cleared: Reverting " + automation.getName());
@@ -285,48 +286,23 @@ public class AutomationService {
             automationCache.setLastUpdate(now);
             redisService.setAutomationCache(cacheKey, automationCache);
 
-            saveLog(AutomationLog.builder()
-                    .automationId(automation.getId())
-                    .automationName(automation.getName())
+            automationLog
                     .status(AutomationLog.LogStatus.RESTORED)
-                    .reason("Conditions no longer met — state restored")
-                    .conditionResults(conditionResults)
-                    .operatorLogic(operatorLogic)
-                    .payload(payload)
-                    .triggerType(triggerType)
-                    .triggerDeviceId(deviceId)
-                    .timestamp(now)
-                    .build());
+                    .reason("Conditions no longer met — state restored");
 
         } else if (!isTriggeredNow) {
-            saveLog(AutomationLog.builder()
-                    .automationId(automation.getId())
-                    .automationName(automation.getName())
+            automationLog
                     .status(AutomationLog.LogStatus.NOT_MET)
-                    .reason("Conditions not satisfied — no action taken")
-                    .conditionResults(conditionResults)
-                    .operatorLogic(operatorLogic)
-                    .payload(payload)
-                    .triggerType(triggerType)
-                    .triggerDeviceId(deviceId)
-                    .timestamp(now)
-                    .build());
+                    .reason("Conditions not satisfied — no action taken");
 
         } else {
             // isTriggeredNow && wasTriggeredPreviously — still active, cooldown
-            saveLog(AutomationLog.builder()
-                    .automationId(automation.getId())
-                    .automationName(automation.getName())
+            automationLog
                     .status(AutomationLog.LogStatus.SKIPPED)
-                    .reason("Conditions still met but already triggered — cooldown active (diff=" + diff + "s)")
-                    .conditionResults(conditionResults)
-                    .operatorLogic(operatorLogic)
-                    .payload(payload)
-                    .triggerType(triggerType)
-                    .triggerDeviceId(deviceId)
-                    .timestamp(now)
-                    .build());
+                    .reason("Conditions still met but already triggered — cooldown active (diff=" + diff + "s)");
         }
+        saveLog(automationLog.build());
+        System.err.println("Automation log, Name: " + automation.getName() + " Status: " + automationLog.build().getStatus() + ", Reason: " + automationLog.build().getReason());
     }
 
     private void saveLog(AutomationLog log) {
@@ -422,8 +398,8 @@ public class AutomationService {
                     restoreWledState(targetDeviceId, previousState, user);
                 } else {
                     // Generic MQTT/WS restore for other devices
-                    messagingTemplate.convertAndSend("/topic/action/" + targetDeviceId, previousState);
-                    sendToTopic("automata/action/" + targetDeviceId, previousState);
+                    messagingTemplate.convertAndSend("/topic/action." + targetDeviceId, previousState);
+                    sendToTopic("action." + targetDeviceId, previousState);
                 }
             }
         }
@@ -468,8 +444,8 @@ public class AutomationService {
         payload.put("keys", keyJoiner.toString());
 
 //        System.err.println(payload);
-        messagingTemplate.convertAndSend("/topic/action/" + deviceId, payload);
-        sendToTopic("automata/action/" + deviceId, payload);
+        messagingTemplate.convertAndSend("/topic/action." + deviceId, payload);
+        sendToTopic("action." + deviceId, payload);
         return payload;
     }
 
@@ -721,8 +697,8 @@ public class AutomationService {
                         .payload(payload)
                         .deviceType("sensor")
                         .build());
-                messagingTemplate.convertAndSend("/topic/action/" + action.getDeviceId(), payload);
-                sendToTopic("automata/action/" + action.getDeviceId(), payload);
+                messagingTemplate.convertAndSend("/topic/action." + action.getDeviceId(), payload);
+                sendToTopic("action." + action.getDeviceId(), payload);
             }
 
         }
