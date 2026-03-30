@@ -51,7 +51,7 @@ public class MqttConfig {
         options.setServerURIs(new String[]{brokerUrl});
         options.setUserName(user);
         options.setPassword(password.toCharArray());
-//        options.setAutomaticReconnect(true);
+        options.setAutomaticReconnect(true);
 //        options.setConnectionTimeout(2);
         options.setKeepAliveInterval(60);
         options.setCleanSession(true);

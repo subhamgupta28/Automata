@@ -18,4 +18,6 @@ public interface AutomationLogRepository extends MongoRepository<AutomationLog, 
     long countByAutomationIdAndStatusAndTimestampAfter(String id, AutomationLog.LogStatus logStatus, Date cutoffDate);
 
     List<AutomationLog> findByStatusAndTimestampAfter(AutomationLog.LogStatus logStatus, Date cutoffDate);
+
+    List<AutomationLog> findByAutomationIdAndTimestampAfterAndStatusEquals(String automationId, Date timestampAfter, AutomationLog.LogStatus status);
 }

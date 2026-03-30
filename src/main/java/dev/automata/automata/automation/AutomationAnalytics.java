@@ -24,6 +24,7 @@ public class AutomationAnalytics {
     private long restoredCount;
     private long skippedCount;
     private long notMetCount;
+    private long userOverrideCount;
 
     // Performance metrics
     private double successRate; // Percentage
