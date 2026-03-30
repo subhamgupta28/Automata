@@ -8,6 +8,14 @@ import java.util.List;
 
 public interface AutomationLogRepository extends MongoRepository<AutomationLog, String> {
     List<AutomationLog> findByAutomationIdOrderByTimestampDesc(String automationId);
+
     List<AutomationLog> findByTimestampAfterOrderByTimestampDesc(Date after);
+
     List<AutomationLog> findByStatusOrderByTimestampDesc(AutomationLog.LogStatus status);
+
+    List<AutomationLog> findByAutomationIdAndTimestampAfter(String automationId, Date cutoffDate);
+
+    long countByAutomationIdAndStatusAndTimestampAfter(String id, AutomationLog.LogStatus logStatus, Date cutoffDate);
+
+    List<AutomationLog> findByStatusAndTimestampAfter(AutomationLog.LogStatus logStatus, Date cutoffDate);
 }

@@ -39,7 +39,7 @@ public class MqttConfig {
     private String password;
     private final String clientId = "springboot-client-" + UUID.randomUUID();
     private final String topicDefault = "/topic/status/#";
-    //    private final String topicAction = "action/#";
+    private final String topicAction = "action/#";
     private final String topicSendData = "sendData/#";
     private final String topicSendLiveData = "sendLiveData/#";
     private final String topicSys = "$SYS/broker/clients/123";
@@ -109,7 +109,7 @@ public class MqttConfig {
                         mqttClientFactory(),
                         topicSendLiveData,
                         topicSendData,
-//                        topicAction,
+                        topicAction,
                         topicDefault,
                         topicSys,
 //                        wledDeviceTopic,
@@ -165,7 +165,7 @@ public class MqttConfig {
                                 .channelMapping(topicSendLiveData, "sendLiveData")
                                 .channelMapping(topicSendData, "sendData")
                                 .channelMapping(topicDefault, "mqttInputChannel")
-//                                .channelMapping(topicAction, "action")
+                                .channelMapping(topicAction, "action")
                                 .channelMapping(topicSys, "sysData")
 //                                .channelMapping(wledGroupTopic, "mqttInputChannel")
                 )
