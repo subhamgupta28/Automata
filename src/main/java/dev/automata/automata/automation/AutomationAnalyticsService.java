@@ -52,6 +52,7 @@ public class AutomationAnalyticsService {
                 .restoredCount(countByStatus(logs, AutomationLog.LogStatus.RESTORED))
                 .skippedCount(countByStatus(logs, AutomationLog.LogStatus.SKIPPED))
                 .notMetCount(countByStatus(logs, AutomationLog.LogStatus.NOT_MET))
+                .userOverrideCount(countByStatus(logs, AutomationLog.LogStatus.USER_OVERRIDE))
                 .successRate(calculateSuccessRate(logs))
                 .averageConditionsPassed(calculateAverageConditionsPassed(logs))
                 .triggersByDay(groupTriggersByDay(logs))
@@ -101,7 +102,7 @@ public class AutomationAnalyticsService {
         Date cutoffDate = Date.from(Instant.now().minus(Duration.ofHours(hours)));
 
         List<AutomationLog> logs = automationLogRepository
-                .findByAutomationIdAndTimestampAfter(automationId, cutoffDate);
+                .findByAutomationIdAndTimestampAfterAndStatusEquals(automationId, cutoffDate, AutomationLog.LogStatus.TRIGGERED);
 
         return logs.stream()
                 .sorted(Comparator.comparing(AutomationLog::getTimestamp))

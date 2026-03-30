@@ -1,10 +1,6 @@
 package dev.automata.automata.configs;
 
 import dev.automata.automata.security.JwtAuthenticationFilter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -15,21 +11,13 @@ import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.io.IOException;
-import java.util.List;
-
-import static org.springframework.http.HttpMethod.*;
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 @Configuration
@@ -66,7 +54,8 @@ public class SecurityConfiguration {
             "/exp",
 //            "/api/v1/virtual/**",
             "/api/v1/main/updateDevice",
-            "/api/v1/main/automations",
+            "/api/v1/main/automations/**",
+            "/api/v1/action/**",
             "/api/v1/main/masterList",
             "/api/v1/action/send/**",
             "/audio",

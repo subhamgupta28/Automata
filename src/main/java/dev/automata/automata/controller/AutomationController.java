@@ -12,7 +12,6 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,7 +20,7 @@ import java.util.Set;
 
 @Slf4j
 @RequestMapping("/api/v1/action")
-@Controller
+@RestController
 @RequiredArgsConstructor
 public class AutomationController {
 
