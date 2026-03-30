@@ -50,7 +50,7 @@ public class AutomationService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AutomationLogRepository automationLogRepository;
     private final AutomationValidationService validationService;
-    private static final String TOPIC_ACTION = "device_action.";
+    private static final String TOPIC_ACTION = "action.";
 
     public List<Automation> findAll() {
         return automationRepository.findAll();
@@ -213,8 +213,27 @@ public class AutomationService {
     }
 
     private void executeAutomationImmediate(Automation automation, Map<String, Object> payload, String user) {
-        if (automation.getIsEnabled())
+        if (automation.getIsEnabled()) {
+            var deviceId = automation.getTrigger().getDeviceId();
+            Date now = new Date();
+            var automationLog = AutomationLog.builder()
+                    .automationId(automation.getId())
+                    .automationName(automation.getName())
+                    .conditionResults(new ArrayList<>())
+                    .operatorLogic("")
+                    .payload(payload)
+                    .triggerType(automation.getTrigger().getType())
+                    .triggerDeviceId(deviceId)
+                    .timestamp(now);
+
+            automationLog
+                    .status(AutomationLog.LogStatus.USER_OVERRIDE)
+                    .reason("Automation triggered manually by user: " + user);
+
             executeActions(automation, user, payload);
+            saveLog(automationLog.build());
+        }
+
     }
 
 

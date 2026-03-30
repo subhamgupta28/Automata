@@ -1,9 +1,11 @@
 package dev.automata.automata.model;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Date;
 import java.util.List;
@@ -40,7 +42,8 @@ public class AutomationLog {
         SKIPPED,     // Already triggered previously, cooldown active
         RESTORED,    // Conditions cleared, state reverted
         NOT_MET,     // Conditions evaluated but not satisfied
-        ERROR        // Exception during evaluation
+        ERROR,        // Exception during evaluation
+        USER_OVERRIDE
     }
 
     @lombok.Data
