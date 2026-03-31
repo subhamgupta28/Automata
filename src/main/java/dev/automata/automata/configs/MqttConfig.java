@@ -38,10 +38,10 @@ public class MqttConfig {
     @Value("${application.mqtt.password}")
     private String password;
     private final String clientId = "springboot-client-" + UUID.randomUUID();
-    private final String topicDefault = "/topic/status/#";
-    private final String topicAction = "action/#";
-    private final String topicSendData = "sendData/#";
-    private final String topicSendLiveData = "sendLiveData/#";
+    private final String topicDefault = "status";
+    private final String topicAction = "action";
+    private final String topicSendData = "sendData";
+    private final String topicSendLiveData = "sendLiveData";
     private final String topicSys = "$SYS/broker/clients/123";
     private final String wledDeviceTopic = "automata-wled/#";
     private final String wledGroupTopic = "automata-wled/all";

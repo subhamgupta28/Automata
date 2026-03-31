@@ -50,7 +50,7 @@ public class AutomationService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AutomationLogRepository automationLogRepository;
     private final AutomationValidationService validationService;
-    private static final String TOPIC_ACTION = "action.";
+    private static final String TOPIC_ACTION = "topic/action/";
 
     public List<Automation> findAll() {
         return automationRepository.findAll();
