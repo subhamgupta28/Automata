@@ -1,12 +1,12 @@
 import ThermostatCard from "./ThermostatCard.jsx";
 
-export default function ({devices, messages}){
+export default function ({devices, messages}) {
 
-    return(
+    return (
         <>
-            {devices.map(device=>(
+            {devices.map(device => (
                 <div key={device.id}>
-                    <ThermostatCard  device={device} messages={messages}/>
+                    <ThermostatCard device={device} messages={messages}/>
                 </div>
 
             ))}

@@ -1,21 +1,14 @@
-import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import React, {useEffect, useMemo, useState} from "react";
-import {Button, Card, CardContent, CircularProgress, LinearProgress, Menu} from "@mui/material";
+import {Card, LinearProgress} from "@mui/material";
 import Typography from "@mui/material/Typography";
-import {NodeResizer} from "@xyflow/react";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
-import {CustomSlider} from "../charts/CustomSlider.jsx";
-import {Presets} from "../charts/Presets.jsx";
-import {SwitchButton} from "../charts/SwitchButton.jsx";
-import LightBulbCard from "./LightBulbCard.jsx";
 import SettingsIcon from "@mui/icons-material/Settings";
 import IconButton from "@mui/material/IconButton";
 import ChartDetail from "../charts/ChartDetail.jsx";
-import ThermostatCard from "../device_types/ThermostatCard.jsx";
 import WledDevices from "../device_types/WledDevices.jsx";
 import HVACDevices from "../device_types/HVACDevices.jsx";
-import SystemDevice from "../device_types/SystemDevice.jsx";
 import {CustomModal} from "../home/CustomModal.jsx";
+import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 
 export const combineAttributes = (attributesByDevice) => {
     const map = new Map();
@@ -46,7 +39,7 @@ export const combineAttributes = (attributesByDevice) => {
 };
 
 
-export default function VirtualDevice({id, data, isConnectable, selected}) {
+export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) => {
     const {messages} = useDeviceLiveData();
     const {devices, loading, error} = useCachedDevices();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,7 +62,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
     useEffect(() => {
         if (deviceIds && devices) {
             const res = devices.filter(d => deviceIds.includes(d.id));
-            console.log("res", res)
+            // console.log("res", res)
             setDeviceList(res);
 
 
@@ -127,8 +120,8 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                         // paddingRight: '6px',
                         // borderRadius: '12px 12px 0px 0px',
                         // background: 'transparent',
-                        marginRight:'4px',
-                        alignItems:'center',
+                        marginRight: '4px',
+                        alignItems: 'center',
                         display: 'flex',
                         justifyContent: 'space-between'
                     }}>
@@ -155,7 +148,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                         width: '100%',
                         // display:'flex',
                         alignItems: 'center',
-                        padding:'8px',
+                        padding: '8px',
                         paddingBottom: '10px',
                         justifyContent: 'center'
                     }}>
@@ -166,7 +159,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
                         </Card>
                     )}
 
-                    <div style={{display:'flex', justifyContent:'center'}}>
+                    <div style={{display: 'flex', justifyContent: 'center'}}>
                         {deviceList.length !== 0 ? (
                             <div>
                                 <WledDevices devices={wledDevices} messages={messages}/>
@@ -205,7 +198,7 @@ export default function VirtualDevice({id, data, isConnectable, selected}) {
             </Card>
         </>
     )
-}
+});
 
 
 

@@ -1,9 +1,8 @@
 import {addEdge, applyEdgeChanges, applyNodeChanges, ReactFlow, useEdgesState, useNodesState} from "@xyflow/react";
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {getVirtualDeviceList} from "../../services/apis.jsx";
-import NodeInspector from "../home/NodeInspector.jsx";
-import VirtualDevice from "../v2/VirtualDevice.jsx";
-import WeatherCard from "../v2/WeatherCard.jsx";
+import {VirtualDevice} from "../v2/VirtualDevice.jsx";
+import {WeatherCard} from "../v2/WeatherCard.jsx";
 import {EnergyNode} from "../v2/EnergyNode.jsx";
 import {MainNode} from "./MainNode.jsx";
 
@@ -20,7 +19,7 @@ const dashboards = [
         type: "main",
         x: 50,
         y: 50,
-        data: {name:'Home'}
+        data: {name: 'Home'}
     },
     {
         id: "analytics",
@@ -28,7 +27,7 @@ const dashboards = [
         type: "main",
         x: 1500,
         y: -1000,
-        data: {name:'Analytics'}
+        data: {name: 'Analytics'}
     },
     {
         id: "devices",
@@ -36,7 +35,7 @@ const dashboards = [
         type: "main",
         x: 1500,
         y: 1200,
-        data: {name:'Devices'}
+        data: {name: 'Devices'}
     },
     {
         id: "automations",
@@ -52,7 +51,7 @@ const dashboards = [
         type: "main",
         x: 4000,
         y: 50,
-        data: {name:'Virtual Device'}
+        data: {name: 'Virtual Device'}
     },
     {
         id: "dashboard",

@@ -1,19 +1,8 @@
-import React, {useRef, useState, useEffect} from 'react';
-import DeviceNodes from "../home/DeviceNodes.jsx";
-import BubblesBackground from "../BubblesBackground.jsx";
-import WeatherCard from "../v2/WeatherCard.jsx";
-import WaterBatteryLevel from "../v2/WaterBatteryLevel.jsx";
-import {RadarChart} from "@mui/x-charts/RadarChart";
-import {RadarAxis} from "@mui/x-charts";
-import {CompactWeeklyEnergyRadarWidget} from "../charts/CompactWeeklyEnergyRadarWidget.jsx";
+import React from 'react';
 // Dummy data following the EnergyStat Java model (one entry per day)
 // Dummy data following the EnergyStat Java model (one entry per day)
-import {Card, CardContent, Typography, Box, LinearProgress, Stack, TextField, Popover} from "@mui/material";
+import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
-import IconButton from "@mui/material/IconButton";
-import PaletteIcon from "@mui/icons-material/Palette";
-import ColorPicker from "../charts/ColorPicker.jsx";
-import LiquidFillGauge from "react-ts-liquid-gauge";
 import BatteryCard from "../v2/BatteryCard.jsx";
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
@@ -63,8 +52,6 @@ const series = [
     {label: 'Battery 270Wh', data: [1250, 980, 860, 1199, 485, 965]},
     {label: 'Battery 500Wh', data: [1000, 700, 400, 159, 850, 653]},
 ];
-
-
 
 
 const Exp = () => {
