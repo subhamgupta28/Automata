@@ -1,17 +1,19 @@
-import WeatherCard from "./WeatherCard.jsx";
+import {WeatherCard} from "./WeatherCard.jsx";
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {getVirtualDeviceList} from "../../services/apis.jsx";
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Controls, Panel,
+    applyNodeChanges,
+    Controls,
+    Panel,
     ReactFlow,
     useEdgesState,
     useNodesState,
     useReactFlow
 } from "@xyflow/react";
 
-import VirtualDevice from "./VirtualDevice.jsx";
+import {VirtualDevice} from "./VirtualDevice.jsx";
 import {EnergyNode} from "./EnergyNode.jsx";
 import NodeInspector from "../home/NodeInspector.jsx";
 import {Edit} from "@mui/icons-material";
@@ -134,7 +136,7 @@ function DashboardDetail() {
                         <Edit fontSize="small"/>
                     </IconButton>
                 </Panel>
-                <Controls orientation="horizontal" />
+                <Controls orientation="horizontal"/>
                 {/*<ZoomSlider position="bottom-left"/>*/}
             </ReactFlow>
 

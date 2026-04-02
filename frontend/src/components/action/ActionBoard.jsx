@@ -1,35 +1,30 @@
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Panel,
-    ReactFlow, ReactFlowProvider,
-    useEdgesState, useNodesState, useReactFlow
+    applyNodeChanges,
+    Panel,
+    ReactFlow,
+    useEdgesState,
+    useNodesState,
+    useReactFlow
 } from "@xyflow/react";
-import React, {useCallback, useEffect, useMemo, useState, createContext, useContext, useRef} from "react";
+import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react";
 import {disableAutomation, getActions, getAutomationDetail, saveAutomationDetail} from "../../services/apis.jsx";
 
-import {
-    Button,
-    Card,
-    CardContent, Chip, Switch,
-} from "@mui/material";
-import Divider from "@mui/material/Divider";
+import {Button, Card, CardContent, Chip, Switch,} from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import CustomEdge from "./CustomEdge.jsx";
-import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import '@xyflow/react/dist/style.css';
-import EdgeLine from "./EdgeLine.jsx";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
-import ListItemButton from "@mui/material/ListItemButton";
 import {TriggerNode} from "./TriggerNode.jsx";
 import {ActionNode} from "./ActionNode.jsx";
 import {ConditionNode} from "./ConditionNode.jsx";
 import {ValueReaderNode} from "./ValueReaderNode.jsx";
 import {And, Or} from "./Conditions.jsx";
-import useLayoutNodes from "./useLayoutNodes.jsx";
+
 
 const triggerStyle = {
     padding: '10px',

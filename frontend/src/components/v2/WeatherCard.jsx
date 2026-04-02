@@ -63,7 +63,7 @@ const AQIBar = ({aqi}) => {
                     <Typography>{label}</Typography>
                 </Box>
 
-                <Typography variant="body2"  maxWidth={500}>
+                <Typography variant="body2" maxWidth={500}>
                     {getAQIDescription(aqi)}
                 </Typography>
             </Box>
@@ -193,7 +193,7 @@ const getHumidityIcon = (humidity) => {
 };
 
 
-export default function WeatherCard({id, data, isConnectable, selected}) {
+export const WeatherCard = React.memo(({id, data, isConnectable, selected}) => {
     const {messages} = useDeviceLiveData();
     const [dataPoint, setDatapoint] = useState({});
     const [mainDevice, setMainDevice] = useState("");
@@ -490,5 +490,5 @@ export default function WeatherCard({id, data, isConnectable, selected}) {
             </CardContent>
         </Card>
     );
-};
+});
 

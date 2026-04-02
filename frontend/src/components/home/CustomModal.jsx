@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {getLastData, refreshDeviceById, sendAction, updateAttrCharts, updateShowCharts} from "../../services/apis.jsx";
+import {refreshDeviceById, sendAction, updateAttrCharts, updateShowCharts} from "../../services/apis.jsx";
 import {Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Tab, Tabs} from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
@@ -11,7 +11,6 @@ import {MapView} from "../charts/MapView.jsx";
 import {SwitchButton} from "../charts/SwitchButton.jsx";
 import PersonTracker from "../charts/PersonTracker.jsx";
 import Typography from "@mui/material/Typography";
-import ChartDetail from "../charts/ChartDetail.jsx";
 import {CustomTabPanel} from "../dashboard/AnalyticsView.jsx";
 
 dayjs.extend(relativeTime);

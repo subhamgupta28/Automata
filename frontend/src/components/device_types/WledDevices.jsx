@@ -132,7 +132,7 @@ const DetailMenu = ({anchorEl, setAnchorEl, sliderData, presetButtons, deviceId,
                         keyName="color1"
                         deviceId={deviceId}
                         type={deviceType}
-                        />
+                    />
                     <ColorPicker
                         value={liveData?.["color2"]}
                         keyName="color2"
