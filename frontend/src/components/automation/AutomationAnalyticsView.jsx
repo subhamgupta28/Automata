@@ -137,7 +137,7 @@ export default function AutomationAnalyticsView() {
         <Box
             sx={{
                 minHeight: '100vh',
-                paddingTop: '60px',
+                paddingTop: '3dvh',
                 paddingBottom: '20px',
                 color: theme.palette.text.primary,
                 background: 'transparent',
@@ -276,7 +276,7 @@ export default function AutomationAnalyticsView() {
             </Box>
 
             {/* Tab Content */}
-            <Box sx={{marginX: '20px', overflow: 'auto'}}>
+            <Box sx={{marginX: '20px', overflow: 'auto', height: '75dvh'}}>
                 {/* All Automations Tab */}
                 <CustomTabPanel value={tabIndex} index={0}>
                     {loading ? (
