@@ -328,7 +328,7 @@ public class AutomationService {
                     .reason("Conditions still met but already triggered — cooldown active (diff=" + diff + "s)");
         }
         saveLog(automationLog.build());
-        System.err.println("Automation log, Name: " + automation.getName() + " Status: " + automationLog.build().getStatus() + ", Reason: " + automationLog.build().getReason());
+//        System.err.println("Automation log, Name: " + automation.getName() + " Status: " + automationLog.build().getStatus() + ", Reason: " + automationLog.build().getReason());
     }
 
     private void saveLog(AutomationLog log) {
@@ -336,7 +336,7 @@ public class AutomationService {
         if (log.getStatus() == AutomationLog.LogStatus.NOT_MET) {
             String debounceKey = "LOG_DEBOUNCE:" + log.getAutomationId();
             if (redisService.exists(debounceKey)) return;
-            redisService.setWithExpiry(debounceKey, "1", 60); // 60 seconds TTL
+            redisService.setWithExpiry(debounceKey, "1", 60 * 60); // 60 seconds TTL
         }
         automationLogRepository.save(log);
     }

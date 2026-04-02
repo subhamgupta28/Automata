@@ -1,7 +1,7 @@
-import React, {useEffect, useRef, useState} from 'react'
+import React, {useEffect, useState} from 'react'
 
 import {ThemeProvider} from "@mui/material/styles";
-import {darkTheme, lightTheme} from "./Theme.jsx";
+import {darkTheme} from "./Theme.jsx";
 import {BrowserRouter} from "react-router-dom";
 import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
 import {AuthProvider} from "./components/auth/AuthContext.jsx";
@@ -71,7 +71,7 @@ function App() {
                               }}
                         >
                             {/*<header>*/}
-                                {/*<Nav/>*/}
+                            {/*<Nav/>*/}
                             {/*</header>*/}
                             {/*<section*/}
                             {/*    style={{backgroundColor: '#1b1b1b'}}*/}
@@ -83,7 +83,7 @@ function App() {
                             {/*        noiseIntensity={10}*/}
                             {/*        rotation={0}*/}
                             {/*    />*/}
-                                <SideDrawer/>
+                            <SideDrawer/>
                             {/*</section>*/}
                             {/*<HealthCheck/>*/}
                         </main>

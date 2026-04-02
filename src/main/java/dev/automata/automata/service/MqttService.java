@@ -2,6 +2,7 @@ package dev.automata.automata.service;
 
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.dto.WledResponse;
+import dev.automata.automata.model.Status;
 import dev.automata.automata.modules.Wled;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -83,8 +84,28 @@ public class MqttService {
     }
 
     @ServiceActivator(inputChannel = "sysData")
-    public void sysData(Object payload) {
-        System.out.println("✅ sysData: " + payload);
+    public void sysData(Message<?> message) {
+        String topic = (String) message.getHeaders().get("mqtt_receivedTopic");
+        String time = message.getPayload().toString();
+
+        if (topic == null) return;
+
+        String[] macAddresses = topic.split("-");
+
+        var status = Status.INACTIVE;
+        System.err.println("sysData topic: " + topic);
+
+        if (topic.contains("/connected")) {
+            status = Status.ONLINE;
+        } else if (topic.contains("/disconnected")) {
+            status = Status.OFFLINE;
+        }
+        var address = macAddresses[macAddresses.length - 1];
+        var res = mainService.setStatusOfDeviceByMacAddress(address, status);
+        if (res.equals("success"))
+            System.err.println("Device status of: " + address + " at: " + time + " and status set to " + status);
+        else
+            System.err.println("Device not found: " + topic);
     }
 
     @ServiceActivator(inputChannel = "wledChannel")

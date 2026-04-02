@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -16,11 +18,16 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "automation_logs")
+@CompoundIndexes({
+        @CompoundIndex(name = "automation_timestamp_idx", def = "{'automationId': 1, 'timestamp': -1}"),
+        @CompoundIndex(name = "timestamp_status_idx", def = "{'timestamp': -1, 'status': 1}")
+})
 public class AutomationLog {
 
     @Id
     private String id;
 
+    @Indexed
     private String automationId;
     private String automationName;
 

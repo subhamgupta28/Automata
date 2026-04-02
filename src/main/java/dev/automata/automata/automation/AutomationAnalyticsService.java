@@ -65,14 +65,84 @@ public class AutomationAnalyticsService {
     }
 
     /**
-     * Get analytics for all automations (overview)
+     * Get analytics for all automations (overview) - OPTIMIZED
+     * Uses batch processing to avoid N+1 query problem
      */
     public List<AutomationAnalytics> getAllAutomationAnalytics(int daysBack) {
-        return automationRepository.findAll().stream()
-                .map(a -> getAutomationAnalytics(a.getId(), daysBack))
+        long startTime = System.currentTimeMillis();
+        log.info("=== Analytics Overview Request Started (daysBack: {}) ===", daysBack);
+        
+        Date cutoffDate = Date.from(Instant.now().minus(Duration.ofDays(daysBack)));
+        
+        // Step 1: Fetch all automations
+        long step1Start = System.currentTimeMillis();
+        List<Automation> automations = automationRepository.findAll();
+        long step1Time = System.currentTimeMillis() - step1Start;
+        log.info("Step 1 - Fetch automations: {} automations in {}ms", automations.size(), step1Time);
+        
+        if (automations.isEmpty()) {
+            return Collections.emptyList();
+        }
+        
+        // Step 2: Fetch ALL logs in ONE query (not N queries)
+        long step2Start = System.currentTimeMillis();
+        List<AutomationLog> allLogs = automationLogRepository
+                .findByTimestampAfterOrderByTimestampDesc(cutoffDate);
+        long step2Time = System.currentTimeMillis() - step2Start;
+        log.info("Step 2 - Fetch all logs: {} logs in {}ms", allLogs.size(), step2Time);
+        
+        // Step 3: Group logs by automationId for quick lookup
+        long step3Start = System.currentTimeMillis();
+        Map<String, List<AutomationLog>> logsByAutomationId = allLogs.stream()
+                .collect(Collectors.groupingBy(AutomationLog::getAutomationId));
+        long step3Time = System.currentTimeMillis() - step3Start;
+        log.info("Step 3 - Group logs: {} groups in {}ms", logsByAutomationId.size(), step3Time);
+        
+        // Step 4: Process all automations with pre-grouped logs
+        long step4Start = System.currentTimeMillis();
+        List<AutomationAnalytics> result = automations.stream()
+                .map(automation -> {
+                    List<AutomationLog> logsForAutomation = logsByAutomationId
+                            .getOrDefault(automation.getId(), Collections.emptyList());
+                    return buildAnalyticsForAutomation(automation, logsForAutomation, daysBack);
+                })
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparingLong(AutomationAnalytics::getTriggeredCount).reversed())
                 .collect(Collectors.toList());
+        long step4Time = System.currentTimeMillis() - step4Start;
+        log.info("Step 4 - Process automations: {} results in {}ms", result.size(), step4Time);
+        
+        long totalTime = System.currentTimeMillis() - startTime;
+        log.info("=== Analytics Overview Complete: Total {}ms ===", totalTime);
+        log.info("Breakdown - Fetch automations: {}ms, Fetch logs: {}ms, Group: {}ms, Process: {}ms", 
+            step1Time, step2Time, step3Time, step4Time);
+        
+        return result;
+    }
+
+    /**
+     * Build analytics for a single automation with pre-fetched logs
+     */
+    private AutomationAnalytics buildAnalyticsForAutomation(Automation automation, List<AutomationLog> logs, int daysBack) {
+        return AutomationAnalytics.builder()
+                .automationId(automation.getId())
+                .automationName(automation.getName())
+                .periodDays(daysBack)
+                .totalEvaluations(logs.size())
+                .triggeredCount(countByStatus(logs, AutomationLog.LogStatus.TRIGGERED))
+                .restoredCount(countByStatus(logs, AutomationLog.LogStatus.RESTORED))
+                .skippedCount(countByStatus(logs, AutomationLog.LogStatus.SKIPPED))
+                .notMetCount(countByStatus(logs, AutomationLog.LogStatus.NOT_MET))
+                .userOverrideCount(countByStatus(logs, AutomationLog.LogStatus.USER_OVERRIDE))
+                .successRate(calculateSuccessRate(logs))
+                .averageConditionsPassed(calculateAverageConditionsPassed(logs))
+                .triggersByDay(groupTriggersByDay(logs))
+                .mostCommonTriggerTimes(getMostCommonTriggerTimes(logs))
+                .failureReasons(getTopFailureReasons(logs))
+                .affectedDevices(getAffectedDevices(automation))
+                .lastTriggered(getLastTriggeredTime(logs))
+                .isCurrentlyActive(isCurrentlyActive(logs))
+                .build();
     }
 
     /**

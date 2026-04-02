@@ -7,10 +7,11 @@ import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.*;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Function;
@@ -402,9 +403,11 @@ public class MainService {
         }
         return Map.of("x", device.getX(), "y", device.getY());
     }
+
     public Device getDeviceByCategory(String category) {
         return deviceRepository.findByCategory(category);
     }
+
     public Device getDeviceByName(String name) {
         return deviceRepository.findByName(name);
     }
@@ -573,5 +576,13 @@ public class MainService {
             return Map.of("MQTT_HOST", "raspberry.local", "MQTT_PORT", "1883");
         else
             return res;
+    }
+
+    public String setStatusOfDeviceByMacAddress(String address, Status status) {
+        var devices = deviceRepository.findAllByMacAddr(address);
+        if (devices == null)
+            return "error";
+        devices.forEach(d -> setStatus(d.getId(), status));
+        return "success";
     }
 }

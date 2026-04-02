@@ -4,47 +4,44 @@ import Box from '@mui/material/Box';
 import List from '@mui/material/List';
 import CssBaseline from '@mui/material/CssBaseline';
 import IconButton from '@mui/material/IconButton';
-import MenuIcon from '@mui/icons-material/Menu';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Tooltip from '@mui/material/Tooltip';
-import {Navigate, NavLink, Route, Routes, useLocation} from "react-router-dom";
+import {NavLink, Route, Routes, useLocation} from "react-router-dom";
 import DeviceNodes from "../home/DeviceNodes.jsx";
 import Devices from "../Devices.jsx";
 import MobileView from "../dashboard/MobileView.jsx";
 import AnalyticsView from "../dashboard/AnalyticsView.jsx";
+import AutomationAnalyticsView from "../automation/AutomationAnalyticsView.jsx";
 import {ConfigurationView} from "../dashboard/ConfigurationView.jsx";
 import {AppCacheProvider} from "../../services/AppCacheContext.jsx";
 import ActionBoard from "../action/ActionBoard.jsx";
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import Typography from "@mui/material/Typography";
 import HomeIcon from '@mui/icons-material/Home';
 import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import AdbIcon from "@mui/icons-material/Adb";
 import Notifications from "../Notifications.jsx";
 import {SnackbarProvider} from "notistack";
-import {Card, tooltipClasses} from "@mui/material";
+import {Card} from "@mui/material";
 import Exp from "../dashboard/Exp.jsx";
 import {DeviceDataProvider} from "../../services/DeviceDataProvider.jsx";
 import SignUp from "../auth/SignUp.jsx";
 import SignIn from "../auth/SignIn.jsx";
 import PrivateRoute from "../auth/PrivateRoute.jsx";
-import {AuthProvider, useAuth} from "../auth/AuthContext.jsx";
+import {useAuth} from "../auth/AuthContext.jsx";
 import LoginIcon from '@mui/icons-material/Login';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import OptionsMenu from "./OptionsMenu.jsx";
 import isEmpty from "../../utils/Helper.jsx";
 import Welcome from "../Welcome.jsx";
-import {useIsMobile} from "../../utils/useIsMobile.jsx";
 import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
 import VirtualDeviceForm from "../v2/VirtualDeviceForm.jsx";
-import {CalendarViewMonthRounded, Dashboard, GridView, PlayCircleFilled} from "@mui/icons-material";
+import {Dashboard, GridView, PlayCircleFilled, TrendingUp} from "@mui/icons-material";
 import DashboardV2 from "../v2/DashboardV2.jsx";
 import Presentation from "../demo/Presentation.jsx";
 import AppIcon from "../../../public/icon-color.png"
@@ -126,6 +123,7 @@ export default function SideDrawer() {
     const authItems = [
         {name: 'Home', url: '/', icon: <HomeIcon/>},
         {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
+        {name: 'Automation Analytics', url: '/automation-analytics', icon: <TrendingUp/>},
         {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
         {name: 'Virtual Device', url: '/virtual', icon: <Dashboard/>},
         {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
@@ -149,7 +147,14 @@ export default function SideDrawer() {
             <Tooltip
                 title={item.name} placement="right"
                 disableHoverListener={open} slotProps={{
-                tooltip: {sx: {fontSize: '1rem', color: '#ffd821', backgroundColor: 'rgb(255 255 255 / 10%)', backdropFilter: 'blur(3px)'}}
+                tooltip: {
+                    sx: {
+                        fontSize: '1rem',
+                        color: '#ffd821',
+                        backgroundColor: 'rgb(255 255 255 / 10%)',
+                        backdropFilter: 'blur(3px)'
+                    }
+                }
             }}>
                 {item.url ? (
                     <ListItemButton
@@ -241,7 +246,7 @@ export default function SideDrawer() {
                 </Drawer>
             }
 
-            <Box component="main" sx={{flexGrow: 1,}}>
+            <Box component="main" sx={{flexGrow: 1, height: '100dvh'}}>
 
                 {/*<Card*/}
                 {/*    elevation={10}*/}
@@ -295,6 +300,8 @@ export default function SideDrawer() {
                                 <Route index element={<PrivateRoute element={<DashboardV2/>}/>}/>
                                 {/*<Route path="/" element={<PrivateRoute element={<DeviceNodes/>}/>}/>*/}
                                 <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
+                                <Route path="automation-analytics"
+                                       element={<PrivateRoute element={<AutomationAnalyticsView/>}/>}/>
                                 <Route path="presentation" element={<PrivateRoute element={<Presentation/>}/>}/>
                                 <Route path="virtual" element={<PrivateRoute element={<VirtualDeviceForm/>}/>}/>
                                 <Route path="dashboard" element={<PrivateRoute element={<DeviceNodes/>}/>}/>
