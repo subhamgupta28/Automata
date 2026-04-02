@@ -345,6 +345,44 @@ export const getLastDataByDeviceId = async (deviceId) => {
     return response.data;
 }
 
+export const getAutomationAnalytics = async (automationId, daysBack = 7) => {
+    const response = await api.get(`action/${automationId}/analytics?daysBack=${daysBack}`, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        timeout: 120000, // 2 minute timeout
+    });
+    return response.data;
+}
+
+export const getAutomationAnalyticsOverview = async (daysBack = 7) => {
+    const response = await api.get(`action/analytics/overview?daysBack=${daysBack}`, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        timeout: 600000, // 10 minute timeout for large overview requests (increased from 5)
+    });
+    return response.data;
+}
+
+export const getTopPerformingAutomations = async (limit = 5, daysBack = 7) => {
+    const response = await api.get(`action/analytics/top-performing?limit=${limit}&daysBack=${daysBack}`, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+    return response.data;
+}
+
+export const getProblematicAutomations = async (successThreshold = 70, daysBack = 7) => {
+    const response = await api.get(`action/analytics/problematic?successThreshold=${successThreshold}&daysBack=${daysBack}`, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+    return response.data;
+}
+
 function useGetFetch(url) {
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);

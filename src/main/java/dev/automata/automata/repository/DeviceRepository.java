@@ -1,8 +1,6 @@
 package dev.automata.automata.repository;
 
 import dev.automata.automata.model.Device;
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.Collection;
@@ -23,4 +21,6 @@ public interface DeviceRepository extends MongoRepository<Device, String> {
     List<Device> findAllByType(String type);
 
     Device findByCategory(String category);
+
+    List<Device> findAllByMacAddr(String macAddr);
 }

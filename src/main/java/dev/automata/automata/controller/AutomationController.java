@@ -273,13 +273,16 @@ public class AutomationController {
      */
     @GetMapping("/analytics/overview")
     public ResponseEntity<List<AutomationAnalytics>> getAnalyticsOverview(
-            @RequestParam(defaultValue = "30") int daysBack) {
+            @RequestParam(defaultValue = "7") int daysBack) {
 
         log.info("Fetching analytics overview for all automations ({} days)", daysBack);
 
         List<AutomationAnalytics> analytics = analyticsService.getAllAutomationAnalytics(daysBack);
 
-        return ResponseEntity.ok(analytics);
+        return ResponseEntity.ok()
+                // Cache for 5 minutes on client side
+                .cacheControl(org.springframework.http.CacheControl.maxAge(300, java.util.concurrent.TimeUnit.SECONDS))
+                .body(analytics);
     }
 
     /**

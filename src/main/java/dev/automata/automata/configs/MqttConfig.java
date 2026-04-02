@@ -42,7 +42,7 @@ public class MqttConfig {
     private final String topicAction = "action";
     private final String topicSendData = "sendData";
     private final String topicSendLiveData = "sendLiveData";
-    private final String topicSys = "$SYS/broker/clients/123";
+    private final String topicSys = "broker/status/#";
     private final String wledDeviceTopic = "automata-wled/#";
     private final String wledGroupTopic = "automata-wled/all";
 
@@ -160,14 +160,20 @@ public class MqttConfig {
         return IntegrationFlow.from(inbound())
                 .transform(safeJsonTransformer)
                 .route(Message.class,
-                        m -> (String) m.getHeaders().get("mqtt_receivedTopic"),
+                        m -> {
+                            String topic = (String) m.getHeaders().get("mqtt_receivedTopic");
+                            if (topic == null) return "mqttInputChannel";
+                            // normalize wildcard topics to their channel name
+                            if (topic.startsWith("broker/status/")) return "sysData";
+                            if (topic.startsWith("automata-wled/")) return "mqttInputChannel";
+                            return topic; // exact match for sendLiveData, sendData, status, action
+                        },
                         mapping -> mapping
                                 .channelMapping(topicSendLiveData, "sendLiveData")
                                 .channelMapping(topicSendData, "sendData")
                                 .channelMapping(topicDefault, "mqttInputChannel")
                                 .channelMapping(topicAction, "action")
-                                .channelMapping(topicSys, "sysData")
-//                                .channelMapping(wledGroupTopic, "mqttInputChannel")
+                                .channelMapping("sysData", "sysData")  // ← normalized above
                 )
                 .get();
     }
