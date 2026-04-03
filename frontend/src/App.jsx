@@ -6,7 +6,7 @@ import {BrowserRouter} from "react-router-dom";
 import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
 import {AuthProvider} from "./components/auth/AuthContext.jsx";
 import useWebSocket from "./services/useWebSocket.jsx";
-import SystemStateMonitor, {useSystemStateMonitor} from "./components/integrations/Usesystemstatemonitor.jsx";
+import {useSystemStateMonitor} from "./components/integrations/Usesystemstatemonitor.jsx";
 
 // import Silk from "./components/dashboard/Silk.jsx";
 
@@ -77,12 +77,12 @@ function App() {
 
                               }}
                         >
-                            <SystemStateMonitor
-                                idleTimeout={60000}       // 60s before marking idle
-                                reportInterval={280000}    // keep-alive ping every 30s
-                                onStateChange={(state) => console.log("State →", state)}
-                                debug={true}
-                            />
+                            {/*<SystemStateMonitor*/}
+                            {/*    idleTimeout={60000}       // 60s before marking idle*/}
+                            {/*    reportInterval={280000}    // keep-alive ping every 30s*/}
+                            {/*    onStateChange={(state) => console.log("State →", state)}*/}
+                            {/*    debug={true}*/}
+                            {/*/>*/}
                             {/*<header>*/}
                             {/*<Nav/>*/}
                             {/*</header>*/}
