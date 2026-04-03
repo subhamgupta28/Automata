@@ -1,10 +1,5 @@
 import * as React from "react";
-import {
-    Card,
-    Box,
-    Typography,
-    IconButton
-} from "@mui/material";
+import {Box, Card, IconButton, Typography} from "@mui/material";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import {sendAction} from "../../services/apis.jsx";
 import dayjs from "dayjs";

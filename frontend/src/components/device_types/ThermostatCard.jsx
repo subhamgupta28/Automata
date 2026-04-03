@@ -1,11 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {
-    Card,
-    CardContent,
-    Typography,
-    Box,
-    IconButton,
-} from "@mui/material";
+import {Box, Card, CardContent, IconButton, Typography,} from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -64,7 +58,7 @@ export default function ThermostatCard({device, messages}) {
     return (
         <Card
             sx={{
-                width: 220,
+                // width: 220,
                 borderRadius: '8px',
                 boxShadow: 2,
             }}
@@ -78,14 +72,14 @@ export default function ThermostatCard({device, messages}) {
 
                 {/* Mode + current temp */}
                 <div style={{
-                    display:'flex', justifyContent:'center',
-                    alignItems:'center', marginBottom:'10px'
+                    display: 'flex', justifyContent: 'center',
+                    alignItems: 'center', marginBottom: '10px'
                 }}>
                     <Typography
                         variant="body2"
 
                     >
-                        {data.mode} · {data.currentTemp} °C  ·
+                        {data.mode} · {data.currentTemp} °C ·
                     </Typography>
                     <OpacityIcon fontSize="12" style={{marginLeft: '10px'}}/>
 

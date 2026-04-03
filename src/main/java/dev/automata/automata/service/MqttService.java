@@ -52,7 +52,6 @@ public class MqttService {
         String deviceId = payload.get("device_id").toString();
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("Device Id not found");
-            ;
         }
         actionService.handleAction(deviceId, payload, "", "device");
     }
@@ -80,7 +79,7 @@ public class MqttService {
 
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public void handleAck(Map<String, Object> payload) {
-        System.out.println("✅ Status: " + payload);
+//        System.out.println("✅ Status: " + payload);
     }
 
     @ServiceActivator(inputChannel = "sysData")
@@ -93,7 +92,7 @@ public class MqttService {
         String[] macAddresses = topic.split("-");
 
         var status = Status.INACTIVE;
-        System.err.println("sysData topic: " + topic);
+//        System.err.println("sysData topic: " + topic);
 
         if (topic.contains("/connected")) {
             status = Status.ONLINE;
@@ -102,10 +101,10 @@ public class MqttService {
         }
         var address = macAddresses[macAddresses.length - 1];
         var res = mainService.setStatusOfDeviceByMacAddress(address, status);
-        if (res.equals("success"))
-            System.err.println("Device status of: " + address + " at: " + time + " and status set to " + status);
-        else
-            System.err.println("Device not found: " + topic);
+//        if (res.equals("success"))
+//            System.err.println("Device status of: " + address + " at: " + time + " and status set to " + status);
+//        else
+//            System.err.println("Device not found: " + topic);
     }
 
     @ServiceActivator(inputChannel = "wledChannel")
@@ -113,7 +112,7 @@ public class MqttService {
 
         String deviceName = (String) message.getHeaders().get("device");
         String payload = message.getPayload().toString();
-        System.out.println("Payload: " + payload);
+//        System.out.println("Payload: " + payload);
         if (deviceName == null) {
             return;
         }
@@ -121,7 +120,7 @@ public class MqttService {
             deviceName = deviceName.replace("/v", "");
             deviceName = deviceName.replaceAll("/", "");
 
-            System.out.println("Device: " + deviceName);
+//            System.out.println("Device: " + deviceName);
             var device = mainService.getDeviceByCategory(deviceName);
 
             if (device == null)
@@ -132,12 +131,12 @@ public class MqttService {
             WledResponse response = wled.parseWledXml(payload);
             var data = wled.convertToMap(response, device.getId());
             mainService.saveData(device.getId(), data);
-            System.err.println("Device data: " + data);
+//            System.err.println("Device data: " + data);
             messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", data));
-            System.err.println("WLED Response " + response);
+            System.err.println("WLED Response for " + device.getName() + " data:" + response);
             if (response != null) {
-                System.out.println("Brightness: " + response.bri);
-                System.out.println("Preset: " + response.ps);
+//                System.out.println("Brightness: " + response.bri);
+//                System.out.println("Preset: " + response.ps);
             }
         }
 

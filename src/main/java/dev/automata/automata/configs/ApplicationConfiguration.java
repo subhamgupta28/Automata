@@ -43,7 +43,7 @@ public class ApplicationConfiguration {
 //        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
 //        return template;
 //    }
-
+    
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
