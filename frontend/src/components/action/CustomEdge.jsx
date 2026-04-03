@@ -1,18 +1,18 @@
-import {
-    BaseEdge,
-    EdgeLabelRenderer, getBezierPath, getSmoothStepPath,
-    useReactFlow,
-} from '@xyflow/react';
+import {BaseEdge, EdgeLabelRenderer, getBezierPath, useReactFlow,} from '@xyflow/react';
 import IconButton from "@mui/material/IconButton";
 import CancelIcon from '@mui/icons-material/Cancel';
-export default function CustomEdge({ id,
+
+export default function CustomEdge({
+                                       id,
                                        sourceX,
                                        sourceY,
                                        targetX,
                                        targetY,
                                        sourcePosition,
-                                       targetPosition, }) {
-    const { setEdges } = useReactFlow();
+                                       targetPosition,
+                                       data
+                                   }) {
+    const {setEdges} = useReactFlow();
     const [edgePath, labelX, labelY] = getBezierPath({
         sourceX,
         sourceY,
@@ -21,10 +21,10 @@ export default function CustomEdge({ id,
         targetY,
         targetPosition,
     });
-
+    const color = data?.color || '#b1b1b7';
     return (
         <>
-            <BaseEdge id={id} path={edgePath} style={{stroke: '#ff832a', strokeWidth: '3px', }}/>
+            <BaseEdge id={id} path={edgePath} style={{stroke: color, strokeWidth: '3px',}}/>
             <EdgeLabelRenderer>
                 <IconButton
 

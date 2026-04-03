@@ -194,10 +194,16 @@ function ActionBoardDetail() {
     );
     const onConnect = useCallback(
         (connection) => {
+
+            const isNegative = connection.sourceHandle === 'cond-negative';
             const edge = {
                 ...connection,
                 type: 'custom-edge',
+                data: {
+                    color: isNegative ? '#f44336' : '#4caf50',
+                }
             };
+            console.log("connections", edge)
             setEdges((eds) => addEdge(edge, eds));
         },
         [setEdges],

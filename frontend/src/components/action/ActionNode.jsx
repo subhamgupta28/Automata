@@ -16,6 +16,7 @@ const actionStyle = {
     background: 'transparent',
     backdropFilter: 'blur(6px)',
     backgroundColor: 'rgb(255 255 255 / 8%)',
+    overflow: 'visible'
 };
 
 export const ActionNode = ({id, data, isConnectable}) => {
@@ -25,7 +26,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
         data: '',
         name: '',
         deviceId: '',
-        revert: false
+        revert: false,
+        conditionGroup: 'positive'
     };
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
     const {devices, loading, error} = useCachedDevices();
@@ -36,12 +38,18 @@ export const ActionNode = ({id, data, isConnectable}) => {
     const [key, setKey] = useState(actionData.key);
     const [actionType, setActionType] = useState("");
     const [revert, setRevert] = useState(actionData.revert);
+    const [conditionGroup, setConditionGroup] = useState(actionData.conditionGroup);
 
-    const connections = useNodeConnections({
-        handleType: 'target',
-        handleId: 'b'
-    });
 
+    const connections = useNodeConnections({handleType: 'target'});
+    useEffect(() => {
+        // console.log("constiodns", connections, id)
+        if (connections.length > 0) {
+            const sourceHandle = connections[0]?.sourceHandle;
+            const group = sourceHandle === 'cond-negative' ? 'negative' : 'positive';
+            setConditionGroup(group);
+        }
+    }, [connections]);
     useEffect(() => {
         const ad = data.actionData;
         if (ad) {
@@ -78,7 +86,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
             setActionType("")
             return;
         }
-        console.log("action", action)
+        // console.log("action", action)
         setActionType(action.type)
         switch (action[0].type) {
             case "ACTION|MENU|SWITCH": //on/off
@@ -163,7 +171,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
             name: selectedDevice?.name,
             data: value,
             isEnabled: connections.length > 0,
-            revert
+            revert,
+            conditionGroup
         };
 
         // Only update if something actually changed
@@ -180,7 +189,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
         key,
         value,
         connections.length,
-        revert
+        revert,
+        conditionGroup
     ]);
 
     const deleteNode = (nodeId) => {
@@ -191,7 +201,11 @@ export const ActionNode = ({id, data, isConnectable}) => {
     return (
         <Card style={actionStyle}>
             <Handle
-                style={{width: '18px', height: '18px', background: '#0288D1'}}
+                style={{
+                    width: '18px',
+                    height: '18px',
+                    background: conditionGroup === 'negative' ? '#f44336' : '#4caf50'  // ← was always #0288D1
+                }}
                 type="target"
                 position={Position.Left}
                 id="b"
@@ -200,6 +214,21 @@ export const ActionNode = ({id, data, isConnectable}) => {
             <Typography variant="body1" fontWeight="bold" sx={{marginLeft: 1}}>
                 Action
             </Typography>
+            <div style={{
+                display: 'inline-block',
+                // marginLeft: '8px',
+                marginBottom: '4px',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                width: '100%',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                background: conditionGroup === 'negative' ? '#f4433622' : '#4caf5022',
+                color: conditionGroup === 'negative' ? '#f44336' : '#4caf50',
+                border: `1px solid ${conditionGroup === 'negative' ? '#f44336' : '#4caf50'}`
+            }}>
+                {conditionGroup === 'negative' ? 'Negative condition' : 'Positive condition'}
+            </div>
             <div style={{margin: '2px'}}>
                 <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top: '0', right: '0'}}>
                     <DeleteIcon/>

@@ -286,7 +286,9 @@ public class AutomationService {
                     var a = n.getData().getActionData();
                     return new Automation.Action(
                             a.getKey(), a.getDeviceId(), a.getData(),
-                            a.getName(), a.getIsEnabled(), a.getRevert());
+                            a.getName(), a.getIsEnabled(), a.getRevert(),
+                            a.getConditionGroup()
+                    );
                 }).toList();
         automationBuilder.actions(actions);
 
@@ -510,7 +512,7 @@ public class AutomationService {
             final String finalOperatorLogic = operatorLogic;
 
             // FIX #4: Cache is written INSIDE thenRun — only after actions complete successfully.
-            executeWithTimeout(automation, payload, user)
+            executeWithTimeout(automation, payload, user, "positive")
                     .thenRun(() -> {
                         markAsExecuted(idempotencyKey);
 
@@ -530,24 +532,21 @@ public class AutomationService {
                     .reason("All conditions met (" + operatorLogic + ") — actions executed");
 
         } else if (!isTriggeredNow && automationCache.isTriggeredPreviously()) {
-            // FIX #2: Revert path is now always reachable (idempotency check removed from top)
-            log.info("🔄 Automation Cleared: Reverting {}", automation.getName());
+            log.info("🔄 Automation Cleared: Running negative actions for {}", automation.getName());
             notificationService.sendNotification("Restoring automation: " + automation.getName(), "low");
 
-            if (!"time".equals(triggerType)) {
-                withLock("LOCK:RESTORE:" + automation.getId(), LOCK_TTL_SECONDS, () -> {
-                    restoreStateSnapshots(automation, user);
-                    return null;
-                });
-            }
-
-            automationCache.setTriggeredPreviously(false);
-            automationCache.setPreviousExecutionTime(null);
-            automationCache.setLastUpdate(new Date());
-            redisService.setAutomationCache(cacheKey, automationCache);
+            // Run negative-group actions directly instead of snapshot restore
+            AutomationCache finalAutomationCache = automationCache;
+            executeWithTimeout(automation, payload, user, "negative")
+                    .thenRun(() -> {
+                        finalAutomationCache.setTriggeredPreviously(false);
+                        finalAutomationCache.setPreviousExecutionTime(null);
+                        finalAutomationCache.setLastUpdate(new Date());
+                        redisService.setAutomationCache(cacheKey, finalAutomationCache);
+                    });
 
             automationLog.status(AutomationLog.LogStatus.RESTORED)
-                    .reason("Conditions no longer met — state restored");
+                    .reason("Conditions cleared — negative actions executed");
 
         } else if (!isTriggeredNow) {
             automationLog.status(AutomationLog.LogStatus.NOT_MET)
@@ -672,8 +671,7 @@ public class AutomationService {
                     .expectedValue(condition.getTime())
                     .actualValue(LocalTime.now(ZoneId.of("Asia/Kolkata")).toString())
                     .passed(passed)
-                    .detail(passed ? "Current time matches trigger time" :
-                            "Current time does not match trigger time or already fired today")
+                    .detail(passed ? "Time matched" : "Time not matched or already fired today")
                     .build());
             return passed;
         }
@@ -779,40 +777,42 @@ public class AutomationService {
     // ─────────────────────────────────────────────────────────────────────────
 
     private CompletableFuture<Void> executeWithTimeout(
-            Automation automation,
-            Map<String, Object> payload,
-            String user) {
+            Automation automation, Map<String, Object> payload,
+            String user, String group) {
 
-        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            try {
-                executeActionsInternal(automation, user, payload);
-            } catch (Exception e) {
-                log.error("Error executing automation {}: {}", automation.getName(), e.getMessage(), e);
-                throw new RuntimeException(e);
-            }
-        }, automationExecutor);
-
-        return future.orTimeout(AUTOMATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        return CompletableFuture.runAsync(() -> {
+                    try {
+                        executeActionsInternal(automation, user, payload, group);
+                    } catch (Exception e) {
+                        log.error("Error executing automation {}: {}", automation.getName(), e.getMessage(), e);
+                        throw new RuntimeException(e);
+                    }
+                }, automationExecutor)
+                .orTimeout(AUTOMATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .exceptionally(ex -> {
                     if (ex instanceof TimeoutException) {
-                        log.error("⏱️ Automation {} timed out after {}s",
-                                automation.getName(), AUTOMATION_TIMEOUT_SECONDS);
-                        notificationService.sendNotification(
-                                "Automation timeout: " + automation.getName(), "error");
-                    } else {
-                        log.error("Automation {} failed: {}", automation.getName(), ex.getMessage());
+                        log.error("⏱️ Automation {} timed out", automation.getName());
+                        notificationService.sendNotification("Automation timeout: " + automation.getName(), "error");
                     }
                     return null;
                 });
     }
 
-    private void executeActions(Automation automation, String user, Map<String, Object> value) {
-        executeActionsInternal(automation, user, value);
+    private void executeActions(Automation automation, String user, Map<String, Object> payload) {
+        executeWithTimeout(automation, payload, user, "positive");
     }
 
-    private void executeActionsInternal(Automation automation, String user, Map<String, Object> value) {
+    private void executeActionsInternal(
+            Automation automation, String user,
+            Map<String, Object> value, String groupToRun) {
+
         for (Automation.Action action : automation.getActions()) {
             if (Boolean.FALSE.equals(action.getIsEnabled())) continue;
+
+            // Only run actions belonging to the requested group
+            String actionGroup = action.getConditionGroup() != null
+                    ? action.getConditionGroup() : "positive";
+            if (!actionGroup.equalsIgnoreCase(groupToRun)) continue;
 
             Object parsedData = parseData(action.getData());
             Map<String, Object> payload = Map.of(
@@ -825,10 +825,8 @@ public class AutomationService {
                         "Alert: " + action.getData().toUpperCase(Locale.ROOT),
                         action.getData());
             } else if ("app_notify".equals(action.getKey())) {
-                notificationService.sendNotify(
-                        "Automation",
-                        action.getData() + " and live data are " + value,
-                        "low");
+                notificationService.sendNotify("Automation",
+                        action.getData() + " and live data are " + value, "low");
             } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
                 handleWLED(action.getDeviceId(), new HashMap<>(payload), user);
             } else {
