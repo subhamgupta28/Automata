@@ -3,7 +3,6 @@ package dev.automata.automata.modules;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.RegisterDevice;
-import dev.automata.automata.dto.WledResponse;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.service.MainService;
@@ -18,15 +17,10 @@ import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +47,14 @@ public class SystemMetrics {
                                 Attribute.builder()
                                         .key("totalMemory")
                                         .displayName("Memory")
+                                        .type("DATA|AUX")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("state")
+                                        .displayName("State")
                                         .type("DATA|AUX")
                                         .units("")
                                         .extras(new HashMap<>())
@@ -162,7 +164,7 @@ public class SystemMetrics {
     }
 
 
-    public static Map<String, Object > getNgrokDetails() {
+    public static Map<String, Object> getNgrokDetails() {
         try {
             var map = new HashMap<String, Object>();
             String response = new RestTemplate().getForObject("http://host.docker.internal:4040/api/tunnels", String.class);

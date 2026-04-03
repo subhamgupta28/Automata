@@ -262,7 +262,7 @@ public class Wled {
     }
 
     public void publishForInfo(String deviceId) {
-        sendToTopic(deviceTopic, "{\"v\":true}");
+        sendToTopic(deviceTopic + "/api", "A=~0");
     }
 
 

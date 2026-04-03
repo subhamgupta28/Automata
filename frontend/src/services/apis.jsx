@@ -28,7 +28,16 @@ export const updateAttribute = async (deviceId, attribute, isShow) => {
     });
     return response.data;
 }
+export const sendBrowserState = async (state) => {
+    const response = await api.post("action/browserState/" + state, {}, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
 
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
 export const getWiFiDetails = async () => {
     const response = await api.post("main/wifiList", {}, {
         headers: {

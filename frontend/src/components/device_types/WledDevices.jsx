@@ -5,9 +5,23 @@ import {CustomSlider} from "../charts/CustomSlider.jsx";
 import {Presets} from "../charts/Presets.jsx";
 import ColorPicker from "../charts/ColorPicker.jsx";
 import Typography from "@mui/material/Typography";
+import {getRecentDeviceData} from "../../services/apis.jsx";
 
 export default function WledDevices({devices, messages}) {
+    const [lastData, setLastData] = useState({});
+    useEffect(() => {
+        const deviceIds = devices.map(d => d.id)
+        if (deviceIds.length === 0)
+            return;
+        const get = async () => {
+            return await getRecentDeviceData(deviceIds);
+        }
+        get().then(res => {
+            setLastData(res)
+            // console.log("DDDD", res)
+        });
 
+    }, [])
     return (
         <div style={{
             gridTemplateColumns: 'repeat(1, 2fr)',
@@ -16,17 +30,19 @@ export default function WledDevices({devices, messages}) {
         }}>
             {devices.map(device => (
                 <div key={device.id}>
-                    <Wled device={device} messages={messages}/>
+                    <Wled device={device} messages={messages} lastData={lastData[device.id]}/>
                 </div>
             ))}
         </div>
     )
 }
 
-const Wled = ({device, messages}) => {
-    // console.log("wled", device)
-    const [liveData, setLiveData] = useState(device.lastData);
+const Wled = ({device, messages, lastData}) => {
+    // console.log("wled", lastData)
+    const [liveData, setLiveData] = useState(lastData);
     const [anchorEl, setAnchorEl] = React.useState(null);
+
+
     useEffect(() => {
         if (device.id === messages.deviceId) {
             if (messages.data) setLiveData(messages.data);
@@ -48,9 +64,10 @@ const Wled = ({device, messages}) => {
             else if (attr.type.startsWith('ACTION|SWITCH')) grouped.switchButtons.push(attr);
             else if (attr.type.startsWith('ACTION|PRESET')) grouped.presetButtons.push(attr);
         }
+        // console.log("grouped", grouped, lastData)
 
         return grouped;
-    }, [device.attributes]);
+    }, [device.attributes, lastData]);
 
     const handleClick = (event) => {
         setAnchorEl(event.currentTarget);
