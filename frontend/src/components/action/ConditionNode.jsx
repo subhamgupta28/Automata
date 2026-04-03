@@ -21,6 +21,7 @@ const conditionStyle = {
     background: 'transparent',
     backdropFilter: 'blur(6px)',
     backgroundColor: 'rgb(255 255 255 / 8%)',
+    overflow: 'visible'
 };
 
 export const ConditionNode = ({id, data, isConnectable}) => {
@@ -37,7 +38,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         scheduleType: 'at',
         fromTime: '2:20:05 AM',
         toTime: '2:20:05 AM',
-        days: []
+        days: [],
     };
     const [scheduleType, setScheduleType] = useState(conditionData.scheduleType); // 'at' | 'range'
     const [fromTime, setFromTime] = useState(
@@ -55,6 +56,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     const [below, setBelow] = useState(conditionData.below)
     const [isRange, setIsRange] = useState(conditionData.isExact)
     const [conditionValue, setConditionValue] = useState(conditionData.value)
+
     const [time, setTime] = useState(
         conditionData.time ? dayjs(conditionData.time, "hh:mm:ss A") : dayjs()
     );
@@ -160,7 +162,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         scheduleType,   // ✅ missing
         fromTime,       // ✅ missing
         toTime,         // ✅ missing
-        days            // ✅ missing
+        days           // ✅ missing
     ]);
 
     const handleChange = (e, select) => {
@@ -213,7 +215,8 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                         Run automation at specific time of the day
                     </Typography>
                     <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <DesktopTimePicker format="hh:mm:ss A" value={time} onChange={(e) => handleChange(e, 'time')}/>
+                        <DesktopTimePicker format="hh:mm:ss A" value={time}
+                                           onChange={(e) => handleChange(e, 'time')}/>
                     </LocalizationProvider>
 
                 </div>
@@ -343,18 +346,46 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 </div>
             )}
 
+            {/*<Handle*/}
+            {/*    style={{width: '18px', height: '18px', background: '#FFEB3B'}}*/}
+            {/*    type="source"*/}
+            {/*    position={Position.Right}*/}
+            {/*    id="cond-s"*/}
+            {/*    isConnectable={isConnectable}*/}
+            {/*/>*/}
+
             <Handle
-                style={{width: '18px', height: '18px', background: '#FFEB3B'}}
+                style={{width: '26px', height: '26px', background: '#4caf50'}}
                 type="source"
                 position={Position.Right}
-                id="cond-s"
+                id="cond-positive"
                 isConnectable={isConnectable}
             />
-            <AddIcon style={{
-                background: '#FFEB3B', top: '50%',
+
+            <Handle
+                style={{width: '26px', height: '26px', background: '#f44336', top: '75%'}}
+                type="source"
+                position={Position.Right}
+                id="cond-negative"
+                isConnectable={isConnectable}
+            />
+
+
+            <div style={{
+                background: 'transparent', top: '50%',
                 right: 0,
                 transform: 'translate(50%, -50%)'
-            }} className='react-flow__handle'/>
+            }} className='react-flow__handle'>
+                Positive
+            </div>
+            <div style={{
+                background: 'transparent',
+                top: '75%',
+                right: 0,
+                transform: 'translate(50%, -50%)'
+            }} className='react-flow__handle'>
+                Negative
+            </div>
         </Card>
     );
 };

@@ -17,6 +17,7 @@ const triggerStyle = {
     background: 'transparent',
     backdropFilter: 'blur(6px)',
     backgroundColor: 'rgb(255 255 255 / 8%)',
+    overflow: 'visible'
 };
 
 export const TriggerNode = ({id, data, isConnectable}) => {

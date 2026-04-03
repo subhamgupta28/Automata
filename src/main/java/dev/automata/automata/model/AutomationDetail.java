@@ -37,6 +37,18 @@ public class AutomationDetail {
         private String targetHandle;
         private String type;
         private String id;
+        @JsonProperty("data")
+        private Data data;
+
+        @Getter
+        @Setter
+        @AllArgsConstructor
+        @NoArgsConstructor
+        @ToString
+        public static class Data {
+            private String color;
+        }
+
     }
 
     @Getter
@@ -162,6 +174,7 @@ public class AutomationDetail {
                 private String data;
                 private Boolean isEnabled;
                 private Boolean revert = false;
+                private String conditionGroup;
             }
         }
 

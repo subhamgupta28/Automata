@@ -77,7 +77,7 @@ public class Automation {
         private String name;
         private Boolean isEnabled;
         private Boolean revert = false;
-
+        private String conditionGroup;
         // Getters and setters
     }
 
