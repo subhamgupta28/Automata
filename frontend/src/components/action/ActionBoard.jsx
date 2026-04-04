@@ -8,7 +8,7 @@ import {
     useNodesState,
     useReactFlow
 } from "@xyflow/react";
-import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react";
+import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, memo} from "react";
 import {disableAutomation, getActions, getAutomationDetail, saveAutomationDetail} from "../../services/apis.jsx";
 
 import {Button, Card, CardContent, Chip, Switch,} from "@mui/material";
@@ -55,7 +55,7 @@ const valueReaderStyle = {
 let id = 0;
 const getId = (type) => `node_${type}_${id++}`;
 
-function ActionBoardDetail() {
+function ActionBoardDetailComponent() {
     const [nodes, setNodes] = useNodesState([]);
     const [edges, setEdges] = useEdgesState([]);
     // useLayoutNodes();
@@ -448,6 +448,8 @@ const DnDProvider = ({children}) => {
         </DnDContext.Provider>
     );
 }
+
+const ActionBoardDetail = memo(ActionBoardDetailComponent);
 
 const useDnD = () => {
     return useContext(DnDContext);

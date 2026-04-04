@@ -3,7 +3,7 @@ import {
     lineElementClasses,
     BarChart,
 } from "@mui/x-charts";
-import React, {useEffect, useState, useRef, useMemo} from "react";
+import React, {useEffect, useState, useRef, useMemo, memo} from "react";
 import {getDetailChartData} from "../../services/apis.jsx";
 import {
     Card,
@@ -59,7 +59,8 @@ const solidColors = [
     '#f7b6d2', // light pink
     '#c49c94', // muted brown
 ];
-export default function ChartDetail({deviceId, name, height = 450, width = 1000, deviceAttributes, props}) {
+
+const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, deviceAttributes, props}) => {
     const [data, setData] = useState([]);
     const [attributes, setAttributes] = useState([]);
     const [range, setRange] = useState("day");
@@ -125,10 +126,9 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
         }
     }, [messages, deviceId]);
 
-    const xLabels = data.map((item) => item.dateDay);
+    const xLabels = useMemo(() => data.map((item) => item.dateDay), [data]);
 
-
-    const series = attributes.map((attr, index) => ({
+    const series = useMemo(() => attributes.map((attr, index) => ({
         label: attr.charAt(0).toUpperCase() + attr.slice(1),
         data: data.map((item) => item[attr]),
         showMark: false,
@@ -138,7 +138,16 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
             : solidColors[index % solidColors.length],
         stack: chartType === "bar" ? "total" : undefined, // stack all bar series together
         valueFormatter: (value) => `${value} ${unitsMap.get(attr) || ''}`,
-    }));
+    })), [attributes, data, chartType, unitsMap]);
+
+    const gradients = useMemo(() => attributes.map((_, index) => {
+        const [start, end] = gradientColors[index % gradientColors.length];
+        return {
+            index,
+            start,
+            end,
+        };
+    }), [attributes]);
 
     return (
         <Card elevation={0} style={{
@@ -220,22 +229,19 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
                         }}
                     >
                         <defs>
-                            {attributes.map((_, index) => {
-                                const [start, end] = gradientColors[index % gradientColors.length];
-                                return (
-                                    <linearGradient
-                                        key={index}
-                                        id={`Gradient${index}`}
-                                        x1="0%"
-                                        y1="0%"
-                                        x2="0%"
-                                        y2="100%"
-                                    >
-                                        <stop offset="0%" stopColor={start} stopOpacity="0.8"/>
-                                        <stop offset="100%" stopColor={end} stopOpacity="0"/>
-                                    </linearGradient>
-                                );
-                            })}
+                            {gradients.map(({index, start, end}) => (
+                                <linearGradient
+                                    key={index}
+                                    id={`Gradient${index}`}
+                                    x1="0%"
+                                    y1="0%"
+                                    x2="0%"
+                                    y2="100%"
+                                >
+                                    <stop offset="0%" stopColor={start} stopOpacity="0.8"/>
+                                    <stop offset="100%" stopColor={end} stopOpacity="0"/>
+                                </linearGradient>
+                            ))}
                         </defs>
                     </LineChart>
                 ) : (
@@ -263,4 +269,16 @@ export default function ChartDetail({deviceId, name, height = 450, width = 1000,
             </CardContent>
         </Card>
     );
-}
+};
+
+const ChartDetail = memo(ChartDetailComponent, (prevProps, nextProps) => {
+    return (
+        prevProps.deviceId === nextProps.deviceId &&
+        prevProps.name === nextProps.name &&
+        prevProps.height === nextProps.height &&
+        prevProps.width === nextProps.width &&
+        JSON.stringify(prevProps.deviceAttributes) === JSON.stringify(nextProps.deviceAttributes)
+    );
+});
+
+export default ChartDetail;
