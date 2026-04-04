@@ -1,6 +1,7 @@
 import {BaseEdge, EdgeLabelRenderer, getBezierPath, useReactFlow,} from '@xyflow/react';
 import IconButton from "@mui/material/IconButton";
 import CancelIcon from '@mui/icons-material/Cancel';
+import {useCallback} from "react";
 
 export default function CustomEdge({
                                        id,
@@ -21,7 +22,14 @@ export default function CustomEdge({
         targetY,
         targetPosition,
     });
-    const color = data?.color || '#b1b1b7';
+
+
+    const color = data?.color || '#ff832a';
+
+    // Define handler outside EdgeLabelRenderer so it captures the correct context
+    const handleDelete = useCallback(() => {
+        setEdges((es) => es.filter((e) => e.id !== id));
+    }, [id, setEdges]);
     return (
         <>
             <BaseEdge id={id} path={edgePath} style={{stroke: color, strokeWidth: '3px',}}/>
@@ -35,9 +43,7 @@ export default function CustomEdge({
                         pointerEvents: 'all',
                     }}
                     className="nodrag"
-                    onClick={() => {
-                        setEdges((es) => es.filter((e) => e.id !== id));
-                    }}
+                    onClick={handleDelete}
                 >
                     <CancelIcon/>
                 </IconButton>
