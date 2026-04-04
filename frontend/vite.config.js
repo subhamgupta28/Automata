@@ -14,15 +14,17 @@ export default defineConfig(({command, mode, isSsrBuild, isPreview}) => {
             global: 'window', // Ensure global is set to window for browser environment
         },
         build: {
-            outDir: '../src/main/resources/static', // Change this to your desired folder
-        },
-        rolldownOptions: {
-            output: {
-                manualChunks: {
-                    vendor: ['react', 'react-dom'],
-                    router: ['react-router-dom'],
-                    stomp: ['@stomp/stompjs'],
-                    // add other large deps here
+            outDir: '../src/main/resources/static',
+            rollupOptions: {
+                output: {
+                    manualChunks: {
+                        vendor: ['react', 'react-dom'],
+                        router: ['react-router-dom'],
+                        ws: ['@stomp/stompjs', 'sockjs-client'],
+                        mui: ['@mui/material', '@mui/icons-material'],
+                        charts: ['@mui/x-charts', 'recharts'],
+                        flow: ['@xyflow/react'],
+                    }
                 }
             }
         }

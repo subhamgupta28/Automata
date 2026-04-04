@@ -1,5 +1,7 @@
 import React, {createContext, useContext, useEffect, useState} from "react";
 import {getDevices} from "./apis.jsx";
+import {useAuth} from "../components/auth/AuthContext.jsx";
+import isEmpty from "../utils/Helper.jsx";
 
 const AppCacheContext = createContext(null);
 
@@ -7,6 +9,7 @@ export const AppCacheProvider = ({children}) => {
     const [devices, setDevices] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const {user, loading: authLoading} = useAuth();
 
     useEffect(() => {
         let mounted = true;
@@ -19,6 +22,7 @@ export const AppCacheProvider = ({children}) => {
                 }
             } catch (e) {
                 if (mounted) {
+                    console.error("Error fetching devices:", e);
                     setError("Something went wrong");
                 }
             } finally {
@@ -28,12 +32,19 @@ export const AppCacheProvider = ({children}) => {
             }
         };
 
-        fetchDevices();
+        // Only fetch devices if auth is ready and user is authenticated
+        if (!authLoading && !isEmpty(user)) {
+            fetchDevices();
+        } else if (!authLoading && isEmpty(user)) {
+            // No user logged in, don't fetch devices
+            setDevices(null);
+            setLoading(false);
+        }
 
         return () => {
             mounted = false;
         };
-    }, []); // 👈 runs once
+    }, [authLoading, user]); // 👈 depends on auth state
 
     return (
         <AppCacheContext.Provider value={{devices, loading, error}}>

@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState, useMemo, useRef} from 'react';
+import React, {useCallback, useEffect, useState, useMemo, useRef, memo} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
@@ -27,7 +27,7 @@ const nodeTypes = {
     alertNode: AlertNode
 };
 
-const DeviceNodes = () => {
+const DeviceNodesComponent = () => {
     const [openBackdrop, setOpenBackdrop] = useState(false);
     // const {messages} = useWebSocket('/topic/data');
     const {devices, loading, error} = useCachedDevices();
@@ -190,6 +190,8 @@ const DeviceNodes = () => {
         </div>
     );
 };
+
+const DeviceNodes = memo(DeviceNodesComponent);
 
 const Dashboard = () => {
 

@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, memo} from 'react';
 import {
     Card,
     CardContent,
@@ -43,7 +43,7 @@ const StyledTableRow = styled(TableRow)(({theme}) => ({
     },
 }));
 
-export default function Devices() {
+function DevicesComponent() {
     const {devices, loading, error} = useCachedDevices();
     const [devicesData, setDevicesData] = useState([]);
     const [openRow, setOpenRow] = useState("");
@@ -300,3 +300,6 @@ export default function Devices() {
         </div>
     )
 }
+
+const Devices = memo(DevicesComponent);
+export default Devices;

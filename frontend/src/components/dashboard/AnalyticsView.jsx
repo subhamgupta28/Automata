@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useState, memo, useMemo} from "react";
 
 import ChartDetail from "../charts/ChartDetail.jsx";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 
-export function CustomTabPanel(props) {
+const CustomTabPanel = memo(function CustomTabPanel(props) {
     const { children, value, index, ...other } = props;
 
     return (
@@ -26,8 +26,10 @@ export function CustomTabPanel(props) {
             {value === index && <Box sx={{ p: 1 }}>{children}</Box>}
         </div>
     );
-}
-export default function AnalyticsView() {
+});
+
+export { CustomTabPanel };
+function AnalyticsViewComponent() {
     const [devicesList, setDevices] = useState([]);
     const {devices, loading, error} = useCachedDevices();
     const [openBackdrop, setOpenBackdrop] = useState(false);
@@ -38,15 +40,16 @@ export default function AnalyticsView() {
         setValue(newValue);
     };
 
+    const analyticsDevices = useMemo(
+        () => devices ? devices.filter((t) => t.analytics) : [],
+        [devices]
+    );
+
     useEffect(() => {
-        setOpenBackdrop(true)
-        const fetchDevices = async () => {
-            // const result = await getDashboardDevices();
-            setDevices(devices.filter((t) => t.analytics));
-            setOpenBackdrop(false);
-        };
-        fetchDevices();
-    }, [devices]);
+        setOpenBackdrop(true);
+        setDevices(analyticsDevices);
+        setOpenBackdrop(false);
+    }, [analyticsDevices]);
 
     return (
         <Box
@@ -71,13 +74,15 @@ export default function AnalyticsView() {
                 }}>
                     <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
                         {devicesList.map((device) => (
-                            <Tab label={device.name}  />
+                            <Tab key={device.id} label={device.name}  />
                         ))}
                     </Tabs>
                 </Box>
                 {devicesList.map((device, i) => (
-                    <CustomTabPanel value={value} index={i}>
-                        <ChartDetail deviceId={device.id} name={device.name} width={1000} height={600} deviceAttributes={device.attributes}/>
+                    <CustomTabPanel key={device.id} value={value} index={i}>
+                        {value === i && (
+                            <ChartDetail deviceId={device.id} name={device.name} width={1000} height={600} deviceAttributes={device.attributes}/>
+                        )}
                     </CustomTabPanel>
                 ))}
             </Box>
@@ -98,3 +103,6 @@ export default function AnalyticsView() {
         </Box>
     );
 }
+
+const AnalyticsView = memo(AnalyticsViewComponent);
+export default AnalyticsView;
