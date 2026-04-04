@@ -252,6 +252,16 @@ export const sendAction = async (deviceId, payload, deviceType) => {
     });
     return response.data;
 }
+export const saveWLEDDevices = async (payload) => {
+    const response = await api.post("/utils/wledDevices", payload, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+
+        },
+    });
+    return response.data;
+}
 export const saveWiFiList = async (payload) => {
     const response = await api.post("main/saveWiFiList", payload, {
         headers: {

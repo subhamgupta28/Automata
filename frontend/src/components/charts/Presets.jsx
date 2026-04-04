@@ -1,13 +1,12 @@
 import IconButton from "@mui/material/IconButton";
-import Avatar from "@mui/material/Avatar";
 import React from "react";
 import {sendAction} from "../../services/apis.jsx";
-import {deepOrange} from "@mui/material/colors";
 import Typography from "@mui/material/Typography";
+import {Chip} from "@mui/material";
 
 
 export const Presets = React.memo(({data, type, value, deviceId, displayName}) => {
-    // console.log("preset", value)
+
     const send = async (e) => {
         try {
             let act = data.key;
@@ -21,21 +20,35 @@ export const Presets = React.memo(({data, type, value, deviceId, displayName}) =
             console.error("Action send failed", err);
         }
     };
+    const extrasArray = Object.entries(data.extras).map(([name, id]) => ({
+        name,
+        id
+    }));
+    console.log("preset", extrasArray)
     return (
-        <div style={{display:'flex', alignItems: 'center', flexDirection: 'column',marginTop:'4px'}}>
+        <div style={{display: 'flex', alignItems: 'center', flexDirection: 'column', marginTop: '4px'}}>
             <div
                 style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(5, 1fr)',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
                 }}
             >
-                {Object.values(data.extras).map((ex) => (
-                    <IconButton key={ex} onClick={()=>send(ex)}>
-                        <Avatar  sx={{ width: 26, height: 26, background: ex === value?.presets? "orange":"", fontWeight: 'bold' }}>{ex}</Avatar>
+                {extrasArray.map((ex) => (
+                    <IconButton key={ex.id} onClick={() => send(ex.id)}>
+                        <Chip
+                            size="small"
+                            label={ex.name}
+                            sx={{
+                                background: ex.id === value?.preset ? "orange" : "",
+                                fontWeight: "bold"
+                            }}
+                        >
+                            {/* first letter */}
+                        </Chip>
                     </IconButton>
                 ))}
             </div>
-            <Typography style={{marginTop:'4px'}}>
+            <Typography style={{marginTop: '4px'}}>
                 {displayName}
             </Typography>
         </div>

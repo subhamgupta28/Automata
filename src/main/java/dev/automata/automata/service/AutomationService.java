@@ -465,6 +465,7 @@ public class AutomationService {
             operatorLogic = automation.getOperators().get(0).getLogicType();
         }
 
+
         long diff = 0;
         if (automationCache.getPreviousExecutionTime() != null) {
             diff = now.toInstant().getEpochSecond()

@@ -1,6 +1,8 @@
 package dev.automata.automata.controller;
 
+import dev.automata.automata.dto.WledPresets;
 import dev.automata.automata.model.Notification;
+import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.NotificationService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,10 +17,11 @@ import java.util.Map;
 @RequestMapping("/api/v1/utils")
 public class UtilityController {
 
+    private final MainService mainService;
     private final NotificationService notificationService;
 
     @GetMapping("test/{type}")
-    public ResponseEntity<?> testNotify(@PathVariable String type){
+    public ResponseEntity<?> testNotify(@PathVariable String type) {
         return ResponseEntity.ok(notificationService.test(type));
     }
 
@@ -30,5 +33,11 @@ public class UtilityController {
     @PostMapping("/action/{action}")
     public ResponseEntity<String> notificationAction(@PathVariable("action") String action, @RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(notificationService.notificationAction(action, body));
+    }
+
+    @PostMapping("/wledDevices")
+    public ResponseEntity<?> receiveDevices(@RequestBody List<WledPresets> devices) {
+
+        return ResponseEntity.ok(mainService.updateWledDevice(devices));
     }
 }
