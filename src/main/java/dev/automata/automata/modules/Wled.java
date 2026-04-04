@@ -125,7 +125,7 @@ public class Wled {
                     case "toggle" -> append(payload, "T");
                     case "color1" -> append(payload, "CL=" + value);
                     case "color2" -> append(payload, "C2=" + value);
-                    case "preset", "presets" -> append(payload, "FX=" + value);
+                    case "preset", "presets" -> append(payload, "PL=" + value);
                 }
             }
 
@@ -313,7 +313,7 @@ public class Wled {
     public CompletableFuture<String> setPresets(int presets) {
         try {
             String payload = String.format("{\"ps\": %d}", presets);
-            sendToTopic(deviceTopic + "/api", "FX=" + presets);
+            sendToTopic(deviceTopic + "/api", "PL=" + presets);
             return CompletableFuture.completedFuture("success");
         } catch (Exception e) {
             return CompletableFuture.completedFuture("error");

@@ -106,7 +106,7 @@ const DetailMenu = ({anchorEl, setAnchorEl, sliderData, presetButtons, deviceId,
                 id="basic-menu"
                 style={{
                     borderRadius: '12px',
-                    width: '260px',
+                    width: '360px',
                     backgroundColor: "transparent"
                 }}
                 anchorEl={anchorEl}

@@ -3,7 +3,7 @@ import React from 'react';
 // Dummy data following the EnergyStat Java model (one entry per day)
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
-import BatteryCard from "../v2/BatteryCard.jsx";
+import {WLEDDiscovery} from "../../services/WLEDDiscovery.jsx";
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
     let color = theme.palette.success.main;
@@ -70,7 +70,7 @@ const Exp = () => {
     return (
         <div style={{marginTop: '100px'}}>
 
-            <BatteryCard name={"battery"}/>
+            <WLEDDiscovery/>
 
 
         </div>

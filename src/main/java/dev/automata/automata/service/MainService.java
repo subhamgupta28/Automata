@@ -505,6 +505,10 @@ public class MainService {
         return "null";
     }
 
+    public void saveDevice(Device device) {
+        System.err.println("Device saved: " + deviceRepository.save(device));
+    }
+
     public void saveDevice() {
         var device = getDevice("67571bf46f2d631aa77cc632");
         var attrs = new ArrayList<Attribute>(device.getAttributes());
@@ -584,5 +588,22 @@ public class MainService {
             return "error";
         devices.forEach(d -> setStatus(d.getId(), status));
         return "success";
+    }
+
+    public String updateWledDevice(List<WledPresets> devices) {
+        for (var device : devices) {
+            var res = deviceRepository.findByCategory(device.getName());
+            if (res.getType().equals("WLED")) {
+                var presets = new HashMap<String, Object>();
+                for (var preset : device.getPresets()) {
+                    presets.put(preset.getName(), Integer.parseInt(preset.getId()));
+                }
+                var attributes = res.getAttributes().stream().filter(d -> d.getType().equals("ACTION|PRESET")).toList();
+                attributes.getFirst().setExtras(presets);
+                System.err.println("Saved Preset for: " + res.getName() + " preset: " + attributes);
+                saveDevice(res);
+            }
+        }
+        return null;
     }
 }
