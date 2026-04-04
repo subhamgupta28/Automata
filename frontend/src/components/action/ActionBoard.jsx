@@ -100,10 +100,47 @@ function ActionBoardDetail() {
 
         if (rfInstance) {
             const flow = rfInstance.toObject();
-            console.log("detail", automationDetail)
-            saveFlow({...flow, id: automationDetail.id || ''});
-            // console.log("flow", flow)
-            localStorage.setItem("flow", JSON.stringify(flow));
+
+            // Remove duplicate nodes by id
+            const seenNodeIds = new Set();
+            const uniqueNodes = flow.nodes.filter(node => {
+                if (seenNodeIds.has(node.id)) return false;
+                seenNodeIds.add(node.id);
+                return true;
+            });
+
+            // Remove stale edges — only keep edges using current handle ids
+            const validSourceHandles = new Set(['b', 'cond-positive', 'cond-negative', 'action-out']);
+            const validTargetHandles = new Set(['b', 'cond-t', 'cond-positive', 'cond-negative', 'action-out']);
+
+            // Also remove edges whose source/target node no longer exists
+            const nodeIds = new Set(uniqueNodes.map(n => n.id));
+            const cleanEdges = flow.edges.filter(edge => {
+                const sourceValid = nodeIds.has(edge.source);
+                const targetValid = nodeIds.has(edge.target);
+                // Drop old cond-s handle edges — replaced by cond-positive/cond-negative
+                const notLegacy = edge.sourceHandle !== 'cond-s';
+                return sourceValid && targetValid && notLegacy;
+            });
+
+            // Remove duplicate edges by id
+            const seenEdgeIds = new Set();
+            const uniqueEdges = cleanEdges.filter(edge => {
+                if (seenEdgeIds.has(edge.id)) return false;
+                seenEdgeIds.add(edge.id);
+                return true;
+            });
+
+            const cleanFlow = {
+                ...flow,
+                nodes: uniqueNodes,
+                edges: uniqueEdges,
+                id: automationDetail.id || ''
+            };
+
+            console.log("Saving clean flow", cleanFlow);
+            saveFlow(cleanFlow);
+            localStorage.setItem("flow", JSON.stringify(cleanFlow));
         }
     }, [rfInstance, automationDetail]);
 
@@ -160,20 +197,20 @@ function ActionBoardDetail() {
     const openAutomation = async (a) => {
         setSelectedAutomation(a);
         const detail = await getAutomationDetail(a.id);
-        console.log("detail", detail);
         setAutomationDetail(detail);
-        // setNodes(n => []);
-        // setEdges(e => []);
 
-        // const updatedNodes = (detail.nodes || []).map(node => ({
-        //     ...node,
-        //     position: { x: 0, y: 0 }
-        // }));
+        const nodeIds = new Set((detail.nodes || []).map(n => n.id));
+
+        // Filter out legacy edges on load
+        const cleanEdges = (detail.edges || []).filter(edge => {
+            return nodeIds.has(edge.source)
+                && nodeIds.has(edge.target)
+                && edge.sourceHandle !== 'cond-s';
+        });
+
         setNodes(detail.nodes || []);
-        setEdges(detail.edges || []);
+        setEdges(cleanEdges);
         id = detail.nodes.length + 1;
-
-
     }
 
     const clearBoard = () => {

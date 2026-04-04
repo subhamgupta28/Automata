@@ -27,7 +27,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
         name: '',
         deviceId: '',
         revert: false,
-        conditionGroup: 'positive'
+        conditionGroup: 'none'
     };
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
     const {devices, loading, error} = useCachedDevices();
@@ -43,11 +43,14 @@ export const ActionNode = ({id, data, isConnectable}) => {
 
     const connections = useNodeConnections({handleType: 'target'});
     useEffect(() => {
-        // console.log("constiodns", connections, id)
+        console.log("connections", connections, id)
         if (connections.length > 0) {
             const sourceHandle = connections[0]?.sourceHandle;
-            const group = sourceHandle === 'cond-negative' ? 'negative' : 'positive';
+
+            const group = sourceHandle === 'cond-negative' ? 'negative' : sourceHandle === 'cond-positive' ? 'positive' : 'none';
+            console.log("sourceHandle", sourceHandle, group)
             setConditionGroup(group);
+
         }
     }, [connections]);
     useEffect(() => {
@@ -188,7 +191,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
         selectedDevice?.name,
         key,
         value,
-        connections.length,
+        connections,
         revert,
         conditionGroup
     ]);
@@ -204,7 +207,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 style={{
                     width: '18px',
                     height: '18px',
-                    background: conditionGroup === 'negative' ? '#f44336' : '#4caf50'  // ← was always #0288D1
+                    background: conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#808080'  // ← was always #0288D1
                 }}
                 type="target"
                 position={Position.Left}
@@ -223,11 +226,11 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 width: '100%',
                 fontSize: '11px',
                 fontWeight: 'bold',
-                background: conditionGroup === 'negative' ? '#f4433622' : '#4caf5022',
-                color: conditionGroup === 'negative' ? '#f44336' : '#4caf50',
-                border: `1px solid ${conditionGroup === 'negative' ? '#f44336' : '#4caf50'}`
+                // background: conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#808080',
+                color: conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF',
+                border: `1px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`
             }}>
-                {conditionGroup === 'negative' ? 'Negative condition' : 'Positive condition'}
+                {conditionGroup === 'negative' ? 'Negative condition' : conditionGroup === 'positive' ? 'Positive condition' : 'No Condition'}
             </div>
             <div style={{margin: '2px'}}>
                 <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top: '0', right: '0'}}>

@@ -1,54 +1,311 @@
-[
-  {
-    "_id": {"$oid": "69c6c1bd5f695c31bbc695e0"},
-    "_class": "dev.automata.automata.model.Automation",
-    "actions": [
-      {
-        "key": "bright",
-        "deviceId": "69559fe7ff8187354090cb2d",
-        "data": "100",
-        "name": "Ring Light",
-        "isEnabled": true,
-        "revert": false
-      }
-    ],
-    "conditions": [
-      {
-        "condition": "scheduled",
-        "valueType": "int",
-        "above": "0",
-        "below": "0",
-        "value": "0",
-        "time": "02:20:05 AM",
-        "triggerKey": "",
-        "isExact": false
+{
+  "nodes": [
+    {
+      "id": "node_trigger_0",
+      "type": "trigger",
+      "selected": true,
+      "dragging": false,
+      "position": {
+        "x": 82.99999999999997,
+        "y": 350.66666666666663
       },
-      {
-        "condition": "above",
-        "valueType": "int",
-        "above": "0",
-        "below": "0",
-        "value": "200",
-        "time": "02:20:05 AM",
-        "triggerKey": "aqi",
-        "isExact": false
+      "data": {
+        "triggerData": {
+          "deviceId": "69d0182254593a2915884c46",
+          "type": "state",
+          "name": "Light On",
+          "keys": [
+            {
+              "conditionId": "node_condition_1",
+              "value": "",
+              "key": "range"
+            }
+          ],
+          "priority": 5
+        },
+        "conditionData": null,
+        "actionData": null,
+        "operators": null,
+        "value": {
+          "name": "trigger",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 220,
+        "height": 371
       }
-    ],
-    "isActive": false,
-    "isEnabled": true,
-    "name": "test",
-    "trigger": {
-      "deviceId": "670edfe8166ab22722fbf728",
-      "type": "state",
-      "keys": ["aqi"],
-      "name": "test"
     },
-    "triggerDeviceType": "sensor",
-    "operators": [
-      {
-        "type": "operator",
-        "logicType": "AND"
+    {
+      "id": "node_condition_1",
+      "type": "condition",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 450.66666666666663,
+        "y": 278.33333333333337
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": {
+          "condition": "below",
+          "triggerKey": "range",
+          "valueType": "int",
+          "below": "0",
+          "above": "0",
+          "type": "state",
+          "value": "150",
+          "isExact": false,
+          "time": "01:50:00 AM",
+          "scheduleType": null,
+          "fromTime": "04:28:31 PM",
+          "toTime": "04:28:31 PM",
+          "days": []
+        },
+        "actionData": null,
+        "operators": null,
+        "value": {
+          "name": "condition",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 260,
+        "height": 178
       }
-    ]
-  }
-]
+    },
+    {
+      "id": "node_action_4",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 832.1346109497431,
+        "y": 153.39034782693517
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "deviceId": "6955a0bf597f2017005e2b0d",
+          "key": "bright",
+          "name": "",
+          "data": "255",
+          "isEnabled": false,
+          "revert": false,
+          "conditionGroup": "none"
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 220,
+        "height": 319
+      }
+    },
+    {
+      "id": "node_action_5",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 1333.6881809628235,
+        "y": 139.5750032771424
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "deviceId": "67571bf46f2d631aa77cc632",
+          "key": "bright",
+          "name": "",
+          "data": "50",
+          "isEnabled": false,
+          "revert": false,
+          "conditionGroup": "none"
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 220,
+        "height": 319
+      }
+    },
+    {
+      "id": "node_action_6",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 1073.0666656494138,
+        "y": 132.06666692097986
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "deviceId": "69559fe7ff8187354090cb2d",
+          "key": "bright",
+          "name": "",
+          "data": "50",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "positive"
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 220,
+        "height": 319
+      }
+    },
+    {
+      "id": "node_action_7",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 840.0000000000002,
+        "y": 594.6666666666666
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "deviceId": "6955a0bf597f2017005e2b0d",
+          "key": "bright",
+          "name": "",
+          "data": "2",
+          "isEnabled": false,
+          "revert": false,
+          "conditionGroup": "negative"
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 220,
+        "height": 319
+      }
+    },
+    {
+      "id": "node_action_8",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 1087.9999999999998,
+        "y": 584
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "deviceId": "67571bf46f2d631aa77cc632",
+          "key": "bright",
+          "name": "",
+          "data": "2",
+          "isEnabled": false,
+          "revert": false,
+          "conditionGroup": "none"
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 220,
+        "height": 319
+      }
+    },
+    {
+      "id": "node_action_9",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 1342.666666666667,
+        "y": 593.3333333333333
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "deviceId": "69559fe7ff8187354090cb2d",
+          "key": "bright",
+          "name": "",
+          "data": "2",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "negative"
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 220,
+        "height": 319
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "node_condition_1",
+      "sourceHandle": "cond-positive",
+      "target": "node_action_6",
+      "targetHandle": "b",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_1cond-positive-node_action_6b",
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_1",
+      "sourceHandle": "cond-negative",
+      "target": "node_action_9",
+      "targetHandle": "b",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_1cond-negative-node_action_9b",
+      "data": {
+        "color": "#f44336"
+      }
+    },
+    {
+      "source": "node_trigger_0",
+      "sourceHandle": "b",
+      "target": "node_condition_1",
+      "targetHandle": "cond-t",
+      "type": "custom-edge",
+      "data": {
+        "color": "#4caf50"
+      },
+      "id": "xy-edge__node_trigger_0b-node_condition_1cond-t"
+    }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 50,
+    "zoom": 0.75
+  },
+  "id": "688cc888c82e72169f917631"
+}

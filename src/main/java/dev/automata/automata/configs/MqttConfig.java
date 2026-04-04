@@ -60,7 +60,7 @@ public class MqttConfig {
         options.setPassword(password.toCharArray());
         options.setAutomaticReconnect(true);
         options.setKeepAliveInterval(60);
-        options.setCleanSession(false);
+        options.setCleanSession(true);
         options.setMaxInflight(10000);
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
         factory.setConnectionOptions(options);

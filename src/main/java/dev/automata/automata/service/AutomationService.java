@@ -471,9 +471,9 @@ public class AutomationService {
                     - automationCache.getPreviousExecutionTime().toInstant().getEpochSecond();
         }
 
-        if (diff > 60 * 60) {
-            automationCache.setTriggeredPreviously(false);
-        }
+//        if (diff > 60 * 3) {
+//            automationCache.setTriggeredPreviously(false);
+//        }
 
         var automationLog = AutomationLog.builder()
                 .automationId(automation.getId())
