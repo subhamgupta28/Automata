@@ -433,13 +433,14 @@ public class AutomationService {
                     // Preserve live execution state if an entry already exists,
                     // otherwise start clean — this avoids phantom "already triggered" states
                     // for brand-new automations.
-                    .isActive(existing != null && existing.getIsActive())
+                    .isActive(existing != null && existing.getIsActive() != null ? existing.getIsActive() : false)
                     .triggeredPreviously(existing != null && existing.isTriggeredPreviously())
                     .previousExecutionTime(existing != null ? existing.getPreviousExecutionTime() : null)
                     .lastUpdate(new Date())
                     .build();
 
             redisService.setAutomationCache(cacheKey, updated);
+//            System.err.println("Automation refreshed: " + automation.getName());
             log.info("🔄 Cache force-refreshed for automation: {}", automation.getName());
 
         } catch (Exception e) {
