@@ -1,29 +1,26 @@
 import {defineConfig} from 'vite'
 import react from '@vitejs/plugin-react'
-// import visualizer from "rollup-plugin-visualizer";
 
 export default defineConfig(({command, mode, isSsrBuild, isPreview}) => {
-
     return {
-        plugins: [
-            react(),
-            // visualizer({open: true, filename: 'bundle-stats.html'})
-        ],
+        plugins: [react()],
         define: {
-            __API_MODE__: JSON.stringify(command), // Define the API URL for use in the app
-            global: 'window', // Ensure global is set to window for browser environment
+            __API_MODE__: JSON.stringify(command),
+            global: 'window',
         },
         build: {
             outDir: '../src/main/resources/static',
-            rollupOptions: {
+            rolldownOptions: {
                 output: {
-                    manualChunks: {
-                        vendor: ['react', 'react-dom'],
-                        router: ['react-router-dom'],
-                        ws: ['@stomp/stompjs', 'sockjs-client'],
-                        mui: ['@mui/material', '@mui/icons-material'],
-                        charts: ['@mui/x-charts', 'recharts'],
-                        flow: ['@xyflow/react'],
+                    manualChunks: (id) => {
+                        if (id.includes('node_modules')) {
+                            if (id.includes('react-router-dom')) return 'router';
+                            if (id.includes('@stomp') || id.includes('sockjs-client')) return 'ws';
+                            if (id.includes('@mui/x-charts') || id.includes('recharts')) return 'charts';
+                            if (id.includes('@mui')) return 'mui';
+                            if (id.includes('@xyflow')) return 'flow';
+                            if (id.includes('react-dom') || id.includes('react/')) return 'vendor';
+                        }
                     }
                 }
             }
