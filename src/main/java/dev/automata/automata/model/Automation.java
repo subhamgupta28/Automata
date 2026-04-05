@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.List;
 
 @Document(collection = "automations")
@@ -28,6 +29,7 @@ public class Automation {
     private Boolean isActive;
     private Long snoozeTime;
     private String triggerDeviceType;
+    private Instant updateDate;
 
 
     private List<String> targetDeviceIds;
@@ -99,7 +101,10 @@ public class Automation {
         private String fromTime;
         private String toTime;
         private List<String> days;
-        // Getters and setters
+        private String solarType;
+        private int offsetMinutes;
+        private int intervalMinutes;
+        private int durationMinutes;
     }
 
     @Getter
