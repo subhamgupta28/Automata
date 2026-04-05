@@ -109,8 +109,9 @@ public class AutomationService {
             automation.setIsEnabled(enabled);
             automationRepository.save(automation);
             notificationService.sendNotification("Automation updated", "success");
+            refreshCacheForAutomation(automation);  // ← add this; removes the updateRedisStorage() call here too
         }
-        updateRedisStorage();
+        // updateRedisStorage();  ← remove this; refreshCacheForAutomation handles it precisely
         return "success";
     }
 
@@ -319,7 +320,8 @@ public class AutomationService {
         automationDetailRepository.save(detail);
 
         notificationService.sendNotification("Automation saved successfully", "success");
-        updateRedisStorage();
+//        updateRedisStorage();
+        refreshCacheForAutomation(saved);
         return "success";
     }
 
@@ -403,6 +405,50 @@ public class AutomationService {
     // ─────────────────────────────────────────────────────────────────────────
     // CORE AUTOMATION EXECUTION
     // ─────────────────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────────────────
+// CACHE REFRESH (called on save — bypasses the recency guard)
+// ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Force-writes the Redis cache for a single automation immediately after save.
+     * Unlike updateRedisStorage(), this:
+     * - Creates the entry if it doesn't exist yet (handles brand-new automations)
+     * - Always overwrites, bypassing the 5-minute recency guard
+     * - Preserves live execution state (isActive, triggeredPreviously, previousExecutionTime)
+     * so an in-progress automation isn't incorrectly reset
+     */
+    private void refreshCacheForAutomation(Automation automation) {
+        String cacheKey = automation.getTrigger().getDeviceId() + ":" + automation.getId();
+
+        try {
+            AutomationCache existing = redisService.getAutomationCache(cacheKey);
+
+            AutomationCache updated = AutomationCache.builder()
+                    .id(automation.getId())
+                    .automation(automation)                          // ← always the fresh version
+                    .triggerDeviceType(automation.getTriggerDeviceType())
+                    .enabled(automation.getIsEnabled())
+                    .triggerDeviceId(automation.getTrigger().getDeviceId())
+                    // Preserve live execution state if an entry already exists,
+                    // otherwise start clean — this avoids phantom "already triggered" states
+                    // for brand-new automations.
+                    .isActive(existing != null && existing.getIsActive())
+                    .triggeredPreviously(existing != null && existing.isTriggeredPreviously())
+                    .previousExecutionTime(existing != null ? existing.getPreviousExecutionTime() : null)
+                    .lastUpdate(new Date())
+                    .build();
+
+            redisService.setAutomationCache(cacheKey, updated);
+            log.info("🔄 Cache force-refreshed for automation: {}", automation.getName());
+
+        } catch (Exception e) {
+            // Non-fatal — the 5-minute scheduled job will eventually sync it.
+            // Log as warning so it's visible but doesn't break the save flow.
+            log.warn("⚠️ Failed to refresh Redis cache for automation '{}': {}",
+                    automation.getName(), e.getMessage());
+        }
+    }
 
     /**
      * FIX #2: Idempotency key now only gates the TRIGGERED path, not the full method.
