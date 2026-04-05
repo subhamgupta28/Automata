@@ -593,13 +593,29 @@ public class MainService {
     public String updateWledDevice(List<WledPresets> devices) {
         for (var device : devices) {
             var res = deviceRepository.findByCategory(device.getName());
+            var attributes = new ArrayList<Attribute>();
             if (res.getType().equals("WLED")) {
                 var presets = new HashMap<String, Object>();
                 for (var preset : device.getPresets()) {
                     presets.put(preset.getName(), Integer.parseInt(preset.getId()));
                 }
-                var attributes = res.getAttributes().stream().filter(d -> d.getType().equals("ACTION|PRESET")).toList();
-                attributes.getFirst().setExtras(presets);
+                var presetAttr = res.getAttributes().stream().filter(d -> d.getType().equals("ACTION|PRESET")).toList();
+                presetAttr.getFirst().setExtras(presets);
+
+                var attr = attributeRepository.findByDeviceId(res.getId());
+                if (!attr.isEmpty()) {
+                    System.err.print("Attributes: ");
+                    System.err.println(attr);
+                    attributeRepository.deleteByDeviceId(res.getId());
+                }
+
+                res.getAttributes().forEach(a -> {
+                    a.setDeviceId(res.getId());
+                    attributes.add(a);
+                });
+                var atr = attributeRepository.saveAll(attributes);
+                res.setAttributes(atr);
+
                 System.err.println("Saved Preset for: " + res.getName() + " preset: " + attributes);
                 saveDevice(res);
             }

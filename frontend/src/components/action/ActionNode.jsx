@@ -202,7 +202,10 @@ export const ActionNode = ({id, data, isConnectable}) => {
     }
 
     return (
-        <Card style={actionStyle}>
+        <Card style={{
+            ...actionStyle,
+            border: `2px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`,
+        }}>
             <Handle
                 style={{
                     width: '18px',
@@ -215,23 +218,23 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 isConnectable={isConnectable}
             />
             <Typography variant="body1" fontWeight="bold" sx={{marginLeft: 1}}>
-                Action
+                {conditionGroup === 'negative' ? 'Negative Action' : conditionGroup === 'positive' ? 'Positive Action' : 'Not Action'}
             </Typography>
-            <div style={{
-                display: 'inline-block',
-                // marginLeft: '8px',
-                marginBottom: '4px',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                width: '100%',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                // background: conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#808080',
-                color: conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF',
-                border: `1px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`
-            }}>
-                {conditionGroup === 'negative' ? 'Negative condition' : conditionGroup === 'positive' ? 'Positive condition' : 'No Condition'}
-            </div>
+            {/*<div style={{*/}
+            {/*    display: 'inline-block',*/}
+            {/*    // marginLeft: '8px',*/}
+            {/*    marginBottom: '4px',*/}
+            {/*    padding: '2px 8px',*/}
+            {/*    borderRadius: '4px',*/}
+            {/*    width: '100%',*/}
+            {/*    fontSize: '11px',*/}
+            {/*    fontWeight: 'bold',*/}
+            {/*    // background: conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#808080',*/}
+            {/*    color: conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF',*/}
+            {/*    border: `1px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`*/}
+            {/*}}>*/}
+
+            {/*</div>*/}
             <div style={{margin: '2px'}}>
                 <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top: '0', right: '0'}}>
                     <DeleteIcon/>
@@ -314,11 +317,11 @@ export const ActionNode = ({id, data, isConnectable}) => {
                         />
                     )
                 )}
-                Revert to previous state
+                Revert action
                 <Switch
                     onChange={(e) => handleTriggerKey(e, 'revert')}
                     checked={revert}
-                />
+                ></Switch>
             </div>
         </Card>
     );
