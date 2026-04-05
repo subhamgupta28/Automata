@@ -196,8 +196,8 @@ public class MqttConfig {
                         topicSendLiveData,
                         topicSendData,
                         topicAction,
-                        topicDefault,
-                        topicSys
+                        topicDefault
+//                        topicSys
                 );
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());

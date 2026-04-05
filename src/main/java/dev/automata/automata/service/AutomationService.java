@@ -14,14 +14,10 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoUnit;
@@ -36,7 +32,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AutomationService {
 
-    private ThreadPoolTaskExecutor taskExecutor;
 
     private final DeviceRepository deviceRepository;
     private final AutomationRepository automationRepository;
@@ -154,7 +149,7 @@ public class AutomationService {
         if (payload.containsKey("automation")) {
             var id = payload.get(payload.get("key").toString()).toString();
             automationRepository.findById(id).ifPresent((automation) -> {
-                executeActions(automation, user, new HashMap<>());
+                executeAutomationImmediate(automation, new HashMap<>(), user);
             });
             return "success";
         }
@@ -262,6 +257,7 @@ public class AutomationService {
 
         var automationBuilder = Automation.builder()
                 .isEnabled(true)
+                .updateDate(Instant.now())
                 .isActive(false);
 
         if (detail.getId() != null && !detail.getId().isEmpty()) {
@@ -299,7 +295,8 @@ public class AutomationService {
                 .map(c -> new Automation.Condition(
                         c.getCondition(), c.getValueType(), c.getAbove(), c.getBelow(),
                         c.getValue(), c.getTime(), c.getTriggerKey(), c.getIsExact(),
-                        c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays()
+                        c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays(),
+                        c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(), c.getDurationMinutes()
                 ))
                 .collect(Collectors.toList());
         automationBuilder.conditions(conditionList);
@@ -317,6 +314,7 @@ public class AutomationService {
 
         var saved = automationRepository.save(automation);
         detail.setId(saved.getId());
+        detail.setUpdateDate(Instant.now());
         automationDetailRepository.save(detail);
 
         notificationService.sendNotification("Automation saved successfully", "success");
@@ -534,7 +532,23 @@ public class AutomationService {
                 .timestamp(now);
 
         if (isTriggeredNow && !automationCache.isTriggeredPreviously()) {
+            if (automation.getConditions() != null && !automation.getConditions().isEmpty()) {
+                Automation.Condition condition = automation.getConditions().get(0);
 
+                if (condition.getDurationMinutes() != 0 && condition.getDurationMinutes() > 0) {
+                    String runKey = "RUNNING:" + automation.getId();
+
+                    redisService.setWithExpiry(
+                            runKey,
+                            "active",
+                            condition.getDurationMinutes() * 60L
+                    );
+
+                    log.info("⏱️ Duration started for {} ({} mins)",
+                            automation.getName(),
+                            condition.getDurationMinutes());
+                }
+            }
             // FIX #2: Idempotency check ONLY on the triggered path, not at method top.
             String idempotencyKey = generateIdempotencyKey(automation, now);
             if (isAlreadyExecuted(idempotencyKey)) {
@@ -579,12 +593,24 @@ public class AutomationService {
             automationLog.status(AutomationLog.LogStatus.TRIGGERED)
                     .reason("All conditions met (" + operatorLogic + ") — actions executed");
 
-        } else if (!isTriggeredNow && automationCache.isTriggeredPreviously()) {
-            log.info("🔄 Automation Cleared: Running negative actions for {}", automation.getName());
-            notificationService.sendNotification("Restoring automation: " + automation.getName(), "low");
+        } else if (automationCache.isTriggeredPreviously()) {
 
-            // Run negative-group actions directly instead of snapshot restore
+            String runKey = "RUNNING:" + automation.getId();
+
+            // 🔥 If duration exists → control via RUNNING key
+            if (redisService.exists(runKey)) {
+                log.debug("⏳ Automation still within duration: {}", automation.getName());
+                automationLog.status(AutomationLog.LogStatus.SKIPPED)
+                        .reason("Still within duration window — no action taken");
+                saveLog(automationLog.build());  // ← Fix: log before returning
+                return; // still running → DO NOTHING
+            }
+
+            // ⛔ Duration ended → run negative actions
+            log.info("⏹️ Duration ended. Running negative actions for {}", automation.getName());
+
             AutomationCache finalAutomationCache = automationCache;
+
             executeWithTimeout(automation, payload, user, "negative")
                     .thenRun(() -> {
                         finalAutomationCache.setTriggeredPreviously(false);
@@ -594,8 +620,7 @@ public class AutomationService {
                     });
 
             automationLog.status(AutomationLog.LogStatus.RESTORED)
-                    .reason("Conditions cleared — negative actions executed");
-
+                    .reason("Duration ended — negative actions executed");
         } else if (!isTriggeredNow) {
             automationLog.status(AutomationLog.LogStatus.NOT_MET)
                     .reason("Conditions not satisfied — no action taken");
@@ -613,26 +638,116 @@ public class AutomationService {
     }
 
     private void executeAutomationImmediate(Automation automation, Map<String, Object> payload, String user) {
-        if (automation.getIsEnabled()) {
-            var deviceId = automation.getTrigger().getDeviceId();
-            Date now = new Date();
-            var automationLog = AutomationLog.builder()
-                    .automationId(automation.getId())
-                    .automationName(automation.getName())
-                    .conditionResults(new ArrayList<>())
-                    .operatorLogic("")
-                    .payload(payload)
-                    .triggerType(automation.getTrigger().getType())
-                    .triggerDeviceId(deviceId)
-                    .timestamp(now)
-                    .status(AutomationLog.LogStatus.USER_OVERRIDE)
-                    .reason("Automation triggered manually by user: " + user);
+        if (!automation.getIsEnabled()) return;
 
-            executeActions(automation, user, payload);
-            saveLog(automationLog.build());
+        var deviceId = automation.getTrigger().getDeviceId();
+        Date now = new Date();
+
+        var automationLog = AutomationLog.builder()
+                .automationId(automation.getId())
+                .automationName(automation.getName())
+                .conditionResults(new ArrayList<>())
+                .operatorLogic("")
+                .payload(payload)
+                .triggerType(automation.getTrigger().getType())
+                .triggerDeviceId(deviceId)
+                .timestamp(now);
+
+        executeWithTimeout(automation, payload, user, "positive")   // Fix 1: capture future
+                .thenRun(() -> {
+                    automationLog
+                            .status(AutomationLog.LogStatus.USER_OVERRIDE)
+                            .reason("Automation triggered manually by user: " + user);
+                    saveLog(automationLog.build());                  // Fix 2: saveLog inside thenRun
+                    log.info("✅ User override completed: {}", automation.getName());
+                })
+                .exceptionally(ex -> {
+                    automationLog
+                            .status(AutomationLog.LogStatus.ERROR)     // log failure too
+                            .reason("User override FAILED for user: " + user + " — " + ex.getMessage());
+                    saveLog(automationLog.build());
+                    log.error("❌ User override failed: {}", automation.getName(), ex);
+                    return null;
+                });
+    }
+
+    private LocalTime getSunTime(String solarType) {
+        try {
+            ZoneId istZone = ZoneId.of("Asia/Kolkata");
+            LocalDate today = LocalDate.now(istZone);
+
+            String cacheKey = "SUN_TIME:" + solarType + ":" + today;
+
+            // ✅ 1. Check cache first
+            Object cached = redisService.getRecentDeviceData(cacheKey);
+            if (cached != null) {
+                return LocalTime.parse(cached.toString());
+            }
+
+            // 👉 Your location (move to config later)
+            double lat = 17.3850;
+            double lng = 78.4867;
+
+            String url = String.format(
+                    "https://api.sunrise-sunset.org/json?lat=%s&lng=%s&formatted=0",
+                    lat, lng
+            );
+
+            RestTemplate restTemplate = new RestTemplate();
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+
+            if (response == null || !response.containsKey("results")) return null;
+
+            Map<String, String> results = (Map<String, String>) response.get("results");
+
+            String timeStr = "sunrise".equalsIgnoreCase(solarType)
+                    ? results.get("sunrise")
+                    : results.get("sunset");
+
+            if (timeStr == null) return null;
+
+            ZonedDateTime utcTime = ZonedDateTime.parse(timeStr);
+            ZonedDateTime istTime = utcTime.withZoneSameInstant(istZone);
+
+            LocalTime result = istTime.toLocalTime();
+
+            // ✅ 2. Store in Redis (cache for full day)
+            redisService.setWithExpiry(cacheKey, result.toString(), 86400);
+
+            return result;
+
+        } catch (Exception e) {
+            log.error("❌ Failed to fetch sun time: {}", e.getMessage());
+            return null;
         }
     }
 
+    private boolean checkAndSetDailyLock(Automation automation, ZonedDateTime nowZdt) {
+        LocalDate today = nowZdt.toLocalDate();
+
+        String key = String.format("DAILY_SOLAR:%s:%s",
+                automation.getId(),
+                today
+        );
+
+        // Already executed today?
+        if (redisService.exists(key)) {
+            log.debug("🌅 Solar automation {} already executed today", automation.getName());
+            return false;
+        }
+
+        // Set lock until midnight
+        long secondsUntilMidnight = ChronoUnit.SECONDS.between(
+                nowZdt,
+                nowZdt.plusDays(1).truncatedTo(ChronoUnit.DAYS)
+        );
+
+        redisService.setWithExpiry(key, "done", secondsUntilMidnight);
+
+        log.info("✅ Solar automation {} locked for today", automation.getName());
+
+        return true;
+    }
     // ─────────────────────────────────────────────────────────────────────────
     // TRIGGER EVALUATION
     // ─────────────────────────────────────────────────────────────────────────
@@ -656,7 +771,9 @@ public class AutomationService {
                     .getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH)
                     .substring(0, 3);
             dayOfWeek = dayOfWeek.substring(0, 1).toUpperCase() + dayOfWeek.substring(1).toLowerCase();
-            if (!condition.getDays().contains(dayOfWeek)) return false;
+            if (!condition.getDays().contains("Everyday") && !condition.getDays().contains(dayOfWeek)) {
+                return false;
+            }
         }
 
         String scheduleType = condition.getScheduleType();
@@ -678,7 +795,36 @@ public class AutomationService {
                 return !current.isBefore(from) || !current.isAfter(to);
             }
         }
+        if ("solar".equals(scheduleType)) {
+            LocalTime solarTime = getSunTime(condition.getSolarType()); // sunrise/sunset
 
+            if (solarTime == null) return false;
+
+            LocalTime adjusted = solarTime.plusMinutes(condition.getOffsetMinutes());
+
+            boolean match = Math.abs(ChronoUnit.MINUTES.between(adjusted, current)) <= 3;
+
+            if (!match) return false;
+
+            return checkAndSetDailyLock(automation, nowZdt);
+        }
+
+        if ("interval".equals(scheduleType)) {
+            String intervalKey = "INTERVAL:" + automation.getId();
+            String runKey = "RUNNING:" + automation.getId();
+
+            // ⛔ Prevent overlap
+            if (redisService.exists(runKey)) {
+                return false;
+            }
+
+            if (!redisService.exists(intervalKey)) {
+                redisService.setWithExpiry(intervalKey, "run", condition.getIntervalMinutes() * 60L);
+                return true;
+            }
+
+            return false;
+        }
         // "at" schedule: exact time match within 1 minute, fire once per day
         LocalTime target = parseTime(condition.getTime());
         if (target == null) return false;

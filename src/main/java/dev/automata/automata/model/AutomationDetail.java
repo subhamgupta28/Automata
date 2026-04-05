@@ -5,6 +5,7 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.List;
 
 @Document(collection = "automationDetail")
@@ -24,6 +25,8 @@ public class AutomationDetail {
     private List<Node> nodes;
     @JsonProperty("viewport")
     private Viewport viewport;
+
+    private Instant updateDate;
 
     @Getter
     @Setter
@@ -160,6 +163,10 @@ public class AutomationDetail {
                 private String toTime;
                 @JsonProperty("days")
                 private List<String> days;
+                private String solarType;
+                private int offsetMinutes;
+                private int intervalMinutes;
+                private int durationMinutes;
             }
 
             @Getter

@@ -9,6 +9,8 @@ import Typography from "@mui/material/Typography";
 import {DesktopTimePicker, LocalizationProvider, TimePicker} from "@mui/x-date-pickers";
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import ListItemText from "@mui/material/ListItemText";
+import Checkbox from "@mui/material/Checkbox";
 
 dayjs.extend(customParseFormat);
 
@@ -38,7 +40,11 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         scheduleType: 'at',
         fromTime: '2:20:05 AM',
         toTime: '2:20:05 AM',
-        days: [],
+        days: ['Everyday'],
+        solarType: 'sunset',
+        offsetMinutes: 0,
+        intervalMinutes: 30,
+        durationMinutes: 5
     };
     const [scheduleType, setScheduleType] = useState(conditionData.scheduleType); // 'at' | 'range'
     const [fromTime, setFromTime] = useState(
@@ -56,6 +62,23 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     const [below, setBelow] = useState(conditionData.below)
     const [isRange, setIsRange] = useState(conditionData.isExact)
     const [conditionValue, setConditionValue] = useState(conditionData.value)
+    const [solarType, setSolarType] = useState(conditionData.solarType); // 'sunrise' | 'sunset'
+    const [intervalMinutes, setIntervalMinutes] = useState(conditionData.intervalMinutes);
+    const [offsetMinutes, setOffsetMinutes] = useState(conditionData.offsetMinutes);
+    const [durationMinutes, setDurationMinutes] = useState(conditionData.durationMinutes);
+
+
+    const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    const handleDaysChange = (event) => {
+        const value = event.target.value;
+
+        if (value.includes('Everyday')) {
+            setDays(allDays);
+        } else {
+            setDays(value);
+        }
+    };
 
     const [time, setTime] = useState(
         conditionData.time ? dayjs(conditionData.time, "hh:mm:ss A") : dayjs()
@@ -143,7 +166,11 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             scheduleType,
             fromTime: fromTime.format("hh:mm:ss A"),
             toTime: toTime.format("hh:mm:ss A"),
-            days
+            days,
+            solarType,
+            offsetMinutes,
+            intervalMinutes,
+            durationMinutes
         };
 
         if (JSON.stringify(data.conditionData) !== JSON.stringify(newData)) {
@@ -162,7 +189,11 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         scheduleType,   // ✅ missing
         fromTime,       // ✅ missing
         toTime,         // ✅ missing
-        days           // ✅ missing
+        days,           // ✅ missing
+        solarType,
+        offsetMinutes,
+        intervalMinutes,
+        durationMinutes
     ]);
 
     const handleChange = (e, select) => {
@@ -262,18 +293,21 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                     >
                                         <MenuItem value="at">At specific time</MenuItem>
                                         <MenuItem value="range">Between time range</MenuItem>
+                                        <MenuItem value="solar">Sun-based</MenuItem>
+                                        <MenuItem value="interval">Repeat every</MenuItem>
                                     </Select>
                                 </FormControl>
 
                                 {/* Time Pickers */}
                                 <LocalizationProvider dateAdapter={AdapterDayjs}>
-                                    {scheduleType === 'at' ? (
+                                    {scheduleType === 'at' && (
                                         <TimePicker
                                             label="Time"
                                             value={time}
                                             onChange={(e) => e?.isValid() && setTime(e)}
                                         />
-                                    ) : (
+                                    )}
+                                    {scheduleType === 'range' && (
                                         <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
                                             <TimePicker
                                                 label="From"
@@ -287,8 +321,51 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                             />
                                         </div>
                                     )}
+
                                 </LocalizationProvider>
 
+                                {scheduleType === 'solar' && (
+                                    <div>
+                                        <FormControl className='nodrag' fullWidth size="small" sx={{mb: 2}}>
+                                            <InputLabel>Event</InputLabel>
+                                            <Select
+                                                variant="outlined"
+                                                value={solarType}
+                                                label="Event"
+                                                onChange={(e) => setSolarType(e.target.value)}
+                                            >
+                                                <MenuItem value="sunrise">Sunrise</MenuItem>
+                                                <MenuItem value="sunset">Sunset</MenuItem>
+                                            </Select>
+                                        </FormControl>
+
+                                        <TextField
+                                            size="small"
+                                            label="Offset (minutes)"
+                                            type="number"
+                                            value={offsetMinutes}
+                                            onChange={(e) => setOffsetMinutes(Number(e.target.value))}
+                                            helperText="Use negative for before (-60 = 1hr before)"
+                                        />
+                                    </div>
+                                )}
+                                {scheduleType === 'interval' && (
+                                    <TextField
+                                        size="small"
+                                        label="Run every (minutes)"
+                                        type="number"
+                                        value={intervalMinutes}
+                                        onChange={(e) => setIntervalMinutes(Number(e.target.value))}
+                                    />
+                                )}
+                                <TextField
+                                    size="small"
+                                    label="Run for (minutes)"
+                                    type="number"
+                                    value={durationMinutes}
+                                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                                    sx={{mt: 2}}
+                                />
                                 {/* Days Selector */}
                                 <FormControl className='nodrag' fullWidth size="small" sx={{mt: 2}}>
                                     <InputLabel>Days</InputLabel>
@@ -297,12 +374,13 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                         multiple
                                         label="Days"
                                         value={days}
-                                        onChange={(e) => setDays([...e.target.value])}
+                                        onChange={handleDaysChange}
                                         renderValue={(selected) => selected.join(', ')}
                                     >
-                                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                                        {['Everyday', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                                             <MenuItem key={day} value={day}>
-                                                {day}
+                                                <Checkbox checked={days.indexOf(day) > -1}/>
+                                                <ListItemText primary={day}/>
                                             </MenuItem>
                                         ))}
                                     </Select>
@@ -355,7 +433,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             {/*/>*/}
 
             <Handle
-                style={{width: '26px', height: '26px', background: '#4caf50'}}
+                style={{width: '26px', height: '26px', background: '#4caf50', top: '25%'}}
                 type="source"
                 position={Position.Right}
                 id="cond-positive"
@@ -372,7 +450,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
 
             <div style={{
-                background: 'transparent', top: '50%',
+                background: 'transparent', top: '25%',
                 right: 0,
                 transform: 'translate(50%, -50%)'
             }} className='react-flow__handle'>
