@@ -3,6 +3,7 @@ package dev.automata.automata.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.automation.AutomationValidationService;
 import dev.automata.automata.dto.AutomationCache;
+import dev.automata.automata.dto.AutomationState;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.model.*;
 import dev.automata.automata.modules.Wled;
@@ -17,7 +18,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoUnit;
@@ -257,7 +261,7 @@ public class AutomationService {
 
         var automationBuilder = Automation.builder()
                 .isEnabled(true)
-                .updateDate(Instant.now())
+                .updateDate(new Date())
                 .isActive(false);
 
         if (detail.getId() != null && !detail.getId().isEmpty()) {
@@ -284,7 +288,7 @@ public class AutomationService {
                     return new Automation.Action(
                             a.getKey(), a.getDeviceId(), a.getData(),
                             a.getName(), a.getIsEnabled(), a.getRevert(),
-                            a.getConditionGroup()
+                            a.getConditionGroup(), a.getOrder(), a.getDelaySeconds()
                     );
                 }).toList();
         automationBuilder.actions(actions);
@@ -314,7 +318,7 @@ public class AutomationService {
 
         var saved = automationRepository.save(automation);
         detail.setId(saved.getId());
-        detail.setUpdateDate(Instant.now());
+        detail.setUpdateDate(new Date());
         automationDetailRepository.save(detail);
 
         notificationService.sendNotification("Automation saved successfully", "success");
@@ -461,38 +465,37 @@ public class AutomationService {
             String user) {
 
         Date now = new Date();
+        String deviceId = automation.getTrigger().getDeviceId();
 
-        var payload = new HashMap<String, Object>();
-        var deviceId = automation.getTrigger().getDeviceId();
-
+        // Prepare payload
+        Map<String, Object> payload = new HashMap<>();
         if (data != null) payload.putAll(data);
         else payload.putAll(mainService.getLastData(deviceId));
 
         String cacheKey = deviceId + ":" + automation.getId();
 
-        // FIX #3: Try lock, but fall back gracefully on contention
-        AutomationCache automationCache = withLock(
-                "LOCK:CACHE:" + cacheKey, LOCK_TTL_SECONDS,
+        // 🔒 Load cache with lock
+        AutomationCache cache = withLock(
+                "LOCK:CACHE:" + cacheKey,
+                LOCK_TTL_SECONDS,
                 () -> {
-                    AutomationCache cache = redisService.getAutomationCache(cacheKey);
-                    if (cache == null) {
-                        cache = AutomationCache.builder()
+                    AutomationCache c = redisService.getAutomationCache(cacheKey);
+                    if (c == null) {
+                        c = AutomationCache.builder()
                                 .id(automation.getId())
                                 .triggeredPreviously(false)
                                 .previousExecutionTime(null)
                                 .lastUpdate(new Date())
                                 .build();
                     }
-                    return cache;
+                    return c;
                 }
         );
 
-        // FIX #3: Fall back to direct read instead of silently returning null
-        if (automationCache == null) {
-            log.warn("Lock contention for automation: {} — falling back to direct cache read", automation.getName());
-            automationCache = redisService.getAutomationCache(cacheKey);
-            if (automationCache == null) {
-                automationCache = AutomationCache.builder()
+        if (cache == null) {
+            cache = redisService.getAutomationCache(cacheKey);
+            if (cache == null) {
+                cache = AutomationCache.builder()
                         .id(automation.getId())
                         .triggeredPreviously(false)
                         .previousExecutionTime(null)
@@ -501,159 +504,146 @@ public class AutomationService {
             }
         }
 
+        // 🧠 Get condition + state
         List<AutomationLog.ConditionResult> conditionResults = new ArrayList<>();
-        boolean isTriggeredNow = isTriggered(automation, payload, automationCache.isTriggeredPreviously(), conditionResults);
+        boolean conditionNow = isTriggered(automation, payload, cache.isTriggeredPreviously(), conditionResults);
 
-        String triggerType = automation.getTrigger().getType();
-        String operatorLogic = "AND";
-        if (automation.getOperators() != null && !automation.getOperators().isEmpty()) {
-            operatorLogic = automation.getOperators().get(0).getLogicType();
+        Automation.Condition condition;
+        if (automation.getConditions() != null && !automation.getConditions().isEmpty()) {
+            condition = automation.getConditions().get(0);
+        } else {
+            condition = null;
         }
 
+        boolean hasDuration = condition != null && condition.getDurationMinutes() > 0;
+        String runKey = "RUNNING:" + automation.getId();
+        boolean durationActive = redisService.exists(runKey);
 
-        long diff = 0;
-        if (automationCache.getPreviousExecutionTime() != null) {
-            diff = now.toInstant().getEpochSecond()
-                    - automationCache.getPreviousExecutionTime().toInstant().getEpochSecond();
-        }
+        // 🧠 STATE (fallback to old flag if not present)
+        String state = (cache.getState() != null ? cache.getState() : AutomationState.IDLE).toString();
 
-//        if (diff > 60 * 3) {
-//            automationCache.setTriggeredPreviously(false);
-//        }
-
+        // 🪵 Logging setup
         var automationLog = AutomationLog.builder()
                 .automationId(automation.getId())
                 .automationName(automation.getName())
                 .conditionResults(conditionResults)
-                .operatorLogic(operatorLogic)
                 .payload(payload)
-                .triggerType(triggerType)
                 .triggerDeviceId(deviceId)
                 .timestamp(now);
 
-        if (isTriggeredNow && !automationCache.isTriggeredPreviously()) {
-            if (automation.getConditions() != null && !automation.getConditions().isEmpty()) {
-                Automation.Condition condition = automation.getConditions().get(0);
+        try {
 
-                // ignore if duration is 0, work like a normal automation
-                if (condition.getDurationMinutes() > 0) {
-                    String runKey = "RUNNING:" + automation.getId();
+            // ─────────────────────────────────────────────
+            // 🟢 IDLE → POSITIVE
+            // ─────────────────────────────────────────────
+            if ("IDLE".equals(state) && conditionNow) {
 
-                    redisService.setWithExpiry(
-                            runKey,
-                            "active",
-                            condition.getDurationMinutes() * 60L
-                    );
+                log.info("🚀 Triggered: {}", automation.getName());
 
-                    log.info("⏱️ Duration started for {} ({} mins)",
-                            automation.getName(),
-                            condition.getDurationMinutes());
+                AutomationCache finalCache = cache;
+                executeWithTimeout(automation, payload, user, "positive")
+                        .thenRun(() -> {
+                            finalCache.setTriggeredPreviously(true);
+                            finalCache.setPreviousExecutionTime(now);
+                            finalCache.setLastUpdate(new Date());
+
+                            if (hasDuration) {
+                                finalCache.setState(AutomationState.HOLDING);
+
+                                redisService.setWithExpiry(
+                                        runKey,
+                                        "active",
+                                        condition.getDurationMinutes() * 60L
+                                );
+
+                                log.info("⏱️ Entered HOLDING for {} ({} mins)",
+                                        automation.getName(),
+                                        condition.getDurationMinutes());
+
+                            } else {
+                                finalCache.setState(AutomationState.ACTIVE);
+                                log.info("✅ Entered ACTIVE (no duration): {}", automation.getName());
+                            }
+
+                            redisService.setAutomationCache(cacheKey, finalCache);
+                        });
+
+                automationLog.status(AutomationLog.LogStatus.TRIGGERED)
+                        .reason("Condition TRUE → positive actions executed");
+
+            }
+
+            // ─────────────────────────────────────────────
+            // 🔴 ACTIVE / HOLDING → NEGATIVE
+            // ─────────────────────────────────────────────
+            else if ("ACTIVE".equals(state) || "HOLDING".equals(state)) {
+
+                boolean shouldRevert = false;
+                String reason = "";
+
+                // ⚡ CONDITION FALSE → immediate revert
+                if (!conditionNow) {
+                    shouldRevert = true;
+                    reason = "Condition turned FALSE";
+                }
+
+                // ⏱️ DURATION EXPIRED → revert
+                else if ("HOLDING".equals(state) && hasDuration && !durationActive) {
+                    shouldRevert = true;
+                    reason = "Duration expired";
+                }
+
+                if (shouldRevert) {
+
+                    log.info("⏹️ Reverting automation: {} ({})", automation.getName(), reason);
+
+                    AutomationCache finalCache1 = cache;
+                    executeWithTimeout(automation, payload, user, "negative")
+                            .thenRun(() -> {
+                                finalCache1.setState(AutomationState.IDLE);
+                                finalCache1.setTriggeredPreviously(false);
+                                finalCache1.setPreviousExecutionTime(null);
+                                finalCache1.setLastUpdate(new Date());
+
+                                redisService.setAutomationCache(cacheKey, finalCache1);
+
+                                log.info("🔁 Reset to IDLE: {}", automation.getName());
+                            });
+
+                    automationLog.status(AutomationLog.LogStatus.RESTORED)
+                            .reason(reason + " → negative actions executed");
+
+                } else {
+                    automationLog.status(AutomationLog.LogStatus.SKIPPED)
+                            .reason("Still ACTIVE/HOLDING — no revert needed");
                 }
             }
-            // FIX #2: Idempotency check ONLY on the triggered path, not at method top.
-            String idempotencyKey = generateIdempotencyKey(automation, now);
-            if (isAlreadyExecuted(idempotencyKey)) {
-                log.debug("Skipping duplicate TRIGGERED execution for: {}", automation.getName());
+
+            // ─────────────────────────────────────────────
+            // ❌ NOT MET
+            // ─────────────────────────────────────────────
+            else if (!conditionNow) {
+                automationLog.status(AutomationLog.LogStatus.NOT_MET)
+                        .reason("Condition not satisfied");
+            }
+
+            // ─────────────────────────────────────────────
+            // ⏭️ DEFAULT SKIP
+            // ─────────────────────────────────────────────
+            else {
                 automationLog.status(AutomationLog.LogStatus.SKIPPED)
-                        .reason("Idempotency key already set — duplicate trigger within same minute");
-                saveLog(automationLog.build());
-                return;
+                        .reason("No state change");
             }
 
-            log.info("🚀 Automation Triggered: {}", automation.getName());
-            notificationService.sendNotification("Executing automation: " + automation.getName(), "low");
+        } catch (Exception e) {
+            log.error("❌ Error in automation {}: {}", automation.getName(), e.getMessage(), e);
 
-            if (!"time".equals(triggerType)) {
-                withLock("LOCK:SNAPSHOT:" + automation.getId(), LOCK_TTL_SECONDS, () -> {
-                    saveStateSnapshots(automation);
-                    return null;
-                });
-            }
-
-            // Capture final references for lambda
-            final AutomationCache finalCache = automationCache;
-            final String finalOperatorLogic = operatorLogic;
-
-            // FIX #4: Cache is written INSIDE thenRun — only after actions complete successfully.
-            executeWithTimeout(automation, payload, user, "positive")
-                    .thenRun(() -> {
-                        markAsExecuted(idempotencyKey);
-
-                        finalCache.setTriggeredPreviously(true);
-                        finalCache.setPreviousExecutionTime(now);
-                        finalCache.setLastUpdate(new Date());
-                        redisService.setAutomationCache(cacheKey, finalCache);
-
-                        log.info("✅ Automation completed and cache updated: {}", automation.getName());
-                    })
-                    .exceptionally(ex -> {
-                        log.error("❌ Automation failed — cache NOT updated, will retry: {}", automation.getName(), ex);
-                        return null;
-                    });
-
-            automationLog.status(AutomationLog.LogStatus.TRIGGERED)
-                    .reason("All conditions met (" + operatorLogic + ") — actions executed");
-
-
-        } else if (automationCache.isTriggeredPreviously()) {
-
-            Automation.Condition condition = null;
-            if (automation.getConditions() != null && !automation.getConditions().isEmpty()) {
-                condition = automation.getConditions().get(0);
-            }
-
-            // 🚫 If duration is disabled → DO NOTHING (no revert logic)
-            if (condition == null || condition.getDurationMinutes() <= 0) {
-                log.debug("⏭️ No duration set — skipping negative execution for {}", automation.getName());
-
-                automationLog.status(AutomationLog.LogStatus.SKIPPED)
-                        .reason("No duration configured — no revert action");
-
-                saveLog(automationLog.build());
-                return;
-            }
-
-            String runKey = "RUNNING:" + automation.getId();
-
-            // ⏳ Still running
-            if (redisService.exists(runKey)) {
-                log.debug("⏳ Automation still within duration: {}", automation.getName());
-
-                automationLog.status(AutomationLog.LogStatus.SKIPPED)
-                        .reason("Still within duration window — no action taken");
-
-                saveLog(automationLog.build());
-                return;
-            }
-
-            // ⛔ Duration ended → run negative actions
-            log.info("⏹️ Duration ended. Running negative actions for {}", automation.getName());
-
-            AutomationCache finalAutomationCache = automationCache;
-
-            executeWithTimeout(automation, payload, user, "negative")
-                    .thenRun(() -> {
-                        finalAutomationCache.setTriggeredPreviously(false);
-                        finalAutomationCache.setPreviousExecutionTime(null);
-                        finalAutomationCache.setLastUpdate(new Date());
-                        redisService.setAutomationCache(cacheKey, finalAutomationCache);
-                    });
-
-            automationLog.status(AutomationLog.LogStatus.RESTORED)
-                    .reason("Duration ended — negative actions executed");
-        } else if (!isTriggeredNow) {
-            automationLog.status(AutomationLog.LogStatus.NOT_MET)
-                    .reason("Conditions not satisfied — no action taken");
-
-        } else {
-            automationLog.status(AutomationLog.LogStatus.SKIPPED)
-                    .reason("Conditions still met but already triggered — cooldown active (diff=" + diff + "s)");
+            automationLog.status(AutomationLog.LogStatus.ERROR)
+                    .reason("Execution failed: " + e.getMessage());
         }
 
+        // 💾 Save log
         saveLog(automationLog.build());
-        log.debug("Automation log — Name: {} Status: {} Reason: {}",
-                automation.getName(),
-                automationLog.build().getStatus(), automationLog.build().getReason());
     }
 
     private void executeAutomationImmediate(Automation automation, Map<String, Object> payload, String user) {
@@ -1016,45 +1006,130 @@ public class AutomationService {
     }
 
     private void executeActionsInternal(
-            Automation automation, String user,
-            Map<String, Object> value, String groupToRun) {
+            Automation automation,
+            String user,
+            Map<String, Object> value,
+            String groupToRun) {
 
-        for (Automation.Action action : automation.getActions()) {
-            if (Boolean.FALSE.equals(action.getIsEnabled())) continue;
+        // ✅ 1. Filter + sort actions by order
+        List<Automation.Action> orderedActions = automation.getActions().stream()
+                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
+                .filter(a -> {
+                    String group = a.getConditionGroup() != null ? a.getConditionGroup() : "positive";
+                    return group.equalsIgnoreCase(groupToRun);
+                })
+                .sorted(Comparator.comparing(a ->
+                        a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
+                .toList();
 
-            // Only run actions belonging to the requested group
-            String actionGroup = action.getConditionGroup() != null
-                    ? action.getConditionGroup() : "positive";
-            if (!actionGroup.equalsIgnoreCase(groupToRun)) continue;
+        // ✅ 2. Execute sequentially with delay
+        for (Automation.Action action : orderedActions) {
 
-            Object parsedData = parseData(action.getData());
-            Map<String, Object> payload = Map.of(
-                    action.getKey(), parsedData,
-                    "key", action.getKey()
-            );
+            try {
+                log.info("▶️ Executing action: {} (order={})",
+                        action.getName(), action.getOrder());
 
-            if ("alert".equals(action.getKey())) {
-                notificationService.sendAlert(
-                        "Alert: " + action.getData().toUpperCase(Locale.ROOT),
-                        action.getData());
-            } else if ("app_notify".equals(action.getKey())) {
-                notificationService.sendNotify("Automation",
-                        action.getData() + " and live data are " + value, "low");
-            } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
-                handleWLED(action.getDeviceId(), new HashMap<>(payload), user);
-            } else {
-                deviceActionStateRepository.save(DeviceActionState.builder()
-                        .user(user)
-                        .deviceId(action.getDeviceId())
-                        .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
-                        .payload(payload)
-                        .deviceType("sensor")
-                        .build());
-                messagingTemplate.convertAndSend("/topic/action." + action.getDeviceId(), payload);
-                sendToTopic(TOPIC_ACTION + action.getDeviceId(), payload);
+                executeSingleAction(action, user, value);
+
+                // ⏱️ Delay AFTER action
+                int delay = action.getDelaySeconds() != 0 ? action.getDelaySeconds() : 0;
+
+                if (delay > 0) {
+                    log.info("⏳ Waiting {} sec before next action...", delay);
+                    Thread.sleep(delay * 1000L);
+                }
+
+            } catch (Exception e) {
+                log.error("❌ Failed action: {}", action.getName(), e);
+
+                // 🔥 Optional: stop execution on failure
+                // break;
+
+                // OR continue (recommended)
             }
         }
     }
+
+    private void executeSingleAction(
+            Automation.Action action,
+            String user,
+            Map<String, Object> value) {
+
+        Object parsedData = parseData(action.getData());
+
+        Map<String, Object> payload = Map.of(
+                action.getKey(), parsedData,
+                "key", action.getKey()
+        );
+
+        if ("alert".equals(action.getKey())) {
+            notificationService.sendAlert(
+                    "Alert: " + action.getData().toUpperCase(Locale.ROOT),
+                    action.getData());
+
+        } else if ("app_notify".equals(action.getKey())) {
+            notificationService.sendNotify(
+                    "Automation",
+                    action.getData() + " and live data are " + value,
+                    "low");
+
+        } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
+            handleWLED(action.getDeviceId(), new HashMap<>(payload), user);
+
+        } else {
+            deviceActionStateRepository.save(DeviceActionState.builder()
+                    .user(user)
+                    .deviceId(action.getDeviceId())
+                    .timestamp(new Date())
+                    .payload(payload)
+                    .deviceType("sensor")
+                    .build());
+
+            messagingTemplate.convertAndSend("/topic/action." + action.getDeviceId(), payload);
+            sendToTopic("action/" + action.getDeviceId(), payload);
+        }
+    }
+
+//    private void executeActionsInternal(
+//            Automation automation, String user,
+//            Map<String, Object> value, String groupToRun) {
+//
+//        for (Automation.Action action : automation.getActions()) {
+//            if (Boolean.FALSE.equals(action.getIsEnabled())) continue;
+//
+//            // Only run actions belonging to the requested group
+//            String actionGroup = action.getConditionGroup() != null
+//                    ? action.getConditionGroup() : "positive";
+//            if (!actionGroup.equalsIgnoreCase(groupToRun)) continue;
+//
+//            Object parsedData = parseData(action.getData());
+//            Map<String, Object> payload = Map.of(
+//                    action.getKey(), parsedData,
+//                    "key", action.getKey()
+//            );
+//
+//            if ("alert".equals(action.getKey())) {
+//                notificationService.sendAlert(
+//                        "Alert: " + action.getData().toUpperCase(Locale.ROOT),
+//                        action.getData());
+//            } else if ("app_notify".equals(action.getKey())) {
+//                notificationService.sendNotify("Automation",
+//                        action.getData() + " and live data are " + value, "low");
+//            } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
+//                handleWLED(action.getDeviceId(), new HashMap<>(payload), user);
+//            } else {
+//                deviceActionStateRepository.save(DeviceActionState.builder()
+//                        .user(user)
+//                        .deviceId(action.getDeviceId())
+//                        .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
+//                        .payload(payload)
+//                        .deviceType("sensor")
+//                        .build());
+//                messagingTemplate.convertAndSend("/topic/action." + action.getDeviceId(), payload);
+//                sendToTopic(TOPIC_ACTION + action.getDeviceId(), payload);
+//            }
+//        }
+//    }
 
 // ─────────────────────────────────────────────────────────────────────────
 // STATE SNAPSHOTS

@@ -36,4 +36,5 @@ public class AutomationCache {
     private Date lastStateChangeTime;
 
     private Long conditionFirstTrueAt;
+    private AutomationState state;
 }
