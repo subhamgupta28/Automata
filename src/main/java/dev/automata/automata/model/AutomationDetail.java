@@ -5,7 +5,7 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 
 @Document(collection = "automationDetail")
@@ -26,7 +26,7 @@ public class AutomationDetail {
     @JsonProperty("viewport")
     private Viewport viewport;
 
-    private Instant updateDate;
+    private Date updateDate;
 
     @Getter
     @Setter
@@ -182,6 +182,8 @@ public class AutomationDetail {
                 private Boolean isEnabled;
                 private Boolean revert = false;
                 private String conditionGroup;
+                private int order = 1;
+                private int delaySeconds = 0;
             }
         }
 

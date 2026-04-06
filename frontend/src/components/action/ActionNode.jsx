@@ -27,7 +27,9 @@ export const ActionNode = ({id, data, isConnectable}) => {
         name: '',
         deviceId: '',
         revert: false,
-        conditionGroup: 'none'
+        conditionGroup: 'none',
+        order: 1,
+        delaySeconds: 0,
     };
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
     const {devices, loading, error} = useCachedDevices();
@@ -39,6 +41,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
     const [actionType, setActionType] = useState("");
     const [revert, setRevert] = useState(actionData.revert);
     const [conditionGroup, setConditionGroup] = useState(actionData.conditionGroup);
+    const [order, setOrder] = useState(actionData.order);
+    const [delaySeconds, setDelaySeconds] = useState(actionData.delaySeconds);
 
 
     const connections = useNodeConnections({handleType: 'target'});
@@ -59,6 +63,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
             setName(ad.name);
             setValue(ad.data);
             setKey(ad.key);
+            setOrder(ad.order || 1);
+            setDelaySeconds(ad.delaySeconds || 0);
         }
 
         if (devices) {
@@ -175,7 +181,9 @@ export const ActionNode = ({id, data, isConnectable}) => {
             data: value,
             isEnabled: connections.length > 0,
             revert,
-            conditionGroup
+            conditionGroup,
+            order,
+            delaySeconds
         };
 
         // Only update if something actually changed
@@ -193,7 +201,9 @@ export const ActionNode = ({id, data, isConnectable}) => {
         value,
         connections,
         revert,
-        conditionGroup
+        conditionGroup,
+        order,
+        delaySeconds
     ]);
 
     const deleteNode = (nodeId) => {
@@ -317,6 +327,36 @@ export const ActionNode = ({id, data, isConnectable}) => {
                         />
                     )
                 )}
+                <TextField
+                    size='small'
+                    label="Execution Order"
+                    type="number"
+                    fullWidth
+                    value={order}
+                    inputProps={{
+                        min: 0,
+                        max: 50,
+                        step: 1
+                    }}
+                    onChange={(e) => setOrder(parseInt(e.target.value) || 1)}
+                    sx={{marginBottom: 1}}
+                />
+
+                <TextField
+                    size='small'
+                    label="Delay (seconds)"
+                    type="number"
+                    fullWidth
+                    maxRows={5}
+                    inputProps={{
+                        min: 0,
+                        max: 30,
+                        step: 1
+                    }}
+                    value={delaySeconds}
+                    onChange={(e) => setDelaySeconds(parseInt(e.target.value) || 0)}
+                    sx={{marginBottom: 2}}
+                />
                 Revert action
                 <Switch
                     onChange={(e) => handleTriggerKey(e, 'revert')}

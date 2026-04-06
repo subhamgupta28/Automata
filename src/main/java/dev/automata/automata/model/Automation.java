@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 
 @Document(collection = "automations")
@@ -29,7 +29,7 @@ public class Automation {
     private Boolean isActive;
     private Long snoozeTime;
     private String triggerDeviceType;
-    private Instant updateDate;
+    private Date updateDate;
 
 
     private List<String> targetDeviceIds;
@@ -80,6 +80,8 @@ public class Automation {
         private Boolean isEnabled;
         private Boolean revert = false;
         private String conditionGroup;
+        private int order = 1;
+        private int delaySeconds = 0;
         // Getters and setters
     }
 
