@@ -535,7 +535,8 @@ public class AutomationService {
             if (automation.getConditions() != null && !automation.getConditions().isEmpty()) {
                 Automation.Condition condition = automation.getConditions().get(0);
 
-                if (condition.getDurationMinutes() != 0 && condition.getDurationMinutes() > 0) {
+                // ignore if duration is 0, work like a normal automation
+                if (condition.getDurationMinutes() > 0) {
                     String runKey = "RUNNING:" + automation.getId();
 
                     redisService.setWithExpiry(
@@ -593,17 +594,36 @@ public class AutomationService {
             automationLog.status(AutomationLog.LogStatus.TRIGGERED)
                     .reason("All conditions met (" + operatorLogic + ") — actions executed");
 
+
         } else if (automationCache.isTriggeredPreviously()) {
+
+            Automation.Condition condition = null;
+            if (automation.getConditions() != null && !automation.getConditions().isEmpty()) {
+                condition = automation.getConditions().get(0);
+            }
+
+            // 🚫 If duration is disabled → DO NOTHING (no revert logic)
+            if (condition == null || condition.getDurationMinutes() <= 0) {
+                log.debug("⏭️ No duration set — skipping negative execution for {}", automation.getName());
+
+                automationLog.status(AutomationLog.LogStatus.SKIPPED)
+                        .reason("No duration configured — no revert action");
+
+                saveLog(automationLog.build());
+                return;
+            }
 
             String runKey = "RUNNING:" + automation.getId();
 
-            // 🔥 If duration exists → control via RUNNING key
+            // ⏳ Still running
             if (redisService.exists(runKey)) {
                 log.debug("⏳ Automation still within duration: {}", automation.getName());
+
                 automationLog.status(AutomationLog.LogStatus.SKIPPED)
                         .reason("Still within duration window — no action taken");
-                saveLog(automationLog.build());  // ← Fix: log before returning
-                return; // still running → DO NOTHING
+
+                saveLog(automationLog.build());
+                return;
             }
 
             // ⛔ Duration ended → run negative actions
@@ -633,8 +653,7 @@ public class AutomationService {
         saveLog(automationLog.build());
         log.debug("Automation log — Name: {} Status: {} Reason: {}",
                 automation.getName(),
-                automationLog.build().getStatus(),
-                automationLog.build().getReason());
+                automationLog.build().getStatus(), automationLog.build().getReason());
     }
 
     private void executeAutomationImmediate(Automation automation, Map<String, Object> payload, String user) {
@@ -748,9 +767,9 @@ public class AutomationService {
 
         return true;
     }
-    // ─────────────────────────────────────────────────────────────────────────
-    // TRIGGER EVALUATION
-    // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// TRIGGER EVALUATION
+// ─────────────────────────────────────────────────────────────────────────
 
     /**
      * FIX #1 + #2: isCurrentTimeWithDailyTracking now only applies the daily-fire
@@ -966,9 +985,9 @@ public class AutomationService {
         return false;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ACTION EXECUTION
-    // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// ACTION EXECUTION
+// ─────────────────────────────────────────────────────────────────────────
 
     private CompletableFuture<Void> executeWithTimeout(
             Automation automation, Map<String, Object> payload,
@@ -1037,9 +1056,9 @@ public class AutomationService {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // STATE SNAPSHOTS
-    // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// STATE SNAPSHOTS
+// ─────────────────────────────────────────────────────────────────────────
 
     private void saveStateSnapshots(Automation automation) {
         for (Automation.Action action : automation.getActions()) {
@@ -1080,9 +1099,9 @@ public class AutomationService {
         handleWLED(deviceId, state, user);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // REDIS HELPERS
-    // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// REDIS HELPERS
+// ─────────────────────────────────────────────────────────────────────────
 
     /**
      * FIX #7: withLock is the ONLY locking primitive. acquireLock() with ThreadLocal
@@ -1140,9 +1159,9 @@ public class AutomationService {
         automationLogRepository.save(log);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // DEVICE / MQTT HELPERS
-    // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// DEVICE / MQTT HELPERS
+// ─────────────────────────────────────────────────────────────────────────
 
     private void sendToTopic(String topic, Map<String, Object> payload) {
         try {
@@ -1204,9 +1223,9 @@ public class AutomationService {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // MISC HELPERS
-    // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// MISC HELPERS
+// ─────────────────────────────────────────────────────────────────────────
 
     @EventListener
     public void onCustomEvent(LiveEvent event) {
