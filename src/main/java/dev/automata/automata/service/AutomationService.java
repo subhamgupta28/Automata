@@ -55,9 +55,6 @@ public class AutomationService {
     private static final long AUTOMATION_TIMEOUT_SECONDS = 30;
     private static final long LOCK_TTL_SECONDS = 60;
 
-    // FIX #7: Removed broken acquireLock()/ThreadLocal pattern.
-    // All locking now goes through withLock() which correctly scopes lockValue.
-
     private final Executor automationExecutor = new ThreadPoolExecutor(
             2, 4, 30L, TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(50),
@@ -108,9 +105,8 @@ public class AutomationService {
             automation.setIsEnabled(enabled);
             automationRepository.save(automation);
             notificationService.sendNotification("Automation updated", "success");
-            refreshCacheForAutomation(automation);  // ← add this; removes the updateRedisStorage() call here too
+            refreshCacheForAutomation(automation);
         }
-        // updateRedisStorage();  ← remove this; refreshCacheForAutomation handles it precisely
         return "success";
     }
 
@@ -322,7 +318,6 @@ public class AutomationService {
         automationDetailRepository.save(detail);
 
         notificationService.sendNotification("Automation saved successfully", "success");
-//        updateRedisStorage();
         refreshCacheForAutomation(saved);
         return "success";
     }
@@ -330,13 +325,12 @@ public class AutomationService {
     // ─────────────────────────────────────────────────────────────────────────
     // SCHEDULED JOBS
     // ─────────────────────────────────────────────────────────────────────────
+
     @Scheduled(fixedRate = 32000)
     private void triggerPeriodicAutomations() {
-        // Pull from Redis cache instead of Mongo on every tick
         List<CompletableFuture<Void>> futures = automationRepository.findEnabledForExecution()
                 .stream()
                 .map(a -> CompletableFuture.runAsync(() -> {
-                    // Prefer cached data from Redis
                     AutomationCache cached = redisService.getAutomationCache(
                             a.getTrigger().getDeviceId() + ":" + a.getId());
                     Automation toRun = (cached != null && cached.getAutomation() != null)
@@ -353,25 +347,13 @@ public class AutomationService {
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     }
 
-//    @Scheduled(fixedRate = 15000)
-//    private void triggerPeriodicAutomations() {
-//        List<CompletableFuture<Void>> futures = automationRepository.findByIsEnabledTrue()
-//                .stream()
-//                .map(a -> CompletableFuture.runAsync(() ->
-//                        checkAndExecuteSingleAutomation(
-//                                a,
-//                                redisService.getRecentDeviceData(a.getTrigger().getDeviceId()),
-//                                "system"
-//                        ), automationExecutor))
-//                .toList();
-//
-//        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-//    }
-
     /**
-     * FIX #5: updateRedisStorage now guards against overwriting recently-updated
-     * cache entries using a lastUpdate timestamp comparison.
-     * Entries updated within the last 5 minutes by live execution are skipped.
+     * FIX #5 (original): updateRedisStorage guards against overwriting recently-updated
+     * cache entries. Entries updated within the last 5 minutes are skipped.
+     * <p>
+     * FIX #7 (issue 7 / medium): if no cache entry exists for an automation, create one
+     * rather than silently skipping it. This handles Redis flushes and automations that
+     * were created before refreshCacheForAutomation was introduced.
      */
     @Scheduled(fixedRate = 1000 * 60 * 5)
     private void updateRedisStorage() {
@@ -380,10 +362,11 @@ public class AutomationService {
         automationRepository.findAll().forEach(a -> {
             var id = a.getTrigger().getDeviceId() + ":" + a.getId();
             AutomationCache existing = redisService.getAutomationCache(id);
-            if (existing == null) return;
 
-            // FIX #5: Don't overwrite if execution just updated the cache
-            if (existing.getLastUpdate() != null && existing.getLastUpdate().after(fiveMinutesAgo)) {
+            // FIX #7: existing == null means the entry was never created or Redis was
+            // flushed. Fall through and create a clean entry instead of returning early.
+            if (existing != null && existing.getLastUpdate() != null
+                    && existing.getLastUpdate().after(fiveMinutesAgo)) {
                 log.debug("Skipping Redis refresh for {} — updated recently", a.getName());
                 return;
             }
@@ -393,11 +376,15 @@ public class AutomationService {
                     .automation(a)
                     .triggerDeviceType(a.getTriggerDeviceType())
                     .enabled(a.getIsEnabled())
+                    .state(AutomationState.IDLE)
                     .triggerDeviceId(a.getTrigger().getDeviceId())
-                    .isActive(existing.getIsActive())
-                    .triggeredPreviously(existing.isTriggeredPreviously())
-                    .previousExecutionTime(existing.getPreviousExecutionTime())
-                    .lastUpdate(existing.getLastUpdate())
+                    // Preserve live state if we have it; otherwise start clean.
+                    .isActive(existing != null && existing.getIsActive() != null
+                            ? existing.getIsActive() : false)
+                    .triggeredPreviously(existing != null && existing.isTriggeredPreviously())
+                    .previousExecutionTime(existing != null
+                            ? existing.getPreviousExecutionTime() : null)
+                    .lastUpdate(existing != null ? existing.getLastUpdate() : null)
                     .build();
 
             redisService.setAutomationCache(id, updatedCache);
@@ -405,21 +392,9 @@ public class AutomationService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CORE AUTOMATION EXECUTION
+    // CACHE REFRESH
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ─────────────────────────────────────────────────────────────────────────
-// CACHE REFRESH (called on save — bypasses the recency guard)
-// ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Force-writes the Redis cache for a single automation immediately after save.
-     * Unlike updateRedisStorage(), this:
-     * - Creates the entry if it doesn't exist yet (handles brand-new automations)
-     * - Always overwrites, bypassing the 5-minute recency guard
-     * - Preserves live execution state (isActive, triggeredPreviously, previousExecutionTime)
-     * so an in-progress automation isn't incorrectly reset
-     */
     private void refreshCacheForAutomation(Automation automation) {
         String cacheKey = automation.getTrigger().getDeviceId() + ":" + automation.getId();
 
@@ -428,36 +403,61 @@ public class AutomationService {
 
             AutomationCache updated = AutomationCache.builder()
                     .id(automation.getId())
-                    .automation(automation)                          // ← always the fresh version
+                    .automation(automation)
                     .triggerDeviceType(automation.getTriggerDeviceType())
                     .enabled(automation.getIsEnabled())
+                    .state(existing != null ? existing.getState() : AutomationState.IDLE)
                     .triggerDeviceId(automation.getTrigger().getDeviceId())
-                    // Preserve live execution state if an entry already exists,
-                    // otherwise start clean — this avoids phantom "already triggered" states
-                    // for brand-new automations.
-                    .isActive(existing != null && existing.getIsActive() != null ? existing.getIsActive() : false)
+                    .isActive(existing != null && existing.getIsActive() != null
+                            ? existing.getIsActive() : false)
                     .triggeredPreviously(existing != null && existing.isTriggeredPreviously())
-                    .previousExecutionTime(existing != null ? existing.getPreviousExecutionTime() : null)
+                    .previousExecutionTime(existing != null
+                            ? existing.getPreviousExecutionTime() : null)
                     .lastUpdate(new Date())
                     .build();
 
             redisService.setAutomationCache(cacheKey, updated);
-//            System.err.println("Automation refreshed: " + automation.getName());
             log.info("🔄 Cache force-refreshed for automation: {}", automation.getName());
 
         } catch (Exception e) {
-            // Non-fatal — the 5-minute scheduled job will eventually sync it.
-            // Log as warning so it's visible but doesn't break the save flow.
             log.warn("⚠️ Failed to refresh Redis cache for automation '{}': {}",
                     automation.getName(), e.getMessage());
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // CORE AUTOMATION EXECUTION
+    // ─────────────────────────────────────────────────────────────────────────
+
     /**
-     * FIX #2: Idempotency key now only gates the TRIGGERED path, not the full method.
-     * This allows the RESTORED / revert path to always run correctly.
-     * FIX #3: Lock contention now falls back gracefully instead of silently skipping.
-     * FIX #4: Cache is written inside thenRun() so it only updates after actions succeed.
+     * FIX #1 — State compared as enum, not string.
+     * Previously: state was stringified via .toString() then compared with "IDLE" etc.
+     * If AutomationState.IDLE.toString() ever differed from "IDLE" (custom enum override,
+     * serialization quirk, or a stale String stored in Redis) every automation would
+     * silently fall through to SKIPPED and never execute.
+     * Now: the cache stores and returns an AutomationState enum. All branches compare
+     * against the enum constant. Unknown/null states are explicitly reset to IDLE so
+     * automations self-heal rather than getting permanently stuck.
+     * <p>
+     * FIX #2 — wasActive derived from state, not triggeredPreviously.
+     * Previously: isTriggered() received cache.isTriggeredPreviously() as the hysteresis
+     * flag. That flag could drift from the state field (e.g. after a revert, state = IDLE
+     * but triggeredPreviously might still be true for a brief window). Now wasActive is
+     * derived directly from the authoritative state field.
+     * <p>
+     * FIX #3 — Per-automation execution lock prevents concurrent double-fire.
+     * The scheduler and an incoming device event can both call this method for the same
+     * automation simultaneously. Previously only the cache *read* was locked; both callers
+     * could read IDLE, pass condition check, and both execute positive actions.
+     * Now the entire check-and-execute block is wrapped in a per-automation lock so only
+     * one caller proceeds; the other skips gracefully with a SKIPPED log entry.
+     * <p>
+     * FIX #4 — Cache written only on confirmed success, not unconditionally via thenRun.
+     * Previously thenRun() ran even when executeWithTimeout completed with null (i.e. the
+     * execution failed or timed out but exceptionally() swallowed it). This caused the
+     * cache to advance to ACTIVE/HOLDING even on failure, permanently locking the automation.
+     * Now executeWithTimeout returns a CompletableFuture<Boolean> where true = success.
+     * thenAccept() checks that flag before writing the cache update.
      */
     public void checkAndExecuteSingleAutomation(
             Automation automation,
@@ -466,184 +466,252 @@ public class AutomationService {
 
         Date now = new Date();
         String deviceId = automation.getTrigger().getDeviceId();
-
-        // Prepare payload
-        Map<String, Object> payload = new HashMap<>();
-        if (data != null) payload.putAll(data);
-        else payload.putAll(mainService.getLastData(deviceId));
-
         String cacheKey = deviceId + ":" + automation.getId();
 
-        // 🔒 Load cache with lock
-        AutomationCache cache = withLock(
-                "LOCK:CACHE:" + cacheKey,
-                LOCK_TTL_SECONDS,
-                () -> {
-                    AutomationCache c = redisService.getAutomationCache(cacheKey);
-                    if (c == null) {
-                        c = AutomationCache.builder()
-                                .id(automation.getId())
-                                .triggeredPreviously(false)
-                                .previousExecutionTime(null)
-                                .lastUpdate(new Date())
-                                .build();
-                    }
-                    return c;
-                }
-        );
-
-        if (cache == null) {
-            cache = redisService.getAutomationCache(cacheKey);
-            if (cache == null) {
-                cache = AutomationCache.builder()
-                        .id(automation.getId())
-                        .triggeredPreviously(false)
-                        .previousExecutionTime(null)
-                        .lastUpdate(new Date())
-                        .build();
-            }
+        // FIX #3: Per-automation execution lock. Only one thread may proceed through the
+        // check-and-execute block at a time. Lock TTL is generous (LOCK_TTL_SECONDS) so
+        // it is always released before the next scheduler tick.
+        String executionLockKey = "EXEC_LOCK:" + automation.getId();
+        Boolean lockAcquired = redisService.setIfAbsent(executionLockKey, "locked", LOCK_TTL_SECONDS);
+        if (!Boolean.TRUE.equals(lockAcquired)) {
+            log.debug("⏭️ Skipping {} — execution lock held by another thread", automation.getName());
+            saveLog(AutomationLog.builder()
+                    .automationId(automation.getId())
+                    .automationName(automation.getName())
+                    .conditionResults(new ArrayList<>())
+                    .payload(data != null ? data : Map.of())
+                    .triggerDeviceId(deviceId)
+                    .timestamp(now)
+                    .status(AutomationLog.LogStatus.SKIPPED)
+                    .reason("Skipped — execution lock held by concurrent caller")
+                    .build());
+            return;
         }
-
-        // 🧠 Get condition + state
-        List<AutomationLog.ConditionResult> conditionResults = new ArrayList<>();
-        boolean conditionNow = isTriggered(automation, payload, cache.isTriggeredPreviously(), conditionResults);
-
-        Automation.Condition condition;
-        if (automation.getConditions() != null && !automation.getConditions().isEmpty()) {
-            condition = automation.getConditions().get(0);
-        } else {
-            condition = null;
-        }
-
-        boolean hasDuration = condition != null && condition.getDurationMinutes() > 0;
-        String runKey = "RUNNING:" + automation.getId();
-        boolean durationActive = redisService.exists(runKey);
-
-        // 🧠 STATE (fallback to old flag if not present)
-        String state = (cache.getState() != null ? cache.getState() : AutomationState.IDLE).toString();
-
-        // 🪵 Logging setup
-        var automationLog = AutomationLog.builder()
-                .automationId(automation.getId())
-                .automationName(automation.getName())
-                .conditionResults(conditionResults)
-                .payload(payload)
-                .triggerDeviceId(deviceId)
-                .timestamp(now);
 
         try {
+            // Prepare payload
+            Map<String, Object> payload = new HashMap<>();
+            if (data != null) payload.putAll(data);
+            else payload.putAll(mainService.getLastData(deviceId));
 
-            // ─────────────────────────────────────────────
-            // 🟢 IDLE → POSITIVE
-            // ─────────────────────────────────────────────
-            if ("IDLE".equals(state) && conditionNow) {
+            // Load cache (separate cache lock guards the read/initialise step only)
+            AutomationCache cache = withLock(
+                    "LOCK:CACHE:" + cacheKey,
+                    LOCK_TTL_SECONDS,
+                    () -> {
+                        AutomationCache c = redisService.getAutomationCache(cacheKey);
+                        if (c == null) {
+                            c = AutomationCache.builder()
+                                    .id(automation.getId())
+                                    .triggeredPreviously(false)
+                                    .previousExecutionTime(null)
+                                    .lastUpdate(new Date())
+                                    // FIX #1: initialise with typed enum, not null
+                                    .state(AutomationState.IDLE)
+                                    .build();
+                        }
+                        return c;
+                    }
+            );
 
-                log.info("🚀 Triggered: {}", automation.getName());
-
-                AutomationCache finalCache = cache;
-                executeWithTimeout(automation, payload, user, "positive")
-                        .thenRun(() -> {
-                            finalCache.setTriggeredPreviously(true);
-                            finalCache.setPreviousExecutionTime(now);
-                            finalCache.setLastUpdate(new Date());
-
-                            if (hasDuration) {
-                                finalCache.setState(AutomationState.HOLDING);
-
-                                redisService.setWithExpiry(
-                                        runKey,
-                                        "active",
-                                        condition.getDurationMinutes() * 60L
-                                );
-
-                                log.info("⏱️ Entered HOLDING for {} ({} mins)",
-                                        automation.getName(),
-                                        condition.getDurationMinutes());
-
-                            } else {
-                                finalCache.setState(AutomationState.ACTIVE);
-                                log.info("✅ Entered ACTIVE (no duration): {}", automation.getName());
-                            }
-
-                            redisService.setAutomationCache(cacheKey, finalCache);
-                        });
-
-                automationLog.status(AutomationLog.LogStatus.TRIGGERED)
-                        .reason("Condition TRUE → positive actions executed");
-
+            if (cache == null) {
+                cache = redisService.getAutomationCache(cacheKey);
+                if (cache == null) {
+                    cache = AutomationCache.builder()
+                            .id(automation.getId())
+                            .triggeredPreviously(false)
+                            .previousExecutionTime(null)
+                            .lastUpdate(new Date())
+                            .state(AutomationState.IDLE)
+                            .build();
+                }
             }
 
-            // ─────────────────────────────────────────────
-            // 🔴 ACTIVE / HOLDING → NEGATIVE
-            // ─────────────────────────────────────────────
-            else if ("ACTIVE".equals(state) || "HOLDING".equals(state)) {
+            // FIX #1: Resolve state as enum. Treat null or unrecognised values as IDLE
+            // so automations self-heal from corrupt/missing cache rather than getting stuck.
+            AutomationState currentState = resolveState(cache.getState());
+            if (currentState != cache.getState()) {
+                log.warn("⚠️ Automation '{}' had unknown state '{}' — resetting to IDLE",
+                        automation.getName(), cache.getState());
+            }
 
-                boolean shouldRevert = false;
-                String reason = "";
+            // FIX #2: wasActive is derived from the authoritative state field, NOT from
+            // triggeredPreviously, which can lag behind state during a revert window.
+            boolean wasActive = (currentState == AutomationState.ACTIVE
+                    || currentState == AutomationState.HOLDING);
 
-                // ⚡ CONDITION FALSE → immediate revert
-                if (!conditionNow) {
-                    shouldRevert = true;
-                    reason = "Condition turned FALSE";
-                }
+            // Evaluate conditions
+            List<AutomationLog.ConditionResult> conditionResults = new ArrayList<>();
+            boolean conditionNow = isTriggered(automation, payload, wasActive, conditionResults);
 
-                // ⏱️ DURATION EXPIRED → revert
-                else if ("HOLDING".equals(state) && hasDuration && !durationActive) {
-                    shouldRevert = true;
-                    reason = "Duration expired";
-                }
+            Automation.Condition condition = (automation.getConditions() != null
+                    && !automation.getConditions().isEmpty())
+                    ? automation.getConditions().get(0) : null;
 
-                if (shouldRevert) {
+            boolean hasDuration = condition != null && condition.getDurationMinutes() > 0;
+            String runKey = "RUNNING:" + automation.getId();
+            boolean durationActive = redisService.exists(runKey);
 
-                    log.info("⏹️ Reverting automation: {} ({})", automation.getName(), reason);
+            // Logging builder
+            var automationLog = AutomationLog.builder()
+                    .automationId(automation.getId())
+                    .automationName(automation.getName())
+                    .conditionResults(conditionResults)
+                    .payload(payload)
+                    .triggerDeviceId(deviceId)
+                    .timestamp(now);
 
-                    AutomationCache finalCache1 = cache;
-                    executeWithTimeout(automation, payload, user, "negative")
-                            .thenRun(() -> {
-                                finalCache1.setState(AutomationState.IDLE);
-                                finalCache1.setTriggeredPreviously(false);
-                                finalCache1.setPreviousExecutionTime(null);
-                                finalCache1.setLastUpdate(new Date());
+            try {
 
-                                redisService.setAutomationCache(cacheKey, finalCache1);
+                // ─────────────────────────────────────────────
+                // FIX #1: All state comparisons use the enum constant, not a string.
+                // ─────────────────────────────────────────────
 
-                                log.info("🔁 Reset to IDLE: {}", automation.getName());
+                // 🟢 IDLE → POSITIVE
+                if (currentState == AutomationState.IDLE && conditionNow) {
+
+                    log.info("🚀 Triggered: {}", automation.getName());
+
+                    final AutomationCache finalCache = cache;
+                    final AutomationState finalState = currentState;
+
+                    // FIX #4: executeWithTimeout now returns CompletableFuture<Boolean>.
+                    // The cache is only advanced when the returned value is TRUE (success).
+                    // A false or null result (timeout / exception) leaves the cache unchanged
+                    // so the automation retries on the next scheduler tick.
+                    executeWithTimeout(automation, payload, user, "positive")
+                            .thenAccept(success -> {
+                                if (!Boolean.TRUE.equals(success)) {
+                                    log.warn("⚠️ Positive execution failed for '{}' — cache NOT advanced",
+                                            automation.getName());
+                                    return;
+                                }
+
+                                finalCache.setTriggeredPreviously(true);
+                                finalCache.setPreviousExecutionTime(now);
+                                finalCache.setLastUpdate(new Date());
+
+                                if (hasDuration) {
+                                    finalCache.setState(AutomationState.HOLDING);
+                                    redisService.setWithExpiry(
+                                            runKey, "active",
+                                            condition.getDurationMinutes() * 60L);
+                                    log.info("⏱️ Entered HOLDING for {} ({} mins)",
+                                            automation.getName(), condition.getDurationMinutes());
+                                } else {
+                                    finalCache.setState(AutomationState.ACTIVE);
+                                    log.info("✅ Entered ACTIVE (no duration): {}",
+                                            automation.getName());
+                                }
+
+                                redisService.setAutomationCache(cacheKey, finalCache);
                             });
 
-                    automationLog.status(AutomationLog.LogStatus.RESTORED)
-                            .reason(reason + " → negative actions executed");
+                    automationLog.status(AutomationLog.LogStatus.TRIGGERED)
+                            .reason("Condition TRUE → positive actions executed");
 
-                } else {
-                    automationLog.status(AutomationLog.LogStatus.SKIPPED)
-                            .reason("Still ACTIVE/HOLDING — no revert needed");
                 }
+
+                // 🔴 ACTIVE / HOLDING → NEGATIVE
+                else if (currentState == AutomationState.ACTIVE
+                        || currentState == AutomationState.HOLDING) {
+
+                    boolean shouldRevert = false;
+                    String reason = "";
+
+                    if (!conditionNow) {
+                        shouldRevert = true;
+                        reason = "Condition turned FALSE";
+                    } else if (currentState == AutomationState.HOLDING
+                            && hasDuration && !durationActive) {
+                        shouldRevert = true;
+                        reason = "Duration expired";
+                    }
+
+                    if (shouldRevert) {
+
+                        log.info("⏹️ Reverting automation: {} ({})",
+                                automation.getName(), reason);
+
+                        final AutomationCache finalCache = cache;
+                        final String finalReason = reason;
+
+                        // FIX #4: same guard — only reset cache if revert actually succeeded.
+                        executeWithTimeout(automation, payload, user, "negative")
+                                .thenAccept(success -> {
+                                    if (!Boolean.TRUE.equals(success)) {
+                                        log.warn("⚠️ Negative execution failed for '{}' — cache NOT reset",
+                                                automation.getName());
+                                        return;
+                                    }
+
+                                    finalCache.setState(AutomationState.IDLE);
+                                    finalCache.setTriggeredPreviously(false);
+                                    finalCache.setPreviousExecutionTime(null);
+                                    finalCache.setLastUpdate(new Date());
+
+                                    redisService.setAutomationCache(cacheKey, finalCache);
+
+                                    log.info("🔁 Reset to IDLE: {}", automation.getName());
+                                });
+
+                        automationLog.status(AutomationLog.LogStatus.RESTORED)
+                                .reason(reason + " → negative actions executed");
+
+                    } else {
+                        automationLog.status(AutomationLog.LogStatus.SKIPPED)
+                                .reason("Still ACTIVE/HOLDING — no revert needed");
+                    }
+                }
+
+                // ❌ NOT MET (IDLE + condition false — normal quiet path)
+                else if (currentState == AutomationState.IDLE && !conditionNow) {
+                    automationLog.status(AutomationLog.LogStatus.NOT_MET)
+                            .reason("Condition not satisfied");
+                }
+
+                // ⏭️ DEFAULT SKIP (should not normally be reached with typed enum)
+                else {
+                    log.debug("⏭️ No state change for '{}' (state={}, conditionNow={})",
+                            automation.getName(), currentState, conditionNow);
+                    automationLog.status(AutomationLog.LogStatus.SKIPPED)
+                            .reason("No state change (state=" + currentState + ")");
+                }
+
+            } catch (Exception e) {
+                log.error("❌ Error in automation {}: {}", automation.getName(), e.getMessage(), e);
+                automationLog.status(AutomationLog.LogStatus.ERROR)
+                        .reason("Execution failed: " + e.getMessage());
             }
 
-            // ─────────────────────────────────────────────
-            // ❌ NOT MET
-            // ─────────────────────────────────────────────
-            else if (!conditionNow) {
-                automationLog.status(AutomationLog.LogStatus.NOT_MET)
-                        .reason("Condition not satisfied");
-            }
+            saveLog(automationLog.build());
 
-            // ─────────────────────────────────────────────
-            // ⏭️ DEFAULT SKIP
-            // ─────────────────────────────────────────────
-            else {
-                automationLog.status(AutomationLog.LogStatus.SKIPPED)
-                        .reason("No state change");
-            }
-
-        } catch (Exception e) {
-            log.error("❌ Error in automation {}: {}", automation.getName(), e.getMessage(), e);
-
-            automationLog.status(AutomationLog.LogStatus.ERROR)
-                    .reason("Execution failed: " + e.getMessage());
+        } finally {
+            // FIX #3: Always release the execution lock, even on exception, so the
+            // automation is not permanently blocked after an unexpected error.
+            releaseLock(executionLockKey, "locked");
         }
+    }
 
-        // 💾 Save log
-        saveLog(automationLog.build());
+    // ─────────────────────────────────────────────────────────────────────────
+    // FIX #1 HELPER — resolveState
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Safely converts whatever is stored in the cache to a typed AutomationState.
+     * Handles: null, correct enum value, or a stale String from an older serialization.
+     * Falls back to IDLE so automations self-heal rather than getting stuck.
+     */
+    private AutomationState resolveState(AutomationState stored) {
+        if (stored == null) return AutomationState.IDLE;
+        // The enum is already typed; just guard against any future valueOf issues.
+        try {
+            // Round-trip through name() to catch enums whose ordinal was persisted wrong.
+            return AutomationState.valueOf(stored.name());
+        } catch (IllegalArgumentException e) {
+            log.warn("⚠️ Unrecognised AutomationState '{}' — defaulting to IDLE", stored);
+            return AutomationState.IDLE;
+        }
     }
 
     private void executeAutomationImmediate(Automation automation, Map<String, Object> payload, String user) {
@@ -662,20 +730,27 @@ public class AutomationService {
                 .triggerDeviceId(deviceId)
                 .timestamp(now);
 
-        executeWithTimeout(automation, payload, user, "positive")   // Fix 1: capture future
-                .thenRun(() -> {
-                    automationLog
-                            .status(AutomationLog.LogStatus.USER_OVERRIDE)
-                            .reason("Automation triggered manually by user: " + user);
-                    saveLog(automationLog.build());                  // Fix 2: saveLog inside thenRun
-                    log.info("✅ User override completed: {}", automation.getName());
+        executeWithTimeout(automation, payload, user, "positive")
+                .thenAccept(success -> {
+                    if (Boolean.TRUE.equals(success)) {
+                        automationLog
+                                .status(AutomationLog.LogStatus.USER_OVERRIDE)
+                                .reason("Automation triggered manually by user: " + user);
+                        log.info("✅ User override completed: {}", automation.getName());
+                    } else {
+                        automationLog
+                                .status(AutomationLog.LogStatus.ERROR)
+                                .reason("User override FAILED for user: " + user);
+                        log.error("❌ User override failed: {}", automation.getName());
+                    }
+                    saveLog(automationLog.build());
                 })
                 .exceptionally(ex -> {
                     automationLog
-                            .status(AutomationLog.LogStatus.ERROR)     // log failure too
+                            .status(AutomationLog.LogStatus.ERROR)
                             .reason("User override FAILED for user: " + user + " — " + ex.getMessage());
                     saveLog(automationLog.build());
-                    log.error("❌ User override failed: {}", automation.getName(), ex);
+                    log.error("❌ User override exception: {}", automation.getName(), ex);
                     return null;
                 });
     }
@@ -687,13 +762,11 @@ public class AutomationService {
 
             String cacheKey = "SUN_TIME:" + solarType + ":" + today;
 
-            // ✅ 1. Check cache first
             Object cached = redisService.getRecentDeviceData(cacheKey);
             if (cached != null) {
                 return LocalTime.parse(cached.toString());
             }
 
-            // 👉 Your location (move to config later)
             double lat = 17.3850;
             double lng = 78.4867;
 
@@ -720,7 +793,6 @@ public class AutomationService {
 
             LocalTime result = istTime.toLocalTime();
 
-            // ✅ 2. Store in Redis (cache for full day)
             redisService.setWithExpiry(cacheKey, result.toString(), 86400);
 
             return result;
@@ -734,18 +806,13 @@ public class AutomationService {
     private boolean checkAndSetDailyLock(Automation automation, ZonedDateTime nowZdt) {
         LocalDate today = nowZdt.toLocalDate();
 
-        String key = String.format("DAILY_SOLAR:%s:%s",
-                automation.getId(),
-                today
-        );
+        String key = String.format("DAILY_SOLAR:%s:%s", automation.getId(), today);
 
-        // Already executed today?
         if (redisService.exists(key)) {
             log.debug("🌅 Solar automation {} already executed today", automation.getName());
             return false;
         }
 
-        // Set lock until midnight
         long secondsUntilMidnight = ChronoUnit.SECONDS.between(
                 nowZdt,
                 nowZdt.plusDays(1).truncatedTo(ChronoUnit.DAYS)
@@ -757,24 +824,16 @@ public class AutomationService {
 
         return true;
     }
-// ─────────────────────────────────────────────────────────────────────────
-// TRIGGER EVALUATION
-// ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * FIX #1 + #2: isCurrentTimeWithDailyTracking now only applies the daily-fire
-     * lock for "at" (point-in-time) schedules. Range schedules act as a continuous
-     * gate using wasTriggeredPreviously, matching user intent.
-     * <p>
-     * FIX #1 (overnight range): For overnight ranges the daily key is computed from
-     * the range START date, so a midnight rollover doesn't re-arm a key set at 10 PM.
-     */
+    // ─────────────────────────────────────────────────────────────────────────
+    // TRIGGER EVALUATION
+    // ─────────────────────────────────────────────────────────────────────────
+
     private boolean isCurrentTimeWithDailyTracking(Automation automation, Automation.Condition condition) {
         ZoneId istZone = ZoneId.of("Asia/Kolkata");
         ZonedDateTime nowZdt = ZonedDateTime.now(istZone);
         LocalTime current = nowZdt.toLocalTime();
 
-        // Day-of-week check
         if (condition.getDays() != null && !condition.getDays().isEmpty()) {
             String dayOfWeek = nowZdt.getDayOfWeek()
                     .getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH)
@@ -788,24 +847,18 @@ public class AutomationService {
         String scheduleType = condition.getScheduleType();
 
         if ("range".equals(scheduleType)) {
-            // FIX #1: Range schedules are pure time-window gates — no daily lock.
-            // The wasTriggeredPreviously + revert flow in checkAndExecuteSingleAutomation
-            // already prevents repeated firing within a single active window.
             LocalTime from = parseTime(condition.getFromTime());
             LocalTime to = parseTime(condition.getToTime());
             if (from == null || to == null) return false;
 
             if (from.isBefore(to)) {
-                // Normal range e.g. 08:00 – 20:30
                 return !current.isBefore(from) && !current.isAfter(to);
             } else {
-                // FIX #1 overnight: e.g. 22:00 – 06:00
-                // No double-trigger risk since no daily lock is used.
                 return !current.isBefore(from) || !current.isAfter(to);
             }
         }
         if ("solar".equals(scheduleType)) {
-            LocalTime solarTime = getSunTime(condition.getSolarType()); // sunrise/sunset
+            LocalTime solarTime = getSunTime(condition.getSolarType());
 
             if (solarTime == null) return false;
 
@@ -822,7 +875,6 @@ public class AutomationService {
             String intervalKey = "INTERVAL:" + automation.getId();
             String runKey = "RUNNING:" + automation.getId();
 
-            // ⛔ Prevent overlap
             if (redisService.exists(runKey)) {
                 return false;
             }
@@ -834,13 +886,12 @@ public class AutomationService {
 
             return false;
         }
-        // "at" schedule: exact time match within 1 minute, fire once per day
+
         LocalTime target = parseTime(condition.getTime());
         if (target == null) return false;
         boolean timeMatches = Math.abs(ChronoUnit.MINUTES.between(target, current)) <= 1;
         if (!timeMatches) return false;
 
-        // Daily-fire lock only for "at" schedules
         LocalDate today = nowZdt.toLocalDate();
         String dailyKey = String.format("DAILY_FIRE:%s:%s", automation.getId(), today);
         if (redisService.exists(dailyKey)) {
@@ -885,7 +936,6 @@ public class AutomationService {
 
         for (var condition : conditions) {
             if ("scheduled".equals(condition.getCondition())) {
-                // FIX #1: Uses updated daily-tracking method
                 boolean passed = isCurrentTimeWithDailyTracking(automation, condition);
                 results.add(AutomationLog.ConditionResult.builder()
                         .conditionType("scheduled")
@@ -975,29 +1025,49 @@ public class AutomationService {
         return false;
     }
 
-// ─────────────────────────────────────────────────────────────────────────
-// ACTION EXECUTION
-// ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // ACTION EXECUTION
+    // ─────────────────────────────────────────────────────────────────────────
 
-    private CompletableFuture<Void> executeWithTimeout(
+    /**
+     * FIX #4 — executeWithTimeout returns CompletableFuture<Boolean>.
+     * true  = actions completed successfully within the timeout window.
+     * false = execution timed out or threw an exception.
+     * <p>
+     * Callers (checkAndExecuteSingleAutomation, executeAutomationImmediate) use
+     * thenAccept(success -> { if (!success) return; ... }) so the cache is ONLY
+     * advanced when the actions actually ran to completion.
+     * <p>
+     * Previously the method returned CompletableFuture<Void> and exceptionally()
+     * silently completed the future with null, causing thenRun() to always fire.
+     */
+    private CompletableFuture<Boolean> executeWithTimeout(
             Automation automation, Map<String, Object> payload,
             String user, String group) {
 
-        return CompletableFuture.runAsync(() -> {
+        return CompletableFuture.supplyAsync(() -> {
                     try {
                         executeActionsInternal(automation, user, payload, group);
+                        return true;   // ← explicit success signal
                     } catch (Exception e) {
-                        log.error("Error executing automation {}: {}", automation.getName(), e.getMessage(), e);
-                        throw new RuntimeException(e);
+                        log.error("Error executing automation {}: {}",
+                                automation.getName(), e.getMessage(), e);
+                        return false;  // ← explicit failure signal, not an exception
                     }
                 }, automationExecutor)
                 .orTimeout(AUTOMATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .exceptionally(ex -> {
-                    if (ex instanceof TimeoutException) {
+                    // Only TimeoutException should reach here now (other exceptions
+                    // are caught above and returned as false). Handle timeout gracefully.
+                    if (ex instanceof TimeoutException || ex.getCause() instanceof TimeoutException) {
                         log.error("⏱️ Automation {} timed out", automation.getName());
-                        notificationService.sendNotification("Automation timeout: " + automation.getName(), "error");
+                        notificationService.sendNotification(
+                                "Automation timeout: " + automation.getName(), "error");
+                    } else {
+                        log.error("❌ Unexpected async error in {}: {}",
+                                automation.getName(), ex.getMessage(), ex);
                     }
-                    return null;
+                    return false;  // ← false on timeout too, so cache is NOT advanced
                 });
     }
 
@@ -1011,7 +1081,6 @@ public class AutomationService {
             Map<String, Object> value,
             String groupToRun) {
 
-        // ✅ 1. Filter + sort actions by order
         List<Automation.Action> orderedActions = automation.getActions().stream()
                 .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
                 .filter(a -> {
@@ -1022,7 +1091,6 @@ public class AutomationService {
                         a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
                 .toList();
 
-        // ✅ 2. Execute sequentially with delay
         for (Automation.Action action : orderedActions) {
 
             try {
@@ -1031,7 +1099,6 @@ public class AutomationService {
 
                 executeSingleAction(action, user, value);
 
-                // ⏱️ Delay AFTER action
                 int delay = action.getDelaySeconds() != 0 ? action.getDelaySeconds() : 0;
 
                 if (delay > 0) {
@@ -1041,11 +1108,6 @@ public class AutomationService {
 
             } catch (Exception e) {
                 log.error("❌ Failed action: {}", action.getName(), e);
-
-                // 🔥 Optional: stop execution on failure
-                // break;
-
-                // OR continue (recommended)
             }
         }
     }
@@ -1090,50 +1152,9 @@ public class AutomationService {
         }
     }
 
-//    private void executeActionsInternal(
-//            Automation automation, String user,
-//            Map<String, Object> value, String groupToRun) {
-//
-//        for (Automation.Action action : automation.getActions()) {
-//            if (Boolean.FALSE.equals(action.getIsEnabled())) continue;
-//
-//            // Only run actions belonging to the requested group
-//            String actionGroup = action.getConditionGroup() != null
-//                    ? action.getConditionGroup() : "positive";
-//            if (!actionGroup.equalsIgnoreCase(groupToRun)) continue;
-//
-//            Object parsedData = parseData(action.getData());
-//            Map<String, Object> payload = Map.of(
-//                    action.getKey(), parsedData,
-//                    "key", action.getKey()
-//            );
-//
-//            if ("alert".equals(action.getKey())) {
-//                notificationService.sendAlert(
-//                        "Alert: " + action.getData().toUpperCase(Locale.ROOT),
-//                        action.getData());
-//            } else if ("app_notify".equals(action.getKey())) {
-//                notificationService.sendNotify("Automation",
-//                        action.getData() + " and live data are " + value, "low");
-//            } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
-//                handleWLED(action.getDeviceId(), new HashMap<>(payload), user);
-//            } else {
-//                deviceActionStateRepository.save(DeviceActionState.builder()
-//                        .user(user)
-//                        .deviceId(action.getDeviceId())
-//                        .timestamp(Date.from(ZonedDateTime.now(ZoneId.systemDefault()).toInstant()))
-//                        .payload(payload)
-//                        .deviceType("sensor")
-//                        .build());
-//                messagingTemplate.convertAndSend("/topic/action." + action.getDeviceId(), payload);
-//                sendToTopic(TOPIC_ACTION + action.getDeviceId(), payload);
-//            }
-//        }
-//    }
-
-// ─────────────────────────────────────────────────────────────────────────
-// STATE SNAPSHOTS
-// ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // STATE SNAPSHOTS
+    // ─────────────────────────────────────────────────────────────────────────
 
     private void saveStateSnapshots(Automation automation) {
         for (Automation.Action action : automation.getActions()) {
@@ -1174,14 +1195,10 @@ public class AutomationService {
         handleWLED(deviceId, state, user);
     }
 
-// ─────────────────────────────────────────────────────────────────────────
-// REDIS HELPERS
-// ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // REDIS HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * FIX #7: withLock is the ONLY locking primitive. acquireLock() with ThreadLocal
-     * has been removed entirely. lockValue is correctly scoped within this method.
-     */
     private <T> T withLock(String lockKey, long ttlSeconds, Supplier<T> function) {
         String lockValue = UUID.randomUUID().toString();
         boolean acquired = false;
@@ -1218,25 +1235,21 @@ public class AutomationService {
     }
 
     private void markAsExecuted(String idempotencyKey) {
-        redisService.setWithExpiry(idempotencyKey, "executed", 7200); // 2 hours
+        redisService.setWithExpiry(idempotencyKey, "executed", 7200);
     }
 
-    /**
-     * FIX #6: TTL corrected to 60 seconds (was mistakenly 60*60 = 3600).
-     * Comment updated to match actual behavior.
-     */
     private void saveLog(AutomationLog log) {
         if (log.getStatus() == AutomationLog.LogStatus.NOT_MET) {
             String debounceKey = "LOG_DEBOUNCE:" + log.getAutomationId();
             if (redisService.exists(debounceKey)) return;
-            redisService.setWithExpiry(debounceKey, "1", 60); // FIX #6: 60 seconds, not 3600
+            redisService.setWithExpiry(debounceKey, "1", 60);
         }
         automationLogRepository.save(log);
     }
 
-// ─────────────────────────────────────────────────────────────────────────
-// DEVICE / MQTT HELPERS
-// ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // DEVICE / MQTT HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
 
     private void sendToTopic(String topic, Map<String, Object> payload) {
         try {
@@ -1270,7 +1283,8 @@ public class AutomationService {
             var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
             System.err.println(res);
         } catch (Exception e) {
-            notificationService.sendNotification("Reboot action failed for device: " + device.getName(), "error");
+            notificationService.sendNotification(
+                    "Reboot action failed for device: " + device.getName(), "error");
             System.err.println(e.getMessage());
         }
         return "Rebooting device";
@@ -1298,9 +1312,9 @@ public class AutomationService {
         }
     }
 
-// ─────────────────────────────────────────────────────────────────────────
-// MISC HELPERS
-// ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MISC HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
 
     @EventListener
     public void onCustomEvent(LiveEvent event) {

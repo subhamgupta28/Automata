@@ -8,7 +8,7 @@ import {
     useNodesState,
     useReactFlow
 } from "@xyflow/react";
-import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, memo} from "react";
+import React, {createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react";
 import {disableAutomation, getActions, getAutomationDetail, saveAutomationDetail} from "../../services/apis.jsx";
 
 import {Button, Card, CardContent, Chip, Switch,} from "@mui/material";
@@ -300,6 +300,7 @@ function ActionBoardDetailComponent() {
                             or: Or
                         }}
                     >
+                        {/*<ZoomSlider position="bottom-left"/>*/}
                         {selectedAutomation && selectedAutomation.id && (
                             <Panel position="bottom-left" style={{marginBottom: '20px'}}>
                                 <Typography variant="body2" color="textSecondary">
