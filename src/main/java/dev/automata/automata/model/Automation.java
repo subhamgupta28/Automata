@@ -82,6 +82,7 @@ public class Automation {
         private String conditionGroup;
         private int order = 1;
         private int delaySeconds = 0;
+        private String previousNodeRef;
         // Getters and setters
     }
 
@@ -91,6 +92,7 @@ public class Automation {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class Condition {
+        private String nodeId;
         private String condition;// numeric
         private String valueType;// int
         private String above; // 200
@@ -107,6 +109,8 @@ public class Automation {
         private int offsetMinutes;
         private int intervalMinutes;
         private int durationMinutes;
+        private boolean enabled = false;
+        private String previousNodeRef;
     }
 
     @Getter
@@ -117,6 +121,7 @@ public class Automation {
     public static class Operator {
         private String type;
         private String logicType;
+        private String previousNodeRef;
     }
 
 }

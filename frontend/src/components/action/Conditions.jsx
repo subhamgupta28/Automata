@@ -31,14 +31,18 @@ export const And = ({id, data, isConnectable}) => {
     });
 
     useEffect(() => {
+        const previousNodeRef = connections.length > 0
+            ? connections[connections.length - 1].sourceHandle
+            : '';
         updateNodeData(id, {
             // ...data,
             operators: {
                 logicType: 'AND',
-                type: "operator"
+                type: "operator",
+                previousNodeRef
             }
         });
-    }, []);
+    }, [connections]);
 
     const deleteNode = () => {
         setNodes(nodes => nodes.filter(n => n.id !== id));
@@ -52,7 +56,7 @@ export const And = ({id, data, isConnectable}) => {
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="target"
                 position={Position.Left}
-                id="cond-t"
+                id="cond-operator-and"
                 isConnectable={isConnectable}
             />
             <AddIcon style={{
@@ -71,6 +75,7 @@ export const And = ({id, data, isConnectable}) => {
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="source"
+                id="cond-operator-and"
                 position={Position.Right}
                 isConnectable={isConnectable}
             />
@@ -93,13 +98,17 @@ export const Or = ({id, data, isConnectable}) => {
     });
 
     useEffect(() => {
+        const previousNodeRef = connections.length > 0
+            ? connections.map(c => c.sourceHandle).join(',')
+            : '';
         updateNodeData(id, {
             operators: {
                 logicType: 'OR',
-                type: "operator"
+                type: "operator",
+                previousNodeRef
             }
         });
-    }, []);
+    }, [connections]);
 
     const deleteNode = () => {
         setNodes(nodes => nodes.filter(n => n.id !== id));
@@ -112,7 +121,7 @@ export const Or = ({id, data, isConnectable}) => {
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="target"
                 position={Position.Left}
-                id="cond-t"
+                id="cond-operator-or"
                 isConnectable={isConnectable}
             />
             <AddIcon style={{
@@ -133,6 +142,7 @@ export const Or = ({id, data, isConnectable}) => {
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="source"
+                id="cond-operator-or"
                 position={Position.Right}
                 isConnectable={isConnectable}
             />

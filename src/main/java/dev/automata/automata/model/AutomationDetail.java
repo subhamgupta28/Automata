@@ -105,6 +105,7 @@ public class AutomationDetail {
             public static class Operator {
                 private String type;
                 private String logicType;
+                private String previousNodeRef;
             }
 
             @Getter
@@ -150,6 +151,7 @@ public class AutomationDetail {
             @NoArgsConstructor
             @ToString
             public static class ConditionData {
+                private String nodeId;
                 private String condition;
                 private String valueType;
                 private String below;
@@ -167,6 +169,8 @@ public class AutomationDetail {
                 private int offsetMinutes;
                 private int intervalMinutes;
                 private int durationMinutes;
+                private boolean enabled = false;
+                private String previousNodeRef;
             }
 
             @Getter
@@ -184,6 +188,7 @@ public class AutomationDetail {
                 private String conditionGroup;
                 private int order = 1;
                 private int delaySeconds = 0;
+                private String previousNodeRef;
             }
         }
 

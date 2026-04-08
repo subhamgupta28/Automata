@@ -235,7 +235,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                 style={{width: '18px', height: '18px', background: '#6DBF6D', opacity: 0}}
                 type="source"
                 position={Position.Right}
-                id="b"
+                id="triggerNode"
                 isConnectable={isConnectable}
             />
             <AddIcon style={{
