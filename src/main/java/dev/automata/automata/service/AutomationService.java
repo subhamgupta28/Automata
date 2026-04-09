@@ -68,16 +68,6 @@ public class AutomationService {
             new ThreadPoolExecutor.CallerRunsPolicy()
     );
 
-    @Scheduled(fixedRate = 65000)
-    public void pollWledState() {
-        List<Device> wledDevices = mainService.getAllDevice();
-        for (Device device : wledDevices) {
-            if (device.getType().equals("WLED")) {
-                var led = new Wled(mqttOutboundChannel, device);
-                led.publishForInfo(device.getId());
-            }
-        }
-    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // PUBLIC API
@@ -125,7 +115,7 @@ public class AutomationService {
 
         if ("WLED".equals(deviceType)) {
             var result = handleWLED(deviceId, payload, user);
-            notifyBasedOnResult(result);
+//            notifyBasedOnResult(result);
             return "success";
         }
 
@@ -166,8 +156,8 @@ public class AutomationService {
             req.put("direct", true);
             req.put("deviceId", id);
             if (device.isPresent()) {
-                System.out.println("Master action sent " + req);
-                System.out.println("Device type " + device.get().getType());
+//                System.out.println("Master action sent " + req);
+//                System.out.println("Device type " + device.get().getType());
                 handleAction(id, req, device.get().getType(), user);
             }
         }
@@ -177,15 +167,13 @@ public class AutomationService {
             if (Boolean.parseBoolean(check)) {
                 sendDirectAction(deviceId, payload);
                 return "No saved action found but sent directly";
-            } else {
-                //TODO: handle for direct=false
             }
         }
 
         var automations = automationRepository.findByTrigger_DeviceId(deviceId);
-        System.err.println("Automations found: ");
+
         automations.forEach(a -> {
-            System.err.println(a.getName());
+//            System.err.println(a.getName());
             checkAndExecuteSingleAutomation(a, payload, user);
         });
 
@@ -202,29 +190,19 @@ public class AutomationService {
     }
 
     public Object sendConditionToDevice(String deviceId) {
-        var automations = automationRepository.findByTrigger_DeviceId(deviceId);
         var payload = new HashMap<String, Object>();
         var keyJoiner = new StringJoiner(",");
-
-        for (Automation automation : automations) {
-            String key = automation.getTrigger().getKey();
+        for (Automation automation : automationRepository.findByTrigger_DeviceId(deviceId)) {
             var conditions = automation.getConditions();
             if (conditions == null || conditions.isEmpty()) continue;
-
             var condition = conditions.get(0);
-            String pKey = automation.getId();
-            String pVal = key;
-
-            if (Boolean.TRUE.equals(condition.getIsExact())) {
-                pVal += "=" + condition.getValue();
-            } else {
-                pVal += ">" + condition.getAbove() + ",<" + condition.getBelow();
-            }
-
-            payload.put(pKey, pVal);
-            keyJoiner.add(pKey);
+            String pVal = automation.getTrigger().getKey();
+            pVal += Boolean.TRUE.equals(condition.getIsExact())
+                    ? "=" + condition.getValue()
+                    : ">" + condition.getAbove() + ",<" + condition.getBelow();
+            payload.put(automation.getId(), pVal);
+            keyJoiner.add(automation.getId());
         }
-
         payload.put("keys", keyJoiner.toString());
         messagingTemplate.convertAndSend("/topic/action." + deviceId, payload);
         sendToTopic(TOPIC_ACTION + deviceId, payload);
@@ -248,7 +226,6 @@ public class AutomationService {
     }
 
     public String saveAutomationDetail(AutomationDetail detail) {
-        System.err.println(detail);
         return saveAutomationDetailInternal(detail);
     }
 
@@ -256,9 +233,7 @@ public class AutomationService {
         log.info("Saving automation detail: {}", detail);
 
         var automationBuilder = Automation.builder()
-                .isEnabled(true)
-                .updateDate(new Date())
-                .isActive(false);
+                .isEnabled(true).updateDate(new Date()).isActive(false);
 
         if (detail.getId() != null && !detail.getId().isEmpty()) {
             automationBuilder.id(detail.getId());
@@ -272,45 +247,43 @@ public class AutomationService {
                     automationBuilder.trigger(new Automation.Trigger(
                             tData.getDeviceId(), tData.getType(), tData.getValue(), tData.getKey(),
                             tData.getKeys().stream().map(t -> t.getKey()).toList(),
-                            tData.getName(), tData.getPriority()
-                    ));
+                            tData.getName(), tData.getPriority(), tData.getNodeId()));
                     automationBuilder.name(tData.getName());
                 });
 
-        var actions = detail.getNodes().stream()
-                .filter(n -> n.getData().getActionData() != null)
-                .map(n -> {
-                    var a = n.getData().getActionData();
-                    return new Automation.Action(
-                            a.getKey(), a.getDeviceId(), a.getData(),
-                            a.getName(), a.getIsEnabled(), a.getRevert(),
-                            a.getConditionGroup(), a.getOrder(), a.getDelaySeconds()
-                    );
-                }).toList();
-        automationBuilder.actions(actions);
+        automationBuilder.actions(
+                detail.getNodes().stream()
+                        .filter(n -> n.getData().getActionData() != null)
+                        .map(n -> {
+                            var a = n.getData().getActionData();
+                            return new Automation.Action(
+                                    a.getKey(), a.getDeviceId(), a.getData(), a.getName(),
+                                    a.getIsEnabled(), a.getRevert(), a.getConditionGroup(),
+                                    a.getOrder(), a.getDelaySeconds(), a.getPreviousNodeRef(), a.getNodeId());
+                        }).toList());
 
-        var conditionList = detail.getNodes().stream()
-                .map(n -> n.getData().getConditionData())
-                .filter(Objects::nonNull)
-                .map(c -> new Automation.Condition(
-                        c.getCondition(), c.getValueType(), c.getAbove(), c.getBelow(),
-                        c.getValue(), c.getTime(), c.getTriggerKey(), c.getIsExact(),
-                        c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays(),
-                        c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(), c.getDurationMinutes()
-                ))
-                .collect(Collectors.toList());
-        automationBuilder.conditions(conditionList);
+        automationBuilder.conditions(
+                detail.getNodes().stream()
+                        .map(n -> n.getData().getConditionData())
+                        .filter(Objects::nonNull)
+                        .map(c -> new Automation.Condition(
+                                c.getNodeId() != null ? c.getNodeId() : "",
+                                c.getCondition(), c.getValueType(), c.getAbove(), c.getBelow(),
+                                c.getValue(), c.getTime(), c.getTriggerKey(), c.getIsExact(),
+                                c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays(),
+                                c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(),
+                                c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef()))
+                        .collect(Collectors.toList()));
 
-        var operators = detail.getNodes().stream()
-                .map(n -> n.getData().getOperators())
-                .filter(Objects::nonNull)
-                .map(c -> new Automation.Operator(c.getType(), c.getLogicType()))
-                .collect(Collectors.toList());
-        automationBuilder.operators(operators);
+        automationBuilder.operators(
+                detail.getNodes().stream()
+                        .map(n -> n.getData().getOperators())
+                        .filter(Objects::nonNull)
+                        .map(c -> new Automation.Operator(c.getType(), c.getLogicType(), c.getPreviousNodeRef(), c.getNodeId()))
+                        .collect(Collectors.toList()));
 
         var automation = automationBuilder.build();
-        var device = mainService.getDevice(automation.getTrigger().getDeviceId());
-        automation.setTriggerDeviceType(device.getType());
+        automation.setTriggerDeviceType(mainService.getDevice(automation.getTrigger().getDeviceId()).getType());
 
         var saved = automationRepository.save(automation);
         detail.setId(saved.getId());
@@ -335,36 +308,21 @@ public class AutomationService {
                             a.getTrigger().getDeviceId() + ":" + a.getId());
                     Automation toRun = (cached != null && cached.getAutomation() != null)
                             ? cached.getAutomation() : a;
-
                     checkAndExecuteSingleAutomation(
                             toRun,
                             redisService.getRecentDeviceData(a.getTrigger().getDeviceId()),
-                            "system"
-                    );
+                            "system");
                 }, automationExecutor))
                 .toList();
-
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
     }
 
-    /**
-     * FIX #5 (original): updateRedisStorage guards against overwriting recently-updated
-     * cache entries. Entries updated within the last 5 minutes are skipped.
-     * <p>
-     * FIX #7 (issue 7 / medium): if no cache entry exists for an automation, create one
-     * rather than silently skipping it. This handles Redis flushes and automations that
-     * were created before refreshCacheForAutomation was introduced.
-     */
     @Scheduled(fixedRate = 1000 * 60 * 5)
     private void updateRedisStorage() {
         Date fiveMinutesAgo = new Date(System.currentTimeMillis() - 5 * 60 * 1000);
-
         automationRepository.findAll().forEach(a -> {
             var id = a.getTrigger().getDeviceId() + ":" + a.getId();
             AutomationCache existing = redisService.getAutomationCache(id);
-
-            // FIX #7: existing == null means the entry was never created or Redis was
-            // flushed. Fall through and create a clean entry instead of returning early.
             if (existing != null && existing.getLastUpdate() != null
                     && existing.getLastUpdate().after(fiveMinutesAgo)) {
                 log.debug("Skipping Redis refresh for {} — updated recently", a.getName());
@@ -397,36 +355,29 @@ public class AutomationService {
 
     private void refreshCacheForAutomation(Automation automation) {
         String cacheKey = automation.getTrigger().getDeviceId() + ":" + automation.getId();
-
         try {
             AutomationCache existing = redisService.getAutomationCache(cacheKey);
-
-            AutomationCache updated = AutomationCache.builder()
-                    .id(automation.getId())
-                    .automation(automation)
+            if (existing != null)
+                log.info("Existing Automation Cache State: {}", existing.getState());
+            redisService.setAutomationCache(cacheKey, AutomationCache.builder()
+                    .id(automation.getId()).automation(automation)
                     .triggerDeviceType(automation.getTriggerDeviceType())
                     .enabled(automation.getIsEnabled())
                     .state(existing != null ? existing.getState() : AutomationState.IDLE)
                     .triggerDeviceId(automation.getTrigger().getDeviceId())
-                    .isActive(existing != null && existing.getIsActive() != null
-                            ? existing.getIsActive() : false)
+                    .isActive(existing != null && Boolean.TRUE.equals(existing.getIsActive()))
                     .triggeredPreviously(existing != null && existing.isTriggeredPreviously())
-                    .previousExecutionTime(existing != null
-                            ? existing.getPreviousExecutionTime() : null)
+                    .previousExecutionTime(existing != null ? existing.getPreviousExecutionTime() : null)
                     .lastUpdate(new Date())
-                    .build();
-
-            redisService.setAutomationCache(cacheKey, updated);
+                    .build());
             log.info("🔄 Cache force-refreshed for automation: {}", automation.getName());
-
         } catch (Exception e) {
-            log.warn("⚠️ Failed to refresh Redis cache for automation '{}': {}",
-                    automation.getName(), e.getMessage());
+            log.warn("⚠️ Failed to refresh Redis cache for '{}': {}", automation.getName(), e.getMessage());
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CORE AUTOMATION EXECUTION
+    // CORE EXECUTION
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
@@ -472,8 +423,8 @@ public class AutomationService {
         // check-and-execute block at a time. Lock TTL is generous (LOCK_TTL_SECONDS) so
         // it is always released before the next scheduler tick.
         String executionLockKey = "EXEC_LOCK:" + automation.getId();
-        Boolean lockAcquired = redisService.setIfAbsent(executionLockKey, "locked", LOCK_TTL_SECONDS);
-        if (!Boolean.TRUE.equals(lockAcquired)) {
+        boolean lockAcquired = redisService.setIfAbsent(executionLockKey, "locked", LOCK_TTL_SECONDS);
+        if (!lockAcquired) {
             log.debug("⏭️ Skipping {} — execution lock held by another thread", automation.getName());
             saveLog(AutomationLog.builder()
                     .automationId(automation.getId())
@@ -569,7 +520,22 @@ public class AutomationService {
 
                 // 🟢 IDLE → POSITIVE
                 if (currentState == AutomationState.IDLE && conditionNow) {
-
+                    // Guard: if this automation uses duration + interval, enforce the interval
+                    // cooldown after a previous execution so it doesn't immediately re-fire
+                    // after the duration expires and the state resets to IDLE.
+                    if (hasDuration && condition.getIntervalMinutes() > 0 && cache.getPreviousExecutionTime() != null) {
+                        long secondsSinceLast = (now.getTime() - cache.getPreviousExecutionTime().getTime()) / 1000;
+                        long intervalSeconds = condition.getIntervalMinutes() * 60L;
+                        if (secondsSinceLast < intervalSeconds) {
+                            log.debug("⏳ Automation '{}' in interval cooldown — {}s remaining",
+                                    automation.getName(), intervalSeconds - secondsSinceLast);
+                            automationLog.status(AutomationLog.LogStatus.SKIPPED)
+                                    .reason("Interval cooldown — " + (intervalSeconds - secondsSinceLast) + "s remaining");
+                            saveLog(automationLog.build());
+                            return;
+                        }
+                    }
+                    notificationService.sendNotification("🚀 Triggered: " + automation.getName(), "success");
                     log.info("🚀 Triggered: {}", automation.getName());
 
                     final AutomationCache finalCache = cache;
@@ -629,7 +595,7 @@ public class AutomationService {
                     }
 
                     if (shouldRevert) {
-
+                        notificationService.sendNotification("⏹️ Reverting automation: " + automation.getName(), "success");
                         log.info("⏹️ Reverting automation: {} ({})",
                                 automation.getName(), reason);
 
@@ -647,7 +613,7 @@ public class AutomationService {
 
                                     finalCache.setState(AutomationState.IDLE);
                                     finalCache.setTriggeredPreviously(false);
-                                    finalCache.setPreviousExecutionTime(null);
+//                                    finalCache.setPreviousExecutionTime(null);
                                     finalCache.setLastUpdate(new Date());
 
                                     redisService.setAutomationCache(cacheKey, finalCache);
@@ -679,6 +645,7 @@ public class AutomationService {
                 }
 
             } catch (Exception e) {
+                notificationService.sendNotification("❌ Error in automation: " + automation.getName(), "success");
                 log.error("❌ Error in automation {}: {}", automation.getName(), e.getMessage(), e);
                 automationLog.status(AutomationLog.LogStatus.ERROR)
                         .reason("Execution failed: " + e.getMessage());
@@ -759,44 +726,24 @@ public class AutomationService {
         try {
             ZoneId istZone = ZoneId.of("Asia/Kolkata");
             LocalDate today = LocalDate.now(istZone);
-
-            String cacheKey = "SUN_TIME:" + solarType + ":" + today;
-
-            Object cached = redisService.getRecentDeviceData(cacheKey);
-            if (cached != null) {
-                return LocalTime.parse(cached.toString());
-            }
-
-            double lat = 17.3850;
-            double lng = 78.4867;
+            String cacheKey = "SUN_TIME:" + solarType + "-" + today;
+            Object cached = redisService.get(cacheKey);
+            if (cached != null) return LocalTime.parse(cached.toString());
 
             String url = String.format(
-                    "https://api.sunrise-sunset.org/json?lat=%s&lng=%s&formatted=0",
-                    lat, lng
-            );
-
-            RestTemplate restTemplate = new RestTemplate();
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
-
+                    "https://api.sunrise-sunset.org/json?lat=17.3850&lng=78.4867&formatted=0");
+            Map<String, Object> response = new RestTemplate().getForObject(url, Map.class);
             if (response == null || !response.containsKey("results")) return null;
 
             Map<String, String> results = (Map<String, String>) response.get("results");
-
             String timeStr = "sunrise".equalsIgnoreCase(solarType)
-                    ? results.get("sunrise")
-                    : results.get("sunset");
-
+                    ? results.get("sunrise") : results.get("sunset");
             if (timeStr == null) return null;
 
-            ZonedDateTime utcTime = ZonedDateTime.parse(timeStr);
-            ZonedDateTime istTime = utcTime.withZoneSameInstant(istZone);
-
-            LocalTime result = istTime.toLocalTime();
-
+            LocalTime result = ZonedDateTime.parse(timeStr)
+                    .withZoneSameInstant(istZone).toLocalTime();
             redisService.setWithExpiry(cacheKey, result.toString(), 86400);
-
             return result;
-
         } catch (Exception e) {
             log.error("❌ Failed to fetch sun time: {}", e.getMessage());
             return null;
@@ -921,6 +868,7 @@ public class AutomationService {
             boolean passed = isCurrentTimeWithDailyTracking(automation, condition);
             results.add(AutomationLog.ConditionResult.builder()
                     .conditionType("time")
+                    .conditionNodeId(condition.getNodeId())
                     .triggerKey("time")
                     .expectedValue(condition.getTime())
                     .actualValue(LocalTime.now(ZoneId.of("Asia/Kolkata")).toString())
@@ -935,10 +883,13 @@ public class AutomationService {
         var truths = new ArrayList<Boolean>();
 
         for (var condition : conditions) {
+            if (!condition.isEnabled()) continue;
+
             if ("scheduled".equals(condition.getCondition())) {
                 boolean passed = isCurrentTimeWithDailyTracking(automation, condition);
                 results.add(AutomationLog.ConditionResult.builder()
                         .conditionType("scheduled")
+                        .conditionNodeId(condition.getNodeId())
                         .triggerKey("schedule")
                         .expectedValue(condition.getScheduleType() + " @ " +
                                 ("range".equals(condition.getScheduleType())
@@ -957,10 +908,9 @@ public class AutomationService {
             if (key == null || key.isBlank() || !payload.containsKey(key)) {
                 results.add(AutomationLog.ConditionResult.builder()
                         .conditionType(condition.getCondition())
-                        .triggerKey(key)
-                        .passed(false)
-                        .detail("Key '" + key + "' not found in payload")
-                        .build());
+                        .conditionNodeId(condition.getNodeId())
+                        .triggerKey(key).passed(false)
+                        .detail("Key '" + key + "' not found in payload").build());
                 truths.add(false);
                 continue;
             }
@@ -975,12 +925,11 @@ public class AutomationService {
                 boolean passed = value.equals(condition.getValue());
                 results.add(AutomationLog.ConditionResult.builder()
                         .conditionType("equal")
-                        .triggerKey(key)
-                        .actualValue(value)
-                        .expectedValue(condition.getValue())
+                        .conditionNodeId(condition.getNodeId())
+                        .triggerKey(key).actualValue(value).expectedValue(condition.getValue())
                         .passed(passed)
-                        .detail(passed ? "'" + value + "' equals expected" :
-                                "'" + value + "' does not equal '" + condition.getValue() + "'")
+                        .detail(passed ? "'" + value + "' equals expected"
+                                : "'" + value + "' ≠ '" + condition.getValue() + "'")
                         .build());
                 truths.add(passed);
             }
@@ -988,86 +937,69 @@ public class AutomationService {
 
         if (truths.isEmpty()) return false;
 
-        String globalLogic = (operators != null && !operators.isEmpty())
-                ? operators.get(0).getLogicType() : "AND";
-
-        return switch (globalLogic.toUpperCase()) {
+        String logic = (automation.getOperators() != null && !automation.getOperators().isEmpty())
+                ? automation.getOperators().get(0).getLogicType() : "AND";
+        return switch (logic.toUpperCase()) {
             case "OR" -> truths.stream().anyMatch(Boolean::booleanValue);
-            case "AND" -> truths.stream().allMatch(Boolean::booleanValue);
             default -> truths.stream().allMatch(Boolean::booleanValue);
         };
     }
 
     private Boolean checkCondition(Double numericValue, Automation.Condition condition, boolean wasActive) {
-        if (condition.getIsExact()) {
-            return condition.getValue().equals(numericValue.toString());
-        }
-
+        if (condition.getIsExact()) return condition.getValue().equals(numericValue.toString());
         double threshold = Double.parseDouble(condition.getValue());
         double buffer = 5.0;
-
-        switch (condition.getCondition()) {
-            case "above" -> {
-                if (wasActive) return numericValue > (threshold - buffer);
-                return numericValue > threshold;
-            }
-            case "below" -> {
-                if (wasActive) return numericValue < (threshold + buffer);
-                return numericValue < threshold;
-            }
+        return switch (condition.getCondition()) {
+            case "above" -> wasActive ? numericValue > (threshold - buffer) : numericValue > threshold;
+            case "below" -> wasActive ? numericValue < (threshold + buffer) : numericValue < threshold;
             case "range" -> {
                 double above = Double.parseDouble(condition.getAbove());
                 double below = Double.parseDouble(condition.getBelow());
-                if (wasActive) return numericValue > (above - buffer) && numericValue < (below + buffer);
-                return numericValue > above && numericValue < below;
+                yield wasActive
+                        ? numericValue > (above - buffer) && numericValue < (below + buffer)
+                        : numericValue > above && numericValue < below;
             }
-        }
-        return false;
+            default -> false;
+        };
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // ACTION EXECUTION
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * FIX #4 — executeWithTimeout returns CompletableFuture<Boolean>.
-     * true  = actions completed successfully within the timeout window.
-     * false = execution timed out or threw an exception.
-     * <p>
-     * Callers (checkAndExecuteSingleAutomation, executeAutomationImmediate) use
-     * thenAccept(success -> { if (!success) return; ... }) so the cache is ONLY
-     * advanced when the actions actually ran to completion.
-     * <p>
-     * Previously the method returned CompletableFuture<Void> and exceptionally()
-     * silently completed the future with null, causing thenRun() to always fire.
-     */
+    // Single shared scheduler for all delay timers — low thread count is fine
+    // since it only parks futures, never runs business logic.
+    private static final ScheduledExecutorService delayScheduler =
+            Executors.newScheduledThreadPool(2, r -> {
+                Thread t = new Thread(r, "automation-delay-scheduler");
+                t.setDaemon(true);
+                return t;
+            });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ENTRY POINT — unchanged signature, now fully non-blocking
+    // ─────────────────────────────────────────────────────────────────────────
+
     private CompletableFuture<Boolean> executeWithTimeout(
             Automation automation, Map<String, Object> payload,
             String user, String group) {
 
-        return CompletableFuture.supplyAsync(() -> {
-                    try {
-                        executeActionsInternal(automation, user, payload, group);
-                        return true;   // ← explicit success signal
-                    } catch (Exception e) {
-                        log.error("Error executing automation {}: {}",
-                                automation.getName(), e.getMessage(), e);
-                        return false;  // ← explicit failure signal, not an exception
-                    }
-                }, automationExecutor)
+        // Build the action chain first (pure future composition, no threads yet)
+        CompletableFuture<Boolean> chain = executeActionsInternal(automation, user, payload, group);
+
+        return chain
                 .orTimeout(AUTOMATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .exceptionally(ex -> {
-                    // Only TimeoutException should reach here now (other exceptions
-                    // are caught above and returned as false). Handle timeout gracefully.
-                    if (ex instanceof TimeoutException || ex.getCause() instanceof TimeoutException) {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    if (cause instanceof TimeoutException) {
                         log.error("⏱️ Automation {} timed out", automation.getName());
                         notificationService.sendNotification(
                                 "Automation timeout: " + automation.getName(), "error");
                     } else {
                         log.error("❌ Unexpected async error in {}: {}",
-                                automation.getName(), ex.getMessage(), ex);
+                                automation.getName(), cause.getMessage(), cause);
                     }
-                    return false;  // ← false on timeout too, so cache is NOT advanced
+                    return false;
                 });
     }
 
@@ -1075,7 +1007,16 @@ public class AutomationService {
         executeWithTimeout(automation, payload, user, "positive");
     }
 
-    private void executeActionsInternal(
+    // ─────────────────────────────────────────────────────────────────────────
+    // NON-BLOCKING CHAIN BUILDER
+    // Replaces the for-loop + Thread.sleep with recursive CompletableFuture
+    // composition. Each action is:
+    //   1. Run on automationExecutor  (non-blocking thread pool)
+    //   2. If a delay follows, park via ScheduledExecutorService (no thread held)
+    //   3. Then recurse to the next action
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private CompletableFuture<Boolean> executeActionsInternal(
             Automation automation,
             String user,
             Map<String, Object> value,
@@ -1091,25 +1032,48 @@ public class AutomationService {
                         a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
                 .toList();
 
+        // Fold the action list into a sequential CompletableFuture chain.
+        // Starting value: completed future(true) — i.e. "nothing failed yet".
+        CompletableFuture<Boolean> chain = CompletableFuture.completedFuture(true);
+
         for (Automation.Action action : orderedActions) {
+            chain = chain.thenCompose(previousOk -> {
+                // Run this action on the executor pool
+                CompletableFuture<Boolean> actionFuture =
+                        CompletableFuture.supplyAsync(() -> {
+                            try {
+                                log.info("▶️ Executing action: {} (order={})",
+                                        action.getName(), action.getOrder());
+                                executeSingleAction(action, user, value);
+                                return true;
+                            } catch (Exception e) {
+                                log.error("❌ Failed action: {}", action.getName(), e);
+                                return false;  // continue chain even on failure
+                            }
+                        }, automationExecutor);
 
-            try {
-                log.info("▶️ Executing action: {} (order={})",
-                        action.getName(), action.getOrder());
-
-                executeSingleAction(action, user, value);
-
-                int delay = action.getDelaySeconds() != 0 ? action.getDelaySeconds() : 0;
-
-                if (delay > 0) {
-                    log.info("⏳ Waiting {} sec before next action...", delay);
-                    Thread.sleep(delay * 1000L);
+                // After the action completes, schedule the delay (if any) without
+                // holding a thread — ScheduledExecutorService parks it for free.
+                int delaySec = action.getDelaySeconds();
+                if (delaySec > 0) {
+                    return actionFuture.thenCompose(ok -> {
+                        log.info("⏳ Delay {}s after action '{}' (non-blocking)",
+                                delaySec, action.getName());
+                        CompletableFuture<Boolean> delayedFuture = new CompletableFuture<>();
+                        delayScheduler.schedule(
+                                () -> delayedFuture.complete(ok),
+                                delaySec,
+                                TimeUnit.SECONDS
+                        );
+                        return delayedFuture;
+                    });
                 }
 
-            } catch (Exception e) {
-                log.error("❌ Failed action: {}", action.getName(), e);
-            }
+                return actionFuture;
+            });
         }
+
+        return chain;
     }
 
     private void executeSingleAction(
@@ -1163,7 +1127,7 @@ public class AutomationService {
             if (currentState != null && !currentState.isEmpty()) {
                 String snapshotKey = "SNAPSHOT:" + automation.getId() + ":" + targetDeviceId;
                 redisService.setRecentDeviceData(snapshotKey, currentState);
-                System.out.println("📸 Snapshot saved for device: " + targetDeviceId + currentState);
+//                System.out.println("📸 Snapshot saved for device: " + targetDeviceId + currentState);
             }
         }
     }
@@ -1177,7 +1141,7 @@ public class AutomationService {
             Map<String, Object> previousState = (Map<String, Object>) redisService.getRecentDeviceData(snapshotKey);
 
             if (previousState != null) {
-                System.out.println("⏪ Restoring device: " + targetDeviceId + previousState);
+//                System.out.println("⏪ Restoring device: " + targetDeviceId + previousState);
                 var device = deviceRepository.findById(targetDeviceId).orElse(null);
                 if (device == null) continue;
 
@@ -1259,53 +1223,46 @@ public class AutomationService {
                             .setHeader("mqtt_topic", topic)
                             .build()
             );
-            System.out.println("📤 Sent to " + topic + " => " + json);
+//            System.out.println("📤 Sent to " + topic + " => " + json);
         } catch (Exception e) {
             System.err.println(e);
         }
     }
 
     private void notifyBasedOnResult(String result) {
-        if ("success".equals(result)) {
-            notificationService.sendNotification("Action applied", "success");
-        } else {
-            notificationService.sendNotification("Action failed", "error");
-        }
+        notificationService.sendNotification(
+                "success".equals(result) ? "Action applied" : "Action failed",
+                "success".equals(result) ? "success" : "error");
     }
 
     private String rebootDevice(Device device) {
         if (device == null) return "Device not found";
-        RestTemplate restTemplate = new RestTemplate();
         Map<String, Object> map = Map.of("deviceId", device.getId(), "reboot", true, "key", "reboot");
         messagingTemplate.convertAndSend("/topic/action." + device.getId(), map);
         sendToTopic(TOPIC_ACTION + device.getId(), map);
         try {
-            var res = restTemplate.getForObject(device.getAccessUrl() + "/restart", String.class);
-            System.err.println(res);
+            new RestTemplate().getForObject(device.getAccessUrl() + "/restart", String.class);
         } catch (Exception e) {
-            notificationService.sendNotification(
-                    "Reboot action failed for device: " + device.getName(), "error");
-            System.err.println(e.getMessage());
+            notificationService.sendNotification("Reboot failed: " + device.getName(), "error");
         }
         return "Rebooting device";
     }
 
     private void sendDirectAction(String deviceId, Map<String, Object> payload) {
-        var map = new HashMap<String, Object>();
         var key = payload.get("key").toString();
+        var map = new HashMap<String, Object>();
         map.put(key, payload.get(key));
         map.put("key", key);
         messagingTemplate.convertAndSend("/topic/action." + deviceId, map);
         sendToTopic(TOPIC_ACTION + deviceId, map);
-        notificationService.sendNotification("Action applied", "success");
+        notificationService.sendNotification("Action sent to device", "success");
     }
 
     private String handleWLED(String deviceId, Map<String, Object> payload, String user) {
         var device = deviceRepository.findById(deviceId).orElse(null);
         if (device == null) return "Not found";
         try {
-            var wled = new Wled(mqttOutboundChannel, device);
-            return wled.handleAction(payload);
+            return new Wled(mqttOutboundChannel, device).handleAction(payload);
         } catch (Exception e) {
             System.err.println(e);
             return "Error";
@@ -1319,16 +1276,18 @@ public class AutomationService {
     @EventListener
     public void onCustomEvent(LiveEvent event) {
         var payload = event.getPayload();
-        var deviceId = payload.get("device_id").toString();
-        redisService.setRecentDeviceData(deviceId, payload);
+        redisService.setRecentDeviceData(payload.get("device_id").toString(), payload);
     }
 
-    private boolean isNumeric(String input) {
-        return input != null && input.matches("-?\\d+(\\.\\d+)?");
+    @Scheduled(fixedRate = 65000)
+    public void pollWledState() {
+        mainService.getAllDevice().stream()
+                .filter(d -> "WLED".equals(d.getType()))
+                .forEach(d -> new Wled(mqttOutboundChannel, d).publishForInfo(d.getId()));
     }
 
-    private boolean isText(String input) {
-        return input != null && input.matches("[a-zA-Z]+");
+    private boolean isNumeric(String s) {
+        return s != null && s.matches("-?\\d+(\\.\\d+)?");
     }
 
     private Object parseData(String data) {
@@ -1336,11 +1295,10 @@ public class AutomationService {
         if ("true".equalsIgnoreCase(data)) return Boolean.TRUE;
         if ("false".equalsIgnoreCase(data)) return Boolean.FALSE;
         try {
-            if (data.contains(".")) return Double.parseDouble(data);
-            else return Integer.parseInt(data);
+            return data.contains(".") ? Double.parseDouble(data) : Integer.parseInt(data);
         } catch (NumberFormatException ignored) {
+            return data;
         }
-        return data;
     }
 
     private LocalTime parseTime(String timeText) {

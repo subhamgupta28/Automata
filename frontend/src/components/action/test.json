@@ -1,311 +1,97 @@
-{
-  "nodes": [
-    {
-      "id": "node_trigger_0",
-      "type": "trigger",
-      "selected": true,
-      "dragging": false,
-      "position": {
-        "x": 82.99999999999997,
-        "y": 350.66666666666663
-      },
-      "data": {
-        "triggerData": {
-          "deviceId": "69d0182254593a2915884c46",
-          "type": "state",
-          "name": "Light On",
-          "keys": [
-            {
-              "conditionId": "node_condition_1",
-              "value": "",
-              "key": "range"
-            }
-          ],
-          "priority": 5
-        },
-        "conditionData": null,
-        "actionData": null,
-        "operators": null,
-        "value": {
-          "name": "trigger",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 220,
-        "height": 371
-      }
+[
+  {
+    "_id": {
+      "$oid": "689f53b668dded22326d935e"
     },
-    {
-      "id": "node_condition_1",
-      "type": "condition",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 450.66666666666663,
-        "y": 278.33333333333337
+    "_class": "dev.automata.automata.model.Automation",
+    "actions": [
+      {
+        "key": "channel1",
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "data": "true",
+        "name": "LiFePO4 816WH",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 1,
+        "delaySeconds": 1,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-positive:node_condition_1"
+          }
+        ],
+        "nodeId": "node_action_2"
       },
-      "data": {
-        "triggerData": null,
-        "conditionData": {
-          "condition": "below",
-          "triggerKey": "range",
-          "valueType": "int",
-          "below": "0",
-          "above": "0",
-          "type": "state",
-          "value": "150",
-          "isExact": false,
-          "time": "01:50:00 AM",
-          "scheduleType": null,
-          "fromTime": "04:28:31 PM",
-          "toTime": "04:28:31 PM",
-          "days": []
-        },
-        "actionData": null,
-        "operators": null,
-        "value": {
-          "name": "condition",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 260,
-        "height": 178
+      {
+        "key": "channel1",
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "data": "false",
+        "name": "LiFePO4 816WH",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 1,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-negative:node_condition_1"
+          }
+        ],
+        "nodeId": "node_action_4"
       }
+    ],
+    "conditions": [
+      {
+        "nodeId": "node_condition_1",
+        "condition": "scheduled",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "10",
+        "time": "Invalid Date",
+        "triggerKey": "",
+        "isExact": false,
+        "scheduleType": "interval",
+        "fromTime": "09:12:50 PM",
+        "toTime": "09:12:50 PM",
+        "days": [
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri",
+          "Sat",
+          "Sun"
+        ],
+        "offsetMinutes": 0,
+        "intervalMinutes": 120,
+        "durationMinutes": 30,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_trigger_0",
+            "handle": "rootNode:triggerNode:node_trigger_0"
+          }
+        ]
+      }
+    ],
+    "isActive": false,
+    "isEnabled": true,
+    "name": "Periodic Bat 500 charging",
+    "operators": [],
+    "trigger": {
+      "deviceId": "670e9f4d4f15cd01e98640cf",
+      "type": "state",
+      "keys": [],
+      "name": "Periodic Bat 500 charging",
+      "priority": 5,
+      "nodeId": "node_trigger_0"
     },
-    {
-      "id": "node_action_4",
-      "type": "action",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 832.1346109497431,
-        "y": 153.39034782693517
-      },
-      "data": {
-        "triggerData": null,
-        "conditionData": null,
-        "actionData": {
-          "deviceId": "6955a0bf597f2017005e2b0d",
-          "key": "bright",
-          "name": "",
-          "data": "255",
-          "isEnabled": false,
-          "revert": false,
-          "conditionGroup": "none"
-        },
-        "operators": null,
-        "value": {
-          "name": "action",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 220,
-        "height": 319
-      }
-    },
-    {
-      "id": "node_action_5",
-      "type": "action",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 1333.6881809628235,
-        "y": 139.5750032771424
-      },
-      "data": {
-        "triggerData": null,
-        "conditionData": null,
-        "actionData": {
-          "deviceId": "67571bf46f2d631aa77cc632",
-          "key": "bright",
-          "name": "",
-          "data": "50",
-          "isEnabled": false,
-          "revert": false,
-          "conditionGroup": "none"
-        },
-        "operators": null,
-        "value": {
-          "name": "action",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 220,
-        "height": 319
-      }
-    },
-    {
-      "id": "node_action_6",
-      "type": "action",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 1073.0666656494138,
-        "y": 132.06666692097986
-      },
-      "data": {
-        "triggerData": null,
-        "conditionData": null,
-        "actionData": {
-          "deviceId": "69559fe7ff8187354090cb2d",
-          "key": "bright",
-          "name": "",
-          "data": "50",
-          "isEnabled": true,
-          "revert": false,
-          "conditionGroup": "positive"
-        },
-        "operators": null,
-        "value": {
-          "name": "action",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 220,
-        "height": 319
-      }
-    },
-    {
-      "id": "node_action_7",
-      "type": "action",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 840.0000000000002,
-        "y": 594.6666666666666
-      },
-      "data": {
-        "triggerData": null,
-        "conditionData": null,
-        "actionData": {
-          "deviceId": "6955a0bf597f2017005e2b0d",
-          "key": "bright",
-          "name": "",
-          "data": "2",
-          "isEnabled": false,
-          "revert": false,
-          "conditionGroup": "negative"
-        },
-        "operators": null,
-        "value": {
-          "name": "action",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 220,
-        "height": 319
-      }
-    },
-    {
-      "id": "node_action_8",
-      "type": "action",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 1087.9999999999998,
-        "y": 584
-      },
-      "data": {
-        "triggerData": null,
-        "conditionData": null,
-        "actionData": {
-          "deviceId": "67571bf46f2d631aa77cc632",
-          "key": "bright",
-          "name": "",
-          "data": "2",
-          "isEnabled": false,
-          "revert": false,
-          "conditionGroup": "none"
-        },
-        "operators": null,
-        "value": {
-          "name": "action",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 220,
-        "height": 319
-      }
-    },
-    {
-      "id": "node_action_9",
-      "type": "action",
-      "selected": false,
-      "dragging": false,
-      "position": {
-        "x": 1342.666666666667,
-        "y": 593.3333333333333
-      },
-      "data": {
-        "triggerData": null,
-        "conditionData": null,
-        "actionData": {
-          "deviceId": "69559fe7ff8187354090cb2d",
-          "key": "bright",
-          "name": "",
-          "data": "2",
-          "isEnabled": true,
-          "revert": false,
-          "conditionGroup": "negative"
-        },
-        "operators": null,
-        "value": {
-          "name": "action",
-          "newNode": false
-        }
-      },
-      "measured": {
-        "width": 220,
-        "height": 319
-      }
+    "triggerDeviceType": "sensor",
+    "updateDate": {
+      "$date": "2026-04-09T11:48:08.269Z"
     }
-  ],
-  "edges": [
-    {
-      "source": "node_condition_1",
-      "sourceHandle": "cond-positive",
-      "target": "node_action_6",
-      "targetHandle": "b",
-      "type": "custom-edge",
-      "id": "xy-edge__node_condition_1cond-positive-node_action_6b",
-      "data": {
-        "color": "#4caf50"
-      }
-    },
-    {
-      "source": "node_condition_1",
-      "sourceHandle": "cond-negative",
-      "target": "node_action_9",
-      "targetHandle": "b",
-      "type": "custom-edge",
-      "id": "xy-edge__node_condition_1cond-negative-node_action_9b",
-      "data": {
-        "color": "#f44336"
-      }
-    },
-    {
-      "source": "node_trigger_0",
-      "sourceHandle": "b",
-      "target": "node_condition_1",
-      "targetHandle": "cond-t",
-      "type": "custom-edge",
-      "data": {
-        "color": "#4caf50"
-      },
-      "id": "xy-edge__node_trigger_0b-node_condition_1cond-t"
-    }
-  ],
-  "viewport": {
-    "x": 0,
-    "y": 50,
-    "zoom": 0.75
-  },
-  "id": "688cc888c82e72169f917631"
-}
+  }
+]

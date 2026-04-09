@@ -37,6 +37,7 @@ public class AutomationLog {
     private List<ConditionResult> conditionResults; // Per-condition evaluation detail
     private String operatorLogic;           // "AND" / "OR"
     private Map<String, Object> payload;    // The sensor data at time of evaluation
+    private Map<String, Boolean> conditionOutcomes;
 
     private String triggerType;             // "time", "state", "periodic"
     private String triggerDeviceId;
@@ -64,5 +65,6 @@ public class AutomationLog {
         private String expectedValue;   // threshold / time / range
         private boolean passed;
         private String detail;          // e.g. "200.0 > 195.0 (with buffer 5.0)"
+        private String conditionNodeId;
     }
 }

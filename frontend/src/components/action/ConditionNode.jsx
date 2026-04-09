@@ -44,7 +44,8 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         solarType: 'sunset',
         offsetMinutes: 0,
         intervalMinutes: 30,
-        durationMinutes: 5
+        durationMinutes: 5,
+        nodeId: id
     };
     const [scheduleType, setScheduleType] = useState(conditionData.scheduleType); // 'at' | 'range'
     const [fromTime, setFromTime] = useState(
@@ -85,9 +86,9 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     );
     const [type, setType] = useState(conditionData.type);
     const connections = useNodeConnections({
-        handleType: 'target',
-        handleId: 'b'
+        handleType: 'target'
     });
+    // console.log("condition", data, connections)
     const nodesData = useNodesData(
         connections.map((connection) => connection.source),
     );
@@ -153,7 +154,13 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     }, [conditionNodes, id]);
 
     useEffect(() => {
+        const previousNodes = connections.map(conn => ({
+            nodeId: conn.source,
+            handle: conn.sourceHandle
+        }));
+        console.log("connection: condition", previousNodes)
         const newData = {
+            nodeId: id,
             condition,
             triggerKey,
             valueType: 'int',
@@ -163,14 +170,16 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             value: conditionValue,
             isExact: isRange,
             time: time.format("hh:mm:ss A"),
-            scheduleType,
+            scheduleType: scheduleType !== undefined ? scheduleType : '',
             fromTime: fromTime.format("hh:mm:ss A"),
             toTime: toTime.format("hh:mm:ss A"),
             days,
             solarType,
             offsetMinutes,
             intervalMinutes,
-            durationMinutes
+            durationMinutes,
+            enabled: connections.length > 0,
+            previousNodeRef: previousNodes
         };
 
         if (JSON.stringify(data.conditionData) !== JSON.stringify(newData)) {
@@ -193,7 +202,8 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         solarType,
         offsetMinutes,
         intervalMinutes,
-        durationMinutes
+        durationMinutes,
+        connections
     ]);
 
     const handleChange = (e, select) => {
@@ -210,7 +220,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         } else if (select === 'time') {
             if (e && e.isValid()) {
                 setTime(e);
-                console.log("time", e.format("hh:mm:ss A"));
+                // console.log("time", e.format("hh:mm:ss A"));
             } else {
                 console.warn("Invalid time value:", e);
             }
@@ -228,7 +238,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="target"
                 position={Position.Left}
-                id="cond-t"
+                id={"in:condition:" + id}
                 isConnectable={isConnectable}
             />
             <AddIcon style={{
@@ -436,7 +446,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 style={{width: '26px', height: '26px', background: '#4caf50', top: '25%'}}
                 type="source"
                 position={Position.Right}
-                id="cond-positive"
+                id={"out:cond-positive:" + id}
                 isConnectable={isConnectable}
             />
 
@@ -444,7 +454,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 style={{width: '26px', height: '26px', background: '#f44336', top: '75%'}}
                 type="source"
                 position={Position.Right}
-                id="cond-negative"
+                id={"out:cond-negative:" + id}
                 isConnectable={isConnectable}
             />
 

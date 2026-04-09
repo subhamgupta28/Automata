@@ -91,6 +91,45 @@ function ActionBoardDetailComponent() {
         console.log("connection", connection)
         return connection.target === 'node_1';
     }, []);
+
+    const buildExecutionGraph = (nodes, edges) => {
+        const graph = {};
+
+        // Initialize nodes
+        nodes.forEach(node => {
+            graph[node.id] = {
+                prev: [],
+                next: []
+            };
+        });
+
+        // Process edges
+        edges.forEach(edge => {
+            const {source, target, sourceHandle, targetHandle} = edge;
+
+            if (!graph[source] || !graph[target]) return;
+
+            graph[source].next.push({
+                nodeId: target,
+                handle: sourceHandle
+            });
+
+            graph[target].prev.push({
+                nodeId: source,
+                handle: targetHandle
+            });
+        });
+
+        // Find start nodes (no incoming edges)
+        const startNodes = Object.values(graph)
+            .filter(n => n.prev.length === 0)
+            .map(n => n.id);
+
+        return {
+            nodes: graph,
+            startNodes
+        };
+    };
     const onSave = useCallback(() => {
         const saveFlow = async (payload) => {
             console.log("saveFlow", payload);
@@ -110,16 +149,20 @@ function ActionBoardDetailComponent() {
             });
 
             // Remove stale edges — only keep edges using current handle ids
-            const validSourceHandles = new Set(['b', 'cond-positive', 'cond-negative', 'action-out']);
-            const validTargetHandles = new Set(['b', 'cond-t', 'cond-positive', 'cond-negative', 'action-out']);
+            const validSourceHandles = new Set(['triggerNode', 'cond-positive', 'cond-negative', 'action-out']);
+            const validTargetHandles = new Set(['triggerNode', 'cond-t', 'cond-positive', 'cond-negative', 'action-out']);
 
             // Also remove edges whose source/target node no longer exists
             const nodeIds = new Set(uniqueNodes.map(n => n.id));
             const cleanEdges = flow.edges.filter(edge => {
                 const sourceValid = nodeIds.has(edge.source);
                 const targetValid = nodeIds.has(edge.target);
+                console.log("edge", edge)
                 // Drop old cond-s handle edges — replaced by cond-positive/cond-negative
-                const notLegacy = edge.sourceHandle !== 'cond-s';
+                const notLegacy = edge.sourceHandle !== 'cond-s' || edge.sourceHandle !== 'b'
+                    || edge.sourceHandle !== 'cond-positive' || edge.sourceHandle !== 'cond-negative'
+                    || !edge.sourceHandle.includes(":") || !edge.targetHandle.includes(":")
+                ;
                 return sourceValid && targetValid && notLegacy;
             });
 
@@ -130,6 +173,7 @@ function ActionBoardDetailComponent() {
                 seenEdgeIds.add(edge.id);
                 return true;
             });
+            // const graph = buildExecutionGraph(uniqueNodes, cleanEdges);
 
             const cleanFlow = {
                 ...flow,
@@ -201,15 +245,24 @@ function ActionBoardDetailComponent() {
 
         const nodeIds = new Set((detail.nodes || []).map(n => n.id));
 
+        const seenEdgeIds = new Set();
+        const uniqueEdges = detail.edges.filter(edge => {
+            if (seenEdgeIds.has(edge.id)) return false;
+            seenEdgeIds.add(edge.id);
+            return true;
+        }).filter(edge => edge.edgeId !== "xy-edge__node_condition_1out:cond-positive:node_condition_1-node_action_11action:positive:node_action_11");
         // Filter out legacy edges on load
-        const cleanEdges = (detail.edges || []).filter(edge => {
+        const cleanEdges = (uniqueEdges || []).filter(edge => {
             return nodeIds.has(edge.source)
                 && nodeIds.has(edge.target)
-                && edge.sourceHandle !== 'cond-s';
+                && edge.sourceHandle !== 'cond-s' && edge.targetHandle !== 'b'
+                && edge.targetHandle !== "cond-t"
+                && edge.sourceHandle !== 'cond-positive' && edge.sourceHandle !== 'cond-negative'
+                && edge.sourceHandle.includes(":") && edge.targetHandle.includes(":");
         });
-
+        // console.log("cleanEdges", cleanEdges)
         setNodes(detail.nodes || []);
-        setEdges(cleanEdges);
+        setEdges(uniqueEdges);
         id = detail.nodes.length + 1;
     }
 
@@ -232,7 +285,7 @@ function ActionBoardDetailComponent() {
     const onConnect = useCallback(
         (connection) => {
 
-            const isNegative = connection.sourceHandle === 'cond-negative';
+            const isNegative = connection.sourceHandle.includes('cond-negative');
             const edge = {
                 ...connection,
                 type: 'custom-edge',

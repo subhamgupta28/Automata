@@ -42,6 +42,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
         conditionGroup: 'none',
         order: 1,
         delaySeconds: 0,
+        nodeId: id
     };
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
     const {devices, loading, error} = useCachedDevices();
@@ -59,12 +60,12 @@ export const ActionNode = ({id, data, isConnectable}) => {
 
     const connections = useNodeConnections({handleType: 'target'});
     useEffect(() => {
-        console.log("connections", connections, id)
+        // console.log("connections", connections, id)
         if (connections.length > 0) {
             const sourceHandle = connections[0]?.sourceHandle;
 
-            const group = sourceHandle === 'cond-negative' ? 'negative' : sourceHandle === 'cond-positive' ? 'positive' : 'none';
-            console.log("sourceHandle", sourceHandle, group)
+            const group = sourceHandle.includes('cond-negative') ? 'negative' : sourceHandle.includes('cond-positive') ? 'positive' : 'none';
+            // console.log("sourceHandle", sourceHandle, group)
             setConditionGroup(group);
 
         }
@@ -161,7 +162,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
             case "ACTION|PRESET": // build from extras
                 const res = [];
                 for (let [key, value] of Object.entries(action[0].extras)) {
-                    console.log("a", key, value)
+                    // console.log("a", key, value)
                     res.push({name: key, value})
                 }
                 setValueOptions(res)
@@ -186,7 +187,14 @@ export const ActionNode = ({id, data, isConnectable}) => {
     }
 
     useEffect(() => {
+        const previousNodes = connections.map(conn => ({
+            nodeId: conn.source,
+            handle: conn.sourceHandle
+        }));
+        console.log("connection: action", connections)
+
         const newData = {
+            nodeId: id,
             deviceId: selectedDevice?.id,
             key,
             name: selectedDevice?.name,
@@ -195,11 +203,12 @@ export const ActionNode = ({id, data, isConnectable}) => {
             revert,
             conditionGroup,
             order,
-            delaySeconds
+            delaySeconds,
+            previousNodeRef: previousNodes
         };
 
         // Only update if something actually changed
-        console.log(newData)
+        // console.log(newData)
         handleActionValues(key);
         if (JSON.stringify(data.actionData) !== JSON.stringify(newData)) {
             updateNodeData(id, {actionData: newData});
@@ -234,7 +243,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 }}
                 type="target"
                 position={Position.Left}
-                id="b"
+                id={"action:" + conditionGroup + ":" + id}
                 isConnectable={isConnectable}
             />
             <div style={{display: 'flex', justifyContent: 'center', gap: '6px', margin: '4px', alignItems: 'center'}}>
