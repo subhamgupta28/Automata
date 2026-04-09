@@ -115,7 +115,7 @@ public class AutomationService {
 
         if ("WLED".equals(deviceType)) {
             var result = handleWLED(deviceId, payload, user);
-            notifyBasedOnResult(result);
+//            notifyBasedOnResult(result);
             return "success";
         }
 
@@ -156,8 +156,8 @@ public class AutomationService {
             req.put("direct", true);
             req.put("deviceId", id);
             if (device.isPresent()) {
-                System.out.println("Master action sent " + req);
-                System.out.println("Device type " + device.get().getType());
+//                System.out.println("Master action sent " + req);
+//                System.out.println("Device type " + device.get().getType());
                 handleAction(id, req, device.get().getType(), user);
             }
         }
@@ -167,15 +167,13 @@ public class AutomationService {
             if (Boolean.parseBoolean(check)) {
                 sendDirectAction(deviceId, payload);
                 return "No saved action found but sent directly";
-            } else {
-                //TODO: handle for direct=false
             }
         }
 
         var automations = automationRepository.findByTrigger_DeviceId(deviceId);
-        System.err.println("Automations found: ");
+
         automations.forEach(a -> {
-            System.err.println(a.getName());
+//            System.err.println(a.getName());
             checkAndExecuteSingleAutomation(a, payload, user);
         });
 
@@ -249,7 +247,7 @@ public class AutomationService {
                     automationBuilder.trigger(new Automation.Trigger(
                             tData.getDeviceId(), tData.getType(), tData.getValue(), tData.getKey(),
                             tData.getKeys().stream().map(t -> t.getKey()).toList(),
-                            tData.getName(), tData.getPriority()));
+                            tData.getName(), tData.getPriority(), tData.getNodeId()));
                     automationBuilder.name(tData.getName());
                 });
 
@@ -261,11 +259,9 @@ public class AutomationService {
                             return new Automation.Action(
                                     a.getKey(), a.getDeviceId(), a.getData(), a.getName(),
                                     a.getIsEnabled(), a.getRevert(), a.getConditionGroup(),
-                                    a.getOrder(), a.getDelaySeconds(), a.getPreviousNodeRef());
+                                    a.getOrder(), a.getDelaySeconds(), a.getPreviousNodeRef(), a.getNodeId());
                         }).toList());
 
-        // Conditions: save the React Flow node id as Condition.nodeId so the
-        // execution layer can correlate conditions to action previousNodeRefs.
         automationBuilder.conditions(
                 detail.getNodes().stream()
                         .map(n -> n.getData().getConditionData())
@@ -276,15 +272,14 @@ public class AutomationService {
                                 c.getValue(), c.getTime(), c.getTriggerKey(), c.getIsExact(),
                                 c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays(),
                                 c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(),
-                                c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef()
-                        ))
+                                c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef()))
                         .collect(Collectors.toList()));
 
         automationBuilder.operators(
                 detail.getNodes().stream()
                         .map(n -> n.getData().getOperators())
                         .filter(Objects::nonNull)
-                        .map(c -> new Automation.Operator(c.getType(), c.getLogicType(), c.getPreviousNodeRef()))
+                        .map(c -> new Automation.Operator(c.getType(), c.getLogicType(), c.getPreviousNodeRef(), c.getNodeId()))
                         .collect(Collectors.toList()));
 
         var automation = automationBuilder.build();
@@ -525,7 +520,22 @@ public class AutomationService {
 
                 // 🟢 IDLE → POSITIVE
                 if (currentState == AutomationState.IDLE && conditionNow) {
-
+                    // Guard: if this automation uses duration + interval, enforce the interval
+                    // cooldown after a previous execution so it doesn't immediately re-fire
+                    // after the duration expires and the state resets to IDLE.
+                    if (hasDuration && condition.getIntervalMinutes() > 0 && cache.getPreviousExecutionTime() != null) {
+                        long secondsSinceLast = (now.getTime() - cache.getPreviousExecutionTime().getTime()) / 1000;
+                        long intervalSeconds = condition.getIntervalMinutes() * 60L;
+                        if (secondsSinceLast < intervalSeconds) {
+                            log.debug("⏳ Automation '{}' in interval cooldown — {}s remaining",
+                                    automation.getName(), intervalSeconds - secondsSinceLast);
+                            automationLog.status(AutomationLog.LogStatus.SKIPPED)
+                                    .reason("Interval cooldown — " + (intervalSeconds - secondsSinceLast) + "s remaining");
+                            saveLog(automationLog.build());
+                            return;
+                        }
+                    }
+                    notificationService.sendNotification("🚀 Triggered: " + automation.getName(), "success");
                     log.info("🚀 Triggered: {}", automation.getName());
 
                     final AutomationCache finalCache = cache;
@@ -585,7 +595,7 @@ public class AutomationService {
                     }
 
                     if (shouldRevert) {
-
+                        notificationService.sendNotification("⏹️ Reverting automation: " + automation.getName(), "success");
                         log.info("⏹️ Reverting automation: {} ({})",
                                 automation.getName(), reason);
 
@@ -603,7 +613,7 @@ public class AutomationService {
 
                                     finalCache.setState(AutomationState.IDLE);
                                     finalCache.setTriggeredPreviously(false);
-                                    finalCache.setPreviousExecutionTime(null);
+//                                    finalCache.setPreviousExecutionTime(null);
                                     finalCache.setLastUpdate(new Date());
 
                                     redisService.setAutomationCache(cacheKey, finalCache);
@@ -635,6 +645,7 @@ public class AutomationService {
                 }
 
             } catch (Exception e) {
+                notificationService.sendNotification("❌ Error in automation: " + automation.getName(), "success");
                 log.error("❌ Error in automation {}: {}", automation.getName(), e.getMessage(), e);
                 automationLog.status(AutomationLog.LogStatus.ERROR)
                         .reason("Execution failed: " + e.getMessage());
@@ -956,33 +967,39 @@ public class AutomationService {
     // ACTION EXECUTION
     // ─────────────────────────────────────────────────────────────────────────
 
+    // Single shared scheduler for all delay timers — low thread count is fine
+    // since it only parks futures, never runs business logic.
+    private static final ScheduledExecutorService delayScheduler =
+            Executors.newScheduledThreadPool(2, r -> {
+                Thread t = new Thread(r, "automation-delay-scheduler");
+                t.setDaemon(true);
+                return t;
+            });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ENTRY POINT — unchanged signature, now fully non-blocking
+    // ─────────────────────────────────────────────────────────────────────────
+
     private CompletableFuture<Boolean> executeWithTimeout(
             Automation automation, Map<String, Object> payload,
             String user, String group) {
 
-        return CompletableFuture.supplyAsync(() -> {
-                    try {
-                        executeActionsInternal(automation, user, payload, group);
-                        return true;   // ← explicit success signal
-                    } catch (Exception e) {
-                        log.error("Error executing automation {}: {}",
-                                automation.getName(), e.getMessage(), e);
-                        return false;  // ← explicit failure signal, not an exception
-                    }
-                }, automationExecutor)
+        // Build the action chain first (pure future composition, no threads yet)
+        CompletableFuture<Boolean> chain = executeActionsInternal(automation, user, payload, group);
+
+        return chain
                 .orTimeout(AUTOMATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .exceptionally(ex -> {
-                    // Only TimeoutException should reach here now (other exceptions
-                    // are caught above and returned as false). Handle timeout gracefully.
-                    if (ex instanceof TimeoutException || ex.getCause() instanceof TimeoutException) {
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    if (cause instanceof TimeoutException) {
                         log.error("⏱️ Automation {} timed out", automation.getName());
                         notificationService.sendNotification(
                                 "Automation timeout: " + automation.getName(), "error");
                     } else {
                         log.error("❌ Unexpected async error in {}: {}",
-                                automation.getName(), ex.getMessage(), ex);
+                                automation.getName(), cause.getMessage(), cause);
                     }
-                    return false;  // ← false on timeout too, so cache is NOT advanced
+                    return false;
                 });
     }
 
@@ -990,7 +1007,16 @@ public class AutomationService {
         executeWithTimeout(automation, payload, user, "positive");
     }
 
-    private void executeActionsInternal(
+    // ─────────────────────────────────────────────────────────────────────────
+    // NON-BLOCKING CHAIN BUILDER
+    // Replaces the for-loop + Thread.sleep with recursive CompletableFuture
+    // composition. Each action is:
+    //   1. Run on automationExecutor  (non-blocking thread pool)
+    //   2. If a delay follows, park via ScheduledExecutorService (no thread held)
+    //   3. Then recurse to the next action
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private CompletableFuture<Boolean> executeActionsInternal(
             Automation automation,
             String user,
             Map<String, Object> value,
@@ -1006,25 +1032,48 @@ public class AutomationService {
                         a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
                 .toList();
 
+        // Fold the action list into a sequential CompletableFuture chain.
+        // Starting value: completed future(true) — i.e. "nothing failed yet".
+        CompletableFuture<Boolean> chain = CompletableFuture.completedFuture(true);
+
         for (Automation.Action action : orderedActions) {
+            chain = chain.thenCompose(previousOk -> {
+                // Run this action on the executor pool
+                CompletableFuture<Boolean> actionFuture =
+                        CompletableFuture.supplyAsync(() -> {
+                            try {
+                                log.info("▶️ Executing action: {} (order={})",
+                                        action.getName(), action.getOrder());
+                                executeSingleAction(action, user, value);
+                                return true;
+                            } catch (Exception e) {
+                                log.error("❌ Failed action: {}", action.getName(), e);
+                                return false;  // continue chain even on failure
+                            }
+                        }, automationExecutor);
 
-            try {
-                log.info("▶️ Executing action: {} (order={})",
-                        action.getName(), action.getOrder());
-
-                executeSingleAction(action, user, value);
-
-                int delay = action.getDelaySeconds() != 0 ? action.getDelaySeconds() : 0;
-
-                if (delay > 0) {
-                    log.info("⏳ Waiting {} sec before next action...", delay);
-                    Thread.sleep(delay * 1000L);
+                // After the action completes, schedule the delay (if any) without
+                // holding a thread — ScheduledExecutorService parks it for free.
+                int delaySec = action.getDelaySeconds();
+                if (delaySec > 0) {
+                    return actionFuture.thenCompose(ok -> {
+                        log.info("⏳ Delay {}s after action '{}' (non-blocking)",
+                                delaySec, action.getName());
+                        CompletableFuture<Boolean> delayedFuture = new CompletableFuture<>();
+                        delayScheduler.schedule(
+                                () -> delayedFuture.complete(ok),
+                                delaySec,
+                                TimeUnit.SECONDS
+                        );
+                        return delayedFuture;
+                    });
                 }
 
-            } catch (Exception e) {
-                log.error("❌ Failed action: {}", action.getName(), e);
-            }
+                return actionFuture;
+            });
         }
+
+        return chain;
     }
 
     private void executeSingleAction(
@@ -1078,7 +1127,7 @@ public class AutomationService {
             if (currentState != null && !currentState.isEmpty()) {
                 String snapshotKey = "SNAPSHOT:" + automation.getId() + ":" + targetDeviceId;
                 redisService.setRecentDeviceData(snapshotKey, currentState);
-                System.out.println("📸 Snapshot saved for device: " + targetDeviceId + currentState);
+//                System.out.println("📸 Snapshot saved for device: " + targetDeviceId + currentState);
             }
         }
     }
@@ -1092,7 +1141,7 @@ public class AutomationService {
             Map<String, Object> previousState = (Map<String, Object>) redisService.getRecentDeviceData(snapshotKey);
 
             if (previousState != null) {
-                System.out.println("⏪ Restoring device: " + targetDeviceId + previousState);
+//                System.out.println("⏪ Restoring device: " + targetDeviceId + previousState);
                 var device = deviceRepository.findById(targetDeviceId).orElse(null);
                 if (device == null) continue;
 
@@ -1174,7 +1223,7 @@ public class AutomationService {
                             .setHeader("mqtt_topic", topic)
                             .build()
             );
-            System.out.println("📤 Sent to " + topic + " => " + json);
+//            System.out.println("📤 Sent to " + topic + " => " + json);
         } catch (Exception e) {
             System.err.println(e);
         }
@@ -1206,7 +1255,7 @@ public class AutomationService {
         map.put("key", key);
         messagingTemplate.convertAndSend("/topic/action." + deviceId, map);
         sendToTopic(TOPIC_ACTION + deviceId, map);
-        notificationService.sendNotification("Action applied", "success");
+        notificationService.sendNotification("Action sent to device", "success");
     }
 
     private String handleWLED(String deviceId, Map<String, Object> payload, String user) {

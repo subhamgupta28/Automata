@@ -1,6 +1,7 @@
 package dev.automata.automata.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.automata.automata.dto.NodeRef;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -105,7 +106,8 @@ public class AutomationDetail {
             public static class Operator {
                 private String type;
                 private String logicType;
-                private String previousNodeRef;
+                private List<NodeRef> previousNodeRef;
+                private String nodeId;
             }
 
             @Getter
@@ -132,6 +134,7 @@ public class AutomationDetail {
                 private String name;
                 private String value;
                 private int priority;
+                private String nodeId;
 
                 @Getter
                 @Setter
@@ -170,7 +173,7 @@ public class AutomationDetail {
                 private int intervalMinutes;
                 private int durationMinutes;
                 private boolean enabled = false;
-                private String previousNodeRef;
+                private List<NodeRef> previousNodeRef;
             }
 
             @Getter
@@ -188,7 +191,8 @@ public class AutomationDetail {
                 private String conditionGroup;
                 private int order = 1;
                 private int delaySeconds = 0;
-                private String previousNodeRef;
+                private List<NodeRef> previousNodeRef;
+                private String nodeId;
             }
         }
 

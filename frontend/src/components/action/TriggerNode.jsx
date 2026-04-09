@@ -91,10 +91,12 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                 type,
                 name,
                 keys: triggerKeys,
-                priority
+                priority,
+                nodeId: id,
+                rootNode: true
             }
         };
-        console.log("data", newData)
+        // console.log("data", newData)
 
         const serialized = JSON.stringify(newData);
 
@@ -235,7 +237,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                 style={{width: '18px', height: '18px', background: '#6DBF6D', opacity: 0}}
                 type="source"
                 position={Position.Right}
-                id="triggerNode"
+                id={"rootNode:triggerNode:" + id}
                 isConnectable={isConnectable}
             />
             <AddIcon style={{

@@ -4,6 +4,7 @@ import React from 'react';
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
 import {WLEDDiscovery} from "../../services/WLEDDiscovery.jsx";
+import AutomationValidator from "../action/AutomationValidator.jsx";
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
     let color = theme.palette.success.main;
@@ -71,7 +72,7 @@ const Exp = () => {
         <div style={{marginTop: '100px'}}>
 
             <WLEDDiscovery/>
-
+            <AutomationValidator/>
 
         </div>
     );

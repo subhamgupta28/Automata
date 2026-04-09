@@ -31,15 +31,18 @@ export const And = ({id, data, isConnectable}) => {
     });
 
     useEffect(() => {
-        const previousNodeRef = connections.length > 0
-            ? connections[connections.length - 1].sourceHandle
-            : '';
+        const previousNodes = connections.map(conn => ({
+            nodeId: conn.source,
+            handle: conn.sourceHandle
+        }));
+        // console.log("connection: operator", previousNodes)
         updateNodeData(id, {
             // ...data,
             operators: {
+                nodeId: id,
                 logicType: 'AND',
                 type: "operator",
-                previousNodeRef
+                previousNodeRef: previousNodes
             }
         });
     }, [connections]);
@@ -56,7 +59,7 @@ export const And = ({id, data, isConnectable}) => {
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="target"
                 position={Position.Left}
-                id="cond-operator-and"
+                id={"in:operator:" + id}
                 isConnectable={isConnectable}
             />
             <AddIcon style={{
@@ -75,7 +78,7 @@ export const And = ({id, data, isConnectable}) => {
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="source"
-                id="cond-operator-and"
+                id={"out:operator:" + id}
                 position={Position.Right}
                 isConnectable={isConnectable}
             />
@@ -99,10 +102,11 @@ export const Or = ({id, data, isConnectable}) => {
 
     useEffect(() => {
         const previousNodeRef = connections.length > 0
-            ? connections.map(c => c.sourceHandle).join(',')
+            ? connections[connections.length - 1].sourceHandle
             : '';
         updateNodeData(id, {
             operators: {
+                nodeId: id,
                 logicType: 'OR',
                 type: "operator",
                 previousNodeRef
@@ -121,7 +125,7 @@ export const Or = ({id, data, isConnectable}) => {
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="target"
                 position={Position.Left}
-                id="cond-operator-or"
+                id={"in:operator:" + id}
                 isConnectable={isConnectable}
             />
             <AddIcon style={{
@@ -142,7 +146,7 @@ export const Or = ({id, data, isConnectable}) => {
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="source"
-                id="cond-operator-or"
+                id={"out:operator:" + id}
                 position={Position.Right}
                 isConnectable={isConnectable}
             />

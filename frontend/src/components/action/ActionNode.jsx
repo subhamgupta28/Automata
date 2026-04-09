@@ -42,6 +42,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
         conditionGroup: 'none',
         order: 1,
         delaySeconds: 0,
+        nodeId: id
     };
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
     const {devices, loading, error} = useCachedDevices();
@@ -63,7 +64,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
         if (connections.length > 0) {
             const sourceHandle = connections[0]?.sourceHandle;
 
-            const group = sourceHandle.startsWith('cond-negative') ? 'negative' : sourceHandle.startsWith('cond-positive') ? 'positive' : 'none';
+            const group = sourceHandle.includes('cond-negative') ? 'negative' : sourceHandle.includes('cond-positive') ? 'positive' : 'none';
             // console.log("sourceHandle", sourceHandle, group)
             setConditionGroup(group);
 
@@ -186,10 +187,14 @@ export const ActionNode = ({id, data, isConnectable}) => {
     }
 
     useEffect(() => {
-        const previousNodeRef = connections.length > 0
-            ? connections[connections.length - 1].sourceHandle
-            : '';
+        const previousNodes = connections.map(conn => ({
+            nodeId: conn.source,
+            handle: conn.sourceHandle
+        }));
+        console.log("connection: action", connections)
+
         const newData = {
+            nodeId: id,
             deviceId: selectedDevice?.id,
             key,
             name: selectedDevice?.name,
@@ -199,7 +204,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
             conditionGroup,
             order,
             delaySeconds,
-            previousNodeRef
+            previousNodeRef: previousNodes
         };
 
         // Only update if something actually changed
@@ -238,7 +243,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 }}
                 type="target"
                 position={Position.Left}
-                id={"action-" + conditionGroup}
+                id={"action:" + conditionGroup + ":" + id}
                 isConnectable={isConnectable}
             />
             <div style={{display: 'flex', justifyContent: 'center', gap: '6px', margin: '4px', alignItems: 'center'}}>

@@ -44,7 +44,8 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         solarType: 'sunset',
         offsetMinutes: 0,
         intervalMinutes: 30,
-        durationMinutes: 5
+        durationMinutes: 5,
+        nodeId: id
     };
     const [scheduleType, setScheduleType] = useState(conditionData.scheduleType); // 'at' | 'range'
     const [fromTime, setFromTime] = useState(
@@ -153,11 +154,13 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     }, [conditionNodes, id]);
 
     useEffect(() => {
-        const previousNodeRef = connections.length > 0
-            ? connections[connections.length - 1].sourceHandle
-            : '';
+        const previousNodes = connections.map(conn => ({
+            nodeId: conn.source,
+            handle: conn.sourceHandle
+        }));
+        console.log("connection: condition", previousNodes)
         const newData = {
-            nodeId: scheduleType !== undefined ? scheduleType : '',
+            nodeId: id,
             condition,
             triggerKey,
             valueType: 'int',
@@ -167,7 +170,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             value: conditionValue,
             isExact: isRange,
             time: time.format("hh:mm:ss A"),
-            scheduleType,
+            scheduleType: scheduleType !== undefined ? scheduleType : '',
             fromTime: fromTime.format("hh:mm:ss A"),
             toTime: toTime.format("hh:mm:ss A"),
             days,
@@ -176,7 +179,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             intervalMinutes,
             durationMinutes,
             enabled: connections.length > 0,
-            previousNodeRef
+            previousNodeRef: previousNodes
         };
 
         if (JSON.stringify(data.conditionData) !== JSON.stringify(newData)) {
@@ -235,7 +238,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="target"
                 position={Position.Left}
-                id={"cond-node-type-" + scheduleType}
+                id={"in:condition:" + id}
                 isConnectable={isConnectable}
             />
             <AddIcon style={{
@@ -443,7 +446,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 style={{width: '26px', height: '26px', background: '#4caf50', top: '25%'}}
                 type="source"
                 position={Position.Right}
-                id={"cond-positive-" + scheduleType}
+                id={"out:cond-positive:" + id}
                 isConnectable={isConnectable}
             />
 
@@ -451,7 +454,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 style={{width: '26px', height: '26px', background: '#f44336', top: '75%'}}
                 type="source"
                 position={Position.Right}
-                id={"cond-negative-" + scheduleType}
+                id={"out:cond-negative:" + id}
                 isConnectable={isConnectable}
             />
 

@@ -39,6 +39,7 @@ public class SecurityConfiguration {
             "/marker-icon-2x.png",
             "/marker-shadow.png",
             "/", // for root
+            "/api/automation/validate/**", // for root
             "/devices/**", // for root
             "/signin/**", // for root
             "/signup/**", // for root
