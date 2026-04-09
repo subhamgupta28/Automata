@@ -177,7 +177,7 @@ public class AutomationService {
             checkAndExecuteSingleAutomation(a, payload, user);
         });
 
-        notificationService.sendNotification("Action applied", "success");
+//        notificationService.sendNotification("Action applied", "success");
         return "Action successfully sent!";
     }
 
