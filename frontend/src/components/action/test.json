@@ -1,61 +1,97 @@
 [
   {
     "_id": {
-      "$oid": "689f53b668dded22326d935e"
+      "$oid": "69d0335f3efedf22b695921a"
     },
     "_class": "dev.automata.automata.model.Automation",
     "actions": [
       {
-        "key": "channel1",
-        "deviceId": "6755d5ec3667d03a2c053eff",
-        "data": "true",
-        "name": "LiFePO4 816WH",
+        "key": "bright",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "15",
+        "name": "Ring Light",
         "isEnabled": true,
         "revert": false,
         "conditionGroup": "positive",
         "order": 1,
-        "delaySeconds": 1,
+        "delaySeconds": 0,
         "previousNodeRef": [
           {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-positive:node_condition_1"
+            "nodeId": "node_condition_8",
+            "handle": "out:cond-positive:node_condition_8"
           }
         ],
-        "nodeId": "node_action_2"
+        "nodeId": "node_action_10"
       },
       {
-        "key": "channel1",
-        "deviceId": "6755d5ec3667d03a2c053eff",
-        "data": "false",
-        "name": "LiFePO4 816WH",
+        "key": "bright",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "1",
+        "name": "Ring Light",
         "isEnabled": true,
         "revert": false,
-        "conditionGroup": "negative",
+        "conditionGroup": "positive",
         "order": 1,
-        "delaySeconds": 1,
+        "delaySeconds": 0,
         "previousNodeRef": [
           {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-negative:node_condition_1"
+            "nodeId": "node_condition_10",
+            "handle": "out:cond-positive:node_condition_10"
           }
         ],
-        "nodeId": "node_action_4"
+        "nodeId": "node_action_11"
+      },
+      {
+        "key": "preset",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "1",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 2,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_10",
+            "handle": "out:cond-positive:node_condition_10"
+          }
+        ],
+        "nodeId": "node_action_5"
+      },
+      {
+        "key": "preset",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "3",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 2,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_8",
+            "handle": "out:cond-positive:node_condition_8"
+          }
+        ],
+        "nodeId": "node_action_6"
       }
     ],
     "conditions": [
       {
-        "nodeId": "node_condition_1",
+        "nodeId": "node_condition_8",
         "condition": "scheduled",
         "valueType": "int",
         "above": "0",
         "below": "0",
-        "value": "10",
-        "time": "Invalid Date",
+        "value": "100",
+        "time": "02:20:05 AM",
         "triggerKey": "",
         "isExact": false,
         "scheduleType": "interval",
-        "fromTime": "09:12:50 PM",
-        "toTime": "09:12:50 PM",
+        "fromTime": "02:20:05 AM",
+        "toTime": "02:20:05 AM",
         "days": [
           "Mon",
           "Tue",
@@ -65,33 +101,104 @@
           "Sat",
           "Sun"
         ],
+        "solarType": "sunrise",
         "offsetMinutes": 0,
-        "intervalMinutes": 120,
-        "durationMinutes": 30,
+        "intervalMinutes": 3,
+        "durationMinutes": 1,
         "enabled": true,
         "previousNodeRef": [
           {
-            "nodeId": "node_trigger_0",
-            "handle": "rootNode:triggerNode:node_trigger_0"
+            "nodeId": "node_or_9",
+            "handle": "out:operator:node_or_9"
+          }
+        ]
+      },
+      {
+        "nodeId": "node_condition_9",
+        "condition": "above",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "40",
+        "time": "02:20:05 AM",
+        "triggerKey": "aqi",
+        "isExact": false,
+        "scheduleType": "at",
+        "fromTime": "02:20:05 AM",
+        "toTime": "02:20:05 AM",
+        "days": [
+          "Everyday"
+        ],
+        "solarType": "sunset",
+        "offsetMinutes": 0,
+        "intervalMinutes": 30,
+        "durationMinutes": 5,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_trigger_7",
+            "handle": "rootNode:triggerNode:node_trigger_7"
+          }
+        ]
+      },
+      {
+        "nodeId": "node_condition_10",
+        "condition": "scheduled",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "0",
+        "time": "02:20:05 AM",
+        "triggerKey": "",
+        "isExact": false,
+        "scheduleType": "at",
+        "fromTime": "02:20:05 AM",
+        "toTime": "02:20:05 AM",
+        "days": [
+          "Everyday"
+        ],
+        "solarType": "sunset",
+        "offsetMinutes": 0,
+        "intervalMinutes": 30,
+        "durationMinutes": 5,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_or_9",
+            "handle": "out:operator:node_or_9"
           }
         ]
       }
     ],
     "isActive": false,
     "isEnabled": true,
-    "name": "Periodic Bat 500 charging",
-    "operators": [],
+    "name": "TESTING",
+    "operators": [
+      {
+        "type": "operator",
+        "logicType": "OR",
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_9",
+            "handle": "out:cond-positive:node_condition_9"
+          }
+        ],
+        "nodeId": "node_or_9"
+      }
+    ],
     "trigger": {
-      "deviceId": "670e9f4d4f15cd01e98640cf",
+      "deviceId": "670edfe8166ab22722fbf728",
       "type": "state",
-      "keys": [],
-      "name": "Periodic Bat 500 charging",
+      "keys": [
+        "aqi"
+      ],
+      "name": "TESTING",
       "priority": 5,
-      "nodeId": "node_trigger_0"
+      "nodeId": "node_trigger_7"
     },
     "triggerDeviceType": "sensor",
     "updateDate": {
-      "$date": "2026-04-09T11:48:08.269Z"
+      "$date": "2026-04-11T22:01:41.957Z"
     }
   }
 ]

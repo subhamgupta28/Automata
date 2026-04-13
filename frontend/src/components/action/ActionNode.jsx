@@ -59,16 +59,22 @@ export const ActionNode = ({id, data, isConnectable}) => {
 
 
     const connections = useNodeConnections({handleType: 'target'});
+// 2. In the connections useEffect, deduplicate by source node
     useEffect(() => {
-        // console.log("connections", connections, id)
-        if (connections.length > 0) {
-            const sourceHandle = connections[0]?.sourceHandle;
+        if (connections.length === 0) return;
 
-            const group = sourceHandle.includes('cond-negative') ? 'negative' : sourceHandle.includes('cond-positive') ? 'positive' : 'none';
-            // console.log("sourceHandle", sourceHandle, group)
-            setConditionGroup(group);
-
+        // Deduplicate: if multiple connections from same source, take the latest
+        const seen = new Map();
+        for (const conn of connections) {
+            seen.set(conn.source, conn); // last one wins
         }
+        const dedupedConnections = [...seen.values()];
+
+        const sourceHandle = dedupedConnections[0]?.sourceHandle ?? '';
+        const group = sourceHandle.includes('cond-negative') ? 'negative'
+            : sourceHandle.includes('cond-positive') ? 'positive'
+                : 'none';
+        setConditionGroup(group);
     }, [connections]);
     useEffect(() => {
         const ad = data.actionData;
@@ -243,7 +249,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 }}
                 type="target"
                 position={Position.Left}
-                id={"action:" + conditionGroup + ":" + id}
+                id={"action:in:" + id}
                 isConnectable={isConnectable}
             />
             <div style={{display: 'flex', justifyContent: 'center', gap: '6px', margin: '4px', alignItems: 'center'}}>

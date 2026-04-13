@@ -101,15 +101,16 @@ export const Or = ({id, data, isConnectable}) => {
     });
 
     useEffect(() => {
-        const previousNodeRef = connections.length > 0
-            ? connections[connections.length - 1].sourceHandle
-            : '';
+        const previousNodes = connections.map(conn => ({
+            nodeId: conn.source,
+            handle: conn.sourceHandle
+        }));
         updateNodeData(id, {
             operators: {
                 nodeId: id,
                 logicType: 'OR',
                 type: "operator",
-                previousNodeRef
+                previousNodeRef: previousNodes
             }
         });
     }, [connections]);
