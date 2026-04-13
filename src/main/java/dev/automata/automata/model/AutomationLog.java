@@ -66,5 +66,7 @@ public class AutomationLog {
         private boolean passed;
         private String detail;          // e.g. "200.0 > 195.0 (with buffer 5.0)"
         private String conditionNodeId;
+        private List<String> days;
+        private boolean isGateCondition;
     }
 }

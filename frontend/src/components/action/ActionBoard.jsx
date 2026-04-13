@@ -157,13 +157,10 @@ function ActionBoardDetailComponent() {
             const cleanEdges = flow.edges.filter(edge => {
                 const sourceValid = nodeIds.has(edge.source);
                 const targetValid = nodeIds.has(edge.target);
-                console.log("edge", edge)
                 // Drop old cond-s handle edges — replaced by cond-positive/cond-negative
-                const notLegacy = edge.sourceHandle !== 'cond-s' || edge.sourceHandle !== 'b'
-                    || edge.sourceHandle !== 'cond-positive' || edge.sourceHandle !== 'cond-negative'
-                    || !edge.sourceHandle.includes(":") || !edge.targetHandle.includes(":")
-                ;
-                return sourceValid && targetValid && notLegacy;
+                const notLegacy = !edge.sourceHandle || edge.sourceHandle.includes(":");
+                const notLegacyTarget = !edge.targetHandle || edge.targetHandle.includes(":");
+                return sourceValid && targetValid && notLegacy && notLegacyTarget;
             });
 
             // Remove duplicate edges by id
@@ -251,19 +248,38 @@ function ActionBoardDetailComponent() {
             seenEdgeIds.add(edge.id);
             return true;
         }).filter(edge => edge.edgeId !== "xy-edge__node_condition_1out:cond-positive:node_condition_1-node_action_11action:positive:node_action_11");
-        // Filter out legacy edges on load
+        // AFTER
         const cleanEdges = (uniqueEdges || []).filter(edge => {
+            // Only drop truly legacy edges (old handle format without ":")
+            const isLegacySource = edge.sourceHandle && !edge.sourceHandle.includes(":");
+            const isLegacyTarget = edge.targetHandle && !edge.targetHandle.includes(":");
             return nodeIds.has(edge.source)
                 && nodeIds.has(edge.target)
-                && edge.sourceHandle !== 'cond-s' && edge.targetHandle !== 'b'
-                && edge.targetHandle !== "cond-t"
-                && edge.sourceHandle !== 'cond-positive' && edge.sourceHandle !== 'cond-negative'
-                && edge.sourceHandle.includes(":") && edge.targetHandle.includes(":");
+                && !isLegacySource
+                && !isLegacyTarget;
         });
-        // console.log("cleanEdges", cleanEdges)
+
+// Fix ID counter: extract numeric suffix from all node IDs and take the max
+        const maxId = detail.nodes.reduce((max, node) => {
+            const match = node.id.match(/_(\d+)$/);
+            return match ? Math.max(max, parseInt(match[1], 10)) : max;
+        }, 0);
+        id = maxId + 1;
+        const deduped = new Map();
+        for (const edge of cleanEdges) {
+            const pairKey = `${edge.source}→${edge.target}`;
+            const existing = deduped.get(pairKey);
+            if (!existing) {
+                deduped.set(pairKey, edge);
+            } else {
+                // Prefer the edge with the stable "action:in:" handle
+                if (edge.targetHandle?.includes('action:in:')) {
+                    deduped.set(pairKey, edge);
+                }
+            }
+        }
         setNodes(detail.nodes || []);
-        setEdges(uniqueEdges);
-        id = detail.nodes.length + 1;
+        setEdges([...deduped.values()]);
     }
 
     const clearBoard = () => {
@@ -284,6 +300,7 @@ function ActionBoardDetailComponent() {
     );
     const onConnect = useCallback(
         (connection) => {
+            setEdges((eds) => eds.filter(e => e.target !== connection.target));
 
             const isNegative = connection.sourceHandle.includes('cond-negative');
             const edge = {
