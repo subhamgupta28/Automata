@@ -41,7 +41,7 @@ public class AutomationLog {
 
     private String triggerType;             // "time", "state", "periodic"
     private String triggerDeviceId;
-
+    private String snoozeState;
     @Indexed
     private Date timestamp;
 

@@ -108,6 +108,7 @@ public class AutomationDetail {
                 private String logicType;
                 private List<NodeRef> previousNodeRef;
                 private String nodeId;
+                private String conditionGroup;
             }
 
             @Getter

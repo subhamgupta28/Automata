@@ -9,6 +9,7 @@ import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.MessageChannel;
@@ -53,6 +54,10 @@ public class AutomationService {
     // ── NEW: event bus injected so any method can publish without knowing listeners ──
     private final ApplicationEventPublisher eventPublisher;
 
+    @Value("${app.location.lat}")
+    private String LOCATION_LAT;
+    @Value("${app.location.long}")
+    private String LOCATION_LONG;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final String TOPIC_ACTION = "action/";
     private static final long AUTOMATION_TIMEOUT_SECONDS = 30;
@@ -274,7 +279,7 @@ public class AutomationService {
                     ? cached.getAutomation() : a;
             Map<String, Object> recentData =
                     redisService.getRecentDeviceData(a.getTrigger().getDeviceId());
-            log.info("Device data for: {} | {}", a.getName(), recentData);
+//            log.info("Device data for: {} | {}", a.getName(), recentData);
             eventPublisher.publishEvent(new PeriodicCheckEvent(this, toRun, recentData));
         });
     }
@@ -425,7 +430,6 @@ public class AutomationService {
         }
     }
 
-
     // ─────────────────────────────────────────────────────────────────────────
     // CORE EXECUTION  (unchanged logic; callers are now event listeners only)
     // ─────────────────────────────────────────────────────────────────────────
@@ -439,15 +443,41 @@ public class AutomationService {
 
         String executionLockKey = "EXEC_LOCK:" + automation.getId();
         boolean lockAcquired = redisService.setIfAbsent(executionLockKey, "locked", LOCK_TTL_SECONDS);
+        var automationLog = AutomationLog.builder()
+                .automationId(automation.getId())
+                .automationName(automation.getName())
+                .payload(data != null ? data : Map.of())
+                .triggerDeviceId(deviceId).timestamp(now);
         if (!lockAcquired) {
             log.debug("⏭️ Skipping {} — lock held", automation.getName());
-            saveLog(AutomationLog.builder()
-                    .automationId(automation.getId()).automationName(automation.getName())
-                    .conditionResults(new ArrayList<>())
-                    .payload(data != null ? data : Map.of())
-                    .triggerDeviceId(deviceId).timestamp(now)
+            saveLog(automationLog
                     .status(AutomationLog.LogStatus.SKIPPED)
                     .reason("Skipped — execution lock held by concurrent caller")
+                    .build());
+            return;
+        }
+        String SNOOZE_KEY = "SNOOZE:";
+        String DISABLE_KEY = "TIMED_DISABLE:";
+// ── Snooze / timed-disable gate ──────────────────────────────────────────
+        if (redisService.exists(SNOOZE_KEY + automation.getId())) {
+            long remaining = redisService.getTTL(SNOOZE_KEY + automation.getId());
+            log.debug("⏸️ Skipping '{}' — snoozed ({} min remaining)",
+                    automation.getName(), remaining / 60);
+            saveLog(automationLog
+                    .status(AutomationLog.LogStatus.SKIPPED)
+                    .snoozeState("SKIPPED")
+                    .reason("Snoozed — " + remaining / 60 + " min remaining")
+                    .build());
+            return;
+        }
+
+        if (redisService.exists(DISABLE_KEY + automation.getId())) {
+            long remaining = redisService.getTTL(DISABLE_KEY + automation.getId());
+            log.debug("🚫 Skipping '{}' — timed disabled ({} min remaining)",
+                    automation.getName(), remaining / 60);
+            saveLog(automationLog
+                    .status(AutomationLog.LogStatus.SKIPPED)
+                    .reason("Timed-disabled — " + remaining / 60 + " min remaining")
                     .build());
             return;
         }
@@ -490,51 +520,61 @@ public class AutomationService {
             boolean conditionNow = result.isTrue();
             List<AutomationLog.ConditionResult> conditionResults =
                     buildConditionResults(automation, ctx, payload);
-            Automation.Condition condition = (automation.getConditions() != null
-                    && !automation.getConditions().isEmpty())
-                    ? automation.getConditions().get(0) : null;
 
-            boolean hasDuration = condition != null && condition.getDurationMinutes() > 0;
-            String runKey = "RUNNING:" + automation.getId();
-            boolean durationActive = redisService.exists(runKey);
-
-            var automationLog = AutomationLog.builder()
-                    .automationId(automation.getId()).automationName(automation.getName())
+            automationLog
                     .conditionResults(conditionResults).payload(payload)
                     .triggerDeviceId(deviceId).timestamp(now);
             List<Automation.Action> positiveActions = resolveActions(automation, ctx, "positive");
             List<Automation.Action> negativeActions = resolveActions(automation, ctx, "negative");
-            log.info("🔥 Active True Nodes for:{} | {}", automation.getName(), ctx.getTrueNodes());
-            log.info("🔥 Active False Nodes for:{} | {}", automation.getName(), ctx.getFalseNodes());
+//            log.info("🔥 Active True Nodes for:{} | {}", automation.getName(), ctx.getTrueNodes());
+//            log.info("🔥 Active False Nodes for:{} | {}", automation.getName(), ctx.getFalseNodes());
 
-            ctx.getAll().forEach((id, res) -> {
-                log.info("Node {} => {} | contributors={}",
-                        id, res.isTrue(), res.getContributors());
-            });
+//            ctx.getAll().forEach((id, res) -> {
+//                log.info("Node {} => {} | contributors={}",
+//                        id, res.isTrue(), res.getContributors());
+//            });
+            // ── Collect the gate conditions that are currently TRUE ───────────────────
+            // These are the ones whose duration we care about.
+            List<Automation.Condition> activeDurationConditions = automation.getConditions().stream()
+                    .filter(c -> c.isEnabled() && c.getDurationMinutes() > 0)
+                    .filter(c -> {
+                        NodeResult nr = ctx.get(c.getNodeId());
+                        return nr != null && nr.isTrue();
+                    })
+                    .toList();
+
+            // ── Check if ANY active duration condition still has its timer running ────
+            // Per-condition key: RUNNING:{automationId}:{conditionNodeId}
+            boolean durationActive = activeDurationConditions.stream()
+                    .anyMatch(c -> redisService.exists(
+                            "RUNNING:" + automation.getId() + ":" + c.getNodeId()));
+
+            boolean hasDuration = !activeDurationConditions.isEmpty();
             try {
                 if (currentState == AutomationState.IDLE && conditionNow) {
-                    if (hasDuration && condition.getIntervalMinutes() > 0
-                            && cache.getPreviousExecutionTime() != null) {
-                        long secondsSinceLast =
-                                (now.getTime() - cache.getPreviousExecutionTime().getTime()) / 1000;
-                        long intervalSeconds = condition.getIntervalMinutes() * 60L;
-                        if (secondsSinceLast < intervalSeconds) {
-                            log.debug("⏳ Automation '{}' in interval cooldown — {}s remaining",
-                                    automation.getName(), intervalSeconds - secondsSinceLast);
-                            automationLog.status(AutomationLog.LogStatus.SKIPPED)
-                                    .reason("Interval cooldown — "
-                                            + (intervalSeconds - secondsSinceLast) + "s remaining");
-                            saveLog(automationLog.build());
-                            return;
+                    // ── Interval cooldown check (per condition) ───────────────────────────
+                    for (Automation.Condition c : activeDurationConditions) {
+                        if (c.getIntervalMinutes() > 0 && cache.getPreviousExecutionTime() != null) {
+                            long secondsSinceLast =
+                                    (now.getTime() - cache.getPreviousExecutionTime().getTime()) / 1000;
+                            long intervalSeconds = c.getIntervalMinutes() * 60L;
+                            if (secondsSinceLast < intervalSeconds) {
+                                log.debug("⏳ [{}] Condition '{}' in interval cooldown — {}s remaining",
+                                        automation.getName(), c.getNodeId(),
+                                        intervalSeconds - secondsSinceLast);
+                                automationLog.status(AutomationLog.LogStatus.SKIPPED)
+                                        .reason("Interval cooldown on " + c.getNodeId() + " — "
+                                                + (intervalSeconds - secondsSinceLast) + "s remaining");
+                                saveLog(automationLog.build());
+                                return;
+                            }
                         }
                     }
-                    notificationService.sendNotification("🚀 Triggered: " + automation.getName(), "success");
-                    log.info("🚀 Triggered: {}", automation.getName());
+
 
                     final AutomationCache finalCache = cache;
 
-//                    executeResolvedActions(positiveActions, automation, payload, user)
-                    executeWithTimeout(positiveActions, payload, user, "positive", automation.getName())
+                    executeResolvedActions(positiveActions, automation, payload, user)
                             .thenAccept(success -> {
                                 if (!Boolean.TRUE.equals(success)) {
                                     log.warn("⚠️ Positive execution failed for '{}' — cache NOT advanced",
@@ -545,17 +585,23 @@ public class AutomationService {
                                 finalCache.setTriggeredPreviously(true);
                                 finalCache.setPreviousExecutionTime(now);
                                 finalCache.setLastUpdate(new Date());
-
+                                notificationService.sendNotification("🚀 Triggered: " + automation.getName(), "success");
+                                log.info("🚀 [{}] Triggered", automation.getName());
                                 if (hasDuration) {
                                     finalCache.setState(AutomationState.HOLDING);
-                                    redisService.setWithExpiry(
-                                            runKey, "active",
-                                            condition.getDurationMinutes() * 60L);
-                                    log.info("⏱️ Entered HOLDING for {} ({} mins)",
-                                            automation.getName(), condition.getDurationMinutes());
+
+                                    // Set a timer key per condition, each with its own TTL
+                                    activeDurationConditions.forEach(c -> {
+                                        String runKey = "RUNNING:" + automation.getId() + ":" + c.getNodeId();
+                                        redisService.setWithExpiry(runKey, "active",
+                                                c.getDurationMinutes() * 60L);
+                                        log.info("⏱️ [{}] Duration timer set for condition '{}' — {} min",
+                                                automation.getName(), c.getNodeId(), c.getDurationMinutes());
+                                    });
+
                                 } else {
                                     finalCache.setState(AutomationState.ACTIVE);
-                                    log.info("✅ Entered ACTIVE (no duration): {}",
+                                    log.info("✅ [{}] Entered ACTIVE (no duration)",
                                             automation.getName());
                                 }
 
@@ -569,37 +615,60 @@ public class AutomationService {
                         || currentState == AutomationState.HOLDING) {
 
                     boolean shouldRevert = false;
-                    String reason = "";
+                    String reason;
+
                     if (!conditionNow) {
                         shouldRevert = true;
                         reason = "Condition turned FALSE";
-                    } else if (currentState == AutomationState.HOLDING
-                            && hasDuration && !durationActive) {
-                        shouldRevert = true;
-                        reason = "Duration expired";
+
+                    } else if (currentState == AutomationState.HOLDING) {
+                        // Collect conditions that WERE running (had a timer) but timer has now expired
+                        // A condition's duration expired = it was set (we know because state is HOLDING)
+                        // but the key is gone now.
+                        // We check all duration conditions — if ALL timers expired → revert.
+                        // If ANY still running → stay HOLDING.
+                        List<Automation.Condition> durationConditions = automation.getConditions().stream()
+                                .filter(c -> c.isEnabled() && c.getDurationMinutes() > 0)
+                                .toList();
+
+                        boolean anyTimerStillRunning = durationConditions.stream()
+                                .anyMatch(c -> redisService.exists(
+                                        "RUNNING:" + automation.getId() + ":" + c.getNodeId()));
+
+                        if (!anyTimerStillRunning && !durationConditions.isEmpty()) {
+                            shouldRevert = true;
+                            reason = "All duration timers expired";
+                        } else {
+                            reason = "";
+                        }
+                    } else {
+                        reason = "";
                     }
 
                     if (shouldRevert) {
-                        notificationService.sendNotification("⏹️ Reverting automation: " + automation.getName(), "success");
-                        log.info("⏹️ Reverting automation: {} ({})",
-                                automation.getName(), reason);
+
 
                         final AutomationCache finalCache = cache;
-//                        executeResolvedActions(negativeActions, automation, payload, user)
-                        executeWithTimeout(negativeActions, payload, user, "negative", automation.getName())
+                        final String revertReason = reason;
+
+                        executeResolvedActions(negativeActions, automation, payload, user)
                                 .thenAccept(success -> {
-                                    if (!Boolean.TRUE.equals(success)) {
-                                        log.warn("⚠️ Negative execution failed for '{}' — cache NOT reset",
-                                                automation.getName());
-                                        return;
-                                    }
+                                    if (!Boolean.TRUE.equals(success)) return;
+                                    notificationService.sendNotification("⏹️ Reverting automation: " + automation.getName(), "success");
+                                    log.info("⏹️ [{}] Reverting automation: ({})",
+                                            automation.getName(), reason);
+                                    // Clear all per-condition duration keys
+                                    automation.getConditions().stream()
+                                            .filter(c -> c.getDurationMinutes() > 0)
+                                            .forEach(c -> redisService.delete(
+                                                    "RUNNING:" + automation.getId() + ":" + c.getNodeId()));
 
                                     finalCache.setState(AutomationState.IDLE);
                                     finalCache.setTriggeredPreviously(false);
                                     finalCache.setLastUpdate(new Date());
                                     redisService.setAutomationCache(cacheKey, finalCache);
 
-                                    log.info("🔁 Reset to IDLE: {}", automation.getName());
+                                    log.info("🔁 [{}] Reset to IDLE — {}", automation.getName(), revertReason);
                                 });
                         automationLog.status(AutomationLog.LogStatus.RESTORED)
                                 .reason(reason + " → negative actions executed");
@@ -720,32 +789,34 @@ public class AutomationService {
         }
 
         // ── Operator nodes ───────────────────────────────────────────────────
-        for (Automation.Operator op : automation.getOperators()) {
-            NodeResult nr = ctx.get(op.getNodeId());
-            if (nr == null) continue;
+        if (automation.getOperators() != null) {
+            for (Automation.Operator op : automation.getOperators()) {
+                NodeResult nr = ctx.get(op.getNodeId());
+                if (nr == null) continue;
 
-            List<String> inputIds = op.getPreviousNodeRef().stream()
-                    .map(ref -> ref.getNodeId())
-                    .toList();
+                List<String> inputIds = op.getPreviousNodeRef().stream()
+                        .map(ref -> ref.getNodeId())
+                        .toList();
 
-            List<String> inputResults = inputIds.stream().map(id -> {
-                NodeResult input = ctx.get(id);
-                return id + "=" + (input != null ? input.isTrue() : "?");
-            }).toList();
+                List<String> inputResults = inputIds.stream().map(id -> {
+                    NodeResult input = ctx.get(id);
+                    return id + "=" + (input != null ? input.isTrue() : "?");
+                }).toList();
 
-            results.add(AutomationLog.ConditionResult.builder()
-                    .conditionNodeId(op.getNodeId())
-                    .conditionType("operator/" + op.getLogicType())
-                    .triggerKey("operator")
-                    .passed(nr.isTrue())
-                    .expectedValue(op.getLogicType() + "(" + String.join(", ", inputIds) + ")")
-                    .actualValue(String.join(", ", inputResults))
-                    .detail(op.getLogicType() + "([" + String.join(", ", inputResults) + "]) → "
-                            + (nr.isTrue() ? "TRUE" : "FALSE")
-                            + (nr.getContributors().isEmpty() ? ""
-                            : " | contributors: " + nr.getContributors()))
-                    .isGateCondition(false)
-                    .build());
+                results.add(AutomationLog.ConditionResult.builder()
+                        .conditionNodeId(op.getNodeId())
+                        .conditionType("operator/" + op.getLogicType())
+                        .triggerKey("operator")
+                        .passed(nr.isTrue())
+                        .expectedValue(op.getLogicType() + "(" + String.join(", ", inputIds) + ")")
+                        .actualValue(String.join(", ", inputResults))
+                        .detail(op.getLogicType() + "([" + String.join(", ", inputResults) + "]) → "
+                                + (nr.isTrue() ? "TRUE" : "FALSE")
+                                + (nr.getContributors().isEmpty() ? ""
+                                : " | contributors: " + nr.getContributors()))
+                        .isGateCondition(false)
+                        .build());
+            }
         }
 
         return results;
@@ -827,38 +898,40 @@ public class AutomationService {
                                ExecutionContext ctx,
                                boolean wasActive) {
 
-        // ── Classify nodes ──────────────────────────────────────────────────────
-        // A condition is an "action gate" if its previousNodeRef points to an
-        // operator node (i.e. it sits AFTER the OR/AND gate in the graph).
-        // Everything else is a trigger condition that feeds INTO the operators.
+        List<Automation.Condition> conditions = automation.getConditions() == null
+                ? List.of() : automation.getConditions();
+        List<Automation.Operator> operators = automation.getOperators() == null
+                ? List.of() : automation.getOperators();
 
-        Set<String> operatorIds = automation.getOperators().stream()
+        // ── Classify ─────────────────────────────────────────────────────────────
+        // Gate condition: previousNodeRef points to an operator node.
+        // Trigger condition: everything else — feeds into operators or IS the root.
+
+        Set<String> operatorIds = operators.stream()
                 .map(Automation.Operator::getNodeId)
                 .collect(Collectors.toSet());
 
         List<Automation.Condition> triggerConditions = new ArrayList<>();
         List<Automation.Condition> gateConditions = new ArrayList<>();
 
-        for (Automation.Condition c : automation.getConditions()) {
+        for (Automation.Condition c : conditions) {
             if (!c.isEnabled()) continue;
-            boolean downstreamOfOperator = c.getPreviousNodeRef() != null &&
+            boolean isGate = c.getPreviousNodeRef() != null &&
                     c.getPreviousNodeRef().stream()
                             .anyMatch(ref -> operatorIds.contains(ref.getNodeId()));
-            if (downstreamOfOperator) {
-                gateConditions.add(c);
-            } else {
-                triggerConditions.add(c);
-            }
+            (isGate ? gateConditions : triggerConditions).add(c);
         }
 
-        // ── Phase 1: evaluate trigger conditions → feed into operators ──────────
+        // ── Phase 1: evaluate trigger conditions ─────────────────────────────────
         for (Automation.Condition c : triggerConditions) {
             boolean result = evaluateCondition(automation, c, payload, wasActive);
             NodeResult nr = new NodeResult(c.getNodeId(), result);
+            nr.getContributors().add(c.getNodeId());
             ctx.put(nr);
         }
 
-        for (Automation.Operator op : automation.getOperators()) {
+        // ── Phase 1b: operators (skip entirely if none) ───────────────────────────
+        for (Automation.Operator op : operators) {
             List<NodeResult> inputs = op.getPreviousNodeRef().stream()
                     .map(ref -> ctx.get(ref.getNodeId()))
                     .filter(Objects::nonNull)
@@ -866,11 +939,16 @@ public class AutomationService {
 
             boolean result;
             Set<String> contributors = new HashSet<>();
-            if ("OR".equalsIgnoreCase(op.getLogicType())) {
+
+            if (inputs.isEmpty()) {
+                // Operator with no resolved inputs — treat as false, log it
+                log.warn("⚠️ Operator '{}' has no resolved inputs — defaulting to false", op.getNodeId());
+                result = false;
+            } else if ("OR".equalsIgnoreCase(op.getLogicType())) {
                 result = inputs.stream().anyMatch(NodeResult::isTrue);
                 inputs.stream().filter(NodeResult::isTrue)
                         .forEach(n -> contributors.addAll(n.getContributors()));
-            } else {
+            } else { // AND / default
                 result = inputs.stream().allMatch(NodeResult::isTrue);
                 inputs.forEach(n -> contributors.addAll(n.getContributors()));
             }
@@ -880,11 +958,8 @@ public class AutomationService {
             ctx.put(opResult);
         }
 
-        // ── Phase 2: evaluate gate conditions (only if their parent op is true) ─
-        // These don't affect the root boolean — they only determine which
-        // action groups are active for resolveActions().
+        // ── Phase 2: gate conditions ──────────────────────────────────────────────
         for (Automation.Condition c : gateConditions) {
-            // Parent operator must be true for this gate to even be checked
             boolean parentTrue = c.getPreviousNodeRef().stream()
                     .map(ref -> ctx.get(ref.getNodeId()))
                     .filter(Objects::nonNull)
@@ -892,15 +967,72 @@ public class AutomationService {
 
             boolean result = parentTrue && evaluateCondition(automation, c, payload, wasActive);
             NodeResult nr = new NodeResult(c.getNodeId(), result);
+            if (result) nr.getContributors().add(c.getNodeId());
             ctx.put(nr);
         }
 
-        // ── Root: last operator (or fallback to single trigger condition) ────────
-        if (!automation.getOperators().isEmpty()) {
-            return ctx.get(automation.getOperators()
-                    .getLast().getNodeId());
+        // ── Root resolution ───────────────────────────────────────────────────────
+        return findRoot(operators, triggerConditions, operatorIds, ctx);
+    }
+
+    private NodeResult findRoot(List<Automation.Operator> operators,
+                                List<Automation.Condition> triggerConditions,
+                                Set<String> operatorIds,
+                                ExecutionContext ctx) {
+
+        // Case A: has operators → find the topological root operator
+        // (the one not referenced as input by any other operator)
+        if (!operators.isEmpty()) {
+            Set<String> referencedByOtherOps = operators.stream()
+                    .flatMap(op -> op.getPreviousNodeRef().stream())
+                    .map(NodeRef::getNodeId)
+                    .filter(operatorIds::contains)
+                    .collect(Collectors.toSet());
+
+            return operators.stream()
+                    .filter(op -> !referencedByOtherOps.contains(op.getNodeId()))
+                    .map(op -> ctx.get(op.getNodeId()))
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    // Fallback: all operators are cross-referenced somehow — take last
+                    .orElseGet(() -> {
+                        log.warn("⚠️ Could not determine root operator topologically — using last");
+                        return ctx.get(operators.get(operators.size() - 1).getNodeId());
+                    });
         }
-        return ctx.get(triggerConditions.getFirst().getNodeId());
+
+        // Case B: no operators, multiple trigger conditions
+        // → implicit AND across all of them, synthesize a virtual root result
+        if (triggerConditions.size() > 1) {
+            boolean allTrue = triggerConditions.stream()
+                    .map(c -> ctx.get(c.getNodeId()))
+                    .filter(Objects::nonNull)
+                    .allMatch(NodeResult::isTrue);
+
+            Set<String> contributors = triggerConditions.stream()
+                    .map(c -> ctx.get(c.getNodeId()))
+                    .filter(nr -> nr != null && nr.isTrue())
+                    .flatMap(nr -> nr.getContributors().stream())
+                    .collect(Collectors.toSet());
+
+            // Use a synthetic node id so resolveActions() can reference it if needed
+            NodeResult synthetic = new NodeResult("root:implicit_and", allTrue);
+            synthetic.getContributors().addAll(contributors);
+            ctx.put(synthetic);
+
+            log.debug("🔗 Implicit AND across {} conditions → {}", triggerConditions.size(), allTrue);
+            return synthetic;
+        }
+
+        // Case C: single trigger condition — it IS the root
+        if (!triggerConditions.isEmpty()) {
+            NodeResult nr = ctx.get(triggerConditions.get(0).getNodeId());
+            if (nr != null) return nr;
+        }
+
+        // Case D: nothing evaluated (all conditions disabled, empty automation)
+        log.warn("⚠️ No evaluable nodes found — returning false root");
+        return new NodeResult("root:empty", false);
     }
 
     private boolean evaluateCondition(Automation automation, Automation.Condition condition,
@@ -1142,6 +1274,7 @@ public class AutomationService {
         return true;
     }
 
+
     private LocalTime getSunTime(String solarType) {
         try {
             ZoneId istZone = ZoneId.of("Asia/Kolkata");
@@ -1151,7 +1284,7 @@ public class AutomationService {
             if (cached != null) return LocalTime.parse(cached.toString());
 
             Map<String, Object> response = new RestTemplate().getForObject(
-                    "https://api.sunrise-sunset.org/json?lat=17.3850&lng=78.4867&formatted=0",
+                    "https://api.sunrise-sunset.org/json?lat=" + LOCATION_LAT + "&lng=" + LOCATION_LONG + "&formatted=0",
                     Map.class);
             if (response == null || !response.containsKey("results")) return null;
 

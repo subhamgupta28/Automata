@@ -18,4 +18,6 @@ public class FeatureToggle {
     private String description;
     private String featureKey;
     private String env;
+    private String group;
+    private String type;
 }
