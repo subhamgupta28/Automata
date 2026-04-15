@@ -1,7 +1,7 @@
 import {Card, Typography} from "@mui/material";
 import {Handle, Position, useNodeConnections, useReactFlow} from "@xyflow/react";
 import AddIcon from "@mui/icons-material/Add";
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
 import IconButton from "@mui/material/IconButton";
 
@@ -10,7 +10,8 @@ const conditionStyle = {
     padding: '20px',
     borderRadius: '10px',
     width: '150px',
-
+    background: 'transparent',
+    backgroundColor: 'rgb(0 0 0 / 28%)',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '2px solid #FFEB3B',
 };
@@ -25,10 +26,27 @@ const style = {
 
 export const And = ({id, data, isConnectable}) => {
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
+    const [conditionGroup, setConditionGroup] = useState(data.operators.conditionGroup);
 
     const connections = useNodeConnections({
         handleType: 'target'
     });
+    useEffect(() => {
+        if (connections.length === 0) return;
+
+        // Deduplicate: if multiple connections from same source, take the latest
+        const seen = new Map();
+        for (const conn of connections) {
+            seen.set(conn.source, conn); // last one wins
+        }
+        const dedupedConnections = [...seen.values()];
+
+        const sourceHandle = dedupedConnections[0]?.sourceHandle ?? '';
+        const group = sourceHandle.includes('cond-negative') ? 'negative'
+            : sourceHandle.includes('cond-positive') ? 'positive'
+                : 'none';
+        setConditionGroup(group);
+    }, [connections]);
 
     useEffect(() => {
         const previousNodes = connections.map(conn => ({
@@ -42,7 +60,8 @@ export const And = ({id, data, isConnectable}) => {
                 nodeId: id,
                 logicType: 'AND',
                 type: "operator",
-                previousNodeRef: previousNodes
+                previousNodeRef: previousNodes,
+                conditionGroup
             }
         });
     }, [connections]);
@@ -53,7 +72,10 @@ export const And = ({id, data, isConnectable}) => {
     };
 
     return (
-        <Card style={conditionStyle}>
+        <Card style={{
+            ...conditionStyle,
+            border: `2px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`
+        }}>
 
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
@@ -95,11 +117,26 @@ export const And = ({id, data, isConnectable}) => {
 
 export const Or = ({id, data, isConnectable}) => {
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
-
+    const [conditionGroup, setConditionGroup] = useState(data.operators.conditionGroup);
     const connections = useNodeConnections({
         handleType: 'target'
     });
+    useEffect(() => {
+        if (connections.length === 0) return;
 
+        // Deduplicate: if multiple connections from same source, take the latest
+        const seen = new Map();
+        for (const conn of connections) {
+            seen.set(conn.source, conn); // last one wins
+        }
+        const dedupedConnections = [...seen.values()];
+
+        const sourceHandle = dedupedConnections[0]?.sourceHandle ?? '';
+        const group = sourceHandle.includes('cond-negative') ? 'negative'
+            : sourceHandle.includes('cond-positive') ? 'positive'
+                : 'none';
+        setConditionGroup(group);
+    }, [connections]);
     useEffect(() => {
         const previousNodes = connections.map(conn => ({
             nodeId: conn.source,
@@ -110,7 +147,8 @@ export const Or = ({id, data, isConnectable}) => {
                 nodeId: id,
                 logicType: 'OR',
                 type: "operator",
-                previousNodeRef: previousNodes
+                previousNodeRef: previousNodes,
+                conditionGroup
             }
         });
     }, [connections]);
@@ -121,7 +159,10 @@ export const Or = ({id, data, isConnectable}) => {
     };
 
     return (
-        <Card style={conditionStyle}>
+        <Card style={{
+            ...conditionStyle,
+            border: `2px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`
+        }}>
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="target"

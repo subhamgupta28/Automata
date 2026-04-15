@@ -11,12 +11,12 @@ import NumberSpinner from "../charts/NumberSpinner.jsx";
 const triggerStyle = {
     padding: '10px',
     borderRadius: '10px',
-    width: '220px',
+    width: '320px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '2px solid #6DBF6D',
     background: 'transparent',
     backdropFilter: 'blur(6px)',
-    backgroundColor: 'rgb(255 255 255 / 8%)',
+    backgroundColor: 'rgb(0 0 0 / 28%)',
     overflow: 'visible'
 };
 

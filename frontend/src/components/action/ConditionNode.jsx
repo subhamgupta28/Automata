@@ -1,7 +1,17 @@
 import {Handle, Position, useNodeConnections, useNodes, useNodesData, useReactFlow} from "@xyflow/react";
 import React, {useEffect, useState} from "react";
 import dayjs from "dayjs";
-import {Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
+import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
+    Chip,
+    FormControl,
+    InputLabel,
+    MenuItem,
+    Select,
+    TextField
+} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -11,18 +21,19 @@ import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import ListItemText from "@mui/material/ListItemText";
 import Checkbox from "@mui/material/Checkbox";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
 dayjs.extend(customParseFormat);
 
 const conditionStyle = {
-    padding: '10px',
     borderRadius: '10px',
-    width: '260px',
+    // minHeight: '100px',
+    width: '320px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '2px solid #FFEB3B',
     background: 'transparent',
     backdropFilter: 'blur(6px)',
-    backgroundColor: 'rgb(255 255 255 / 8%)',
+    backgroundColor: 'rgb(0 0 0 / 28%)',
     overflow: 'visible'
 };
 
@@ -158,7 +169,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             nodeId: conn.source,
             handle: conn.sourceHandle
         }));
-        console.log("connection: condition", previousNodes)
+        // console.log("connection: condition", previousNodes)
         const newData = {
             nodeId: id,
             condition,
@@ -232,8 +243,36 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             console.warn("Invalid time range");
         }
     }, [fromTime, toTime]);
+
+    const handleTitle = () => {
+        let title = "";
+        if (condition === 'scheduled') {
+            if (scheduleType === 'at') {
+                title = scheduleType + " " + time.format("hh:mm:ss A")
+            } else if (scheduleType === 'range') {
+                title = "Time between " + fromTime.format("hh:mm:ss A") + " and " + toTime.format("hh:mm:ss A")
+            } else if (scheduleType === 'solar') {
+                title = " At " + solarType + " with offset of " + offsetMinutes;
+            } else if (scheduleType === 'interval') {
+                title = "Repeat every " + intervalMinutes + " mins.";
+            }
+        } else if (condition === 'range') {
+            title = triggerKey + " is between " + above + " and " + below;
+        } else if (condition === 'equal') {
+            title = triggerKey + " is " + conditionValue;
+
+        } else if (condition === 'above') {
+            title = triggerKey + " is above " + conditionValue;
+
+        } else if (condition === 'below') {
+            title = triggerKey + " is below " + conditionValue;
+
+        }
+
+        return title;
+    }
     return (
-        <Card style={{...conditionStyle, padding: '10px'}}>
+        <>
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="target"
@@ -246,193 +285,212 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 left: 0,
                 transform: 'translate(-50%, -50%)'
             }} className='react-flow__handle'/>
-            <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top: '0', right: '0'}}>
-                <DeleteIcon/>
-            </IconButton>
+            <div style={{display: 'flex', justifyContent: 'center', gap: '6px', margin: '4px', alignItems: 'center'}}>
+                <Chip size="small" label={"Duration: " + durationMinutes}> </Chip>
+                <Chip size="small" label={"Delay Seconds: " + days[0]}> </Chip>
+                <IconButton onClick={() => deleteNode(id)}>
+                    <DeleteIcon/>
+                </IconButton>
+            </div>
 
-            {type === 'time' ? (
-                <div style={{marginTop: '18px'}}>
-                    <Typography variant="body2" sx={{margin: 1}}>
-                        Run automation at specific time of the day
+            <Accordion style={{
+                borderRadius: '12px', marginTop: '0px', ...conditionStyle,
+            }}>
+                <AccordionSummary
+                    expandIcon={<ArrowDownwardIcon/>}
+
+                    aria-controls="panel1-content"
+                    id="panel1-header"
+                >
+                    <Typography>
+                        {handleTitle()}
                     </Typography>
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                        <DesktopTimePicker format="hh:mm:ss A" value={time}
-                                           onChange={(e) => handleChange(e, 'time')}/>
-                    </LocalizationProvider>
 
-                </div>
+                </AccordionSummary>
+                <AccordionDetails>
+                    {type === 'time' ? (
+                        <div style={{marginTop: '18px'}}>
+                            <Typography variant="body2" sx={{margin: 1}}>
+                                Run automation at specific time of the day
+                            </Typography>
+                            <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                <DesktopTimePicker format="hh:mm:ss A" value={time}
+                                                   onChange={(e) => handleChange(e, 'time')}/>
+                            </LocalizationProvider>
 
-            ) : (
-                <div style={{marginBottom: '18px'}}>
-                    <Typography variant="body1" fontWeight="bold" sx={{marginLeft: 1}}>
-                        When {triggerKey} is
-                    </Typography>
-                    <FormControl fullWidth className='nodrag' sx={{marginBottom: 2, marginTop: 2}}>
-                        <InputLabel id="demo-simple-select-label">Condition</InputLabel>
-                        <Select
-                            labelId="demo-simple-select-label"
-                            id="demo-simple-select"
-                            value={condition}
-                            size='small'
-                            label="Condition"
-                            name="condition"
-                            onChange={(e) => handleChange(e, 'condition')}
-                            variant='outlined'>
-                            <MenuItem value={'equal'}> equal to</MenuItem>
-                            <MenuItem value={'range'}> between </MenuItem>
-                            <MenuItem value={'above'}> above </MenuItem>
-                            <MenuItem value={'below'}> below </MenuItem>
-                            <MenuItem value={'scheduled'}> Scheduled </MenuItem>
-                        </Select>
-                    </FormControl>
+                        </div>
 
-                    {condition === 'scheduled' ? (
-                            <div>
-                                <Typography variant="body2" sx={{mb: 2}}>
-                                    Schedule automation
-                                </Typography>
+                    ) : (
+                        <div style={{marginBottom: '18px'}}>
+                            <FormControl fullWidth className='nodrag' sx={{marginBottom: 2, marginTop: 2}}>
+                                <InputLabel id="demo-simple-select-label">Condition</InputLabel>
+                                <Select
+                                    labelId="demo-simple-select-label"
+                                    id="demo-simple-select"
+                                    value={condition}
+                                    size='small'
+                                    label="Condition"
+                                    name="condition"
+                                    onChange={(e) => handleChange(e, 'condition')}
+                                    variant='outlined'>
+                                    <MenuItem value={'equal'}> equal to</MenuItem>
+                                    <MenuItem value={'range'}> between </MenuItem>
+                                    <MenuItem value={'above'}> above </MenuItem>
+                                    <MenuItem value={'below'}> below </MenuItem>
+                                    <MenuItem value={'scheduled'}> Scheduled </MenuItem>
+                                </Select>
+                            </FormControl>
 
-                                {/* Schedule Type */}
-                                <FormControl className='nodrag' fullWidth size="small" sx={{mb: 2}}>
-                                    <InputLabel>Schedule Type</InputLabel>
-                                    <Select
-                                        variant="outlined"
-                                        value={scheduleType}
-                                        label="Schedule Type"
-                                        onChange={(e) => setScheduleType(e.target.value)}
-                                    >
-                                        <MenuItem value="at">At specific time</MenuItem>
-                                        <MenuItem value="range">Between time range</MenuItem>
-                                        <MenuItem value="solar">Sun-based</MenuItem>
-                                        <MenuItem value="interval">Repeat every</MenuItem>
-                                    </Select>
-                                </FormControl>
-
-                                {/* Time Pickers */}
-                                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                                    {scheduleType === 'at' && (
-                                        <TimePicker
-                                            label="Time"
-                                            value={time}
-                                            onChange={(e) => e?.isValid() && setTime(e)}
-                                        />
-                                    )}
-                                    {scheduleType === 'range' && (
-                                        <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                                            <TimePicker
-                                                label="From"
-                                                value={fromTime}
-                                                onChange={(e) => e?.isValid() && setFromTime(e)}
-                                            />
-                                            <TimePicker
-                                                label="To"
-                                                value={toTime}
-                                                onChange={(e) => e?.isValid() && setToTime(e)}
-                                            />
-                                        </div>
-                                    )}
-
-                                </LocalizationProvider>
-
-                                {scheduleType === 'solar' && (
+                            {condition === 'scheduled' ? (
                                     <div>
+                                        <Typography variant="body2" sx={{mb: 2}}>
+                                            Schedule automation
+                                        </Typography>
+
+                                        {/* Schedule Type */}
                                         <FormControl className='nodrag' fullWidth size="small" sx={{mb: 2}}>
-                                            <InputLabel>Event</InputLabel>
+                                            <InputLabel>Schedule Type</InputLabel>
                                             <Select
                                                 variant="outlined"
-                                                value={solarType}
-                                                label="Event"
-                                                onChange={(e) => setSolarType(e.target.value)}
+                                                value={scheduleType}
+                                                label="Schedule Type"
+                                                onChange={(e) => setScheduleType(e.target.value)}
                                             >
-                                                <MenuItem value="sunrise">Sunrise</MenuItem>
-                                                <MenuItem value="sunset">Sunset</MenuItem>
+                                                <MenuItem value="at">At specific time</MenuItem>
+                                                <MenuItem value="range">Between time range</MenuItem>
+                                                <MenuItem value="solar">Sun-based</MenuItem>
+                                                <MenuItem value="interval">Repeat every</MenuItem>
                                             </Select>
                                         </FormControl>
 
+                                        {/* Time Pickers */}
+                                        <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                            {scheduleType === 'at' && (
+                                                <TimePicker
+                                                    label="Time"
+                                                    value={time}
+                                                    onChange={(e) => e?.isValid() && setTime(e)}
+                                                />
+                                            )}
+                                            {scheduleType === 'range' && (
+                                                <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+                                                    <TimePicker
+                                                        label="From"
+                                                        value={fromTime}
+                                                        onChange={(e) => e?.isValid() && setFromTime(e)}
+                                                    />
+                                                    <TimePicker
+                                                        label="To"
+                                                        value={toTime}
+                                                        onChange={(e) => e?.isValid() && setToTime(e)}
+                                                    />
+                                                </div>
+                                            )}
+
+                                        </LocalizationProvider>
+
+                                        {scheduleType === 'solar' && (
+                                            <div>
+                                                <FormControl className='nodrag' fullWidth size="small" sx={{mb: 2}}>
+                                                    <InputLabel>Event</InputLabel>
+                                                    <Select
+                                                        variant="outlined"
+                                                        value={solarType}
+                                                        label="Event"
+                                                        onChange={(e) => setSolarType(e.target.value)}
+                                                    >
+                                                        <MenuItem value="sunrise">Sunrise</MenuItem>
+                                                        <MenuItem value="sunset">Sunset</MenuItem>
+                                                    </Select>
+                                                </FormControl>
+
+                                                <TextField
+                                                    size="small"
+                                                    label="Offset (minutes)"
+                                                    type="number"
+                                                    value={offsetMinutes}
+                                                    onChange={(e) => setOffsetMinutes(Number(e.target.value))}
+                                                    helperText="Use negative for before (-60 = 1hr before)"
+                                                />
+                                            </div>
+                                        )}
+                                        {scheduleType === 'interval' && (
+                                            <TextField
+                                                size="small"
+                                                label="Run every (minutes)"
+                                                type="number"
+                                                value={intervalMinutes}
+                                                onChange={(e) => setIntervalMinutes(Number(e.target.value))}
+                                            />
+                                        )}
                                         <TextField
                                             size="small"
-                                            label="Offset (minutes)"
+                                            label="Run for (minutes)"
                                             type="number"
-                                            value={offsetMinutes}
-                                            onChange={(e) => setOffsetMinutes(Number(e.target.value))}
-                                            helperText="Use negative for before (-60 = 1hr before)"
+                                            value={durationMinutes}
+                                            onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                                            sx={{mt: 2}}
+                                        />
+                                        {/* Days Selector */}
+                                        <FormControl className='nodrag' fullWidth size="small" sx={{mt: 2}}>
+                                            <InputLabel>Days</InputLabel>
+                                            <Select
+                                                variant="outlined"
+                                                multiple
+                                                label="Days"
+                                                value={days}
+                                                onChange={handleDaysChange}
+                                                renderValue={(selected) => selected.join(', ')}
+                                            >
+                                                {['Everyday', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                                                    <MenuItem key={day} value={day}>
+                                                        <Checkbox checked={days.indexOf(day) > -1}/>
+                                                        <ListItemText primary={day}/>
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    </div>
+                                ) :
+                                (isRange || condition === 'above' || condition === 'below' ? (
+                                    <TextField
+                                        size='small'
+                                        label="Value"
+                                        fullWidth
+                                        value={conditionValue}
+                                        onChange={(e) => handleChange(e, 'value')}
+                                        name="value"
+                                    />
+                                ) : (
+                                    <div>
+                                        <TextField
+                                            size='small'
+                                            label="Below"
+                                            fullWidth
+                                            value={below}
+                                            onChange={(e) => handleChange(e, 'below')}
+                                            name="value"
+                                            sx={{marginBottom: 2}}
+                                        />
+                                        <TextField
+                                            size='small'
+                                            label="Above"
+                                            fullWidth
+                                            value={above}
+                                            onChange={(e) => handleChange(e, 'above')}
+                                            name="value"
                                         />
                                     </div>
-                                )}
-                                {scheduleType === 'interval' && (
-                                    <TextField
-                                        size="small"
-                                        label="Run every (minutes)"
-                                        type="number"
-                                        value={intervalMinutes}
-                                        onChange={(e) => setIntervalMinutes(Number(e.target.value))}
-                                    />
-                                )}
-                                <TextField
-                                    size="small"
-                                    label="Run for (minutes)"
-                                    type="number"
-                                    value={durationMinutes}
-                                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                                    sx={{mt: 2}}
-                                />
-                                {/* Days Selector */}
-                                <FormControl className='nodrag' fullWidth size="small" sx={{mt: 2}}>
-                                    <InputLabel>Days</InputLabel>
-                                    <Select
-                                        variant="outlined"
-                                        multiple
-                                        label="Days"
-                                        value={days}
-                                        onChange={handleDaysChange}
-                                        renderValue={(selected) => selected.join(', ')}
-                                    >
-                                        {['Everyday', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                                            <MenuItem key={day} value={day}>
-                                                <Checkbox checked={days.indexOf(day) > -1}/>
-                                                <ListItemText primary={day}/>
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </div>
-                        ) :
-                        (isRange || condition === 'above' || condition === 'below' ? (
-                            <TextField
-                                size='small'
-                                label="Value"
-                                fullWidth
-                                value={conditionValue}
-                                onChange={(e) => handleChange(e, 'value')}
-                                name="value"
-                            />
-                        ) : (
-                            <div>
-                                <TextField
-                                    size='small'
-                                    label="Below"
-                                    fullWidth
-                                    value={below}
-                                    onChange={(e) => handleChange(e, 'below')}
-                                    name="value"
-                                    sx={{marginBottom: 2}}
-                                />
-                                <TextField
-                                    size='small'
-                                    label="Above"
-                                    fullWidth
-                                    value={above}
-                                    onChange={(e) => handleChange(e, 'above')}
-                                    name="value"
-                                />
-                            </div>
-                        ))
-                    }
-                    {/*<Typography variant="body1" style={{margin: '18px'}}>*/}
-                    {/*    trigger the actions.*/}
-                    {/*</Typography>*/}
-                </div>
-            )}
+                                ))
+                            }
+                            {/*<Typography variant="body1" style={{margin: '18px'}}>*/}
+                            {/*    trigger the actions.*/}
+                            {/*</Typography>*/}
+                        </div>
+                    )}
+                </AccordionDetails>
+            </Accordion>
+
 
             {/*<Handle*/}
             {/*    style={{width: '18px', height: '18px', background: '#FFEB3B'}}*/}
@@ -443,7 +501,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             {/*/>*/}
 
             <Handle
-                style={{width: '26px', height: '26px', background: '#4caf50', top: '25%'}}
+                style={{width: '26px', height: '26px', background: '#4caf50'}}
                 type="source"
                 position={Position.Right}
                 id={"out:cond-positive:" + id}
@@ -451,7 +509,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             />
 
             <Handle
-                style={{width: '26px', height: '26px', background: '#f44336', top: '75%'}}
+                style={{width: '26px', height: '26px', background: '#f44336', top: '90%'}}
                 type="source"
                 position={Position.Right}
                 id={"out:cond-negative:" + id}
@@ -459,21 +517,21 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             />
 
 
-            <div style={{
-                background: 'transparent', top: '25%',
-                right: 0,
-                transform: 'translate(50%, -50%)'
-            }} className='react-flow__handle'>
-                Positive
-            </div>
-            <div style={{
-                background: 'transparent',
-                top: '75%',
-                right: 0,
-                transform: 'translate(50%, -50%)'
-            }} className='react-flow__handle'>
-                Negative
-            </div>
-        </Card>
+            {/*<div style={{*/}
+            {/*    background: 'transparent',*/}
+            {/*    right: 0,*/}
+            {/*    transform: 'translate(50%, -50%)'*/}
+            {/*}} className='react-flow__handle'>*/}
+            {/*    Positive*/}
+            {/*</div>*/}
+            {/*<div style={{*/}
+            {/*    background: 'transparent',*/}
+            {/*    top: '100%',*/}
+            {/*    right: 0,*/}
+            {/*    transform: 'translate(50%, -50%)'*/}
+            {/*}} className='react-flow__handle'>*/}
+            {/*    Negative*/}
+            {/*</div>*/}
+        </>
     );
 };

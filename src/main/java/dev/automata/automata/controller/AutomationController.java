@@ -5,6 +5,7 @@ import dev.automata.automata.automation.*;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationDetail;
 import dev.automata.automata.service.AutomationService;
+import dev.automata.automata.service.AutomationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,7 @@ public class AutomationController {
     private final AutomationValidationService validationService;
     private final AutomationSimulationService simulationService;
     private final AutomationAnalyticsService analyticsService;
+    private final AutomationUtils automationUtils;
 
     @GetMapping("/send/{deviceId}")
     public ResponseEntity<?> sendConditionToDevice(@PathVariable String deviceId) {
@@ -431,5 +433,29 @@ public class AutomationController {
                 ),
                 "timestamp", System.currentTimeMillis()
         ));
+    }
+
+    @PostMapping("/automation/{id}/snooze")
+    public ResponseEntity<String> snooze(
+            @PathVariable String id,
+            @RequestParam int minutes) {
+        return ResponseEntity.ok(automationUtils.snoozeAutomation(id, minutes));
+    }
+
+    @PostMapping("/automation/{id}/disable-timed")
+    public ResponseEntity<String> timedDisable(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "0") int minutes) {
+        return ResponseEntity.ok(automationUtils.timedDisableAutomation(id, minutes));
+    }
+
+    @PostMapping("/automation/{id}/resume")
+    public ResponseEntity<String> resume(@PathVariable String id) {
+        return ResponseEntity.ok(automationUtils.resumeAutomation(id));
+    }
+
+    @GetMapping("/automation/{id}/snooze-status")
+    public ResponseEntity<Map<String, Object>> status(@PathVariable String id) {
+        return ResponseEntity.ok(automationUtils.getSnoozeStatus(id));
     }
 }
