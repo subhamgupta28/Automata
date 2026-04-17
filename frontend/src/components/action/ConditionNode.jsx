@@ -54,8 +54,8 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         days: ['Everyday'],
         solarType: 'sunset',
         offsetMinutes: 0,
-        intervalMinutes: 30,
-        durationMinutes: 5,
+        intervalMinutes: 0,
+        durationMinutes: 0,
         nodeId: id
     };
     const [scheduleType, setScheduleType] = useState(conditionData.scheduleType); // 'at' | 'range'

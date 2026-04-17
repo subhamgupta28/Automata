@@ -30,6 +30,7 @@ public class AutomationLog {
     @Indexed
     private String automationId;
     private String automationName;
+    private String user;
 
     private LogStatus status; // TRIGGERED, SKIPPED, RESTORED, ERROR
 
@@ -44,6 +45,7 @@ public class AutomationLog {
     private String snoozeState;
     @Indexed
     private Date timestamp;
+    private Date endTimestamp;
 
     public enum LogStatus {
         TRIGGERED,   // Conditions met, actions executed

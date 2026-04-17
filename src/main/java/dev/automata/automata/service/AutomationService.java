@@ -170,11 +170,9 @@ public class AutomationService {
             req.put(key, value);
             req.put("direct", true);
             req.put("deviceId", id);
-            if (device.isPresent()) {
-//                System.out.println("Master action sent " + req);
-//                System.out.println("Device type " + device.get().getType());
-                handleAction(id, req, device.get().getType(), user);
-            }
+            //                System.out.println("Master action sent " + req);
+            //                System.out.println("Device type " + device.get().getType());
+            device.ifPresent(device1 -> handleAction(id, req, device1.getType(), user));
         }
 
         if (payload.containsKey("direct")) {
@@ -410,6 +408,10 @@ public class AutomationService {
     // ─────────────────────────────────────────────────────────────────────────
 
     private void refreshCacheForAutomation(Automation automation) {
+        automation.getConditions().forEach(c -> {
+            redisService.delete("INTERVAL:" + automation.getId() + ":" + c.getNodeId());
+            redisService.delete("RUNNING:" + automation.getId() + ":" + c.getNodeId());
+        });
         String cacheKey = automation.getTrigger().getDeviceId() + ":" + automation.getId();
         try {
             AutomationCache existing = redisService.getAutomationCache(cacheKey);
@@ -445,6 +447,7 @@ public class AutomationService {
         boolean lockAcquired = redisService.setIfAbsent(executionLockKey, "locked", LOCK_TTL_SECONDS);
         var automationLog = AutomationLog.builder()
                 .automationId(automation.getId())
+                .user(user)
                 .automationName(automation.getName())
                 .payload(data != null ? data : Map.of())
                 .triggerDeviceId(deviceId).timestamp(now);
@@ -526,23 +529,27 @@ public class AutomationService {
                     .triggerDeviceId(deviceId).timestamp(now);
             List<Automation.Action> positiveActions = resolveActions(automation, ctx, "positive");
             List<Automation.Action> negativeActions = resolveActions(automation, ctx, "negative");
-//            log.info("🔥 Active True Nodes for:{} | {}", automation.getName(), ctx.getTrueNodes());
-//            log.info("🔥 Active False Nodes for:{} | {}", automation.getName(), ctx.getFalseNodes());
+//            log.info("[{}] Positive actions {}", automation.getName(), positiveActions);
+//            log.info("[{}] Negative actions {}", automation.getName(), negativeActions);
 
-//            ctx.getAll().forEach((id, res) -> {
-//                log.info("Node {} => {} | contributors={}",
-//                        id, res.isTrue(), res.getContributors());
-//            });
-            // ── Collect the gate conditions that are currently TRUE ───────────────────
-            // These are the ones whose duration we care about.
+            Set<String> operatorIds = automation.getOperators() == null ? Set.of() :
+                    automation.getOperators().stream()
+                    .map(Automation.Operator::getNodeId)
+                    .collect(Collectors.toSet());
+
             List<Automation.Condition> activeDurationConditions = automation.getConditions().stream()
                     .filter(c -> c.isEnabled() && c.getDurationMinutes() > 0)
+                    .filter(c -> {
+                        // Only gate conditions own duration — trigger conditions feed the operator
+                        return c.getPreviousNodeRef() != null &&
+                                c.getPreviousNodeRef().stream()
+                                        .anyMatch(ref -> operatorIds.contains(ref.getNodeId()));
+                    })
                     .filter(c -> {
                         NodeResult nr = ctx.get(c.getNodeId());
                         return nr != null && nr.isTrue();
                     })
                     .toList();
-
             // ── Check if ANY active duration condition still has its timer running ────
             // Per-condition key: RUNNING:{automationId}:{conditionNodeId}
             boolean durationActive = activeDurationConditions.stream()
@@ -574,7 +581,7 @@ public class AutomationService {
 
                     final AutomationCache finalCache = cache;
 
-                    executeResolvedActions(positiveActions, automation, payload, user)
+                    executeWithTimeout(positiveActions, payload, user, automation.getName())
                             .thenAccept(success -> {
                                 if (!Boolean.TRUE.equals(success)) {
                                     log.warn("⚠️ Positive execution failed for '{}' — cache NOT advanced",
@@ -651,7 +658,7 @@ public class AutomationService {
                         final AutomationCache finalCache = cache;
                         final String revertReason = reason;
 
-                        executeResolvedActions(negativeActions, automation, payload, user)
+                        executeWithTimeout(negativeActions, payload, user, automation.getName())
                                 .thenAccept(success -> {
                                     if (!Boolean.TRUE.equals(success)) return;
                                     notificationService.sendNotification("⏹️ Reverting automation: " + automation.getName(), "success");
@@ -671,6 +678,7 @@ public class AutomationService {
                                     log.info("🔁 [{}] Reset to IDLE — {}", automation.getName(), revertReason);
                                 });
                         automationLog.status(AutomationLog.LogStatus.RESTORED)
+                                .endTimestamp(new Date())
                                 .reason(reason + " → negative actions executed");
                     } else {
                         automationLog.status(AutomationLog.LogStatus.SKIPPED)
@@ -679,7 +687,7 @@ public class AutomationService {
                 }
 
                 // ❌ NOT MET (IDLE + condition false — normal quiet path)
-                else if (currentState == AutomationState.IDLE && !conditionNow) {
+                else if (currentState == AutomationState.IDLE) {
                     automationLog.status(AutomationLog.LogStatus.NOT_MET)
                             .reason("Condition not satisfied");
                 }
@@ -822,26 +830,6 @@ public class AutomationService {
         return results;
     }
 
-    private CompletableFuture<Boolean> executeResolvedActions(
-            List<Automation.Action> actions,
-            Automation automation,
-            Map<String, Object> payload,
-            String user) {
-
-        CompletableFuture<Boolean> chain = CompletableFuture.completedFuture(true);
-
-        for (Automation.Action action : actions) {
-
-            chain = chain.thenCompose(prev ->
-                    CompletableFuture.supplyAsync(() -> {
-                        executeSingleAction(action, user, payload);
-                        return true;
-                    }, automationExecutor)
-            );
-        }
-
-        return chain;
-    }
     // ─────────────────────────────────────────────────────────────────────────
     // IMMEDIATE / OVERRIDE EXECUTION
     // ─────────────────────────────────────────────────────────────────────────
@@ -858,7 +846,7 @@ public class AutomationService {
                 .triggerDeviceId(automation.getTrigger().getDeviceId())
                 .timestamp(new Date());
 
-        executeWithTimeout(automation.getActions(), payload, user, "positive", automation.getName())
+        executeWithTimeout(automation.getActions(), payload, user, automation.getName())
                 .thenAccept(success -> {
                     if (Boolean.TRUE.equals(success)) {
                         automationLog
@@ -883,15 +871,6 @@ public class AutomationService {
                 });
     }
 
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // TRIGGER EVALUATION  (unchanged)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private boolean isTriggered(Automation automation, Map<String, Object> payload,
-                                boolean wasActive) {
-        return isTriggered(automation, payload, wasActive, new ArrayList<>());
-    }
 
     public NodeResult evaluate(Automation automation,
                                Map<String, Object> payload,
@@ -1026,7 +1005,7 @@ public class AutomationService {
 
         // Case C: single trigger condition — it IS the root
         if (!triggerConditions.isEmpty()) {
-            NodeResult nr = ctx.get(triggerConditions.get(0).getNodeId());
+            NodeResult nr = ctx.get(triggerConditions.getFirst().getNodeId());
             if (nr != null) return nr;
         }
 
@@ -1114,99 +1093,6 @@ public class AutomationService {
                 .toList();
     }
 
-    private boolean isTriggered(Automation automation, Map<String, Object> payload,
-                                boolean wasActive,
-                                List<AutomationLog.ConditionResult> results) {
-        if ("time".equals(automation.getTrigger().getType())) {
-            var condition = automation.getConditions().get(0);
-            boolean passed = isCurrentTimeWithDailyTracking(automation, condition);
-            results.add(AutomationLog.ConditionResult.builder()
-                    .conditionType("time").conditionNodeId(condition.getNodeId())
-                    .triggerKey("time").expectedValue(condition.getTime())
-                    .actualValue(LocalTime.now(ZoneId.of("Asia/Kolkata")).toString())
-                    .passed(passed)
-                    .detail(passed ? "Time matched" : "Time not matched or already fired today")
-                    .build());
-            return passed;
-        }
-
-        var truths = new ArrayList<Boolean>();
-        for (var condition : automation.getConditions()) {
-            if (!condition.isEnabled()) continue;
-
-            if ("scheduled".equals(condition.getCondition())) {
-                boolean passed = isCurrentTimeWithDailyTracking(automation, condition);
-                results.add(AutomationLog.ConditionResult.builder()
-                        .conditionType("scheduled").conditionNodeId(condition.getNodeId())
-                        .triggerKey("schedule")
-                        .expectedValue(condition.getScheduleType() + " @ " +
-                                ("range".equals(condition.getScheduleType())
-                                        ? condition.getFromTime() + " – " + condition.getToTime()
-                                        : condition.getTime()))
-                        .actualValue(LocalTime.now(ZoneId.of("Asia/Kolkata")).toString())
-                        .passed(passed).detail(passed ? "Schedule matched" : "Not matched")
-                        .build());
-                truths.add(passed);
-                continue;
-            }
-
-            String key = condition.getTriggerKey();
-            if (key == null || key.isBlank() || !payload.containsKey(key)) {
-                results.add(AutomationLog.ConditionResult.builder()
-                        .conditionType(condition.getCondition())
-                        .conditionNodeId(condition.getNodeId()).triggerKey(key).passed(false)
-                        .detail("Key '" + key + "' not found in payload").build());
-                truths.add(false);
-                continue;
-            }
-
-            String value = payload.get(key).toString();
-            if (isNumeric(value)) {
-                double numericValue = Double.parseDouble(value);
-                boolean passed = checkCondition(numericValue, condition, wasActive);
-                results.add(buildNumericConditionResult(condition, numericValue, passed, wasActive));
-                truths.add(passed);
-            } else {
-                boolean passed = value.equals(condition.getValue());
-                results.add(AutomationLog.ConditionResult.builder()
-                        .conditionType("equal").conditionNodeId(condition.getNodeId())
-                        .triggerKey(key).actualValue(value).expectedValue(condition.getValue())
-                        .passed(passed)
-                        .detail(passed ? "'" + value + "' equals expected"
-                                : "'" + value + "' ≠ '" + condition.getValue() + "'")
-                        .build());
-                truths.add(passed);
-            }
-        }
-
-        if (truths.isEmpty()) return false;
-        String logic = (automation.getOperators() != null && !automation.getOperators().isEmpty())
-                ? automation.getOperators().get(0).getLogicType() : "AND";
-        return switch (logic.toUpperCase()) {
-            case "OR" -> truths.stream().anyMatch(Boolean::booleanValue);
-            default -> truths.stream().allMatch(Boolean::booleanValue);
-        };
-    }
-
-    private Boolean checkCondition(Double numericValue, Automation.Condition condition,
-                                   boolean wasActive) {
-        if (condition.getIsExact()) return condition.getValue().equals(numericValue.toString());
-        double threshold = Double.parseDouble(condition.getValue());
-        double buffer = 5.0;
-        return switch (condition.getCondition()) {
-            case "above" -> wasActive ? numericValue > (threshold - buffer) : numericValue > threshold;
-            case "below" -> wasActive ? numericValue < (threshold + buffer) : numericValue < threshold;
-            case "range" -> {
-                double above = Double.parseDouble(condition.getAbove());
-                double below = Double.parseDouble(condition.getBelow());
-                yield wasActive
-                        ? numericValue > (above - buffer) && numericValue < (below + buffer)
-                        : numericValue > above && numericValue < below;
-            }
-            default -> false;
-        };
-    }
-
     private boolean isCurrentTimeWithDailyTracking(Automation automation,
                                                    Automation.Condition condition) {
         ZoneId istZone = ZoneId.of("Asia/Kolkata");
@@ -1240,9 +1126,10 @@ public class AutomationService {
             return match && checkAndSetDailyLock(automation, nowZdt);
         }
         if ("interval".equals(scheduleType)) {
-            String intervalKey = "INTERVAL:" + automation.getId();
-            String runKey = "RUNNING:" + automation.getId();
-            if (redisService.exists(runKey)) return false;
+            String intervalKey = "INTERVAL:" + automation.getId() + ":" + condition.getNodeId();
+            // Use the per-condition run key that matches what durationMinutes sets
+            String runKey = "RUNNING:" + automation.getId() + ":" + condition.getNodeId();
+            if (redisService.exists(runKey)) return true;
             if (!redisService.exists(intervalKey)) {
                 redisService.setWithExpiry(intervalKey, "run", condition.getIntervalMinutes() * 60L);
                 return true;
@@ -1310,8 +1197,8 @@ public class AutomationService {
 
     private CompletableFuture<Boolean> executeWithTimeout(List<Automation.Action> orderedActions,
                                                           Map<String, Object> payload,
-                                                          String user, String group, String automationName) {
-        return executeActionsInternal(orderedActions, user, payload, group)
+                                                          String user, String automationName) {
+        return executeActionsInternal(orderedActions, user, payload, automationName)
                 .orTimeout(AUTOMATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .exceptionally(ex -> {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
@@ -1327,9 +1214,6 @@ public class AutomationService {
                 });
     }
 
-//    private void executeActions(Automation automation, String user, Map<String, Object> payload) {
-//        executeWithTimeout(automation, payload, user, "positive");
-//    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // NON-BLOCKING CHAIN BUILDER
@@ -1343,21 +1227,8 @@ public class AutomationService {
     private CompletableFuture<Boolean> executeActionsInternal(
             List<Automation.Action> orderedActions,
             String user,
-            Map<String, Object> value,
-            String groupToRun) {
+            Map<String, Object> value, String automationName) {
 
-//        List<Automation.Action> orderedActions = automation.getActions().stream()
-//                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-//                .filter(a -> {
-//                    String group = a.getConditionGroup() != null ? a.getConditionGroup() : "positive";
-//                    return group.equalsIgnoreCase(groupToRun);
-//                })
-//                .sorted(Comparator.comparing(a ->
-//                        a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-//                .toList();
-
-        // Fold the action list into a sequential CompletableFuture chain.
-        // Starting value: completed future(true) — i.e. "nothing failed yet".
         CompletableFuture<Boolean> chain = CompletableFuture.completedFuture(true);
 
         for (Automation.Action action : orderedActions) {
@@ -1366,12 +1237,12 @@ public class AutomationService {
                 CompletableFuture<Boolean> actionFuture =
                         CompletableFuture.supplyAsync(() -> {
                             try {
-                                log.info("▶️ Executing action: {} (order={})",
+                                log.info("▶️ [{}] Executing action: {} (order={})", automationName,
                                         action.getName(), action.getOrder());
                                 executeSingleAction(action, user, value);
                                 return true;
                             } catch (Exception e) {
-                                log.error("❌ Failed action: {}", action.getName(), e);
+                                log.error("❌ [{}] Failed action: {}", automationName, action.getName(), e);
                                 return false;  // continue chain even on failure
                             }
                         }, automationExecutor);
@@ -1381,7 +1252,7 @@ public class AutomationService {
                 int delaySec = action.getDelaySeconds();
                 if (delaySec > 0) {
                     return actionFuture.thenCompose(ok -> {
-                        log.info("⏳ Delay {}s after action '{}' (non-blocking)",
+                        log.info("⏳ [{}] Delay {}s after action '{}' (non-blocking)", automationName,
                                 delaySec, action.getName());
                         CompletableFuture<Boolean> delayedFuture = new CompletableFuture<>();
                         delayScheduler.schedule(
@@ -1543,10 +1414,6 @@ public class AutomationService {
     // MISC HELPERS  (unchanged)
     // ─────────────────────────────────────────────────────────────────────────
 
-    private boolean isNumeric(String s) {
-        return s != null && s.matches("-?\\d+(\\.\\d+)?");
-    }
-
     private Object parseData(String data) {
         if (data == null) return null;
         if ("true".equalsIgnoreCase(data)) return Boolean.TRUE;
@@ -1574,41 +1441,4 @@ public class AutomationService {
         }
     }
 
-    private AutomationLog.ConditionResult buildNumericConditionResult(
-            Automation.Condition condition, double actual, boolean passed, boolean wasActive) {
-        double buffer = 5.0;
-        String detail, expected;
-        switch (condition.getCondition()) {
-            case "above" -> {
-                double t = Double.parseDouble(condition.getValue());
-                expected = "> " + t;
-                detail = actual + " > " + (wasActive ? (t - buffer) + " (buf)" : t)
-                        + " → " + (passed ? "PASS" : "FAIL");
-            }
-            case "below" -> {
-                double t = Double.parseDouble(condition.getValue());
-                expected = "< " + t;
-                detail = actual + " < " + (wasActive ? (t + buffer) + " (buf)" : t)
-                        + " → " + (passed ? "PASS" : "FAIL");
-            }
-            case "range" -> {
-                expected = condition.getAbove() + " < x < " + condition.getBelow();
-                detail = "Value " + actual + " in [" + condition.getAbove()
-                        + ", " + condition.getBelow() + "] → " + (passed ? "PASS" : "FAIL");
-            }
-            default -> {
-                expected = condition.getValue();
-                detail = actual + " == " + expected + " → " + (passed ? "PASS" : "FAIL");
-            }
-        }
-
-        return AutomationLog.ConditionResult.builder()
-                .conditionType(condition.getCondition())
-                .triggerKey(condition.getTriggerKey())
-                .actualValue(String.valueOf(actual))
-                .expectedValue(expected)
-                .passed(passed)
-                .detail(detail)
-                .build();
-    }
 }

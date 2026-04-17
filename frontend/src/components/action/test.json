@@ -1,204 +1,465 @@
 [
   {
     "_id": {
-      "$oid": "69d0335f3efedf22b695921a"
+      "$oid": "689f53b668dded22326d935e"
     },
-    "_class": "dev.automata.automata.model.Automation",
-    "actions": [
+    "_class": "dev.automata.automata.model.AutomationDetail",
+    "edges": [
       {
-        "key": "bright",
-        "deviceId": "69559fe7ff8187354090cb2d",
-        "data": "15",
-        "name": "Ring Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_8",
-            "handle": "out:cond-positive:node_condition_8"
-          }
-        ],
-        "nodeId": "node_action_10"
+        "_id": "xy-edge__node_trigger_0rootNode:triggerNode:node_trigger_0-node_condition_5in:condition:node_condition_5",
+        "source": "node_trigger_0",
+        "sourceHandle": "rootNode:triggerNode:node_trigger_0",
+        "target": "node_condition_5",
+        "targetHandle": "in:condition:node_condition_5",
+        "type": "custom-edge",
+        "data": {
+          "color": "#4caf50"
+        }
       },
       {
-        "key": "bright",
-        "deviceId": "69559fe7ff8187354090cb2d",
-        "data": "1",
-        "name": "Ring Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_10",
-            "handle": "out:cond-positive:node_condition_10"
-          }
-        ],
-        "nodeId": "node_action_11"
+        "_id": "xy-edge__node_condition_5out:cond-positive:node_condition_5-node_and_6in:operator:node_and_6",
+        "source": "node_condition_5",
+        "sourceHandle": "out:cond-positive:node_condition_5",
+        "target": "node_and_6",
+        "targetHandle": "in:operator:node_and_6",
+        "type": "custom-edge",
+        "data": {
+          "color": "#4caf50"
+        }
       },
       {
-        "key": "preset",
-        "deviceId": "69559fe7ff8187354090cb2d",
-        "data": "1",
-        "name": "Ring Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 2,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_10",
-            "handle": "out:cond-positive:node_condition_10"
-          }
-        ],
-        "nodeId": "node_action_5"
+        "_id": "xy-edge__node_and_6out:operator:node_and_6-node_condition_1in:condition:node_condition_1",
+        "source": "node_and_6",
+        "sourceHandle": "out:operator:node_and_6",
+        "target": "node_condition_1",
+        "targetHandle": "in:condition:node_condition_1",
+        "type": "custom-edge",
+        "data": {
+          "color": "#4caf50"
+        }
       },
       {
-        "key": "preset",
-        "deviceId": "69559fe7ff8187354090cb2d",
-        "data": "3",
-        "name": "Ring Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 2,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_8",
-            "handle": "out:cond-positive:node_condition_8"
-          }
-        ],
-        "nodeId": "node_action_6"
+        "_id": "xy-edge__node_condition_1out:cond-positive:node_condition_1-node_action_2action:in:node_action_2",
+        "source": "node_condition_1",
+        "sourceHandle": "out:cond-positive:node_condition_1",
+        "target": "node_action_2",
+        "targetHandle": "action:in:node_action_2",
+        "type": "custom-edge",
+        "data": {
+          "color": "#4caf50"
+        }
+      },
+      {
+        "_id": "xy-edge__node_condition_1out:cond-negative:node_condition_1-node_action_4action:in:node_action_4",
+        "source": "node_condition_1",
+        "sourceHandle": "out:cond-negative:node_condition_1",
+        "target": "node_action_4",
+        "targetHandle": "action:in:node_action_4",
+        "type": "custom-edge",
+        "data": {
+          "color": "#f44336"
+        }
+      },
+      {
+        "_id": "xy-edge__node_condition_1out:cond-positive:node_condition_1-node_action_10action:in:node_action_10",
+        "source": "node_condition_1",
+        "sourceHandle": "out:cond-positive:node_condition_1",
+        "target": "node_action_10",
+        "targetHandle": "action:in:node_action_10",
+        "type": "custom-edge",
+        "data": {
+          "color": "#4caf50"
+        }
+      },
+      {
+        "_id": "xy-edge__node_condition_1out:cond-negative:node_condition_1-node_action_8action:in:node_action_8",
+        "source": "node_condition_1",
+        "sourceHandle": "out:cond-negative:node_condition_1",
+        "target": "node_action_8",
+        "targetHandle": "action:in:node_action_8",
+        "type": "custom-edge",
+        "data": {
+          "color": "#f44336"
+        }
+      },
+      {
+        "_id": "xy-edge__node_condition_5out:cond-negative:node_condition_5-node_action_7action:in:node_action_7",
+        "source": "node_condition_5",
+        "sourceHandle": "out:cond-negative:node_condition_5",
+        "target": "node_action_7",
+        "targetHandle": "action:in:node_action_7",
+        "type": "custom-edge",
+        "data": {
+          "color": "#f44336"
+        }
       }
     ],
-    "conditions": [
+    "nodes": [
       {
-        "nodeId": "node_condition_8",
-        "condition": "scheduled",
-        "valueType": "int",
-        "above": "0",
-        "below": "0",
-        "value": "100",
-        "time": "02:20:05 AM",
-        "triggerKey": "",
-        "isExact": false,
-        "scheduleType": "interval",
-        "fromTime": "02:20:05 AM",
-        "toTime": "02:20:05 AM",
-        "days": [
-          "Mon",
-          "Tue",
-          "Wed",
-          "Thu",
-          "Fri",
-          "Sat",
-          "Sun"
-        ],
-        "solarType": "sunrise",
-        "offsetMinutes": 0,
-        "intervalMinutes": 3,
-        "durationMinutes": 1,
-        "enabled": true,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_or_9",
-            "handle": "out:operator:node_or_9"
+        "_id": "node_trigger_0",
+        "type": "trigger",
+        "position": {
+          "x": 210,
+          "y": 150
+        },
+        "data": {
+          "value": {
+            "isNewNode": false,
+            "name": "trigger"
+          },
+          "triggerData": {
+            "deviceId": "67dafae9fa67e36c0a25687e",
+            "type": "state",
+            "keys": [
+              {
+                "conditionId": "node_condition_5",
+                "value": "",
+                "key": "percent"
+              }
+            ],
+            "name": "Periodic Bat 500 charging",
+            "priority": 5,
+            "nodeId": "node_trigger_0"
           }
-        ]
+        },
+        "measured": {
+          "width": 320,
+          "height": 371
+        },
+        "selected": false,
+        "dragging": false
       },
       {
-        "nodeId": "node_condition_9",
-        "condition": "above",
-        "valueType": "int",
-        "above": "0",
-        "below": "0",
-        "value": "40",
-        "time": "02:20:05 AM",
-        "triggerKey": "aqi",
-        "isExact": false,
-        "scheduleType": "at",
-        "fromTime": "02:20:05 AM",
-        "toTime": "02:20:05 AM",
-        "days": [
-          "Everyday"
-        ],
-        "solarType": "sunset",
-        "offsetMinutes": 0,
-        "intervalMinutes": 30,
-        "durationMinutes": 5,
-        "enabled": true,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_trigger_7",
-            "handle": "rootNode:triggerNode:node_trigger_7"
+        "_id": "node_condition_1",
+        "type": "condition",
+        "position": {
+          "x": 1253.3333333333335,
+          "y": 256.99999999999994
+        },
+        "data": {
+          "value": {
+            "isNewNode": false,
+            "name": "condition"
+          },
+          "conditionData": {
+            "nodeId": "node_condition_1",
+            "condition": "scheduled",
+            "valueType": "int",
+            "below": "0",
+            "above": "0",
+            "triggerKey": "",
+            "value": "10",
+            "isExact": false,
+            "time": "Invalid Date",
+            "scheduleType": "interval",
+            "fromTime": "09:12:50 PM",
+            "toTime": "09:12:50 PM",
+            "days": [
+              "Mon",
+              "Tue",
+              "Wed",
+              "Thu",
+              "Fri",
+              "Sat",
+              "Sun"
+            ],
+            "offsetMinutes": 0,
+            "intervalMinutes": 5,
+            "durationMinutes": 2,
+            "enabled": true,
+            "previousNodeRef": [
+              {
+                "nodeId": "node_and_6",
+                "handle": "out:operator:node_and_6"
+              }
+            ]
           }
-        ]
+        },
+        "measured": {
+          "width": 320,
+          "height": 490
+        },
+        "selected": false,
+        "dragging": false
       },
       {
-        "nodeId": "node_condition_10",
-        "condition": "scheduled",
-        "valueType": "int",
-        "above": "0",
-        "below": "0",
-        "value": "0",
-        "time": "02:20:05 AM",
-        "triggerKey": "",
-        "isExact": false,
-        "scheduleType": "at",
-        "fromTime": "02:20:05 AM",
-        "toTime": "02:20:05 AM",
-        "days": [
-          "Everyday"
-        ],
-        "solarType": "sunset",
-        "offsetMinutes": 0,
-        "intervalMinutes": 30,
-        "durationMinutes": 5,
-        "enabled": true,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_or_9",
-            "handle": "out:operator:node_or_9"
+        "_id": "node_action_2",
+        "type": "action",
+        "position": {
+          "x": 1717.6666666666667,
+          "y": 80
+        },
+        "data": {
+          "value": {
+            "isNewNode": false,
+            "name": "action"
+          },
+          "actionData": {
+            "deviceId": "6755d5ec3667d03a2c053eff",
+            "key": "channel1",
+            "name": "LiFePO4 816WH",
+            "data": "true",
+            "isEnabled": true,
+            "revert": false,
+            "conditionGroup": "positive",
+            "order": 1,
+            "delaySeconds": 1,
+            "previousNodeRef": [
+              {
+                "nodeId": "node_condition_1",
+                "handle": "out:cond-positive:node_condition_1"
+              }
+            ],
+            "nodeId": "node_action_2"
           }
-        ]
-      }
-    ],
-    "isActive": false,
-    "isEnabled": true,
-    "name": "TESTING",
-    "operators": [
+        },
+        "measured": {
+          "width": 320,
+          "height": 100
+        },
+        "selected": false,
+        "dragging": false
+      },
       {
-        "type": "operator",
-        "logicType": "OR",
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_9",
-            "handle": "out:cond-positive:node_condition_9"
+        "_id": "node_action_4",
+        "type": "action",
+        "position": {
+          "x": 1717.3333333333333,
+          "y": 294.6666666666667
+        },
+        "data": {
+          "value": {
+            "isNewNode": false,
+            "name": "action"
+          },
+          "actionData": {
+            "deviceId": "6755d5ec3667d03a2c053eff",
+            "key": "channel1",
+            "name": "LiFePO4 816WH",
+            "data": "false",
+            "isEnabled": true,
+            "revert": false,
+            "conditionGroup": "negative",
+            "order": 1,
+            "delaySeconds": 1,
+            "previousNodeRef": [
+              {
+                "nodeId": "node_condition_1",
+                "handle": "out:cond-negative:node_condition_1"
+              }
+            ],
+            "nodeId": "node_action_4"
           }
-        ],
-        "nodeId": "node_or_9"
+        },
+        "measured": {
+          "width": 320,
+          "height": 100
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "_id": "node_condition_5",
+        "type": "condition",
+        "position": {
+          "x": 660.0000000000001,
+          "y": 378.6666666666665
+        },
+        "data": {
+          "value": {
+            "isNewNode": false,
+            "name": "condition"
+          },
+          "conditionData": {
+            "nodeId": "node_condition_5",
+            "condition": "below",
+            "valueType": "int",
+            "below": "0",
+            "above": "0",
+            "triggerKey": "percent",
+            "value": "65",
+            "isExact": false,
+            "time": "02:20:05 AM",
+            "scheduleType": "at",
+            "fromTime": "02:20:05 AM",
+            "toTime": "02:20:05 AM",
+            "days": [
+              "Everyday"
+            ],
+            "solarType": "sunset",
+            "offsetMinutes": 0,
+            "intervalMinutes": 30,
+            "durationMinutes": 5,
+            "enabled": true,
+            "previousNodeRef": [
+              {
+                "nodeId": "node_trigger_0",
+                "handle": "rootNode:triggerNode:node_trigger_0"
+              }
+            ]
+          }
+        },
+        "measured": {
+          "width": 320,
+          "height": 100
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "_id": "node_and_6",
+        "type": "and",
+        "position": {
+          "x": 1001.3333333333331,
+          "y": 62.666666666666615
+        },
+        "data": {
+          "value": {
+            "isNewNode": false,
+            "name": "and"
+          },
+          "operators": {
+            "type": "operator",
+            "logicType": "AND",
+            "previousNodeRef": [
+              {
+                "nodeId": "node_condition_5",
+                "handle": "out:cond-positive:node_condition_5"
+              }
+            ],
+            "nodeId": "node_and_6",
+            "conditionGroup": "positive"
+          }
+        },
+        "measured": {
+          "width": 150,
+          "height": 92
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "_id": "node_action_7",
+        "type": "action",
+        "position": {
+          "x": 1020.0575358072917,
+          "y": 749.2683919270831
+        },
+        "data": {
+          "value": {
+            "isNewNode": false,
+            "name": "action"
+          },
+          "actionData": {
+            "deviceId": "6755d5ec3667d03a2c053eff",
+            "key": "channel1",
+            "name": "LiFePO4 816WH",
+            "data": "false",
+            "isEnabled": true,
+            "revert": false,
+            "conditionGroup": "negative",
+            "order": 1,
+            "delaySeconds": 0,
+            "previousNodeRef": [
+              {
+                "nodeId": "node_condition_5",
+                "handle": "out:cond-negative:node_condition_5"
+              }
+            ],
+            "nodeId": "node_action_7"
+          }
+        },
+        "measured": {
+          "width": 320,
+          "height": 100
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "_id": "node_action_8",
+        "type": "action",
+        "position": {
+          "x": 1714.6666666666667,
+          "y": 411.99999999999994
+        },
+        "data": {
+          "value": {
+            "isNewNode": false,
+            "name": "action"
+          },
+          "actionData": {
+            "deviceId": "678d3ea52d39db1f7a8d8b43",
+            "key": "app_notify",
+            "name": "System",
+            "data": "Battery 500 charging stopped",
+            "isEnabled": true,
+            "revert": false,
+            "conditionGroup": "negative",
+            "order": 1,
+            "delaySeconds": 0,
+            "previousNodeRef": [
+              {
+                "nodeId": "node_condition_1",
+                "handle": "out:cond-negative:node_condition_1"
+              }
+            ],
+            "nodeId": "node_action_8"
+          }
+        },
+        "measured": {
+          "width": 320,
+          "height": 124
+        },
+        "selected": false,
+        "dragging": false
+      },
+      {
+        "_id": "node_action_10",
+        "type": "action",
+        "position": {
+          "x": 2089.333333333333,
+          "y": 87.99999999999994
+        },
+        "data": {
+          "value": {
+            "isNewNode": false,
+            "name": "action"
+          },
+          "actionData": {
+            "deviceId": "678d3ea52d39db1f7a8d8b43",
+            "key": "app_notify",
+            "name": "System",
+            "data": "Battery 500 Charging started",
+            "isEnabled": true,
+            "revert": false,
+            "conditionGroup": "positive",
+            "order": 1,
+            "delaySeconds": 0,
+            "previousNodeRef": [
+              {
+                "nodeId": "node_condition_1",
+                "handle": "out:cond-positive:node_condition_1"
+              }
+            ],
+            "nodeId": "node_action_10"
+          }
+        },
+        "measured": {
+          "width": 320,
+          "height": 124
+        },
+        "selected": false,
+        "dragging": false
       }
     ],
-    "trigger": {
-      "deviceId": "670edfe8166ab22722fbf728",
-      "type": "state",
-      "keys": [
-        "aqi"
-      ],
-      "name": "TESTING",
-      "priority": 5,
-      "nodeId": "node_trigger_7"
+    "viewport": {
+      "x": 0,
+      "y": 50,
+      "zoom": 0.75
     },
-    "triggerDeviceType": "sensor",
     "updateDate": {
-      "$date": "2026-04-11T22:01:41.957Z"
+      "$date": "2026-04-17T10:13:02.306Z"
     }
   }
 ]

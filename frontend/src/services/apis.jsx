@@ -7,6 +7,46 @@ import api from "./CustomAxios.jsx";
 // const BASE_URL = 'http://localhost:8080/api/v1/';
 
 
+export const snoozeAutomation = async (id, min) => {
+    const response = await api.post(`action/automation/${id}/snooze?minutes=${min}`, {}, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
+export const timedDisableAuto = async (id, min) => {
+    const response = await api.post(`action/automation/${id}/disable-timed?minutes=${min}`, {}, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
+export const resumeAutomation = async (id) => {
+    const response = await api.post(`action/automation/${id}/resume`, {}, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+
+            // Add any other headers if needed, e.g., Authorization
+        },
+    });
+    return response.data;
+}
+export const getSnoozeStatus = async (id) => {
+    const response = await api.get(`action/automation/${id}/snooze-status`, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+
+        },
+    });
+    return response.data;
+}
 export const getActions = async () => {
     const response = await api.get("action/getAction", {
         headers: {
