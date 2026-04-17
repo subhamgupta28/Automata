@@ -5,6 +5,7 @@ import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.NotificationRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +25,9 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final AutomationRepository automationRepository;
     private RestTemplate restTemplate;
+
+    @Value("${app.notification.ntfy.url}")
+    private static String NTFY_URL;
 //    private final AutomationService automationService;
 
     public void sendAlert(String message, String severity) {
@@ -81,7 +85,7 @@ public class NotificationService {
 //        headers.add("Tags", "warning");
 
             HttpEntity<String> request = new HttpEntity<>(message, headers);
-            restTemplate.postForObject("http://ntfy/automata", request, String.class);
+            restTemplate.postForObject(NTFY_URL, request, String.class);
             System.err.println("NTFY sent: " + message);
         } catch (Exception e) {
             System.err.println(e);

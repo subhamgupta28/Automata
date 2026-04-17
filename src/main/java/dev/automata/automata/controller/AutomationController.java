@@ -4,8 +4,11 @@ package dev.automata.automata.controller;
 import dev.automata.automata.automation.*;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationDetail;
+import dev.automata.automata.security.AuthenticationService;
 import dev.automata.automata.service.AutomationService;
 import dev.automata.automata.service.AutomationUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +35,7 @@ public class AutomationController {
     private final AutomationSimulationService simulationService;
     private final AutomationAnalyticsService analyticsService;
     private final AutomationUtils automationUtils;
+    private final AuthenticationService authenticationService;
 
     @GetMapping("/send/{deviceId}")
     public ResponseEntity<?> sendConditionToDevice(@PathVariable String deviceId) {
@@ -103,6 +107,8 @@ public class AutomationController {
 
     @MessageMapping("/action")
     public String sendAction(
+            HttpServletRequest request,
+            HttpServletResponse response,
             @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
     ) {
         System.err.println("got action message: " + payload);
@@ -110,7 +116,9 @@ public class AutomationController {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             return "Device Id not found";
         }
-        return automationService.handleAction(deviceId, payload, "", "device");
+        var user = authenticationService.getAuthUser(request);
+        var userId = user != null ? user.getId() : "System";
+        return automationService.handleAction(deviceId, payload, "", userId);
     }
 
     @GetMapping("/rebootAllDevices")

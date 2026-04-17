@@ -43,7 +43,7 @@ public class AuthenticationService {
         System.err.println(savedUser);
         var jwtToken = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
-        message="";
+        message = "";
         return AuthenticationResponse.builder()
                 .accessToken(jwtToken)
                 .message("message")
@@ -72,6 +72,22 @@ public class AuthenticationService {
                 .build();
     }
 
+    public Users getAuthUser(HttpServletRequest request) {
+        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        final String refreshToken;
+        final String userEmail;
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        refreshToken = authHeader.substring(7);
+        userEmail = jwtService.extractUsername(refreshToken);
+        if (userEmail != null) {
+            return this.repository.findByEmail(userEmail)
+                    .orElseThrow();
+
+        }
+        return null;
+    }
 
 
     public void refreshToken(
@@ -81,7 +97,7 @@ public class AuthenticationService {
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         final String refreshToken;
         final String userEmail;
-        if (authHeader == null ||!authHeader.startsWith("Bearer ")) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return;
         }
         refreshToken = authHeader.substring(7);
