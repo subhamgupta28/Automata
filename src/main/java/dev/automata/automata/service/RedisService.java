@@ -10,7 +10,9 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -284,5 +286,12 @@ public class RedisService {
             log.error("Error extending expiry for key: {}", key, e);
             return false;
         }
+    }
+
+    public List<String> scan(String pattern) {
+        return new ArrayList<>(redisTemplate.keys(pattern));
+        // Or use SCAN cursor for large keyspaces:
+        // ScanOptions opts = ScanOptions.scanOptions().match(pattern).count(100).build();
+        // use redisTemplate.executeWithStickyConnection(...)
     }
 }

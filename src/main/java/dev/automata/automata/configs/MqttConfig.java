@@ -45,6 +45,7 @@ public class MqttConfig {
     private final String topicAction = "action";
     private final String topicSendData = "sendData";
     private final String topicSendLiveData = "sendLiveData";
+    private final String topicAckAction = "ackAction";
     private final String topicSys = "broker/status/#";
     private final String wledDeviceTopic = "automata-wled/#";
     private final String wledGroupTopic = "automata-wled/all";
@@ -128,6 +129,12 @@ public class MqttConfig {
     }
 
     @Bean
+    public ThreadPoolTaskExecutor ackActionExecutor() {
+        // action commands — moderate, latency matters more than throughput
+        return buildExecutor("ack-action-", 2, 4, 100);
+    }
+
+    @Bean
     public ThreadPoolTaskExecutor wledExecutor() {
         // LED commands — bursty but short-lived
         return buildExecutor("wled-", 1, 3, 50);
@@ -169,6 +176,10 @@ public class MqttConfig {
         return new ExecutorChannel(actionExecutor());
     }
 
+    public ExecutorChannel ackAction() {
+        return new ExecutorChannel(ackActionExecutor());
+    }
+
     @Bean
     public ExecutorChannel wledChannel() {
         return new ExecutorChannel(wledExecutor());
@@ -196,7 +207,8 @@ public class MqttConfig {
                         topicSendLiveData,
                         topicSendData,
                         topicAction,
-                        topicDefault
+                        topicDefault,
+                        topicAckAction
 //                        topicSys
                 );
         adapter.setCompletionTimeout(5000);
@@ -301,6 +313,7 @@ public class MqttConfig {
                                 .channelMapping(topicSendData, "sendData")
                                 .channelMapping(topicDefault, "mqttInputChannel")
                                 .channelMapping(topicAction, "action")
+                                .channelMapping(topicAckAction, "ackAction")
                                 .channelMapping("sysData", "sysData")
                 )
                 .get();

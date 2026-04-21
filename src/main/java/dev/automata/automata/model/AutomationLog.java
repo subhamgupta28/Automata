@@ -47,13 +47,51 @@ public class AutomationLog {
     private Date timestamp;
     private Date endTimestamp;
 
+// ─────────────────────────────────────────────────────────────────────
+    // STATUS
+    // ─────────────────────────────────────────────────────────────────────
+
     public enum LogStatus {
-        TRIGGERED,   // Conditions met, actions executed
-        SKIPPED,     // Already triggered previously, cooldown active
-        RESTORED,    // Conditions cleared, state reverted
-        NOT_MET,     // Conditions evaluated but not satisfied
-        ERROR,        // Exception during evaluation
-        USER_OVERRIDE
+        /**
+         * Trigger condition false — informational/negative actions fired, no state change.
+         */
+        TRIGGER_FALSE,
+
+        /**
+         * Gate condition true, positive actions fired, branch entered ACTIVE.
+         */
+        TRIGGERED,
+
+        /**
+         * Gate condition false (was ACTIVE), negative actions fired, branch returned IDLE.
+         */
+        RESTORED,
+
+        /**
+         * Gate condition true but outprioritised by a higher-priority branch.
+         * No actions fired, no state change for this branch.
+         */
+        SUPPRESSED,
+
+        /**
+         * Manually triggered by user.
+         */
+        USER_OVERRIDE,
+
+        /**
+         * Condition not met — quiet path, no actions.
+         */
+        NOT_MET,
+
+        /**
+         * Skipped due to lock, snooze, timed-disable, or still active.
+         */
+        SKIPPED,
+
+        /**
+         * An exception occurred during execution.
+         */
+        ERROR
     }
 
     @lombok.Data
@@ -70,5 +108,15 @@ public class AutomationLog {
         private String conditionNodeId;
         private List<String> days;
         private boolean isGateCondition;
+        /**
+         * For gate conditions: which branch/operator this gate belongs to.
+         */
+        private String operatorNodeId;
+
+        /**
+         * If this branch was suppressed by a higher-priority branch,
+         * records the winning operator nodeId.
+         */
+        private String suppressedByOperatorNodeId;
     }
 }
