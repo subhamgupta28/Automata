@@ -2,6 +2,7 @@ import {
     addEdge,
     applyEdgeChanges,
     applyNodeChanges,
+    Controls,
     Panel,
     ReactFlow,
     useEdgesState,
@@ -1135,6 +1136,7 @@ function ActionBoardDetailComponent() {
                         onConnect={onConnect} onInit={setRfInstance}
                         edgeTypes={{'custom-edge': CustomEdge}}
                         defaultViewport={defaultViewport}
+                        fitView
                         onDrop={onDrop} onDragOver={onDragOver}
                         className="validationflow"
                         nodeTypes={{
@@ -1147,6 +1149,7 @@ function ActionBoardDetailComponent() {
                         }}
                     >
                         {/* Bottom-left controls — visible only when automation is open */}
+
                         {hasSelected && (
                             <Panel position="bottom-left" style={{
                                 marginBottom: '20px',
@@ -1189,7 +1192,7 @@ function ActionBoardDetailComponent() {
                                 </Tooltip>
                             </Panel>
                         )}
-
+                        <Controls orientation="horizontal" position="top-left"/>
                         <Panel position="bottom-right" style={{marginBottom: '20px'}}>
                             <Button size="small" variant="outlined" onClick={onSave}
                                     style={{marginLeft: '10px'}}>Save</Button>

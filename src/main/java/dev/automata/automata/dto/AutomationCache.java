@@ -2,6 +2,8 @@ package dev.automata.automata.dto;
 
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.automata.automata.model.Automation;
 import lombok.AllArgsConstructor;
@@ -10,8 +12,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -36,5 +40,34 @@ public class AutomationCache {
     private Date lastStateChangeTime;
 
     private Long conditionFirstTrueAt;
-    private AutomationState state;
+    /**
+     * Top-level state — ACTIVE if ANY branch is active, IDLE otherwise.
+     * Kept for backward-compatible reads; the source of truth for per-branch
+     * logic is {@link #branchStates}.
+     */
+    @Builder.Default
+    private AutomationState state = AutomationState.IDLE;
+
+    private Map<String, AutomationState> branchStates = new HashMap<>();
+// key = gate condition nodeId → IDLE / ACTIVE / HOLDING
+    // ── Branch-state helpers ──────────────────────────────────────────────
+
+    public AutomationState getBranchState(String gateNodeId) {
+        return branchStates.getOrDefault(gateNodeId, AutomationState.IDLE);
+    }
+
+    public void setBranchState(String gateNodeId, AutomationState state) {
+        branchStates.put(gateNodeId, state);
+        // Sync top-level state: ACTIVE if any branch is non-IDLE
+        this.state = branchStates.values().stream()
+                .anyMatch(s -> s != AutomationState.IDLE)
+                ? AutomationState.ACTIVE
+                : AutomationState.IDLE;
+    }
+
+    @JsonIgnore
+    public boolean isAnyBranchActive() {
+        return branchStates.values().stream()
+                .anyMatch(s -> s == AutomationState.ACTIVE || s == AutomationState.HOLDING);
+    }
 }

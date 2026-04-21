@@ -117,6 +117,7 @@ public class Automation {
         private List<NodeRef> previousNodeRef;
     }
 
+    @Builder
     @Getter
     @Setter
     @AllArgsConstructor
@@ -127,6 +128,8 @@ public class Automation {
         private String logicType;
         private List<NodeRef> previousNodeRef;
         private String nodeId;
+        @Builder.Default
+        private int priority = 0;
     }
 
 }

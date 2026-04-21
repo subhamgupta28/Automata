@@ -26,7 +26,7 @@ const style = {
 
 export const And = ({id, data, isConnectable}) => {
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
-    const [conditionGroup, setConditionGroup] = useState(data.operators.conditionGroup);
+    const [conditionGroup, setConditionGroup] = useState(data.operators?.conditionGroup || "none");
 
     const connections = useNodeConnections({
         handleType: 'target'
@@ -117,7 +117,7 @@ export const And = ({id, data, isConnectable}) => {
 
 export const Or = ({id, data, isConnectable}) => {
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
-    const [conditionGroup, setConditionGroup] = useState(data.operators.conditionGroup);
+    const [conditionGroup, setConditionGroup] = useState(data.operators?.conditionGroup || "none");
     const connections = useNodeConnections({
         handleType: 'target'
     });

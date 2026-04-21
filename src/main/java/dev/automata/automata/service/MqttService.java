@@ -44,6 +44,17 @@ public class MqttService {
         messagingTemplate.convertAndSend("/topic/data", map);
     }
 
+    @ServiceActivator(inputChannel = "ackAction")
+    public void ackAction(Map<String, Object> payload) {
+        System.err.println("📡 Ack Action: " + payload);
+        System.err.println("got action message: " + payload);
+        String deviceId = payload.get("device_id").toString();
+        if (deviceId.isEmpty() || deviceId.equals("null")) {
+            System.err.println("Device Id not found");
+        }
+        actionService.ackAction(deviceId, payload);
+    }
+
     @ServiceActivator(inputChannel = "action")
     public void action(Map<String, Object> payload) {
         System.out.println("📡 Action: " + payload);

@@ -43,6 +43,7 @@ public class AutomationDetail {
         private String id;
         @JsonProperty("data")
         private Data data;
+        private boolean animated;
 
         @Getter
         @Setter
@@ -109,6 +110,7 @@ public class AutomationDetail {
                 private List<NodeRef> previousNodeRef;
                 private String nodeId;
                 private String conditionGroup;
+                private int priority = 0;
             }
 
             @Getter
