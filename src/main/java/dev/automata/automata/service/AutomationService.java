@@ -3,6 +3,7 @@ package dev.automata.automata.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.automation.AutomationValidationService;
 import dev.automata.automata.automation.PeriodicCheckEvent;
+import dev.automata.automata.automation.ScheduledAutomationManager;
 import dev.automata.automata.dto.*;
 import dev.automata.automata.model.*;
 import dev.automata.automata.modules.Wled;
@@ -53,6 +54,7 @@ public class AutomationService {
     private final ApplicationEventPublisher eventPublisher;
     private final AutomationLogBuffer logBuffer;
     private final ActionDeliveryTracker deliveryTracker;
+    private final ScheduledAutomationManager scheduledAutomationManager;
 
     @Value("${app.location.lat}")
     private String LOCATION_LAT;
@@ -218,7 +220,7 @@ public class AutomationService {
     @Async
     @EventListener
     public void onPeriodicCheck(PeriodicCheckEvent event) {
-        checkAndExecuteSingleAutomation(event.getAutomation(), event.getRecentData(), "system");
+        checkAndExecuteSingleAutomation(event.getAutomation(), event.getRecentData(), event.getTriggerSource());
     }
 
     @EventListener
@@ -268,15 +270,14 @@ public class AutomationService {
             log.error("Automation service is currently disabled.");
             return;
         }
-        automationRepository.findEnabledForExecution().forEach(a -> {
-            AutomationCache cached = redisService.getAutomationCache(
-                    a.getTrigger().getDeviceId() + ":" + a.getId());
-            Automation toRun = (cached != null && cached.getAutomation() != null)
-                    ? cached.getAutomation() : a;
-            Map<String, Object> recentData =
-                    redisService.getRecentDeviceData(a.getTrigger().getDeviceId());
-            eventPublisher.publishEvent(new PeriodicCheckEvent(this, toRun, recentData));
-        });
+        automationRepository.findEnabledForExecution().stream()
+                .filter(a -> !scheduledAutomationManager.hasOnlyScheduledConditions(a))
+                .forEach(a -> {
+                    AutomationCache cached = redisService.getAutomationCache(a.getTrigger().getDeviceId() + ":" + a.getId());
+                    Automation toRun = (cached != null && cached.getAutomation() != null) ? cached.getAutomation() : a;
+                    Map<String, Object> recentData = redisService.getRecentDeviceData(a.getTrigger().getDeviceId());
+                    eventPublisher.publishEvent(new PeriodicCheckEvent(this, toRun, recentData));
+                });
     }
 
     @Scheduled(fixedRate = 60_000 * 5)
@@ -434,6 +435,7 @@ public class AutomationService {
                     .lastUpdate(new Date())
                     .build());
             log.info("🔄 Cache refreshed: {}", automation.getName());
+            scheduledAutomationManager.refresh(automation);
         } catch (Exception e) {
             log.warn("⚠️ Cache refresh failed for '{}': {}", automation.getName(), e.getMessage());
         }
@@ -497,8 +499,27 @@ public class AutomationService {
 
             // ── Evaluate the full graph ───────────────────────────────────
             ExecutionContext ctx = new ExecutionContext();
-            evaluate(automation, payload, ctx, cache);   // populates ctx for all nodes
+            NodeResult rootResult = evaluate(automation, payload, ctx, cache);   // populates ctx for all nodes
+            List<Automation.Action> noneActions = automation.getActions().stream()
+                    .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
+                    .filter(a -> "none".equalsIgnoreCase(a.getConditionGroup()))
+                    .filter(a -> a.getPreviousNodeRef() != null
+                            && a.getPreviousNodeRef().stream()
+                            .anyMatch(ref -> ctx.getTrueNodes().contains(ref.getNodeId())))
+                    .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
+                    .toList();
 
+            if (!noneActions.isEmpty()) {
+                log.info("⚡ [{}] [{}] Firing {} stateless action(s)",
+                        user, automation.getName(), noneActions.size());
+                executeWithTimeout(noneActions, payload, user, automation.getId(), automation.getName());
+                saveLog(logBuilder
+                        .conditionResults(buildConditionResults(automation, ctx, payload))
+                        .status(AutomationLog.LogStatus.TRIGGERED)
+                        .reason("Stateless actions fired: " + actionSummary(noneActions))
+                        .build());
+                return;
+            }
             // ── Classify conditions ───────────────────────────────────────
             Set<String> operatorIds = automation.getOperators() == null ? Set.of() :
                     automation.getOperators().stream()
@@ -512,10 +533,11 @@ public class AutomationService {
 
             // ── Phase 1: c1 (trigger conditions) ─────────────────────────
             // All trigger conditions combined with implicit AND (same as before).
-            boolean c1True = triggerConditions.stream()
-                    .map(c -> ctx.get(c.getNodeId()))
-                    .filter(Objects::nonNull)
-                    .allMatch(NodeResult::isTrue);
+            boolean c1True = rootResult != null && rootResult.isTrue();
+//            boolean c1True = triggerConditions.stream()
+//                    .map(c -> ctx.get(c.getNodeId()))
+//                    .filter(Objects::nonNull)
+//                    .allMatch(NodeResult::isTrue);
 
 
             if (!c1True) {
@@ -529,7 +551,7 @@ public class AutomationService {
 
                 List<Automation.Action> informational = resolveInformationalActions(automation, ctx);
                 if (!informational.isEmpty()) {
-                    log.info("ℹ️ [{}] trigger condition not met — firing {} informational action(s)",
+                    log.info("ℹ️ [{}] [{}] trigger condition not met — firing {} informational action(s)", user,
                             automation.getName(), informational.size());
                     executeWithTimeout(informational, payload, user, automation.getId(), automation.getName());
                 }
@@ -547,7 +569,7 @@ public class AutomationService {
                     List<Automation.Action> c1NegActions =
                             resolveC1NegativeActions(automation, triggerConditions);
                     if (!c1NegActions.isEmpty()) {
-                        log.info("⏹️ [{}] trigger condition false, reverting all branches — {}",
+                        log.info("⏹️ [{}] [{}] trigger condition false, reverting all branches — {}", user,
                                 automation.getName(), actionSummary(c1NegActions));
                         executeWithTimeout(c1NegActions, payload, user, automation.getId(), automation.getName())
                                 .thenAccept(ok -> {
@@ -623,8 +645,8 @@ public class AutomationService {
                                 ? "⏹️ " + automation.getName() + " — " + describeBranch(branch) + " ended"
                                 : "⏹️ " + automation.getName() + " — " + describeBranch(branch) + " overridden by " + describeBranch(winner);
 
-                        log.info("⏹️ [{}] '{}' reverting — {}",
-                                automation.getName(), describeBranch(branch), reason);
+                        log.info("⏹️ [{}] [{}] '{}' reverting — {}", user,
+                                automation.getName(), describeBranch(branch), revertMsg);
 
                         final AutomationCache finalCache = cache;
                         final GateBranch fb = branch;
@@ -642,7 +664,7 @@ public class AutomationService {
                                                 redisService.delete("RUNNING:" + automation.getId()
                                                         + ":" + fb.gateNodeId());
                                                 notificationService.sendNotification(automation.getName() + " — " + reason, "info");
-                                                log.info("🔁 [{}] '{}' → IDLE — {}",
+                                                log.info("🔁 [{}] [{}] '{}' → IDLE — {}", user,
                                                         automation.getName(), describeBranch(fb), reason);
                                             }
                                         });
@@ -664,7 +686,7 @@ public class AutomationService {
                                     (now.getTime() - cache.getPreviousExecutionTime().getTime()) / 1000;
                             long intervalSec = gc.getIntervalMinutes() * 60L;
                             if (secondsSinceLast < intervalSec) {
-                                log.debug("⏳ [{}] '{}' — interval cooldown, {}s until next run",
+                                log.debug("⏳ [{}] [{}] '{}' — interval cooldown, {}s until next run", user,
                                         automation.getName(), describeBranch(branch),
                                         intervalSec - secondsSinceLast);
                                 continue;
@@ -674,7 +696,7 @@ public class AutomationService {
                         final AutomationCache finalCache = cache;
                         final GateBranch fb = branch;
 
-                        log.info("🚀 [{}] Branch '{}' triggering — {} (priority {})",
+                        log.info("🚀 [{}] [{}] Branch '{}' triggering — {} (priority {})", user,
                                 automation.getName(), branch.gateNodeId(),
                                 describeBranch(branch), branch.priority());
 
@@ -683,12 +705,17 @@ public class AutomationService {
                                         user, automation.getId(), automation.getName())
                                         .thenAccept(ok -> {
                                             if (!Boolean.TRUE.equals(ok)) {
-                                                log.warn("⚠️ [{}] '{}' — execution failed",
+                                                log.warn("⚠️ [{}] [{}] '{}' — execution failed", user,
                                                         automation.getName(), describeBranch(fb));
                                                 return;
                                             }
                                             boolean hasDuration =
                                                     fb.gateCondition().getDurationMinutes() > 0;
+
+                                            boolean hasNegatives = !branch.negativeActions().isEmpty();
+
+                                            // Only go ACTIVE/HOLDING if there's something to revert to
+
                                             AutomationState nextState = hasDuration
                                                     ? AutomationState.HOLDING
                                                     : AutomationState.ACTIVE;
@@ -703,9 +730,11 @@ public class AutomationService {
                                                         + ":" + fb.gateNodeId();
                                                 redisService.setWithExpiry(runKey, "active",
                                                         fb.gateCondition().getDurationMinutes() * 60L);
-                                                log.info("⏱️ [{}] '{}' — active for {} min",
+                                                log.info("⏱️ [{}] [{}] '{}' — active for {} min", user,
                                                         automation.getName(), describeBranch(fb),
                                                         fb.gateCondition().getDurationMinutes());
+                                            } else if (hasNegatives) {
+                                                finalCache.setBranchState(fb.gateNodeId(), AutomationState.ACTIVE);
                                             }
 
                                             redisService.setAutomationCache(cacheKey, finalCache);
@@ -714,12 +743,17 @@ public class AutomationService {
                         tickFutures.add(triggerFuture);
                         anyBranchWasOrIsActive = true;
 
-                    } else if (gateTrue && !isWinner) {
+                    } else if (gateTrue || !isWinner) {
                         // ── Suppressed by higher-priority branch ──────────
-                        log.debug("⏸️ [{}] '{}' suppressed by '{}'",
+                        log.debug("⏸️ [{}] [{}] '{}' suppressed by '{}'", user,
                                 automation.getName(), describeBranch(branch),
                                 winner != null ? describeBranch(winner) : "?");
-                        saveLog(logBuilder
+                        saveLog(AutomationLog.builder()
+                                .automationId(automation.getId())
+                                .automationName(automation.getName())
+                                .user(user)
+                                .triggerDeviceId(deviceId)
+                                .timestamp(now)
                                 .status(AutomationLog.LogStatus.SUPPRESSED)
                                 .reason(describeBranch(branch) + " matched but suppressed — "
                                         + (winner != null ? describeBranch(winner) : "unknown")
@@ -737,7 +771,7 @@ public class AutomationService {
                         final AutomationCache finalCache = cache;
                         final GateBranch fb = branch;
 
-                        log.info("⏱️ [{}] '{}' — duration expired, reverting",
+                        log.info("⏱️ [{}] [{}] '{}' — duration expired, reverting", user,
                                 automation.getName(), describeBranch(branch));
 
                         CompletableFuture<Void> expiryRevert =
@@ -750,7 +784,7 @@ public class AutomationService {
                                                 finalCache.setLastUpdate(new Date());
                                                 redisService.setAutomationCache(cacheKey, finalCache);
                                                 notificationService.sendNotification(automation.getName() + " — " + describeBranch(fb) + " timer expired", "info");
-                                                log.info("🔁 [{}] '{}' → IDLE (timer expired)",
+                                                log.info("🔁 [{}] [{}] '{}' → IDLE (timer expired)", user,
                                                         automation.getName(), describeBranch(fb));
                                             }
                                         });
@@ -767,7 +801,7 @@ public class AutomationService {
                 List<Automation.Action> c1Fallback =
                         resolveC1FallbackActions(automation, ctx, triggerConditions);
                 if (!c1Fallback.isEmpty()) {
-                    log.info("ℹ️ [{}] trigger met but no time window matched — firing fallback",
+                    log.info("ℹ️ [{}] [{}] trigger met but no time window matched — firing fallback", user,
                             automation.getName());
                     executeWithTimeout(c1Fallback, payload, user, automation.getId(), automation.getName());
                     saveLog(logBuilder
@@ -825,10 +859,20 @@ public class AutomationService {
 
         if (currentState == AutomationState.IDLE && conditionNow) {
             final AutomationCache fc = cache;
+
+            // Detect stateless automations: no negative actions defined means
+            // this is a fire-and-forget event (knock, button press, etc.)
+            // Don't advance to ACTIVE — stay IDLE so next event fires again.
+            boolean hasNegativeActions = !negativeActions.isEmpty();
+
             executeWithTimeout(positiveActions, payload, user, automation.getId(), automation.getName())
                     .thenAccept(ok -> {
                         if (!Boolean.TRUE.equals(ok)) return;
-                        fc.setState(AutomationState.ACTIVE);
+                        if (hasNegativeActions) {
+                            // Stateful — advance to ACTIVE, wait for revert
+                            fc.setState(AutomationState.ACTIVE);
+                        }
+                        // Stateless — stay IDLE, ready for next event
                         fc.setTriggeredPreviously(true);
                         fc.setPreviousExecutionTime(now);
                         fc.setLastUpdate(new Date());
@@ -836,7 +880,9 @@ public class AutomationService {
                         notificationService.sendNotification(automation.getName() + " triggered", "success");
                     });
             logBuilder.status(AutomationLog.LogStatus.TRIGGERED)
-                    .reason("Condition met — " + actionSummary(positiveActions) + " fired");
+                    .reason((hasNegativeActions ? "Stateful" : "Stateless")
+                            + " — condition met, " + actionSummary(positiveActions) + " fired");
+
 
         } else if ((currentState == AutomationState.ACTIVE
                 || currentState == AutomationState.HOLDING) && !conditionNow) {
@@ -1173,6 +1219,7 @@ public class AutomationService {
             return condition.getValue().equals(value);
 
         return switch (condition.getCondition()) {
+            case "equal" -> condition.getValue().equals(value);
             case "above" -> wasActive
                     ? v > (Double.parseDouble(condition.getValue()) - buffer)
                     : v > Double.parseDouble(condition.getValue());

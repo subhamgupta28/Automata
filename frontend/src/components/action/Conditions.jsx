@@ -1,15 +1,16 @@
-import {Card, Typography} from "@mui/material";
+import {Chip, Typography} from "@mui/material";
 import {Handle, Position, useNodeConnections, useReactFlow} from "@xyflow/react";
 import AddIcon from "@mui/icons-material/Add";
 import React, {useEffect, useState} from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
 import IconButton from "@mui/material/IconButton";
+import NumberSpinner from "../charts/NumberSpinner.jsx";
 
 
 const conditionStyle = {
-    padding: '20px',
+    padding: '8px',
     borderRadius: '10px',
-    width: '150px',
+    // width: '200px',
     background: 'transparent',
     backgroundColor: 'rgb(0 0 0 / 28%)',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
@@ -26,6 +27,7 @@ const style = {
 
 export const And = ({id, data, isConnectable}) => {
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
+    const [priority, setPriority] = useState(data.operators?.priority || 5);
     const [conditionGroup, setConditionGroup] = useState(data.operators?.conditionGroup || "none");
 
     const connections = useNodeConnections({
@@ -61,10 +63,11 @@ export const And = ({id, data, isConnectable}) => {
                 logicType: 'AND',
                 type: "operator",
                 previousNodeRef: previousNodes,
+                priority,
                 conditionGroup
             }
         });
-    }, [connections]);
+    }, [connections, priority]);
 
     const deleteNode = () => {
         setNodes(nodes => nodes.filter(n => n.id !== id));
@@ -72,11 +75,13 @@ export const And = ({id, data, isConnectable}) => {
     };
 
     return (
-        <Card style={{
-            ...conditionStyle,
-            border: `2px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`
-        }}>
-
+        <div>
+            <div style={{display: 'flex', justifyContent: 'center', gap: '6px', margin: '4px', alignItems: 'center'}}>
+                <Chip size="small" label={"Priority: " + priority}> </Chip>
+                <IconButton onClick={() => deleteNode(id)}>
+                    <DeleteIcon sx={{color: '#ff0000'}}/>
+                </IconButton>
+            </div>
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="target"
@@ -89,14 +94,23 @@ export const And = ({id, data, isConnectable}) => {
                 left: 0,
                 transform: 'translate(-50%, -50%)'
             }} className='react-flow__handle'/>
-            <IconButton onClick={deleteNode} style={{position: 'absolute', right: 10}}>
-                <DeleteIcon/>
-            </IconButton>
+            <div style={{
+                ...conditionStyle,
+                border: `2px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`
+            }}>
+                <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px'}}>
+                    <Typography fontWeight="bold">AND</Typography>
+                    <NumberSpinner
+                        label="Priority"
+                        min={0}
+                        max={10}
+                        value={priority}
+                        size="small"
+                        onChange={setPriority}
+                    />
+                </div>
+            </div>
 
-            <Typography fontWeight="bold">AND</Typography>
-            <Typography variant="caption">
-                {connections.length} inputs
-            </Typography>
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="source"
@@ -110,13 +124,14 @@ export const And = ({id, data, isConnectable}) => {
                 transform: 'translate(50%, -50%)'
             }} className='react-flow__handle'/>
 
-        </Card>
+        </div>
     );
 };
 
 
 export const Or = ({id, data, isConnectable}) => {
     const {updateNodeData, setNodes, setEdges} = useReactFlow();
+    const [priority, setPriority] = useState(data.operators?.priority || 5);
     const [conditionGroup, setConditionGroup] = useState(data.operators?.conditionGroup || "none");
     const connections = useNodeConnections({
         handleType: 'target'
@@ -148,10 +163,11 @@ export const Or = ({id, data, isConnectable}) => {
                 logicType: 'OR',
                 type: "operator",
                 previousNodeRef: previousNodes,
+                priority,
                 conditionGroup
             }
         });
-    }, [connections]);
+    }, [connections, priority]);
 
     const deleteNode = () => {
         setNodes(nodes => nodes.filter(n => n.id !== id));
@@ -159,10 +175,14 @@ export const Or = ({id, data, isConnectable}) => {
     };
 
     return (
-        <Card style={{
-            ...conditionStyle,
-            border: `2px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`
-        }}>
+        <div>
+
+            <div style={{display: 'flex', justifyContent: 'center', gap: '6px', margin: '4px', alignItems: 'center'}}>
+                <Chip size="small" label={"Priority: " + priority}> </Chip>
+                <IconButton onClick={() => deleteNode(id)}>
+                    <DeleteIcon sx={{color: '#ff0000'}}/>
+                </IconButton>
+            </div>
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
                 type="target"
@@ -175,15 +195,24 @@ export const Or = ({id, data, isConnectable}) => {
                 left: 0,
                 transform: 'translate(-50%, -50%)'
             }} className='react-flow__handle'/>
+            <div style={{
+                ...conditionStyle,
+                border: `2px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`
+            }}>
+                <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '10px'}}>
+                    <Typography fontWeight="bold">OR</Typography>
+                    <NumberSpinner
+                        label="Priority"
+                        min={0}
+                        max={10}
+                        value={priority}
+                        size="small"
+                        onChange={setPriority}
+                    />
 
-            <IconButton onClick={deleteNode} style={{position: 'absolute', right: 0}}>
-                <DeleteIcon/>
-            </IconButton>
+                </div>
+            </div>
 
-            <Typography fontWeight="bold">OR</Typography>
-            <Typography variant="caption">
-                {connections.length} inputs
-            </Typography>
 
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
@@ -197,6 +226,6 @@ export const Or = ({id, data, isConnectable}) => {
                 right: 0,
                 transform: 'translate(50%, -50%)'
             }} className='react-flow__handle'/>
-        </Card>
+        </div>
     );
 };
