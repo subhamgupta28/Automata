@@ -1,307 +1,79 @@
 [
   {
     "_id": {
-      "$oid": "688cc888c82e72169f917631"
+      "$oid": "689b7d3f948aef4ed997ec34"
     },
     "_class": "dev.automata.automata.model.Automation",
     "actions": [
       {
-        "key": "bright",
+        "key": "alert",
+        "deviceId": "678d3ea52d39db1f7a8d8b43",
+        "data": "warning",
+        "name": "System",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-positive:node_condition_1"
+          }
+        ],
+        "nodeId": "node_action_6"
+      },
+      {
+        "key": "onOff",
         "deviceId": "6955a0bf597f2017005e2b0d",
-        "data": "140",
+        "data": "true",
         "name": "Monitor Light",
         "isEnabled": true,
         "revert": false,
         "conditionGroup": "positive",
-        "order": 6,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_16",
-            "handle": "out:cond-positive:node_condition_16"
-          }
-        ],
-        "nodeId": "node_action_4"
-      },
-      {
-        "key": "bright",
-        "deviceId": "67571bf46f2d631aa77cc632",
-        "data": "100",
-        "name": "Light Strip",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 5,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_16",
-            "handle": "out:cond-positive:node_condition_16"
-          }
-        ],
-        "nodeId": "node_action_5"
-      },
-      {
-        "key": "bright",
-        "deviceId": "6955a0bf597f2017005e2b0d",
-        "data": "1",
-        "name": "Monitor Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 3,
-        "delaySeconds": 1,
+        "order": 1,
+        "delaySeconds": 0,
         "previousNodeRef": [
           {
             "nodeId": "node_condition_1",
-            "handle": "out:cond-negative:node_condition_1"
-          }
-        ],
-        "nodeId": "node_action_7"
-      },
-      {
-        "key": "bright",
-        "deviceId": "67571bf46f2d631aa77cc632",
-        "data": "1",
-        "name": "Light Strip",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 2,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-negative:node_condition_1"
+            "handle": "out:cond-positive:node_condition_1"
           }
         ],
         "nodeId": "node_action_8"
       },
       {
-        "key": "preset",
+        "key": "onOff",
         "deviceId": "67571bf46f2d631aa77cc632",
-        "data": "3",
+        "data": "true",
         "name": "Light Strip",
         "isEnabled": true,
         "revert": false,
         "conditionGroup": "positive",
-        "order": 3,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_16",
-            "handle": "out:cond-positive:node_condition_16"
-          }
-        ],
-        "nodeId": "node_action_10"
-      },
-      {
-        "key": "preset",
-        "deviceId": "6955a0bf597f2017005e2b0d",
-        "data": "8",
-        "name": "Monitor Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
         "order": 1,
-        "delaySeconds": 1,
+        "delaySeconds": 0,
         "previousNodeRef": [
           {
-            "nodeId": "node_condition_16",
-            "handle": "out:cond-positive:node_condition_16"
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-positive:node_condition_1"
           }
         ],
         "nodeId": "node_action_12"
-      },
-      {
-        "key": "preset",
-        "deviceId": "67571bf46f2d631aa77cc632",
-        "data": "10",
-        "name": "Light Strip",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 5,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-negative:node_condition_1"
-          }
-        ],
-        "nodeId": "node_action_13"
-      },
-      {
-        "key": "preset",
-        "deviceId": "6955a0bf597f2017005e2b0d",
-        "data": "5",
-        "name": "Monitor Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 6,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-negative:node_condition_1"
-          }
-        ],
-        "nodeId": "node_action_15"
-      },
-      {
-        "key": "preset",
-        "deviceId": "67571bf46f2d631aa77cc632",
-        "data": "6",
-        "name": "Light Strip",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_21",
-            "handle": "out:cond-positive:node_condition_21"
-          }
-        ],
-        "nodeId": "node_action_25"
-      },
-      {
-        "key": "preset",
-        "deviceId": "6955a0bf597f2017005e2b0d",
-        "data": "1",
-        "name": "Monitor Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 2,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_21",
-            "handle": "out:cond-positive:node_condition_21"
-          }
-        ],
-        "nodeId": "node_action_26"
-      },
-      {
-        "key": "bright",
-        "deviceId": "67571bf46f2d631aa77cc632",
-        "data": "55",
-        "name": "Light Strip",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_21",
-            "handle": "out:cond-positive:node_condition_21"
-          }
-        ],
-        "nodeId": "node_action_27"
-      },
-      {
-        "key": "bright",
-        "deviceId": "6955a0bf597f2017005e2b0d",
-        "data": "60",
-        "name": "Monitor Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_21",
-            "handle": "out:cond-positive:node_condition_21"
-          }
-        ],
-        "nodeId": "node_action_28"
-      },
-      {
-        "key": "bright",
-        "deviceId": "6955a0bf597f2017005e2b0d",
-        "data": "1",
-        "name": "Monitor Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_16",
-            "handle": "out:cond-negative:node_condition_16"
-          }
-        ],
-        "nodeId": "node_action_29"
-      },
-      {
-        "key": "bright",
-        "deviceId": "67571bf46f2d631aa77cc632",
-        "data": "1",
-        "name": "Light Strip",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_16",
-            "handle": "out:cond-negative:node_condition_16"
-          }
-        ],
-        "nodeId": "node_action_30"
-      },
-      {
-        "key": "fanOn",
-        "deviceId": "673b8250da1ad94ac1d28280",
-        "data": "true",
-        "name": "Fan",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_16",
-            "handle": "out:cond-positive:node_condition_16"
-          }
-        ],
-        "nodeId": "node_action_31"
-      },
-      {
-        "key": "fanOn",
-        "deviceId": "673b8250da1ad94ac1d28280",
-        "data": "false",
-        "name": "Fan",
-        "isEnabled": false,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [],
-        "nodeId": "node_action_33"
       }
     ],
     "conditions": [
       {
         "nodeId": "node_condition_1",
-        "condition": "range",
+        "condition": "equal",
         "valueType": "int",
-        "above": "5",
-        "below": "100",
+        "above": "0",
+        "below": "0",
         "value": "1",
-        "time": "01:50:00 AM",
-        "triggerKey": "range",
-        "isExact": false,
-        "fromTime": "04:28:31 PM",
-        "toTime": "04:28:31 PM",
+        "time": "07:00:00 AM",
+        "triggerKey": "knock",
+        "isExact": true,
+        "scheduleType": "at",
+        "fromTime": "08:00:47 AM",
+        "toTime": "08:30:47 PM",
         "days": [],
         "offsetMinutes": 0,
         "intervalMinutes": 0,
@@ -313,117 +85,25 @@
             "handle": "rootNode:triggerNode:node_trigger_0"
           }
         ]
-      },
-      {
-        "nodeId": "node_condition_16",
-        "condition": "scheduled",
-        "valueType": "int",
-        "above": "0",
-        "below": "0",
-        "value": "0",
-        "time": "02:20:05 AM",
-        "triggerKey": "",
-        "isExact": false,
-        "scheduleType": "range",
-        "fromTime": "01:05:05 PM",
-        "toTime": "01:00:05 AM",
-        "days": [
-          "Mon",
-          "Tue",
-          "Wed",
-          "Thu",
-          "Fri",
-          "Sat",
-          "Sun"
-        ],
-        "offsetMinutes": 0,
-        "intervalMinutes": 0,
-        "durationMinutes": 0,
-        "enabled": true,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_or_22",
-            "handle": "out:operator:node_or_22"
-          }
-        ]
-      },
-      {
-        "nodeId": "node_condition_21",
-        "condition": "scheduled",
-        "valueType": "int",
-        "above": "0",
-        "below": "0",
-        "value": "0",
-        "time": "02:20:05 AM",
-        "triggerKey": "",
-        "isExact": false,
-        "scheduleType": "range",
-        "fromTime": "10:00:05 AM",
-        "toTime": "01:00:05 PM",
-        "days": [
-          "Mon",
-          "Tue",
-          "Wed",
-          "Thu",
-          "Fri",
-          "Sat",
-          "Sun"
-        ],
-        "solarType": "sunset",
-        "offsetMinutes": 0,
-        "intervalMinutes": 30,
-        "durationMinutes": 0,
-        "enabled": true,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_or_34",
-            "handle": "out:operator:node_or_34"
-          }
-        ]
       }
     ],
     "isActive": false,
     "isEnabled": true,
-    "name": "Light On",
-    "operators": [
-      {
-        "type": "operator",
-        "logicType": "OR",
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-positive:node_condition_1"
-          }
-        ],
-        "nodeId": "node_or_22",
-        "priority": 0
-      },
-      {
-        "type": "operator",
-        "logicType": "OR",
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-positive:node_condition_1"
-          }
-        ],
-        "nodeId": "node_or_34",
-        "priority": 0
-      }
-    ],
+    "name": "Knock 1",
+    "operators": [],
     "trigger": {
       "deviceId": "69d0182254593a2915884c46",
       "type": "state",
       "keys": [
-        "range"
+        "knock"
       ],
-      "name": "Light On",
-      "priority": 10,
+      "name": "Knock 1",
+      "priority": 8,
       "nodeId": "node_trigger_0"
     },
     "triggerDeviceType": "sensor",
     "updateDate": {
-      "$date": "2026-04-19T10:29:36.425Z"
+      "$date": "2026-04-23T05:37:36.939Z"
     }
   }
 ]

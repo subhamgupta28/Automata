@@ -1081,6 +1081,7 @@ function ActionBoardDetailComponent() {
         const deduped = new Map();
         for (const edge of cleanEdges) {
             const k = `${edge.source}→${edge.target}`;
+            edge.animated = true;
             if (!deduped.has(k) || edge.targetHandle?.includes('action:in:')) deduped.set(k, edge);
         }
         setNodes(detail.nodes || []);
