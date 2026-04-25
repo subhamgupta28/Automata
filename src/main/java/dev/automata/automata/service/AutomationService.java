@@ -345,7 +345,7 @@ public class AutomationService {
                     automationBuilder.trigger(new Automation.Trigger(
                             t.getDeviceId(), t.getType(), t.getValue(), t.getKey(),
                             t.getKeys().stream().map(k -> k.getKey()).toList(),
-                            t.getName(), t.getPriority(), t.getNodeId()));
+                            t.getName(), t.getPriority(), t.getNodeId(), t.getSources()));
                     automationBuilder.name(t.getName());
                 });
 
@@ -371,7 +371,7 @@ public class AutomationService {
                                 c.getValue(), c.getTime(), c.getTriggerKey(), c.getIsExact(),
                                 c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays(),
                                 c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(),
-                                c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef()))
+                                c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef(), c.getDeviceId()))
                         .collect(Collectors.toList()));
 
         automationBuilder.operators(
@@ -384,9 +384,14 @@ public class AutomationService {
                                 c.getPriority()))          // ← priority preserved
                         .collect(Collectors.toList()));
 
+
         var automation = automationBuilder.build();
-        automation.setTriggerDeviceType(
-                mainService.getDevice(automation.getTrigger().getDeviceId()).getType());
+        List<String> subscribers = automation.getTrigger().getSources().stream()
+                .filter(s -> "primary".equals(s.getRole()))
+                .map(TriggerSource::getDeviceId)
+                .toList();
+        automation.setSubscriberDeviceIds(subscribers);
+        automation.setTriggerDeviceType(mainService.getDevice(automation.getTrigger().getDeviceId()).getType());
 
         var saved = automationRepository.save(automation);
         detail.setId(saved.getId());
@@ -1200,10 +1205,22 @@ public class AutomationService {
     // ═════════════════════════════════════════════════════════════════════
 
     private boolean evaluateCondition(Automation automation, Automation.Condition condition,
-                                      Map<String, Object> payload, boolean wasActive) {
+                                      Map<String, Object> primaryPayload, boolean wasActive) {
         if ("scheduled".equals(condition.getCondition()))
             return isCurrentTimeWithDailyTracking(automation, condition);
 
+        String condDeviceId = condition.getDeviceId();
+        Map<String, Object> payload;
+
+        if (condDeviceId != null && !condDeviceId.isBlank()
+                && !condDeviceId.equals(automation.getTrigger().getDeviceId())) {
+            // Secondary device — fetch latest from Redis cache
+            payload = redisService.getRecentDeviceData(condDeviceId);
+            if (payload == null) payload = Map.of();
+        } else {
+            // Primary device — use the incoming payload
+            payload = primaryPayload;
+        }
         String key = condition.getTriggerKey();
         if (key == null || !payload.containsKey(key)) return false;
 

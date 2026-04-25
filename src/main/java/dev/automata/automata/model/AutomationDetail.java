@@ -138,6 +138,7 @@ public class AutomationDetail {
                 private String value;
                 private int priority;
                 private String nodeId;
+                private List<TriggerSource> sources;
 
                 @Getter
                 @Setter
@@ -177,6 +178,7 @@ public class AutomationDetail {
                 private int durationMinutes;
                 private boolean enabled = false;
                 private List<NodeRef> previousNodeRef;
+                private String deviceId;
             }
 
             @Getter

@@ -31,7 +31,7 @@ public class Automation {
     private Long snoozeTime;
     private String triggerDeviceType;
     private Date updateDate;
-
+    private List<String> subscriberDeviceIds;
 
     private List<String> targetDeviceIds;
 
@@ -68,6 +68,7 @@ public class Automation {
         private String name;
         private int priority;
         private String nodeId;
+        private List<TriggerSource> sources;
     }
 
     @Getter
@@ -115,6 +116,7 @@ public class Automation {
         private int durationMinutes;
         private boolean enabled = false;
         private List<NodeRef> previousNodeRef;
+        private String deviceId;
     }
 
     @Builder
