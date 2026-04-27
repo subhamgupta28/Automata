@@ -466,4 +466,46 @@ public class AutomationController {
     public ResponseEntity<Map<String, Object>> status(@PathVariable String id) {
         return ResponseEntity.ok(automationUtils.getSnoozeStatus(id));
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // COPY
+    // POST /api/automations/{id}/copy
+    //
+    // Creates a deep copy of the automation with:
+    //   - New MongoDB ID (so it's a fully independent document)
+    //   - Name suffixed with " (copy)"
+    //   - isEnabled = false (must be deliberately enabled after review)
+    //   - Fresh updateDate
+    //   - New AutomationDetail with matching new ID
+    //   - Version snapshot for the new automation
+    //   - Does NOT copy logs or version history from the original
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @PostMapping("/{id}/copy")
+    public ResponseEntity<Map<String, Object>> copy(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "api") String user) {
+        return ResponseEntity.ok(automationService.copyAutomation(id, user));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DELETE
+    // DELETE /api/automations/{id}
+    //
+    // Removes the automation and ALL associated data:
+    //   - Automation document
+    //   - AutomationDetail (graph layout)
+    //   - AutomationLog entries
+    //   - AutomationVersion history
+    //   - Redis cache keys for this automation
+    //   - Cancels any ScheduledAutomationManager jobs
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, String>> delete(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "api") String user) {
+
+        return ResponseEntity.ok(automationService.deleteAutomation(id, user));
+    }
 }
