@@ -57,6 +57,13 @@ import {ActionNode} from "./ActionNode.jsx";
 import {ConditionNode} from "./ConditionNode.jsx";
 import {ValueReaderNode} from "./ValueReaderNode.jsx";
 import {And, Or} from "./Conditions.jsx";
+import {
+    AbTestDialog,
+    AutomationListItemWithActions,
+    AutomationPanelButtons,
+    SceneManagerDialog,
+    VersionHistoryDialog
+} from "./AutomationFeatures.jsx";
 
 // ─── Node palette styles ──────────────────────────────────────────────────────
 const triggerStyle = {padding: '10px', borderRadius: '5px', width: '100%', border: '2px solid #6DBF6D', cursor: 'grab'};
@@ -1015,6 +1022,9 @@ function ActionBoardDetailComponent() {
     const [rfInstance, setRfInstance] = useState(null);
     const [snoozeOpen, setSnoozeOpen] = useState(false);
     const [testOpen, setTestOpen] = useState(false);
+    const [sceneOpen, setSceneOpen] = useState(false);
+    const [abTestOpen, setAbTestOpen] = useState(false);
+    const [versionOpen, setVersionOpen] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -1191,6 +1201,14 @@ function ActionBoardDetailComponent() {
                                         ⏸ Snooze
                                     </Button>
                                 </Tooltip>
+
+                                <AutomationPanelButtons hasSelected={hasSelected}
+                                                        selectedAutomation={selectedAutomation}
+                                                        onScene={() => setSceneOpen(prev => !prev)}
+                                                        onAbTest={() => setAbTestOpen(prev => !prev)}
+                                                        onTest={() => setTestOpen((prev) => !prev)}
+                                                        onVersion={() => setVersionOpen((prev) => !prev)}
+                                />
                             </Panel>
                         )}
                         <Controls orientation="horizontal" position="top-left"/>
@@ -1200,6 +1218,7 @@ function ActionBoardDetailComponent() {
                             <Button size="small" variant="outlined" onClick={clearBoard}
                                     style={{marginLeft: '10px'}}>Clear</Button>
                         </Panel>
+
                     </ReactFlow>
                 </Box>
 
@@ -1243,8 +1262,18 @@ function ActionBoardDetailComponent() {
                             <Box sx={{flex: 1, overflow: 'auto', scrollbarWidth: 'none', mt: '16px', p: '10px'}}>
                                 <Typography>Saved Automations</Typography>
                                 <List>
-                                    {automations.map(a => <AutomationListItem key={a.id} a={a}
-                                                                              onOpen={openAutomation}/>)}
+                                    {automations.map(a => (
+                                        <AutomationListItemWithActions
+                                            key={a.id}
+                                            a={a}
+                                            onOpen={openAutomation}
+                                            onRefresh={fetchData}
+                                            onDeleted={(deletedId) => {
+                                                // If the deleted automation is currently open in the editor, clear it
+                                                if (selectedAutomation?.id === deletedId) clearBoard();
+                                            }}
+                                        />
+                                    ))}
                                 </List>
                             </Box>
                         </CardContent>
@@ -1252,7 +1281,16 @@ function ActionBoardDetailComponent() {
                 </Box>
             </Stack>
 
+            <SceneManagerDialog open={sceneOpen} automation={selectedAutomation} automations={automations}
+                                onClose={() => setSceneOpen(false)}/>
+            <AbTestDialog open={abTestOpen} automation={selectedAutomation} automations={automations}
+                          onClose={() => setAbTestOpen(false)}/>
+            <VersionHistoryDialog open={versionOpen} automation={selectedAutomation}
+                                  onClose={() => setVersionOpen(false)} onRollback={() => {
+                openAutomation(selectedAutomation);
+            }}/>
             {/* Dialogs at root — centered in full viewport */}
+
             {hasSelected && (
                 <>
                     <SnoozeDialog

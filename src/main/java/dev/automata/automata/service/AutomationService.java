@@ -1,16 +1,13 @@
 package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.automata.automata.automation.AutomationValidationService;
-import dev.automata.automata.automation.PeriodicCheckEvent;
-import dev.automata.automata.automation.ScheduledAutomationManager;
+import dev.automata.automata.automation.*;
 import dev.automata.automata.dto.*;
 import dev.automata.automata.model.*;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.MessageChannel;
@@ -21,13 +18,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -55,12 +47,8 @@ public class AutomationService {
     private final AutomationLogBuffer logBuffer;
     private final ActionDeliveryTracker deliveryTracker;
     private final ScheduledAutomationManager scheduledAutomationManager;
-
-    @Value("${app.location.lat}")
-    private String LOCATION_LAT;
-    @Value("${app.location.long}")
-    private String LOCATION_LONG;
-
+    private final AutomationEngine automationEngine;
+    private final AutomationVersionService automationVersionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String TOPIC_ACTION = "action/";
@@ -180,7 +168,7 @@ public class AutomationService {
         }
 
         automationRepository.findByTrigger_DeviceId(deviceId)
-                .forEach(a -> checkAndExecuteSingleAutomation(a, payload, user));
+                .forEach(a -> eventPublisher.publishEvent(new PeriodicCheckEvent(this, a, payload, "user")));
 
         return "Action successfully sent!";
     }
@@ -266,10 +254,6 @@ public class AutomationService {
 
     @Scheduled(fixedRate = 12_000)
     public void triggerPeriodicAutomations() {
-        if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) {
-            log.error("Automation service is currently disabled.");
-            return;
-        }
         automationRepository.findEnabledForExecution().stream()
                 .filter(a -> !scheduledAutomationManager.hasOnlyScheduledConditions(a))
                 .forEach(a -> {
@@ -328,6 +312,22 @@ public class AutomationService {
 
     public String saveAutomationDetail(AutomationDetail detail) {
         return saveAutomationDetailInternal(detail);
+    }
+
+
+    /**
+     * Explicit save with version annotation — used when user provides a change note.
+     */
+    public String saveAutomationDetailAnnotated(AutomationDetail detail,
+                                                String savedBy,
+                                                String changeNote) {
+        String result = saveAutomationDetailInternal(detail);
+        if ("success".equals(result)) {
+            // Update the just-created snapshot with the user's annotation
+            automationRepository.findById(detail.getId()).ifPresent(a ->
+                    automationVersionService.snapshot(a, detail, savedBy, changeNote));
+        }
+        return result;
     }
 
     private String saveAutomationDetailInternal(AutomationDetail detail) {
@@ -400,6 +400,10 @@ public class AutomationService {
 
         notificationService.sendNotification("Automation saved successfully", "success");
         refreshCacheForAutomation(saved);
+
+        // 3.9 — snapshot this version for history / rollback
+        automationVersionService.snapshot(saved, detail, "system", null);
+
         return "success";
     }
 
@@ -411,7 +415,7 @@ public class AutomationService {
         // trigger conditions (non-gate) that are NOT "scheduled"
         return automation.getConditions().stream()
                 .filter(Automation.Condition::isEnabled)
-                .filter(c -> !isGateCondition(c, operatorIds))
+                .filter(c -> !automationEngine.isGateCondition(c, operatorIds))
                 .anyMatch(c -> !"scheduled".equals(c.getCondition()));
     }
 
@@ -454,6 +458,14 @@ public class AutomationService {
     public void checkAndExecuteSingleAutomation(Automation automation,
                                                 Map<String, Object> data,
                                                 String user) {
+
+        if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) {
+            log.error("Automation service is currently disabled.");
+            if ("user".equals(user)) {
+                notificationService.sendNotification("Automation Service is disabled.", "info");
+            }
+            return;
+        }
         Date now = new Date();
         String deviceId = automation.getTrigger().getDeviceId();
         String cacheKey = deviceId + ":" + automation.getId();
@@ -504,7 +516,7 @@ public class AutomationService {
 
             // ── Evaluate the full graph ───────────────────────────────────
             ExecutionContext ctx = new ExecutionContext();
-            NodeResult rootResult = evaluate(automation, payload, ctx, cache);   // populates ctx for all nodes
+            NodeResult rootResult = automationEngine.evaluate(automation, payload, ctx, cache);   // populates ctx for all nodes
             List<Automation.Action> noneActions = automation.getActions().stream()
                     .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
                     .filter(a -> "none".equalsIgnoreCase(a.getConditionGroup()))
@@ -533,7 +545,7 @@ public class AutomationService {
 
             List<Automation.Condition> triggerConditions = automation.getConditions().stream()
                     .filter(Automation.Condition::isEnabled)
-                    .filter(c -> !isGateCondition(c, operatorIds))
+                    .filter(c -> !automationEngine.isGateCondition(c, operatorIds))
                     .toList();
 
             // ── Phase 1: c1 (trigger conditions) ─────────────────────────
@@ -564,7 +576,7 @@ public class AutomationService {
                 // Revert active branches using c1-negative actions if any branch was active
                 boolean anyWasActive = automation.getConditions().stream()
                         .filter(Automation.Condition::isEnabled)
-                        .filter(c -> isGateCondition(c, operatorIds))
+                        .filter(c -> automationEngine.isGateCondition(c, operatorIds))
                         .anyMatch(c -> {
                             AutomationState s = cache.getBranchState(c.getNodeId());
                             return s == AutomationState.ACTIVE || s == AutomationState.HOLDING;
@@ -582,7 +594,7 @@ public class AutomationService {
                                         // Reset all branch states
                                         automation.getConditions().stream()
                                                 .filter(Automation.Condition::isEnabled)
-                                                .filter(c -> isGateCondition(c, operatorIds))
+                                                .filter(c -> automationEngine.isGateCondition(c, operatorIds))
                                                 .forEach(c -> {
                                                     cache.setBranchState(c.getNodeId(), AutomationState.IDLE);
                                                     redisService.delete("RUNNING:" + automation.getId()
@@ -854,7 +866,7 @@ public class AutomationService {
                                           AutomationLog.AutomationLogBuilder logBuilder,
                                           Date now) {
         // Use the root result directly
-        NodeResult root = findRootResult(automation, ctx);
+        NodeResult root = automationEngine.findRootResult(automation, ctx);
         boolean conditionNow = root != null && root.isTrue();
 
         AutomationState currentState = resolveState(cache.getState());
@@ -915,105 +927,16 @@ public class AutomationService {
     }
 
 
-    // ═════════════════════════════════════════════════════════════════════
-    // GRAPH EVALUATION  (unchanged logic, now also stores wasActive per-branch)
-    // ═════════════════════════════════════════════════════════════════════
-
-    public NodeResult evaluate(Automation automation,
-                               Map<String, Object> payload,
-                               ExecutionContext ctx,
-                               AutomationCache cache) {
-
-        List<Automation.Condition> conditions = automation.getConditions() == null
-                ? List.of() : automation.getConditions();
-        List<Automation.Operator> operators = automation.getOperators() == null
-                ? List.of() : automation.getOperators();
-
-        Set<String> operatorIds = operators.stream()
-                .map(Automation.Operator::getNodeId)
-                .collect(Collectors.toSet());
-
-        List<Automation.Condition> triggerConditions = new ArrayList<>();
-        List<Automation.Condition> gateConditions = new ArrayList<>();
-
-        for (Automation.Condition c : conditions) {
-            if (!c.isEnabled()) continue;
-            (isGateCondition(c, operatorIds) ? gateConditions : triggerConditions).add(c);
-        }
-
-        // Phase 1 — trigger conditions
-        for (Automation.Condition c : triggerConditions) {
-            // wasActive for hysteresis: a trigger condition has no per-branch state,
-            // so we use the top-level cache state.
-            boolean wasActive = cache != null
-                    && (cache.getState() == AutomationState.ACTIVE
-                    || cache.getState() == AutomationState.HOLDING);
-            boolean result = evaluateCondition(automation, c, payload, wasActive);
-            NodeResult nr = new NodeResult(c.getNodeId(), result);
-            nr.getContributors().add(c.getNodeId());
-            ctx.put(nr);
-        }
-
-        // Phase 1b — operators
-        for (Automation.Operator op : operators) {
-            List<NodeResult> inputs = op.getPreviousNodeRef().stream()
-                    .map(ref -> ctx.get(ref.getNodeId()))
-                    .filter(Objects::nonNull)
-                    .toList();
-
-            boolean result;
-            Set<String> contributors = new HashSet<>();
-
-            if (inputs.isEmpty()) {
-                log.warn("⚠️ Operator '{}' has no resolved inputs — defaulting false", op.getNodeId());
-                result = false;
-            } else if ("OR".equalsIgnoreCase(op.getLogicType())) {
-                result = inputs.stream().anyMatch(NodeResult::isTrue);
-                inputs.stream().filter(NodeResult::isTrue)
-                        .forEach(n -> contributors.addAll(n.getContributors()));
-            } else {
-                result = inputs.stream().allMatch(NodeResult::isTrue);
-                inputs.forEach(n -> contributors.addAll(n.getContributors()));
-            }
-
-            NodeResult opResult = new NodeResult(op.getNodeId(), result);
-            opResult.getContributors().addAll(contributors);
-            ctx.put(opResult);
-        }
-
-        // Phase 2 — gate conditions
-        for (Automation.Condition c : gateConditions) {
-            // wasActive for hysteresis: use this branch's state from cache
-            boolean wasActive = cache != null
-                    && (cache.getBranchState(c.getNodeId()) == AutomationState.ACTIVE
-                    || cache.getBranchState(c.getNodeId()) == AutomationState.HOLDING);
-
-            boolean parentTrue = c.getPreviousNodeRef().stream()
-                    .map(ref -> ctx.get(ref.getNodeId()))
-                    .filter(Objects::nonNull)
-                    .anyMatch(NodeResult::isTrue);
-
-            boolean result = parentTrue && evaluateCondition(automation, c, payload, wasActive);
-            NodeResult nr = new NodeResult(c.getNodeId(), result);
-            if (result) nr.getContributors().add(c.getNodeId());
-            ctx.put(nr);
-        }
-
-        return findRootResult(automation, ctx);
-    }
-
     /**
-     * Backward-compatible overload for callers that don't have a cache reference.
+     * 3.7 — Public entry point for scene execution.
+     * Fires a specific list of actions for an automation without touching
+     * the state machine. Used by AutomationSceneService.
      */
-    public NodeResult evaluate(Automation automation,
-                               Map<String, Object> payload,
-                               ExecutionContext ctx,
-                               boolean wasActive) {
-        // Build a minimal cache stub so the new overload still works
-        AutomationCache stub = AutomationCache.builder()
-                .state(wasActive ? AutomationState.ACTIVE : AutomationState.IDLE)
-                .build();
-        return evaluate(automation, payload, ctx, stub);
+    public void executeSceneActions(Automation automation,
+                                    List<Automation.Action> actions,
+                                    Map<String, Object> payload,
+                                    String user) {
+        executeWithTimeout(actions, payload, user, automation.getId(), automation.getName());
     }
 
 
@@ -1035,7 +958,7 @@ public class AutomationService {
 
         return automation.getConditions().stream()
                 .filter(Automation.Condition::isEnabled)
-                .filter(c -> isGateCondition(c, operatorIds))
+                .filter(c -> automationEngine.isGateCondition(c, operatorIds))
                 .map(gateCondition -> {
                     // Find the operator this gate is downstream of
                     String opNodeId = gateCondition.getPreviousNodeRef().stream()
@@ -1193,234 +1116,6 @@ public class AutomationService {
                 .toList();
     }
 
-    private boolean isGateCondition(Automation.Condition c, Set<String> operatorIds) {
-        return c.getPreviousNodeRef() != null &&
-                c.getPreviousNodeRef().stream()
-                        .anyMatch(ref -> operatorIds.contains(ref.getNodeId()));
-    }
-
-
-    // ═════════════════════════════════════════════════════════════════════
-    // CONDITION EVALUATION  (unchanged)
-    // ═════════════════════════════════════════════════════════════════════
-
-    private boolean evaluateCondition(Automation automation, Automation.Condition condition,
-                                      Map<String, Object> primaryPayload, boolean wasActive) {
-        if ("scheduled".equals(condition.getCondition()))
-            return isCurrentTimeWithDailyTracking(automation, condition);
-
-        String condDeviceId = condition.getDeviceId();
-        Map<String, Object> payload;
-
-        if (condDeviceId != null && !condDeviceId.isBlank()
-                && !condDeviceId.equals(automation.getTrigger().getDeviceId())) {
-            // Secondary device — fetch latest from Redis cache
-            payload = redisService.getRecentDeviceData(condDeviceId);
-            if (payload == null) payload = Map.of();
-        } else {
-            // Primary device — use the incoming payload
-            payload = primaryPayload;
-        }
-        String key = condition.getTriggerKey();
-        if (key == null || !payload.containsKey(key)) return false;
-
-        String value = payload.get(key).toString();
-
-        if (!value.matches("-?\\d+(\\.\\d+)?"))
-            return value.equals(condition.getValue());
-
-        double v = Double.parseDouble(value);
-        double buffer = 5.0;
-
-        if (Boolean.TRUE.equals(condition.getIsExact()))
-            return condition.getValue().equals(value);
-
-        return switch (condition.getCondition()) {
-            case "equal" -> condition.getValue().equals(value);
-            case "above" -> wasActive
-                    ? v > (Double.parseDouble(condition.getValue()) - buffer)
-                    : v > Double.parseDouble(condition.getValue());
-
-            case "below" -> wasActive
-                    ? v < (Double.parseDouble(condition.getValue()) + buffer)
-                    : v < Double.parseDouble(condition.getValue());
-
-            case "range" -> {
-                double above = Double.parseDouble(condition.getAbove());
-                double below = Double.parseDouble(condition.getBelow());
-                yield wasActive
-                        ? v > (above - buffer) && v < (below + buffer)
-                        : v > above && v < below;
-            }
-            default -> false;
-        };
-    }
-
-
-    // ═════════════════════════════════════════════════════════════════════
-    // ROOT RESOLUTION
-    // ═════════════════════════════════════════════════════════════════════
-
-    private NodeResult findRootResult(Automation automation, ExecutionContext ctx) {
-        List<Automation.Operator> operators = automation.getOperators() == null
-                ? List.of() : automation.getOperators();
-
-        Set<String> operatorIds = operators.stream()
-                .map(Automation.Operator::getNodeId)
-                .collect(Collectors.toSet());
-
-        Set<String> triggerNodeIds = automation.getConditions() == null ? Set.of() :
-                automation.getConditions().stream()
-                .filter(Automation.Condition::isEnabled)
-                .filter(c -> !isGateCondition(c, operatorIds))
-                .map(Automation.Condition::getNodeId)
-                .collect(Collectors.toSet());
-
-        List<Automation.Condition> triggerConditions = automation.getConditions() == null
-                ? List.of()
-                : automation.getConditions().stream()
-                  .filter(Automation.Condition::isEnabled)
-                  .filter(c -> !isGateCondition(c, operatorIds))
-                  .toList();
-
-        if (!operators.isEmpty()) {
-            Set<String> referencedByOtherOps = operators.stream()
-                    .flatMap(op -> op.getPreviousNodeRef().stream())
-                    .map(NodeRef::getNodeId)
-                    .filter(operatorIds::contains)
-                    .collect(Collectors.toSet());
-
-            return operators.stream()
-                    .filter(op -> !referencedByOtherOps.contains(op.getNodeId()))
-                    .map(op -> ctx.get(op.getNodeId()))
-                    .filter(Objects::nonNull)
-                    .findFirst()
-                    .orElseGet(() -> ctx.get(operators.get(operators.size() - 1).getNodeId()));
-        }
-
-        if (triggerConditions.size() > 1) {
-            boolean allTrue = triggerConditions.stream()
-                    .map(c -> ctx.get(c.getNodeId()))
-                    .filter(Objects::nonNull)
-                    .allMatch(NodeResult::isTrue);
-            NodeResult synthetic = new NodeResult("root:implicit_and", allTrue);
-            ctx.put(synthetic);
-            return synthetic;
-        }
-
-        if (!triggerConditions.isEmpty()) {
-            NodeResult nr = ctx.get(triggerConditions.getFirst().getNodeId());
-            if (nr != null) return nr;
-        }
-
-        return new NodeResult("root:empty", false);
-    }
-
-
-    // ═════════════════════════════════════════════════════════════════════
-    // SCHEDULE EVALUATION  (unchanged)
-    // ═════════════════════════════════════════════════════════════════════
-
-    private boolean isCurrentTimeWithDailyTracking(Automation automation,
-                                                   Automation.Condition condition) {
-        ZoneId istZone = ZoneId.of("Asia/Kolkata");
-        ZonedDateTime nowZdt = ZonedDateTime.now(istZone);
-        LocalTime current = nowZdt.toLocalTime();
-
-        if (condition.getDays() != null && !condition.getDays().isEmpty()) {
-            String dow = nowZdt.getDayOfWeek()
-                    .getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH)
-                    .substring(0, 3);
-            dow = dow.substring(0, 1).toUpperCase() + dow.substring(1).toLowerCase();
-            if (!condition.getDays().contains("Everyday") && !condition.getDays().contains(dow))
-                return false;
-        }
-
-        String scheduleType = condition.getScheduleType();
-
-        if ("range".equals(scheduleType)) {
-            LocalTime from = parseTime(condition.getFromTime());
-            LocalTime to = parseTime(condition.getToTime());
-            if (from == null || to == null) return false;
-            return from.isBefore(to)
-                    ? !current.isBefore(from) && !current.isAfter(to)
-                    : !current.isBefore(from) || !current.isAfter(to);
-        }
-
-        if ("solar".equals(scheduleType)) {
-            LocalTime solarTime = getSunTime(condition.getSolarType());
-            if (solarTime == null) return false;
-            LocalTime adjusted = solarTime.plusMinutes(condition.getOffsetMinutes());
-            return Math.abs(ChronoUnit.MINUTES.between(adjusted, current)) <= 3
-                    && checkAndSetDailyLock(automation, nowZdt);
-        }
-
-        if ("interval".equals(scheduleType)) {
-            String intervalKey = "INTERVAL:" + automation.getId() + ":" + condition.getNodeId();
-            String runKey = "RUNNING:" + automation.getId() + ":" + condition.getNodeId();
-            if (redisService.exists(runKey)) return true;
-            if (!redisService.exists(intervalKey)) {
-                redisService.setWithExpiry(intervalKey, "run",
-                        condition.getIntervalMinutes() * 60L);
-                return true;
-            }
-            return false;
-        }
-
-        // "at" / exact time
-        LocalTime target = parseTime(condition.getTime());
-        if (target == null) return false;
-        if (Math.abs(ChronoUnit.MINUTES.between(target, current)) > 1) return false;
-
-        LocalDate today = nowZdt.toLocalDate();
-        String dailyKey = String.format("DAILY_FIRE:%s:%s", automation.getId(), today);
-        if (redisService.exists(dailyKey)) return false;
-
-        long secondsUntilMidnight = ChronoUnit.SECONDS.between(
-                nowZdt, nowZdt.plusDays(1).truncatedTo(ChronoUnit.DAYS));
-        redisService.setWithExpiry(dailyKey, "fired", secondsUntilMidnight);
-        return true;
-    }
-
-    private boolean checkAndSetDailyLock(Automation automation, ZonedDateTime nowZdt) {
-        LocalDate today = nowZdt.toLocalDate();
-        String key = String.format("DAILY_SOLAR:%s:%s", automation.getId(), today);
-        if (redisService.exists(key)) return false;
-        long ttl = ChronoUnit.SECONDS.between(nowZdt,
-                nowZdt.plusDays(1).truncatedTo(ChronoUnit.DAYS));
-        redisService.setWithExpiry(key, "done", ttl);
-        return true;
-    }
-
-    private LocalTime getSunTime(String solarType) {
-        try {
-            ZoneId istZone = ZoneId.of("Asia/Kolkata");
-            LocalDate today = LocalDate.now(istZone);
-            String cacheKey = "SUN_TIME:" + solarType + "-" + today;
-            Object cached = redisService.get(cacheKey);
-            if (cached != null) return LocalTime.parse(cached.toString());
-
-            Map<String, Object> response = new RestTemplate().getForObject(
-                    "https://api.sunrise-sunset.org/json?lat=" + LOCATION_LAT
-                            + "&lng=" + LOCATION_LONG + "&formatted=0", Map.class);
-            if (response == null || !response.containsKey("results")) return null;
-
-            @SuppressWarnings("unchecked")
-            Map<String, String> results = (Map<String, String>) response.get("results");
-            String timeStr = "sunrise".equalsIgnoreCase(solarType)
-                    ? results.get("sunrise") : results.get("sunset");
-            if (timeStr == null) return null;
-
-            LocalTime result = ZonedDateTime.parse(timeStr)
-                    .withZoneSameInstant(istZone).toLocalTime();
-            redisService.setWithExpiry(cacheKey, result.toString(), 86400);
-            return result;
-        } catch (Exception e) {
-            log.error("❌ Sun time fetch failed: {}", e.getMessage());
-            return null;
-        }
-    }
-
 
     // ═════════════════════════════════════════════════════════════════════
     // IMMEDIATE / OVERRIDE EXECUTION
@@ -1545,7 +1240,7 @@ public class AutomationService {
             sendToTopic("action/" + action.getDeviceId(), trackedPayload);
 
             // Register for ack tracking — non-blocking
-            String deviceName = resolveDeviceLabel(action.getDeviceId(), action.getName());
+            String deviceName = automationEngine.resolveDeviceLabel(action.getDeviceId(), action.getName());
             deliveryTracker.register(correlationId, automationId, automationName,
                     action.getDeviceId(), deviceName, trackedPayload);
         }
@@ -1784,23 +1479,6 @@ public class AutomationService {
         }
     }
 
-    private LocalTime parseTime(String timeText) {
-        if (timeText == null || timeText.isBlank()) return null;
-        try {
-            return LocalTime.parse(timeText.trim(),
-                    DateTimeFormatter.ofPattern("HH:mm:ss"));
-        } catch (Exception e1) {
-            try {
-                return LocalTime.parse(timeText.trim(),
-                        new DateTimeFormatterBuilder().parseCaseInsensitive()
-                                .appendPattern("hh:mm:ss a").toFormatter(Locale.ENGLISH));
-            } catch (Exception e2) {
-                log.warn("⚠️ Unable to parse time: '{}'", timeText);
-                return null;
-            }
-        }
-    }
-
     // =========================================================================
     // HUMAN-READABLE MESSAGE HELPERS
     // =========================================================================
@@ -1819,29 +1497,7 @@ public class AutomationService {
      * "range in 5-600"
      */
     private String describeBranch(GateBranch branch) {
-        return describeCondition(branch.gateCondition());
-    }
-
-    private String describeCondition(Automation.Condition c) {
-        if ("scheduled".equals(c.getCondition())) {
-            String schedType = c.getScheduleType() != null ? c.getScheduleType() : "at";
-            return switch (schedType) {
-                case "range" -> "Time window " + fmtTime(c.getFromTime()) + "-" + fmtTime(c.getToTime());
-                case "solar" -> capitalize(c.getSolarType())
-                        + (c.getOffsetMinutes() != 0 ? " +" + c.getOffsetMinutes() + " min" : "");
-                case "interval" -> "Every " + c.getIntervalMinutes() + " min"
-                        + (c.getDurationMinutes() > 0
-                        ? " (active for " + c.getDurationMinutes() + " min)" : "");
-                default -> "At " + fmtTime(c.getTime());
-            };
-        }
-        String key = c.getTriggerKey() != null ? c.getTriggerKey() : "value";
-        return switch (c.getCondition()) {
-            case "above" -> key + " > " + c.getValue();
-            case "below" -> key + " < " + c.getValue();
-            case "range" -> key + " in " + c.getAbove() + "-" + c.getBelow();
-            default -> key + " = " + c.getValue();
-        };
+        return automationEngine.describeCondition(branch.gateCondition());
     }
 
     /**
@@ -1851,7 +1507,7 @@ public class AutomationService {
      * "[Light On] Time window 13:05-01:00 -> Monitor Light preset=8, Light Strip preset=3"
      */
     private String describeTriggered(String automationName, GateBranch fb) {
-        String branchDesc = describeCondition(fb.gateCondition());
+        String branchDesc = automationEngine.describeCondition(fb.gateCondition());
         String actionsDesc = actionSummary(fb.positiveActions());
         return "[" + automationName + "] " + branchDesc + " -> " + actionsDesc;
     }
@@ -1865,36 +1521,100 @@ public class AutomationService {
         if (actions == null || actions.isEmpty()) return "no actions";
         return actions.stream()
                 .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .map(a -> resolveDeviceLabel(a.getDeviceId(), a.getName())
+                .map(a -> automationEngine.resolveDeviceLabel(a.getDeviceId(), a.getName())
                         + " " + a.getKey() + "=" + a.getData())
                 .collect(Collectors.joining(", "));
     }
 
     /**
-     * Returns device name from MainService, falling back to the action name
-     * so raw device IDs never appear in user-facing messages.
+     * 3.9 — Rolls back an automation to a specific version.
+     * Restores both the Automation and AutomationDetail from the snapshot,
+     * re-saves them (which creates a new version with a rollback note),
+     * and refreshes the cache.
      */
-    private String resolveDeviceLabel(String deviceId, String actionName) {
+    public String rollbackToVersion(String automationId, int targetVersion, String user) {
         try {
-            Device d = mainService.getDevice(deviceId);
-            if (d != null && d.getName() != null && !d.getName().isBlank())
-                return d.getName();
-        } catch (Exception ignored) {
+            AutomationVersionService.RollbackResult rollback =
+                    automationVersionService.rollback(automationId, targetVersion);
+
+            // Re-save through the normal save path so cache, scheduler,
+            // and version history are all updated correctly
+            AutomationDetail detail = rollback.detail();
+            detail.setUpdateDate(new Date());
+
+            String result = saveAutomationDetailInternal(detail);
+            if ("success".equals(result)) {
+                // Overwrite the auto-snapshot with a rollback-annotated one
+                automationRepository.findById(automationId).ifPresent(a ->
+                        automationVersionService.snapshot(a, detail, user,
+                                "Rolled back to version " + targetVersion));
+                notificationService.sendNotification(
+                        "Rolled back to version " + targetVersion, "success");
+            }
+            return result;
+        } catch (Exception e) {
+            log.error("Rollback failed for automation {}: {}", automationId, e.getMessage(), e);
+            notificationService.sendNotification("Rollback failed: " + e.getMessage(), "error");
+            return "error: " + e.getMessage();
         }
-        return (actionName != null && !actionName.isBlank()) ? actionName : deviceId;
     }
 
-    /**
-     * Strips seconds: "13:05:00" -> "13:05", handles AM/PM strings too.
-     */
-    private String fmtTime(String raw) {
-        if (raw == null || raw.isBlank()) return "?";
-        return raw.replaceAll(":\\d{2}(\\s*[AaPp][Mm])?$", "$1").trim();
+    public Map<String, Object> copyAutomation(String id, String user) {
+        Automation original = automationRepository.findById(id)
+                .orElse(null);
+        if (original == null)
+            return new HashMap<>();
+
+        // Deep copy — clear ID so MongoDB assigns a new one
+        Automation copy = Automation.builder()
+                .name(original.getName() + " (copy)")
+                .trigger(original.getTrigger())
+                .triggerDeviceType(original.getTriggerDeviceType())
+                .conditions(original.getConditions())
+                .actions(original.getActions())
+                .operators(original.getOperators())
+                .isEnabled(false)          // always disabled until reviewed
+                .isActive(false)
+                .updateDate(new Date())
+                .build();
+
+        Automation saved = automationRepository.save(copy);
+
+        // Copy the AutomationDetail (visual graph layout)
+        AutomationDetail detailCopy = automationDetailRepository.findById(id)
+                .map(d -> {
+                    AutomationDetail dc = new AutomationDetail();
+                    dc.setId(saved.getId());   // new ID matching new automation
+                    dc.setNodes(d.getNodes());
+                    dc.setEdges(d.getEdges());
+                    dc.setViewport(d.getViewport());
+                    dc.setUpdateDate(new Date());
+                    return dc;
+                })
+                .orElseGet(() -> {
+                    AutomationDetail dc = new AutomationDetail();
+                    dc.setId(saved.getId());
+                    dc.setUpdateDate(new Date());
+                    return dc;
+                });
+        automationDetailRepository.save(detailCopy);
+
+        // Warm Redis cache for the new automation
+        refreshCacheForAutomation(saved);
+
+        log.info("📋 Automation '{}' copied to '{}' by {}",
+                original.getName(), saved.getName(), user);
+        notificationService.sendNotification(
+                "'" + original.getName() + "' copied", "success");
+
+        return Map.of(
+                "status", "success",
+                "newId", saved.getId(),
+                "newName", saved.getName()
+        );
     }
 
-    private String capitalize(String s) {
-        if (s == null || s.isBlank()) return "";
-        return Character.toUpperCase(s.charAt(0)) + s.substring(1).toLowerCase();
+    public Map<String, String> deleteAutomation(String id, String user) {
+        return null;
     }
-
 }

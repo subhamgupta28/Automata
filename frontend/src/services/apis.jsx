@@ -491,3 +491,110 @@ export const signUpReq = async (payload) => {
     });
     return response.data;
 }
+
+// Scenes
+export const getScenes = async () => {
+    const response = await api.get('automations/scenes');
+    return response.data;
+};
+
+export const saveScene = async (s) => {
+    const response = await api.post('automations/scenes', s, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+    return response.data;
+};
+
+export const deleteScene = async (id) => {
+    const response = await api.delete(`automations/scenes/${id}`);
+    return response.data;
+};
+
+export const triggerScene = async (id, by) => {
+    const response = await api.post(`automations/scenes/${id}/trigger`, {triggeredBy: by}, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+    return response.data;
+};
+
+export const toggleScene = async (id, en) => {
+    const response = await api.patch(`automations/scenes/${id}/toggle?enabled=${en}`);
+    return response.data;
+};
+
+
+// A/B Tests
+export const getAbTests = async () => {
+    const response = await api.get('automations/ab-tests');
+    return response.data;
+};
+
+export const createAbTest = async (t) => {
+    const response = await api.post('automations/ab-tests', t, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+    return response.data;
+};
+
+export const pauseAbTest = async (id) => {
+    const response = await api.post(`automations/ab-tests/${id}/pause`);
+    return response.data;
+};
+
+export const resumeAbTest = async (id) => {
+    const response = await api.post(`automations/ab-tests/${id}/resume`);
+    return response.data;
+};
+
+export const endAbTest = async (id, winner, conclusion) => {
+    const response = await api.post(`automations/ab-tests/${id}/end`, {winner, conclusion}, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+    return response.data;
+};
+
+export const getAbDivergences = async (id) => {
+    const response = await api.get(`automations/ab-tests/${id}/divergences`);
+    return response.data;
+};
+
+export const getAbLogs = async (id) => {
+    const response = await api.get(`automations/ab-tests/${id}/logs?limit=30`);
+    return response.data;
+};
+
+
+// Versions
+export const getVersions = async (aid) => {
+    const response = await api.get(`automations/${aid}/versions`);
+    return response.data;
+};
+
+export const rollback = async (aid, v, user) => {
+    const response = await api.post(`automations/${aid}/versions/${v}/rollback`, {user}, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+    return response.data;
+};
+
+
+// Management
+export const copyAutomation = async (id) => {
+    const response = await api.post(`action/${id}/copy`);
+    return response.data;
+};
+
+export const deleteAutomation = async (id) => {
+    const response = await api.delete(`action/${id}`);
+    return response.data;
+};
