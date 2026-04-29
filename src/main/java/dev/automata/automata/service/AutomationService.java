@@ -49,6 +49,8 @@ public class AutomationService {
     private final ScheduledAutomationManager scheduledAutomationManager;
     private final AutomationEngine automationEngine;
     private final AutomationVersionService automationVersionService;
+    // FIX Bug#1: inject AutomationAbTestService so shadowEvaluate() can be called
+    private final AutomationAbTestService abTestService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String TOPIC_ACTION = "action/";
@@ -108,13 +110,9 @@ public class AutomationService {
 
     public String ackAction(String deviceId, Map<String, Object> payload) {
         if (payload.containsKey("actionAck")) {
-//            messagingTemplate.convertAndSend("/topic/data",
-//                    Map.of("deviceId", deviceId, "ack", payload));
             if (payload.containsKey("actionType")) {
                 notificationService.sendNotification("Action sent to device", "success");
             }
-
-            // Confirm delivery if the ack includes a correlationId
             if (payload.containsKey("_cid")) {
                 deliveryTracker.confirm(payload.get("_cid").toString());
             }
@@ -214,23 +212,21 @@ public class AutomationService {
     @EventListener
     public void onCustomEvent(LiveEvent event) {
         var payload = event.getPayload();
-        redisService.setRecentDeviceData(payload.get("device_id").toString(), payload);
+        // FIX Bug#6: normalize device_id to lowercase on write so lookups match MongoDB IDs
+        String rawDeviceId = payload.get("device_id").toString();
+        String normalizedDeviceId = rawDeviceId.toLowerCase(Locale.ROOT);
+        redisService.setRecentDeviceData(normalizedDeviceId, payload);
+        // Also write with the original key for backward compat if different
+        if (!normalizedDeviceId.equals(rawDeviceId)) {
+            redisService.setRecentDeviceData(rawDeviceId, payload);
+        }
     }
 
-    /**
-     * Returns the list of enabled automations for a device, served from a
-     * short-lived Redis cache (TTL = 5 min) to avoid hitting MongoDB on every
-     * live-data event (15+ devices * 1 event/sec = 15 MongoDB queries/sec otherwise).
-     * <p>
-     * The cache is invalidated in refreshCacheForAutomation() whenever an
-     * automation is saved or toggled, so staleness is bounded by save operations.
-     */
     private List<Automation> getCachedAutomationsForDevice(String deviceId) {
         String key = "AUTOMATIONS_BY_DEVICE:" + deviceId;
         try {
             Object cached = redisService.get(key);
             if (cached != null) {
-                // Redis stores it as a JSON string via ObjectMapper
                 return objectMapper.readValue(
                         cached.toString(),
                         objectMapper.getTypeFactory()
@@ -248,6 +244,7 @@ public class AutomationService {
         return fresh;
     }
 
+
     // ═════════════════════════════════════════════════════════════════════
     // SCHEDULED JOBS
     // ═════════════════════════════════════════════════════════════════════
@@ -257,9 +254,38 @@ public class AutomationService {
         automationRepository.findEnabledForExecution().stream()
                 .filter(a -> !scheduledAutomationManager.hasOnlyScheduledConditions(a))
                 .forEach(a -> {
-                    AutomationCache cached = redisService.getAutomationCache(a.getTrigger().getDeviceId() + ":" + a.getId());
-                    Automation toRun = (cached != null && cached.getAutomation() != null) ? cached.getAutomation() : a;
-                    Map<String, Object> recentData = redisService.getRecentDeviceData(a.getTrigger().getDeviceId());
+                    AutomationCache cached = redisService.getAutomationCache(
+                            a.getTrigger().getDeviceId() + ":" + a.getId());
+                    Automation toRun = (cached != null && cached.getAutomation() != null)
+                            ? cached.getAutomation() : a;
+
+                    Map<String, Object> recentData =
+                            redisService.getRecentDeviceData(a.getTrigger().getDeviceId());
+
+                    // FIX Bug#5: skip data-driven automations when primary device has no cached data,
+                    // and warn per secondary source that has no Redis data either.
+                    if ((recentData == null || recentData.isEmpty()) && hasDataDrivenCondition(toRun)) {
+                        log.warn("⚠️ [{}] Skipping periodic run — primary device '{}' has no cached data in Redis. " +
+                                        "Ensure the device is publishing live events.",
+                                toRun.getName(), a.getTrigger().getDeviceId());
+                        return;
+                    }
+
+                    // Warn about secondary devices with missing Redis data
+                    if (toRun.getTrigger().getSources() != null) {
+                        toRun.getTrigger().getSources().stream()
+                                .filter(s -> !"primary".equals(s.getRole()))
+                                .forEach(s -> {
+                                    Map<String, Object> secData =
+                                            redisService.getRecentDeviceData(s.getDeviceId());
+                                    if (secData == null || secData.isEmpty()) {
+                                        log.warn("⚠️ [{}] Secondary device '{}' has no cached data in Redis — " +
+                                                        "conditions referencing it will return false.",
+                                                toRun.getName(), s.getDeviceId());
+                                    }
+                                });
+                    }
+
                     eventPublisher.publishEvent(new PeriodicCheckEvent(this, toRun, recentData));
                 });
     }
@@ -314,16 +340,11 @@ public class AutomationService {
         return saveAutomationDetailInternal(detail);
     }
 
-
-    /**
-     * Explicit save with version annotation — used when user provides a change note.
-     */
     public String saveAutomationDetailAnnotated(AutomationDetail detail,
                                                 String savedBy,
                                                 String changeNote) {
         String result = saveAutomationDetailInternal(detail);
         if ("success".equals(result)) {
-            // Update the just-created snapshot with the user's annotation
             automationRepository.findById(detail.getId()).ifPresent(a ->
                     automationVersionService.snapshot(a, detail, savedBy, changeNote));
         }
@@ -381,9 +402,8 @@ public class AutomationService {
                         .map(c -> new Automation.Operator(
                                 c.getType(), c.getLogicType(),
                                 c.getPreviousNodeRef(), c.getNodeId(),
-                                c.getPriority()))          // ← priority preserved
+                                c.getPriority()))
                         .collect(Collectors.toList()));
-
 
         var automation = automationBuilder.build();
         List<String> subscribers = automation.getTrigger().getSources().stream()
@@ -400,8 +420,6 @@ public class AutomationService {
 
         notificationService.sendNotification("Automation saved successfully", "success");
         refreshCacheForAutomation(saved);
-
-        // 3.9 — snapshot this version for history / rollback
         automationVersionService.snapshot(saved, detail, "system", null);
 
         return "success";
@@ -409,15 +427,16 @@ public class AutomationService {
 
     private boolean hasDataDrivenCondition(Automation automation) {
         if (automation.getConditions() == null) return false;
-        Set<String> operatorIds = automation.getOperators().stream()
+        Set<String> operatorIds = automation.getOperators() == null ? Set.of() :
+                automation.getOperators().stream()
                 .map(Automation.Operator::getNodeId)
                 .collect(Collectors.toSet());
-        // trigger conditions (non-gate) that are NOT "scheduled"
         return automation.getConditions().stream()
                 .filter(Automation.Condition::isEnabled)
                 .filter(c -> !automationEngine.isGateCondition(c, operatorIds))
                 .anyMatch(c -> !"scheduled".equals(c.getCondition()));
     }
+
 
     // ═════════════════════════════════════════════════════════════════════
     // CACHE REFRESH
@@ -452,7 +471,7 @@ public class AutomationService {
 
 
     // ═════════════════════════════════════════════════════════════════════
-    // CORE EXECUTION  — new per-branch model
+    // CORE EXECUTION
     // ═════════════════════════════════════════════════════════════════════
 
     public void checkAndExecuteSingleAutomation(Automation automation,
@@ -470,9 +489,8 @@ public class AutomationService {
         String deviceId = automation.getTrigger().getDeviceId();
         String cacheKey = deviceId + ":" + automation.getId();
 
-        // ── Execution lock (UUID-safe) ────────────────────────────────────
         String lockKey = "EXEC_LOCK:" + automation.getId();
-        String lockValue = UUID.randomUUID().toString();          // ← fix: UUID, not "locked"
+        String lockValue = UUID.randomUUID().toString();
         boolean lockAcquired = redisService.setIfAbsent(lockKey, lockValue, LOCK_TTL_SECONDS);
 
         var logBuilder = AutomationLog.builder()
@@ -491,7 +509,6 @@ public class AutomationService {
         }
 
         try {
-            // ── Snooze / timed-disable gate ───────────────────────────────
             if (redisService.exists("SNOOZE:" + automation.getId())) {
                 long rem = redisService.getTTL("SNOOZE:" + automation.getId());
                 saveLog(logBuilder.status(AutomationLog.LogStatus.SKIPPED)
@@ -506,17 +523,22 @@ public class AutomationService {
                 return;
             }
 
-            // ── Prepare payload ───────────────────────────────────────────
             Map<String, Object> payload = new HashMap<>();
             if (data != null) payload.putAll(data);
             else payload.putAll(mainService.getLastData(deviceId));
 
-            // ── Load / init cache ─────────────────────────────────────────
             AutomationCache cache = loadOrInitCache(cacheKey, automation);
 
-            // ── Evaluate the full graph ───────────────────────────────────
             ExecutionContext ctx = new ExecutionContext();
-            NodeResult rootResult = automationEngine.evaluate(automation, payload, ctx, cache);   // populates ctx for all nodes
+            NodeResult rootResult = automationEngine.evaluate(automation, payload, ctx, cache);
+
+            // ── Get all trigger-side conditions (root + chained) ──────────
+            // FIX: use automationEngine.getTriggerConditions() which includes chained
+            // conditions like node_condition_11, not just root-level ones.
+            List<Automation.Condition> triggerConditions =
+                    automationEngine.getTriggerConditions(automation);
+
+            // ── Stateless "none" actions ──────────────────────────────────
             List<Automation.Action> noneActions = automation.getActions().stream()
                     .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
                     .filter(a -> "none".equalsIgnoreCase(a.getConditionGroup()))
@@ -530,50 +552,32 @@ public class AutomationService {
                 log.info("⚡ [{}] [{}] Firing {} stateless action(s)",
                         user, automation.getName(), noneActions.size());
                 executeWithTimeout(noneActions, payload, user, automation.getId(), automation.getName());
+                List<AutomationLog.ConditionResult> conditionResults =
+                        buildConditionResults(automation, ctx, payload);
                 saveLog(logBuilder
-                        .conditionResults(buildConditionResults(automation, ctx, payload))
+                        .conditionResults(conditionResults)
                         .status(AutomationLog.LogStatus.TRIGGERED)
                         .reason("Stateless actions fired: " + actionSummary(noneActions))
                         .build());
                 return;
             }
-            // ── Classify conditions ───────────────────────────────────────
+
             Set<String> operatorIds = automation.getOperators() == null ? Set.of() :
                     automation.getOperators().stream()
                     .map(Automation.Operator::getNodeId)
                     .collect(Collectors.toSet());
 
-            List<Automation.Condition> triggerConditions = automation.getConditions().stream()
-                    .filter(Automation.Condition::isEnabled)
-                    .filter(c -> !automationEngine.isGateCondition(c, operatorIds))
-                    .toList();
-
-            // ── Phase 1: c1 (trigger conditions) ─────────────────────────
-            // All trigger conditions combined with implicit AND (same as before).
+            // ── Phase 1: c1 (all trigger-side conditions must be true) ────
             boolean c1True = rootResult != null && rootResult.isTrue();
-//            boolean c1True = triggerConditions.stream()
-//                    .map(c -> ctx.get(c.getNodeId()))
-//                    .filter(Objects::nonNull)
-//                    .allMatch(NodeResult::isTrue);
-
 
             if (!c1True) {
-                // ── c1 FALSE ─────────────────────────────────────────────
-                // 1. Fire informational actions (notifications, alerts) unconditionally.
-                // 2. If any branch was ACTIVE, fire the c1-negative actions
-                //    (e.g. "lux out of range — dim everything") and reset all branches.
-                //    These are actions whose previousNodeRef points to a trigger-condition
-                //    node with a cond-negative handle.
-                // No state machine advancement — branches stay / go IDLE.
-
                 List<Automation.Action> informational = resolveInformationalActions(automation, ctx);
                 if (!informational.isEmpty()) {
-                    log.info("ℹ️ [{}] [{}] trigger condition not met — firing {} informational action(s)", user,
-                            automation.getName(), informational.size());
+                    log.info("ℹ️ [{}] [{}] trigger condition not met — firing {} informational action(s)",
+                            user, automation.getName(), informational.size());
                     executeWithTimeout(informational, payload, user, automation.getId(), automation.getName());
                 }
 
-                // Revert active branches using c1-negative actions if any branch was active
                 boolean anyWasActive = automation.getConditions().stream()
                         .filter(Automation.Condition::isEnabled)
                         .filter(c -> automationEngine.isGateCondition(c, operatorIds))
@@ -586,12 +590,11 @@ public class AutomationService {
                     List<Automation.Action> c1NegActions =
                             resolveC1NegativeActions(automation, triggerConditions);
                     if (!c1NegActions.isEmpty()) {
-                        log.info("⏹️ [{}] [{}] trigger condition false, reverting all branches — {}", user,
-                                automation.getName(), actionSummary(c1NegActions));
+                        log.info("⏹️ [{}] [{}] trigger condition false, reverting all branches — {}",
+                                user, automation.getName(), actionSummary(c1NegActions));
                         executeWithTimeout(c1NegActions, payload, user, automation.getId(), automation.getName())
                                 .thenAccept(ok -> {
                                     if (Boolean.TRUE.equals(ok)) {
-                                        // Reset all branch states
                                         automation.getConditions().stream()
                                                 .filter(Automation.Condition::isEnabled)
                                                 .filter(c -> automationEngine.isGateCondition(c, operatorIds))
@@ -602,7 +605,8 @@ public class AutomationService {
                                                 });
                                         cache.setLastUpdate(new Date());
                                         redisService.setAutomationCache(cacheKey, cache);
-                                        notificationService.sendNotification(automation.getName() + " — condition lost", "info");
+                                        notificationService.sendNotification(
+                                                automation.getName() + " — condition lost", "info");
                                     }
                                 });
                     }
@@ -612,35 +616,26 @@ public class AutomationService {
                         .reason("Trigger condition false"
                                 + (anyWasActive ? " — branches reset, c1-negative actions fired" : ""))
                         .build());
-                return;  // ← critical: never advance branch states
+                return;
             }
 
-            // ── Phase 2: resolve gate branches, sorted by priority DESC ───
+            // ── Phase 2: resolve gate branches ────────────────────────────
             List<GateBranch> branches = resolveGateBranches(automation, ctx);
 
             if (branches.isEmpty()) {
-                // No gate conditions — this automation has no branch structure.
-                // Fall back to single-state behaviour (positive / negative on root).
                 handleNoBranchAutomation(automation, ctx, payload, cache,
                         cacheKey, user, logBuilder, now);
                 return;
             }
 
-            // ── Determine this tick's winner ──────────────────────────────
-            // Winner = highest-priority branch whose gate is currently TRUE.
             List<GateBranch> trueBranches = branches.stream()
                     .filter(b -> {
                         NodeResult nr = ctx.get(b.gateNodeId());
                         return nr != null && nr.isTrue();
                     })
-                    .toList(); // already sorted DESC by priority from resolveGateBranches()
+                    .toList();
 
             GateBranch winner = trueBranches.isEmpty() ? null : trueBranches.get(0);
-
-            // ── Process each branch atomically in the same tick ───────────
-            // Order: first revert all branches that should stop,
-            //        then promote the winner if it was IDLE.
-            // This gives atomic handoff (no gap between scene changes).
 
             List<CompletableFuture<Void>> tickFutures = new ArrayList<>();
             boolean anyBranchWasOrIsActive = false;
@@ -654,13 +649,13 @@ public class AutomationService {
                         || branchState == AutomationState.HOLDING) {
 
                     if (!gateTrue || !isWinner) {
-                        // ── Revert: gate turned false OR outprioritised ───
                         String reason = !gateTrue
                                 ? "Condition no longer met (" + describeBranch(branch) + ")"
                                 : "Overridden by '" + describeBranch(winner) + "'";
                         String revertMsg = !gateTrue
                                 ? "⏹️ " + automation.getName() + " — " + describeBranch(branch) + " ended"
-                                : "⏹️ " + automation.getName() + " — " + describeBranch(branch) + " overridden by " + describeBranch(winner);
+                                : "⏹️ " + automation.getName() + " — " + describeBranch(branch)
+                                  + " overridden by " + describeBranch(winner);
 
                         log.info("⏹️ [{}] [{}] '{}' reverting — {}", user,
                                 automation.getName(), describeBranch(branch), revertMsg);
@@ -677,23 +672,22 @@ public class AutomationService {
                                                         fb.gateNodeId(), AutomationState.IDLE);
                                                 finalCache.setLastUpdate(new Date());
                                                 redisService.setAutomationCache(cacheKey, finalCache);
-                                                // Clear duration timers for this branch
                                                 redisService.delete("RUNNING:" + automation.getId()
                                                         + ":" + fb.gateNodeId());
-                                                notificationService.sendNotification(automation.getName() + " — " + reason, "info");
+                                                notificationService.sendNotification(
+                                                        automation.getName() + " — " + reason, "info");
                                                 log.info("🔁 [{}] [{}] '{}' → IDLE — {}", user,
                                                         automation.getName(), describeBranch(fb), reason);
                                             }
                                         });
                         tickFutures.add(revertFuture);
                     } else {
-                        anyBranchWasOrIsActive = true; // still running
+                        anyBranchWasOrIsActive = true;
                     }
 
                 } else if (branchState == AutomationState.IDLE) {
 
                     if (gateTrue && isWinner) {
-                        // ── Interval cooldown check ───────────────────────
                         Automation.Condition gc = branch.gateCondition();
                         if ("interval".equals(gc.getScheduleType())
                                 && gc.getIntervalMinutes() > 0
@@ -703,13 +697,13 @@ public class AutomationService {
                                     (now.getTime() - cache.getPreviousExecutionTime().getTime()) / 1000;
                             long intervalSec = gc.getIntervalMinutes() * 60L;
                             if (secondsSinceLast < intervalSec) {
-                                log.debug("⏳ [{}] [{}] '{}' — interval cooldown, {}s until next run", user,
-                                        automation.getName(), describeBranch(branch),
+                                log.debug("⏳ [{}] [{}] '{}' — interval cooldown, {}s until next run",
+                                        user, automation.getName(), describeBranch(branch),
                                         intervalSec - secondsSinceLast);
                                 continue;
                             }
                         }
-                        // ── Trigger: gate true + winner ───────────────────
+
                         final AutomationCache finalCache = cache;
                         final GateBranch fb = branch;
 
@@ -728,10 +722,7 @@ public class AutomationService {
                                             }
                                             boolean hasDuration =
                                                     fb.gateCondition().getDurationMinutes() > 0;
-
                                             boolean hasNegatives = !branch.negativeActions().isEmpty();
-
-                                            // Only go ACTIVE/HOLDING if there's something to revert to
 
                                             AutomationState nextState = hasDuration
                                                     ? AutomationState.HOLDING
@@ -755,13 +746,13 @@ public class AutomationService {
                                             }
 
                                             redisService.setAutomationCache(cacheKey, finalCache);
-                                            notificationService.sendNotification(automation.getName() + " triggered", "success");
+                                            notificationService.sendNotification(
+                                                    automation.getName() + " triggered", "success");
                                         });
                         tickFutures.add(triggerFuture);
                         anyBranchWasOrIsActive = true;
 
                     } else if (gateTrue || !isWinner) {
-                        // ── Suppressed by higher-priority branch ──────────
                         log.debug("⏸️ [{}] [{}] '{}' suppressed by '{}'", user,
                                 automation.getName(), describeBranch(branch),
                                 winner != null ? describeBranch(winner) : "?");
@@ -774,17 +765,16 @@ public class AutomationService {
                                 .status(AutomationLog.LogStatus.SUPPRESSED)
                                 .reason(describeBranch(branch) + " matched but suppressed — "
                                         + (winner != null ? describeBranch(winner) : "unknown")
-                                        + " has higher priority (" + (winner != null ? winner.priority() : "?") + ")")
+                                        + " has higher priority ("
+                                        + (winner != null ? winner.priority() : "?") + ")")
                                 .build());
                     }
-                    // IDLE + gate false → quiet path, nothing to do
                 }
 
                 // ── HOLDING: check if duration timer expired ──────────────
                 if (branchState == AutomationState.HOLDING) {
                     String runKey = "RUNNING:" + automation.getId() + ":" + branch.gateNodeId();
                     if (!redisService.exists(runKey)) {
-                        // Timer expired → revert
                         final AutomationCache finalCache = cache;
                         final GateBranch fb = branch;
 
@@ -800,7 +790,9 @@ public class AutomationService {
                                                         fb.gateNodeId(), AutomationState.IDLE);
                                                 finalCache.setLastUpdate(new Date());
                                                 redisService.setAutomationCache(cacheKey, finalCache);
-                                                notificationService.sendNotification(automation.getName() + " — " + describeBranch(fb) + " timer expired", "info");
+                                                notificationService.sendNotification(
+                                                        automation.getName() + " — "
+                                                                + describeBranch(fb) + " timer expired", "info");
                                                 log.info("🔁 [{}] [{}] '{}' → IDLE (timer expired)", user,
                                                         automation.getName(), describeBranch(fb));
                                             }
@@ -812,35 +804,62 @@ public class AutomationService {
                 }
             }
 
-            // ── Phase 3: c1 true but NO branch fired or active ────────────
-            // This is the "time window not matched" fallback.
+            // ── Phase 3: c1 true but no branch fired or active ────────────
+            // Phase 3: c1 true but no branch fired or is active
             if (!anyBranchWasOrIsActive && winner == null) {
-                List<Automation.Action> c1Fallback =
-                        resolveC1FallbackActions(automation, ctx, triggerConditions);
-                if (!c1Fallback.isEmpty()) {
-                    log.info("ℹ️ [{}] [{}] trigger met but no time window matched — firing fallback", user,
-                            automation.getName());
-                    executeWithTimeout(c1Fallback, payload, user, automation.getId(), automation.getName());
-                    saveLog(logBuilder
-                            .status(AutomationLog.LogStatus.TRIGGER_FALSE)
-                            .reason("c1 true, no gate branch matched — c1 fallback fired").build());
+
+                // 3a: any branch was previously ACTIVE but its gate just turned false
+                //     AND it wasn't already handled in the branch loop (edge case: branch
+                //     was ACTIVE but gateTrue was also false — already reverted above).
+                //     Nothing extra to do here — the branch loop already fired negativeActions.
+
+                // 3b: no branch has ever been active — lux in range but outside all windows.
+                //     Check for explicitly-tagged fallback actions (conditionGroup="fallback").
+                List<Automation.Action> explicitFallback = automation.getActions().stream()
+                        .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
+                        .filter(a -> "fallback".equalsIgnoreCase(a.getConditionGroup()))
+                        .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
+                        .toList();
+
+                if (!explicitFallback.isEmpty()) {
+                    log.info("ℹ️ [{}] [{}] c1 true, no gate branch matched — firing explicit fallback",
+                            user, automation.getName());
+                    executeWithTimeout(explicitFallback, payload, user, automation.getId(), automation.getName());
+                    saveLog(logBuilder.status(AutomationLog.LogStatus.TRIGGER_FALSE)
+                            .reason("c1 true, no gate branch matched — explicit fallback fired").build());
                 } else {
                     saveLog(logBuilder.status(AutomationLog.LogStatus.NOT_MET)
-                            .reason("c1 true but no gate branch matched and no fallback actions").build());
+                            .reason("c1 true but no gate branch matched — no fallback defined").build());
                 }
                 return;
             }
+
             List<AutomationLog.ConditionResult> conditionResults =
                     buildConditionResults(automation, ctx, payload);
             logBuilder.conditionResults(conditionResults).payload(payload);
-            // ── Wait for all this-tick futures then save a single log ─────
-            boolean finalAnyBranchWasOrIsActive = anyBranchWasOrIsActive;
+
+            // FIX Bug#1 + Bug#2: call shadowEvaluate() INSIDE allOf().thenRun() so
+            // finalAnyBranchWasOrIsActive is resolved only after all futures complete.
+            final boolean finalAnyBranchWasOrIsActive = anyBranchWasOrIsActive;
+            final String winnerDesc = winner != null ? describeBranch(winner) : null;
+            final List<AutomationLog.ConditionResult> finalConditionResults = conditionResults;
+
             CompletableFuture.allOf(tickFutures.toArray(new CompletableFuture[0]))
-                    .thenRun(() -> saveLog(logBuilder
-                            .status(finalAnyBranchWasOrIsActive
-                                    ? AutomationLog.LogStatus.TRIGGERED
-                                    : AutomationLog.LogStatus.SKIPPED)
-                            .reason("Branch evaluation complete").build()));
+                    .thenRun(() -> {
+                        saveLog(logBuilder
+                                .status(finalAnyBranchWasOrIsActive
+                                        ? AutomationLog.LogStatus.TRIGGERED
+                                        : AutomationLog.LogStatus.SKIPPED)
+                                .reason("Branch evaluation complete").build());
+
+                        // FIX Bug#1 + Bug#2: shadow evaluate AFTER variant A fully resolves
+                        abTestService.shadowEvaluate(
+                                automation.getId(),
+                                payload,
+                                finalAnyBranchWasOrIsActive,
+                                finalConditionResults,
+                                winnerDesc);
+                    });
 
         } catch (Exception e) {
             log.error("❌ Error in automation {}: {}", automation.getName(), e.getMessage(), e);
@@ -852,11 +871,6 @@ public class AutomationService {
         }
     }
 
-    /**
-     * Fallback path for automations that have NO gate conditions at all
-     * (pure trigger → positive/negative, no operators needed).
-     * Preserves the original single-state machine behaviour.
-     */
     private void handleNoBranchAutomation(Automation automation,
                                           ExecutionContext ctx,
                                           Map<String, Object> payload,
@@ -865,7 +879,6 @@ public class AutomationService {
                                           String user,
                                           AutomationLog.AutomationLogBuilder logBuilder,
                                           Date now) {
-        // Use the root result directly
         NodeResult root = automationEngine.findRootResult(automation, ctx);
         boolean conditionNow = root != null && root.isTrue();
 
@@ -876,20 +889,12 @@ public class AutomationService {
 
         if (currentState == AutomationState.IDLE && conditionNow) {
             final AutomationCache fc = cache;
-
-            // Detect stateless automations: no negative actions defined means
-            // this is a fire-and-forget event (knock, button press, etc.)
-            // Don't advance to ACTIVE — stay IDLE so next event fires again.
             boolean hasNegativeActions = !negativeActions.isEmpty();
 
             executeWithTimeout(positiveActions, payload, user, automation.getId(), automation.getName())
                     .thenAccept(ok -> {
                         if (!Boolean.TRUE.equals(ok)) return;
-                        if (hasNegativeActions) {
-                            // Stateful — advance to ACTIVE, wait for revert
-                            fc.setState(AutomationState.ACTIVE);
-                        }
-                        // Stateless — stay IDLE, ready for next event
+                        if (hasNegativeActions) fc.setState(AutomationState.ACTIVE);
                         fc.setTriggeredPreviously(true);
                         fc.setPreviousExecutionTime(now);
                         fc.setLastUpdate(new Date());
@@ -899,7 +904,6 @@ public class AutomationService {
             logBuilder.status(AutomationLog.LogStatus.TRIGGERED)
                     .reason((hasNegativeActions ? "Stateful" : "Stateless")
                             + " — condition met, " + actionSummary(positiveActions) + " fired");
-
 
         } else if ((currentState == AutomationState.ACTIVE
                 || currentState == AutomationState.HOLDING) && !conditionNow) {
@@ -911,7 +915,8 @@ public class AutomationService {
                         fc.setTriggeredPreviously(false);
                         fc.setLastUpdate(new Date());
                         redisService.setAutomationCache(cacheKey, fc);
-                        notificationService.sendNotification(automation.getName() + " — condition cleared", "info");
+                        notificationService.sendNotification(
+                                automation.getName() + " — condition cleared", "info");
                     });
             logBuilder.status(AutomationLog.LogStatus.RESTORED)
                     .reason("Condition cleared — " + actionSummary(negativeActions) + " fired");
@@ -926,12 +931,6 @@ public class AutomationService {
         saveLog(logBuilder.build());
     }
 
-
-    /**
-     * 3.7 — Public entry point for scene execution.
-     * Fires a specific list of actions for an automation without touching
-     * the state machine. Used by AutomationSceneService.
-     */
     public void executeSceneActions(Automation automation,
                                     List<Automation.Action> actions,
                                     Map<String, Object> payload,
@@ -944,10 +943,6 @@ public class AutomationService {
     // BRANCH RESOLUTION HELPERS
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Resolves all gate branches for this automation, sorted by operator priority DESC.
-     * Each branch is: operator → gate condition → positive/negative actions.
-     */
     private List<GateBranch> resolveGateBranches(Automation automation, ExecutionContext ctx) {
         if (automation.getOperators() == null || automation.getOperators().isEmpty())
             return List.of();
@@ -960,7 +955,6 @@ public class AutomationService {
                 .filter(Automation.Condition::isEnabled)
                 .filter(c -> automationEngine.isGateCondition(c, operatorIds))
                 .map(gateCondition -> {
-                    // Find the operator this gate is downstream of
                     String opNodeId = gateCondition.getPreviousNodeRef().stream()
                             .filter(ref -> operatorIds.contains(ref.getNodeId()))
                             .map(NodeRef::getNodeId)
@@ -983,13 +977,10 @@ public class AutomationService {
                     );
                 })
                 .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(GateBranch::priority).reversed()) // DESC
+                .sorted(Comparator.comparingInt(GateBranch::priority).reversed())
                 .toList();
     }
 
-    /**
-     * Actions tied to a specific gate condition node and group (positive/negative).
-     */
     public List<Automation.Action> resolveActionsForNode(
             Automation automation,
             ExecutionContext ctx,
@@ -1004,24 +995,19 @@ public class AutomationService {
                 .filter(a -> group.equalsIgnoreCase(a.getConditionGroup()))
                 .filter(a -> {
                     if (a.getPreviousNodeRef() == null || a.getPreviousNodeRef().isEmpty())
-                        return false; // gate-targeted actions must have a ref
+                        return false;
                     return a.getPreviousNodeRef().stream().anyMatch(ref -> {
                         if (!ref.getNodeId().equals(nodeId)) return false;
                         String handle = ref.getHandle();
                         if (handle != null && handle.contains("cond-negative"))
                             return falseNodes.contains(ref.getNodeId());
-                        return trueNodes.contains(ref.getNodeId())
-                                || (handle == null); // no handle = include always
+                        return trueNodes.contains(ref.getNodeId()) || (handle == null);
                     });
                 })
                 .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
                 .toList();
     }
 
-    /**
-     * "Informational" actions: conditionGroup == "informational".
-     * Fired when c1 is false — no state machine involvement.
-     */
     private List<Automation.Action> resolveInformationalActions(
             Automation automation, ExecutionContext ctx) {
         return automation.getActions().stream()
@@ -1030,47 +1016,16 @@ public class AutomationService {
                 .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
                 .toList();
     }
+    
 
     /**
-     * c1-fallback actions for Phase 3: c1 is TRUE but no gate branch matched
-     * (e.g. lux in range but current time is outside all schedule windows).
+     * c1-negative revert: fires when c1 turns FALSE and at least one branch was ACTIVE.
+     * Picks "negative" actions whose previousNodeRef points to a TRIGGER condition node.
+     * For this automation: node_action_14 (refs node_condition_11) and
+     * node_action_16/node_action_13 (refs node_condition_5) are correctly picked up here.
      * <p>
-     * Picks up "negative" actions whose previousNodeRef points to a TRIGGER
-     * condition node WITH a cond-negative handle.  These are intended as
-     * "nothing matched" fallback actions.
-     * <p>
-     * NOTE: do NOT confuse with resolveC1NegativeActions() which fires when
-     * c1 itself turns false and active branches need to be reverted.
-     */
-    private List<Automation.Action> resolveC1FallbackActions(
-            Automation automation,
-            ExecutionContext ctx,
-            List<Automation.Condition> triggerConditions) {
-
-        Set<String> triggerNodeIds = triggerConditions.stream()
-                .map(Automation.Condition::getNodeId)
-                .collect(Collectors.toSet());
-
-        return automation.getActions().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> "negative".equalsIgnoreCase(a.getConditionGroup()))
-                .filter(a -> a.getPreviousNodeRef() != null
-                        && a.getPreviousNodeRef().stream().anyMatch(ref ->
-                        triggerNodeIds.contains(ref.getNodeId())
-                                && ref.getHandle() != null
-                                && ref.getHandle().contains("cond-negative")))
-                .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-                .toList();
-    }
-
-    /**
-     * c1-negative revert actions: fired when c1 turns FALSE and at least one
-     * branch was ACTIVE.
-     * <p>
-     * These are "negative" actions whose previousNodeRef points to a TRIGGER
-     * condition node — meaning "lux left the valid range, dim everything".
-     * Same node-ref filter as resolveC1FallbackActions but semantically fires
-     * on c1=false rather than c1=true-no-branch.
+     * FIX Bug#4 (duplicate actions): deduplicate by deviceId+key+data so the same
+     * device command isn't sent twice when multiple actions resolve to the same payload.
      */
     private List<Automation.Action> resolveC1NegativeActions(
             Automation automation,
@@ -1080,7 +1035,7 @@ public class AutomationService {
                 .map(Automation.Condition::getNodeId)
                 .collect(Collectors.toSet());
 
-        return automation.getActions().stream()
+        List<Automation.Action> raw = automation.getActions().stream()
                 .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
                 .filter(a -> "negative".equalsIgnoreCase(a.getConditionGroup()))
                 .filter(a -> a.getPreviousNodeRef() != null
@@ -1088,11 +1043,14 @@ public class AutomationService {
                         triggerNodeIds.contains(ref.getNodeId())))
                 .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
                 .toList();
+
+        // Deduplicate: keep first occurrence per (deviceId, key, data) triple
+        Set<String> seen = new LinkedHashSet<>();
+        return raw.stream()
+                .filter(a -> seen.add(a.getDeviceId() + "|" + a.getKey() + "|" + a.getData()))
+                .collect(Collectors.toList());
     }
 
-    /**
-     * Backward-compatible resolveActions — used by handleNoBranchAutomation.
-     */
     public List<Automation.Action> resolveActionsForGroup(
             Automation automation, ExecutionContext ctx, String group) {
 
@@ -1104,7 +1062,7 @@ public class AutomationService {
                 .filter(a -> group.equalsIgnoreCase(a.getConditionGroup()))
                 .filter(a -> {
                     if (a.getPreviousNodeRef() == null || a.getPreviousNodeRef().isEmpty())
-                        return true; // global action
+                        return true;
                     return a.getPreviousNodeRef().stream().anyMatch(ref -> {
                         String handle = ref.getHandle();
                         if (handle != null && handle.contains("cond-negative"))
@@ -1151,7 +1109,7 @@ public class AutomationService {
 
 
     // ═════════════════════════════════════════════════════════════════════
-    // ACTION EXECUTION  (unchanged)
+    // ACTION EXECUTION
     // ═════════════════════════════════════════════════════════════════════
 
     private CompletableFuture<Boolean> executeWithTimeout(List<Automation.Action> actions,
@@ -1176,8 +1134,7 @@ public class AutomationService {
                                                               String user,
                                                               Map<String, Object> payload,
                                                               String automationId,
-                                                              String automationName
-    ) {
+                                                              String automationName) {
         CompletableFuture<Boolean> chain = CompletableFuture.completedFuture(true);
 
         for (Automation.Action action : actions) {
@@ -1213,7 +1170,9 @@ public class AutomationService {
 
     private void executeSingleAction(Automation.Action action,
                                      String user,
-                                     Map<String, Object> value, String automationId, String automationName) {
+                                     Map<String, Object> value,
+                                     String automationId,
+                                     String automationName) {
         Object parsedData = parseData(action.getData());
         Map<String, Object> payload = Map.of(action.getKey(), parsedData, "key", action.getKey());
 
@@ -1239,7 +1198,6 @@ public class AutomationService {
             messagingTemplate.convertAndSend("action/" + action.getDeviceId(), trackedPayload);
             sendToTopic("action/" + action.getDeviceId(), trackedPayload);
 
-            // Register for ack tracking — non-blocking
             String deviceName = automationEngine.resolveDeviceLabel(action.getDeviceId(), action.getName());
             deliveryTracker.register(correlationId, automationId, automationName,
                     action.getDeviceId(), deviceName, trackedPayload);
@@ -1248,7 +1206,7 @@ public class AutomationService {
 
 
     // ═════════════════════════════════════════════════════════════════════
-    // CONDITION RESULT BUILDER  (updated with operatorNodeId + suppressedBy)
+    // CONDITION RESULT BUILDER
     // ═════════════════════════════════════════════════════════════════════
 
     private List<AutomationLog.ConditionResult> buildConditionResults(
@@ -1264,7 +1222,6 @@ public class AutomationService {
             NodeResult nr = ctx.get(c.getNodeId());
             if (nr == null) continue;
 
-            // Find parent operator for gate conditions
             String parentOpId = null;
             if (c.getPreviousNodeRef() != null) {
                 parentOpId = c.getPreviousNodeRef().stream()
@@ -1322,7 +1279,6 @@ public class AutomationService {
             results.add(builder.build());
         }
 
-        // Operator nodes
         if (automation.getOperators() != null) {
             for (Automation.Operator op : automation.getOperators()) {
                 NodeResult nr = ctx.get(op.getNodeId());
@@ -1357,9 +1313,6 @@ public class AutomationService {
     // ═════════════════════════════════════════════════════════════════════
 
     private AutomationCache loadOrInitCache(String cacheKey, Automation automation) {
-        // Redis GET is atomic — no lock needed for a read.
-        // The withLock pattern here added 2 Redis round-trips (lock acquire + release)
-        // on every event with no safety benefit since reads don't need mutual exclusion.
         AutomationCache cache = redisService.getAutomationCache(cacheKey);
         if (cache == null)
             cache = AutomationCache.builder()
@@ -1418,7 +1371,7 @@ public class AutomationService {
 
 
     // ═════════════════════════════════════════════════════════════════════
-    // DEVICE / MQTT HELPERS  (unchanged)
+    // DEVICE / MQTT HELPERS
     // ═════════════════════════════════════════════════════════════════════
 
     private void sendToTopic(String topic, Map<String, Object> payload) {
@@ -1440,8 +1393,7 @@ public class AutomationService {
         try {
             new RestTemplate().getForObject(device.getAccessUrl() + "/restart", String.class);
         } catch (Exception e) {
-            notificationService.sendNotification(
-                    "Reboot failed: " + device.getName(), "error");
+            notificationService.sendNotification("Reboot failed: " + device.getName(), "error");
         }
         return "Rebooting device";
     }
@@ -1454,7 +1406,6 @@ public class AutomationService {
         map.put("actionType", "direct");
         messagingTemplate.convertAndSend("/topic/action." + deviceId, map);
         sendToTopic(TOPIC_ACTION + deviceId, map);
-
     }
 
     private String handleWLED(String deviceId, Map<String, Object> payload, String user) {
@@ -1479,44 +1430,15 @@ public class AutomationService {
         }
     }
 
-    // =========================================================================
-    // HUMAN-READABLE MESSAGE HELPERS
-    // =========================================================================
 
-    /**
-     * Short label describing what a gate branch represents.
-     * <p>
-     * Scheduled examples:
-     * "Every 30 min (active for 20 min)"
-     * "Time window 13:05-01:00"
-     * "Sunrise +10 min"
-     * "At 02:20"
-     * <p>
-     * Sensor/data examples:
-     * "percent < 65"
-     * "range in 5-600"
-     */
+    // ═════════════════════════════════════════════════════════════════════
+    // HUMAN-READABLE MESSAGE HELPERS
+    // ═════════════════════════════════════════════════════════════════════
+
     private String describeBranch(GateBranch branch) {
         return automationEngine.describeCondition(branch.gateCondition());
     }
 
-    /**
-     * Full notification string for a triggered branch.
-     * <p>
-     * Example:
-     * "[Light On] Time window 13:05-01:00 -> Monitor Light preset=8, Light Strip preset=3"
-     */
-    private String describeTriggered(String automationName, GateBranch fb) {
-        String branchDesc = automationEngine.describeCondition(fb.gateCondition());
-        String actionsDesc = actionSummary(fb.positiveActions());
-        return "[" + automationName + "] " + branchDesc + " -> " + actionsDesc;
-    }
-
-    /**
-     * Compact summary of an action list.
-     * <p>
-     * Example: "Monitor Light preset=8, Light Strip bright=100"
-     */
     String actionSummary(List<Automation.Action> actions) {
         if (actions == null || actions.isEmpty()) return "no actions";
         return actions.stream()
@@ -1526,25 +1448,21 @@ public class AutomationService {
                 .collect(Collectors.joining(", "));
     }
 
-    /**
-     * 3.9 — Rolls back an automation to a specific version.
-     * Restores both the Automation and AutomationDetail from the snapshot,
-     * re-saves them (which creates a new version with a rollback note),
-     * and refreshes the cache.
-     */
+
+    // ═════════════════════════════════════════════════════════════════════
+    // VERSION / COPY / DELETE
+    // ═════════════════════════════════════════════════════════════════════
+
     public String rollbackToVersion(String automationId, int targetVersion, String user) {
         try {
             AutomationVersionService.RollbackResult rollback =
                     automationVersionService.rollback(automationId, targetVersion);
 
-            // Re-save through the normal save path so cache, scheduler,
-            // and version history are all updated correctly
             AutomationDetail detail = rollback.detail();
             detail.setUpdateDate(new Date());
 
             String result = saveAutomationDetailInternal(detail);
             if ("success".equals(result)) {
-                // Overwrite the auto-snapshot with a rollback-annotated one
                 automationRepository.findById(automationId).ifPresent(a ->
                         automationVersionService.snapshot(a, detail, user,
                                 "Rolled back to version " + targetVersion));
@@ -1560,12 +1478,9 @@ public class AutomationService {
     }
 
     public Map<String, Object> copyAutomation(String id, String user) {
-        Automation original = automationRepository.findById(id)
-                .orElse(null);
-        if (original == null)
-            return new HashMap<>();
+        Automation original = automationRepository.findById(id).orElse(null);
+        if (original == null) return new HashMap<>();
 
-        // Deep copy — clear ID so MongoDB assigns a new one
         Automation copy = Automation.builder()
                 .name(original.getName() + " (copy)")
                 .trigger(original.getTrigger())
@@ -1573,18 +1488,17 @@ public class AutomationService {
                 .conditions(original.getConditions())
                 .actions(original.getActions())
                 .operators(original.getOperators())
-                .isEnabled(false)          // always disabled until reviewed
+                .isEnabled(false)
                 .isActive(false)
                 .updateDate(new Date())
                 .build();
 
         Automation saved = automationRepository.save(copy);
 
-        // Copy the AutomationDetail (visual graph layout)
         AutomationDetail detailCopy = automationDetailRepository.findById(id)
                 .map(d -> {
                     AutomationDetail dc = new AutomationDetail();
-                    dc.setId(saved.getId());   // new ID matching new automation
+                    dc.setId(saved.getId());
                     dc.setNodes(d.getNodes());
                     dc.setEdges(d.getEdges());
                     dc.setViewport(d.getViewport());
@@ -1599,13 +1513,11 @@ public class AutomationService {
                 });
         automationDetailRepository.save(detailCopy);
 
-        // Warm Redis cache for the new automation
         refreshCacheForAutomation(saved);
 
         log.info("📋 Automation '{}' copied to '{}' by {}",
                 original.getName(), saved.getName(), user);
-        notificationService.sendNotification(
-                "'" + original.getName() + "' copied", "success");
+        notificationService.sendNotification("'" + original.getName() + "' copied", "success");
 
         return Map.of(
                 "status", "success",

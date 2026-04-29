@@ -1,5 +1,6 @@
 package dev.automata.automata.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.AutomationCache;
 import lombok.AllArgsConstructor;
@@ -293,5 +294,15 @@ public class RedisService {
         // Or use SCAN cursor for large keyspaces:
         // ScanOptions opts = ScanOptions.scanOptions().match(pattern).count(100).build();
         // use redisTemplate.executeWithStickyConnection(...)
+    }
+
+    public void setAutomationCacheWithExpiry(String shadowCacheKey, AutomationCache shadowCache, int i) {
+        String json = null;
+        try {
+            json = objectMapper.writeValueAsString(shadowCache);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        redisTemplate.opsForValue().set(shadowCacheKey, json, Duration.ofSeconds(i));
     }
 }
