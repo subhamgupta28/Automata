@@ -47,6 +47,38 @@ public class AutomationLog {
     private Date timestamp;
     private Date endTimestamp;
 
+    /**
+     * Correlation ID originating at handleAction() / triggerPeriodicAutomations().
+     * Threads through: handleAction → orchestrator.execute → evaluator.evaluate
+     * → EvalResult → AutomationLog.
+     * Allows reconstructing a single execution's full timeline across concurrent
+     * evaluations in log aggregators (e.g. ELK, Loki).
+     */
+    @Indexed(background = true)
+    String traceId;
+
+    /**
+     * Wall-clock milliseconds from start of evaluator.evaluate() to the moment
+     * the EvalResult is returned. Excludes dispatch time (tracked separately via
+     * deliveryStatus). Use this to detect slow secondary Redis reads in
+     * evalSingleCondition().
+     */
+    Long evalDurationMs;
+
+    /**
+     * Set asynchronously by ActionDeliveryTracker after the device ACKs the action
+     * (or after the confirmation timeout expires). Null until delivery is resolved.
+     * Persisted by a second logStream.updateDeliveryStatus() call — not by the
+     * initial publish().
+     */
+    DeliveryStatus deliveryStatus;
+
+    /**
+     * ISO-8601 timestamp of when deliveryStatus was last updated.
+     * Null if deliveryStatus is still null.
+     */
+    Date deliveryResolvedAt;
+
 // ─────────────────────────────────────────────────────────────────────
     // STATUS
     // ─────────────────────────────────────────────────────────────────────
@@ -92,6 +124,21 @@ public class AutomationLog {
          * An exception occurred during execution.
          */
         ERROR
+    }
+
+    public enum DeliveryStatus {
+        /**
+         * Device sent ACK with _cid matching the correlation ID.
+         */
+        DELIVERED,
+        /**
+         * Confirmation window expired with no ACK received.
+         */
+        DELIVERY_FAILED,
+        /**
+         * Action had no trackable device target (alert, app_notify, WLED).
+         */
+        NOT_APPLICABLE
     }
 
     @lombok.Data

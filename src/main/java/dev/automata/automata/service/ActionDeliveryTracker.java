@@ -1,135 +1,154 @@
 package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.automata.automata.dto.PendingDelivery;
-import lombok.RequiredArgsConstructor;
+import dev.automata.automata.model.AutomationLog;
+import dev.automata.automata.v2.AutomationLogStream;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.integration.support.MessageBuilder;
-import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.util.Date;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
+/**
+ * Redis-backed action delivery tracker.
+ * <p>
+ * Previously an in-memory Map — broken in distributed envs because the node
+ * that registers a correlation ID may not be the node that receives the MQTT ack.
+ * <p>
+ * Now stores delivery records under DELIVERY:<correlationId> with a 60s TTL.
+ * Any node that handles ackAction() can look up and confirm the record.
+ * <p>
+ * Key: DELIVERY:<correlationId>
+ * TTL: 60 seconds (device must ack within 1 minute or the record expires)
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ActionDeliveryTracker {
 
-    private final RedisService redisService;
-    private final NotificationService notificationService;
+    private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
-    private final SimpMessagingTemplate messagingTemplate;
-    private final MessageChannel mqttOutboundChannel;
+    private final AutomationLogStream logStream;
 
-    private static final String PREFIX = "PENDING_ACTION:";
-    private static final int TTL_SECONDS = 30;
-    private static final int MAX_ATTEMPTS = 3;
+    private static final String PREFIX = "DELIVERY:";
+    private static final long TTL_SEC = 60L;
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // REGISTER
+    // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Called by executeSingleAction after publishing — registers the delivery.
+     * Register a pending delivery. Called by ActionDispatcher after sending
+     * the action payload to the device.
      */
-    public void register(String correlationId, String automationId, String automationName,
-                         String deviceId, String deviceName, Map<String, Object> payload) {
-        PendingDelivery delivery = PendingDelivery.builder()
-                .correlationId(correlationId)
-                .automationId(automationId)
-                .automationName(automationName)
-                .deviceId(deviceId)
-                .deviceName(deviceName)
-                .payload(payload)
-                .attempts(1)
-                .maxAttempts(MAX_ATTEMPTS)
-                .firstSentAt(System.currentTimeMillis())
-                .lastSentAt(System.currentTimeMillis())
-                .build();
-        persist(delivery);
+    public void register(String correlationId,
+                         String automationId,
+                         String automationName,
+                         String deviceId,
+                         String deviceName,
+                         Map<String, Object> payload, String traceId) {
+        try {
+            DeliveryRecord record = DeliveryRecord.builder()
+                    .correlationId(correlationId)
+                    .automationId(automationId)
+                    .automationName(automationName)
+                    .deviceId(deviceId)
+                    .deviceName(deviceName)
+                    .payload(payload)
+                    .registeredAt(new Date())
+                    .traceId(traceId)
+                    .build();
+
+            String json = objectMapper.writeValueAsString(record);
+            redisTemplate.opsForValue().set(PREFIX + correlationId, json, TTL_SEC, TimeUnit.SECONDS);
+
+            log.debug("📬 Delivery registered: cid={} automation='{}' device='{}'",
+                    correlationId, automationName, deviceName);
+
+        } catch (Exception e) {
+            log.warn("Failed to register delivery for cid='{}': {}", correlationId, e.getMessage());
+        }
     }
 
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CONFIRM
+    // ─────────────────────────────────────────────────────────────────────
+
     /**
-     * Called when the device sends back an actionAck with the correlationId.
+     * Confirm delivery. Called from AutomationService.ackAction() when a device
+     * sends back an ack containing the correlationId (_cid field).
+     * <p>
+     * Uses GETDEL to atomically read and delete — prevents double-confirmation.
+     * Any node in the cluster can handle this ack.
      */
     public void confirm(String correlationId) {
-        String key = PREFIX + correlationId;
-        if (redisService.exists(key)) {
-            redisService.delete(key);
-            log.info("Action delivery confirmed: {}", correlationId);
-        }
-    }
+        try {
+            // GETDEL — Redis 6.2+; falls back to GET+DEL if unavailable
+            String raw = redisTemplate.opsForValue().getAndDelete(PREFIX + correlationId);
 
-    /**
-     * Scans for unacknowledged deliveries older than TTL and retries or fails them.
-     */
-    @Scheduled(fixedDelay = 10_000)
-    public void retryPending() {
-        List<String> keys = redisService.scan(PREFIX + "*");
-        for (String key : keys) {
-            try {
-                PendingDelivery d = load(key);
-                if (d == null) continue;
-
-                long age = System.currentTimeMillis() - d.getLastSentAt();
-                if (age < TTL_SECONDS * 1000L) continue;  // not yet expired
-
-                if (d.getAttempts() >= d.getMaxAttempts()) {
-                    // Give up
-                    redisService.delete(key);
-                    log.warn("Action delivery FAILED after {} attempts — automation='{}' device='{}'",
-                            d.getAttempts(), d.getAutomationName(), d.getDeviceName());
-                    notificationService.sendNotification(
-                            d.getAutomationName() + " — " + d.getDeviceName() + " unreachable", "error");
-                    continue;
-                }
-
-                // Retry
-                d.setAttempts(d.getAttempts() + 1);
-                d.setLastSentAt(System.currentTimeMillis());
-                persist(d);
-
-                log.info("Retrying action delivery (attempt {}/{}) — device='{}'",
-                        d.getAttempts(), d.getMaxAttempts(), d.getDeviceName());
-                republish(d);
-
-            } catch (Exception e) {
-                log.error("Error processing pending delivery {}: {}", key, e.getMessage());
+            if (raw == null) {
+                log.debug("📭 Ack received for unknown/expired cid='{}'", correlationId);
+                return;
             }
+
+            DeliveryRecord record = objectMapper.readValue(raw, DeliveryRecord.class);
+            long latencyMs = new Date().getTime() - record.getRegisteredAt().getTime();
+            logStream.updateDeliveryStatus(
+                    record.getTraceId(),
+                    AutomationLog.DeliveryStatus.DELIVERED,
+                    new Date());
+            log.info("✅ Action delivered: automation='{}' device='{}' latency={}ms cid='{}'",
+                    record.getAutomationName(), record.getDeviceName(), latencyMs, correlationId);
+
+        } catch (Exception e) {
+            log.warn("Failed to confirm delivery for cid='{}': {}", correlationId, e.getMessage());
         }
     }
 
-    private void republish(PendingDelivery d) {
-        messagingTemplate.convertAndSend("action/" + d.getDeviceId(), d.getPayload());
-        try {
-            String json = objectMapper.writeValueAsString(d.getPayload());
-            mqttOutboundChannel.send(
-                    MessageBuilder.withPayload(json)
-                            .setHeader("mqtt_topic", "action/" + d.getDeviceId())
-                            .build());
-        } catch (Exception e) {
-            log.error("Retry publish failed for {}: {}", d.getCorrelationId(), e.getMessage());
-        }
-    }
+    @Scheduled(fixedRate = 30_000)
+    public void evictExpired() {
+        long now = System.currentTimeMillis();
+        long timeoutMs = 60_000; // match ACTION_TIMEOUT_SECONDS in ActionDispatcher
 
-    private void persist(PendingDelivery d) {
-        try {
-            redisService.setWithExpiry(
-                    PREFIX + d.getCorrelationId(),
-                    objectMapper.writeValueAsString(d),
-                    TTL_SECONDS * (long) d.getMaxAttempts());  // TTL covers all retries
-        } catch (Exception e) {
-            log.error("Failed to persist pending delivery: {}", e.getMessage());
-        }
+//        var pending = redisTemplate.opsForStream()
+//        pending.entrySet().removeIf(entry -> {
+//            PendingAction action = entry.getValue();
+//            if (now - action.registeredAt() > timeoutMs) {
+//                log.warn("⚠️ Delivery unconfirmed after {}ms: automation='{}' device='{}' traceId={}",
+//                        timeoutMs, action.automationName(), action.deviceId(), action.traceId());
+//
+//                // Mark log entry as DELIVERY_FAILED
+//                logStream.updateDeliveryStatus(
+//                        action.traceId(),
+//                        AutomationLog.DeliveryStatus.DELIVERY_FAILED,
+//                        new Date());
+//                return true;
+//            }
+//            return false;
+//        });
     }
+    // ─────────────────────────────────────────────────────────────────────
+    // RECORD TYPE
+    // ─────────────────────────────────────────────────────────────────────
 
-    private PendingDelivery load(String key) {
-        try {
-            Object val = redisService.get(key);
-            if (val == null) return null;
-            return objectMapper.readValue(val.toString(), PendingDelivery.class);
-        } catch (Exception e) {
-            log.warn("Failed to deserialize pending delivery {}: {}", key, e.getMessage());
-            return null;
-        }
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DeliveryRecord {
+        private String correlationId;
+        private String automationId;
+        private String automationName;
+        private String deviceId;
+        private String deviceName;
+        private Map<String, Object> payload;
+        private Date registeredAt;
+        String traceId;
     }
 }

@@ -1,18 +1,25 @@
 package dev.automata.automata.automation;
 
 
+import com.mongodb.client.AggregateIterable;
+import com.mongodb.client.MongoCollection;
+import dev.automata.automata.dto.AutomationAnalyticsDto;
+import dev.automata.automata.dto.AutomationAnalyticsSummaryDto;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationLog;
 import dev.automata.automata.repository.AutomationLogRepository;
 import dev.automata.automata.repository.AutomationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.Document;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,6 +34,7 @@ public class AutomationAnalyticsService {
 
     private final AutomationRepository automationRepository;
     private final AutomationLogRepository automationLogRepository;
+    private final MongoTemplate mongoTemplate;
 
     /**
      * Get comprehensive analytics for an automation
@@ -71,33 +79,33 @@ public class AutomationAnalyticsService {
     public List<AutomationAnalytics> getAllAutomationAnalytics(int daysBack) {
         long startTime = System.currentTimeMillis();
         log.info("=== Analytics Overview Request Started (daysBack: {}) ===", daysBack);
-        
+
         Date cutoffDate = Date.from(Instant.now().minus(Duration.ofDays(daysBack)));
-        
+
         // Step 1: Fetch all automations
         long step1Start = System.currentTimeMillis();
         List<Automation> automations = automationRepository.findAll();
         long step1Time = System.currentTimeMillis() - step1Start;
         log.info("Step 1 - Fetch automations: {} automations in {}ms", automations.size(), step1Time);
-        
+
         if (automations.isEmpty()) {
             return Collections.emptyList();
         }
-        
+
         // Step 2: Fetch ALL logs in ONE query (not N queries)
         long step2Start = System.currentTimeMillis();
         List<AutomationLog> allLogs = automationLogRepository
                 .findByTimestampAfterOrderByTimestampDesc(cutoffDate);
         long step2Time = System.currentTimeMillis() - step2Start;
         log.info("Step 2 - Fetch all logs: {} logs in {}ms", allLogs.size(), step2Time);
-        
+
         // Step 3: Group logs by automationId for quick lookup
         long step3Start = System.currentTimeMillis();
         Map<String, List<AutomationLog>> logsByAutomationId = allLogs.stream()
                 .collect(Collectors.groupingBy(AutomationLog::getAutomationId));
         long step3Time = System.currentTimeMillis() - step3Start;
         log.info("Step 3 - Group logs: {} groups in {}ms", logsByAutomationId.size(), step3Time);
-        
+
         // Step 4: Process all automations with pre-grouped logs
         long step4Start = System.currentTimeMillis();
         List<AutomationAnalytics> result = automations.stream()
@@ -111,12 +119,12 @@ public class AutomationAnalyticsService {
                 .collect(Collectors.toList());
         long step4Time = System.currentTimeMillis() - step4Start;
         log.info("Step 4 - Process automations: {} results in {}ms", result.size(), step4Time);
-        
+
         long totalTime = System.currentTimeMillis() - startTime;
         log.info("=== Analytics Overview Complete: Total {}ms ===", totalTime);
-        log.info("Breakdown - Fetch automations: {}ms, Fetch logs: {}ms, Group: {}ms, Process: {}ms", 
-            step1Time, step2Time, step3Time, step4Time);
-        
+        log.info("Breakdown - Fetch automations: {}ms, Fetch logs: {}ms, Group: {}ms, Process: {}ms",
+                step1Time, step2Time, step3Time, step4Time);
+
         return result;
     }
 
@@ -360,5 +368,207 @@ public class AutomationAnalyticsService {
                 .max(Comparator.comparing(AutomationLog::getTimestamp))
                 .map(log -> log.getStatus() == AutomationLog.LogStatus.TRIGGERED)
                 .orElse(false);
+    }
+
+    private static final int LOOKBACK_HOURS = 24;
+    private static final long SLOW_EVAL_THRESHOLD_MS = 200L;
+
+    // ── Per-automation list ───────────────────────────────────────────────────
+
+    public List<AutomationAnalyticsDto> getAnalytics() {
+        Date since = Date.from(Instant.now().minus(LOOKBACK_HOURS, ChronoUnit.HOURS));
+
+        // Build the pipeline as raw BSON Documents.
+        // This avoids the ConditionalOperators.otherwise(null) bug in
+        // spring-data-mongodb 4.3.1 where passing (Object) null throws
+        // IllegalArgumentException before the pipeline even reaches MongoDB.
+        //
+        // Using $$REMOVE as the otherwise value is the correct MongoDB idiom:
+        // it omits the field from that document in the accumulator, so $max
+        // and $avg naturally ignore non-matching rows without needing null.
+
+        // ── Stage 1: $match ───────────────────────────────────────────────
+        Document match = new Document("$match", new Document()
+                .append("timestamp", new Document("$gte", since))
+                .append("automationId", new Document("$exists", true))
+        );
+
+        // ── Stage 2: $group ───────────────────────────────────────────────
+        //
+        // lastTriggered:
+        //   $max of timestamp only when status=TRIGGERED, otherwise $$REMOVE.
+        //   $$REMOVE causes the field to be absent for that document in the
+        //   accumulator, so $max sees only actual trigger timestamps.
+        //
+        // avgEvalDurationMs:
+        //   $avg of evalDurationMs — null/missing values are already ignored
+        //   by $avg natively, no conditional needed.
+        //
+        // avgFireDelayMs:
+        //   $avg of (deliveryResolvedAt - timestamp) only for DELIVERED entries
+        //   that have a deliveryResolvedAt. Otherwise $$REMOVE so $avg skips them.
+        //
+        // undelivered / slowEvals / errors / totalTriggers:
+        //   $sum with $cond returning 1 or 0 — this is safe because 0 is a
+        //   valid numeric value, not null, so no otherwise(null) issue.
+
+        Document group = new Document("$group", new Document()
+                .append("_id", "$automationId")
+                .append("automationName", new Document("$last", "$automationName"))
+
+                // lastTriggered — max timestamp among TRIGGERED rows only
+                .append("lastTriggered", new Document("$max",
+                        new Document("$cond", Arrays.asList(
+                                new Document("$eq", Arrays.asList("$status", "TRIGGERED")),
+                                "$timestamp",
+                                "$$REMOVE"          // ← skipped by $max, not null
+                        ))
+                ))
+
+                // avgEvalDurationMs — plain avg, MongoDB skips null/missing natively
+                .append("avgEvalDurationMs", new Document("$avg", "$evalDurationMs"))
+
+                // avgFireDelayMs — (deliveryResolvedAt - timestamp) for DELIVERED only
+                .append("avgFireDelayMs", new Document("$avg",
+                        new Document("$cond", Arrays.asList(
+                                new Document("$and", Arrays.asList(
+                                        new Document("$eq", Arrays.asList("$deliveryStatus", "DELIVERED")),
+                                        new Document("$gt", Arrays.asList("$deliveryResolvedAt", null))
+                                )),
+                                new Document("$subtract", Arrays.asList(
+                                        "$deliveryResolvedAt", "$timestamp"
+                                )),
+                                "$$REMOVE"          // ← skipped by $avg, not null
+                        ))
+                ))
+
+                // undelivered — safe: returns 0 or 1, never null
+                .append("undelivered", new Document("$sum",
+                        new Document("$cond", Arrays.asList(
+                                new Document("$eq", Arrays.asList("$deliveryStatus", "DELIVERY_FAILED")),
+                                1, 0
+                        ))
+                ))
+
+                // slowEvals — evalDurationMs > 200
+                .append("slowEvals", new Document("$sum",
+                        new Document("$cond", Arrays.asList(
+                                new Document("$gt", Arrays.asList("$evalDurationMs", SLOW_EVAL_THRESHOLD_MS)),
+                                1, 0
+                        ))
+                ))
+
+                // errors — status = TRIGGER_FALSE (c1 turned false while a branch was active)
+                .append("errors", new Document("$sum",
+                        new Document("$cond", Arrays.asList(
+                                new Document("$eq", Arrays.asList("$status", "TRIGGER_FALSE")),
+                                1, 0
+                        ))
+                ))
+
+                // totalTriggers
+                .append("totalTriggers", new Document("$sum",
+                        new Document("$cond", Arrays.asList(
+                                new Document("$eq", Arrays.asList("$status", "TRIGGERED")),
+                                1, 0
+                        ))
+                ))
+        );
+
+        // ── Stage 3: $sort — errors-first, then most recently triggered ───
+        Document sort = new Document("$sort", new Document()
+                .append("errors", -1)
+                .append("lastTriggered", -1)
+        );
+
+        // ── Execute ───────────────────────────────────────────────────────
+        MongoCollection<Document> collection =
+                mongoTemplate.getCollection("automation_logs");
+
+        AggregateIterable<Document> results =
+                collection.aggregate(Arrays.asList(match, group, sort))
+                        .allowDiskUse(true);
+
+        List<AutomationAnalyticsDto> dtos = new ArrayList<>();
+        for (Document doc : results) {
+            dtos.add(toDto(doc));
+        }
+        return dtos;
+    }
+
+    // ── Summary ───────────────────────────────────────────────────────────────
+
+    public AutomationAnalyticsSummaryDto getSummary() {
+        List<AutomationAnalyticsDto> rows = getAnalytics();
+
+        int healthy = (int) rows.stream().filter(this::isHealthy).count();
+        int warnings = (int) rows.stream().filter(this::isWarning).count();
+        int errors = (int) rows.stream().filter(this::isError).count();
+        long totalUndelivered = rows.stream()
+                .mapToLong(AutomationAnalyticsDto::getUndelivered).sum();
+        long totalSlowEvals = rows.stream()
+                .mapToLong(AutomationAnalyticsDto::getSlowEvals).sum();
+
+        return AutomationAnalyticsSummaryDto.builder()
+                .total(rows.size())
+                .healthy(healthy)
+                .warnings(warnings)
+                .errors(errors)
+                .totalUndelivered(totalUndelivered)
+                .totalSlowEvals(totalSlowEvals)
+                .build();
+    }
+
+    // ── Mapping ───────────────────────────────────────────────────────────────
+
+    private AutomationAnalyticsDto toDto(Document doc) {
+        String automationId = safeStr(doc.get("_id"));
+        String automationName = safeStr(doc.get("automationName"));
+        Date lastTriggered = doc.get("lastTriggered") instanceof Date d ? d : null;
+        Double avgEval = doc.get("avgEvalDurationMs") instanceof Number n
+                ? n.doubleValue() : null;
+        Double avgFire = doc.get("avgFireDelayMs") instanceof Number n
+                ? n.doubleValue() : null;
+        long undelivered = toLong(doc.get("undelivered"));
+        long slowEvals = toLong(doc.get("slowEvals"));
+        long errors = toLong(doc.get("errors"));
+        long totalTriggers = toLong(doc.get("totalTriggers"));
+
+        return AutomationAnalyticsDto.builder()
+                .automationId(automationId)
+                .automationName(automationName)
+                .lastTriggered(lastTriggered != null
+                        ? lastTriggered.toInstant().toString() : null)
+                .avgEvalDurationMs(avgEval != null ? Math.round(avgEval) : null)
+                .avgActionFireDelayMs(avgFire != null ? Math.round(avgFire) : null)
+                .undelivered(undelivered)
+                .slowEvals(slowEvals)
+                .errors(errors)
+                .totalTriggers(totalTriggers)
+                .build();
+    }
+
+    // ── Status classification ─────────────────────────────────────────────────
+
+    private boolean isError(AutomationAnalyticsDto a) {
+        return a.getErrors() > 0;
+    }
+
+    private boolean isWarning(AutomationAnalyticsDto a) {
+        return !isError(a) && (a.getUndelivered() > 0 || a.getSlowEvals() > 0);
+    }
+
+    private boolean isHealthy(AutomationAnalyticsDto a) {
+        return !isError(a) && !isWarning(a);
+    }
+
+    // ── Null-safe helpers ─────────────────────────────────────────────────────
+
+    private String safeStr(Object o) {
+        return o != null ? o.toString() : null;
+    }
+
+    private long toLong(Object o) {
+        return o instanceof Number n ? n.longValue() : 0L;
     }
 }

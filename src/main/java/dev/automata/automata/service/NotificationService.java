@@ -5,6 +5,7 @@ import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.NotificationRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpEntity;
@@ -18,6 +19,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
@@ -27,7 +29,7 @@ public class NotificationService {
     private RestTemplate restTemplate;
 
     @Value("${app.notification.ntfy.url}")
-    private static String NTFY_URL;
+    private String NTFY_URL;
 //    private final AutomationService automationService;
 
     public void sendAlert(String message, String severity) {
@@ -84,11 +86,11 @@ public class NotificationService {
             headers.add("Priority", priority);
 //        headers.add("Tags", "warning");
 
+            log.info("Sending notification to url {} with message {}", NTFY_URL, message);
             HttpEntity<String> request = new HttpEntity<>(message, headers);
             restTemplate.postForObject(NTFY_URL, request, String.class);
-            System.err.println("NTFY sent: " + message);
         } catch (Exception e) {
-            System.err.println(e);
+            log.error("ERROR: sendNotify", e);
         }
     }
 

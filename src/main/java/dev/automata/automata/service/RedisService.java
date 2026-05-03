@@ -119,7 +119,7 @@ public class RedisService {
      */
     public void setWithExpiry(String key, String value, long seconds) {
         try {
-            redisTemplate.opsForValue().set(key, value, Duration.ofSeconds(seconds));
+            stringRedisTemplate.opsForValue().set(key, value, Duration.ofSeconds(seconds));
             log.debug("📝 Set with expiry: {} (TTL: {}s)", key, seconds);
         } catch (Exception e) {
             log.error("Error setting key with expiry: {}", key, e);
@@ -131,7 +131,7 @@ public class RedisService {
      */
     public boolean exists(String key) {
         try {
-            Boolean result = redisTemplate.hasKey(key);
+            Boolean result = stringRedisTemplate.hasKey(key);
             return result != null && result;
         } catch (Exception e) {
             log.error("Error checking existence of key: {}", key, e);
@@ -144,7 +144,7 @@ public class RedisService {
      */
     public String get(String key) {
         try {
-            Object value = redisTemplate.opsForValue().get(key);
+            Object value = stringRedisTemplate.opsForValue().get(key);
             return value != null ? value.toString() : null;
         } catch (Exception e) {
             log.error("Error getting key: {}", key, e);
@@ -157,7 +157,7 @@ public class RedisService {
      */
     public boolean delete(String key) {
         try {
-            Boolean result = redisTemplate.delete(key);
+            Boolean result = stringRedisTemplate.delete(key);
             return result != null && result;
         } catch (Exception e) {
             log.error("Error deleting key: {}", key, e);
@@ -170,7 +170,7 @@ public class RedisService {
      */
     public AutomationCache getAutomationCache(String key) {
         try {
-            Object value = redisTemplate.opsForValue().get(key);
+            Object value = stringRedisTemplate.opsForValue().get(key);
             if (value == null) return null;
 
             // Assuming value is stored as JSON string
@@ -194,7 +194,7 @@ public class RedisService {
         try {
             // Store as JSON for compatibility
             String json = objectMapper.writeValueAsString(cache);
-            redisTemplate.opsForValue().set(key, json);
+            stringRedisTemplate.opsForValue().set(key, json);
             log.debug("📝 Automation cache saved: {}", key);
         } catch (Exception e) {
             log.error("Error setting automation cache for key: {}", key, e);
@@ -207,7 +207,7 @@ public class RedisService {
     @SuppressWarnings("unchecked")
     public Map<String, Object> getRecentDeviceData(String deviceId) {
         try {
-            Object value = redisTemplate.opsForValue().get(deviceId);
+            Object value = stringRedisTemplate.opsForValue().get(deviceId);
             if (value == null) return null;
 
             if (value instanceof String) {
@@ -229,7 +229,7 @@ public class RedisService {
     public void setRecentDeviceData(String key, Map<String, Object> data) {
         try {
             String json = objectMapper.writeValueAsString(data);
-            redisTemplate.opsForValue().set(key, json);
+            stringRedisTemplate.opsForValue().set(key, json);
         } catch (Exception e) {
             log.error("Error setting device data for key: {}", key, e);
         }
@@ -240,7 +240,7 @@ public class RedisService {
      */
     public Long increment(String key) {
         try {
-            return redisTemplate.opsForValue().increment(key);
+            return stringRedisTemplate.opsForValue().increment(key);
         } catch (Exception e) {
             log.error("Error incrementing key: {}", key, e);
             return null;
@@ -252,7 +252,7 @@ public class RedisService {
      */
     public void set(String key, String value) {
         try {
-            redisTemplate.opsForValue().set(key, value);
+            stringRedisTemplate.opsForValue().set(key, value);
         } catch (Exception e) {
             log.error("Error setting key: {}", key, e);
         }
@@ -265,7 +265,7 @@ public class RedisService {
      */
     public Long getTTL(String key) {
         try {
-            return redisTemplate.getExpire(key, TimeUnit.SECONDS);
+            return stringRedisTemplate.getExpire(key, TimeUnit.SECONDS);
         } catch (Exception e) {
             log.error("Error getting TTL for key: {}", key, e);
             return -2L;
@@ -282,7 +282,7 @@ public class RedisService {
                 return false;
             }
 
-            return redisTemplate.expire(key, Duration.ofSeconds(currentTTL + additionalSeconds));
+            return Boolean.TRUE.equals(stringRedisTemplate.expire(key, Duration.ofSeconds(currentTTL + additionalSeconds)));
         } catch (Exception e) {
             log.error("Error extending expiry for key: {}", key, e);
             return false;
@@ -290,7 +290,7 @@ public class RedisService {
     }
 
     public List<String> scan(String pattern) {
-        return new ArrayList<>(redisTemplate.keys(pattern));
+        return new ArrayList<>(stringRedisTemplate.keys(pattern));
         // Or use SCAN cursor for large keyspaces:
         // ScanOptions opts = ScanOptions.scanOptions().match(pattern).count(100).build();
         // use redisTemplate.executeWithStickyConnection(...)
@@ -303,6 +303,6 @@ public class RedisService {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        redisTemplate.opsForValue().set(shadowCacheKey, json, Duration.ofSeconds(i));
+        stringRedisTemplate.opsForValue().set(shadowCacheKey, json, Duration.ofSeconds(i));
     }
 }
