@@ -1,83 +1,93 @@
 package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.automata.automata.automation.*;
-import dev.automata.automata.dto.*;
-import dev.automata.automata.model.*;
+import dev.automata.automata.automation.AutomationAbTestService;
+import dev.automata.automata.automation.AutomationValidationService;
+import dev.automata.automata.automation.AutomationVersionService;
+import dev.automata.automata.automation.ScheduledAutomationManager;
+import dev.automata.automata.dto.AutomationRuntimeState;
+import dev.automata.automata.dto.LiveEvent;
+import dev.automata.automata.model.Automation;
+import dev.automata.automata.model.AutomationDetail;
+import dev.automata.automata.model.Device;
+import dev.automata.automata.model.TriggerSource;
 import dev.automata.automata.modules.Wled;
-import dev.automata.automata.repository.*;
+import dev.automata.automata.repository.AutomationDetailRepository;
+import dev.automata.automata.repository.AutomationRepository;
+import dev.automata.automata.repository.DeviceRepository;
+import dev.automata.automata.repository.ExecutionPlanRepository;
+import dev.automata.automata.v2.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+/**
+ * AutomationService — public API surface only.
+ * <p>
+ * Live device data path (HIGH FREQUENCY — 1 payload/sec/device):
+ * onCustomEvent() / handleAction()
+ * → redisService.setRecentDeviceData(deviceId, payload)   ← Redis SET only
+ * → orchestrator.execute(automationId, payload, user)      ← async evaluation
+ * <p>
+ * Live data NEVER touches MongoDB directly. MongoDB is only written to by
+ * AutomationLogStream.flush() for automation execution logs (sparse — only
+ * on state changes like TRIGGERED/RESTORED).
+ * <p>
+ * Removed vs old 700-line version:
+ * - All execution logic             → AutomationOrchestrator
+ * - All condition evaluation        → AutomationEvaluator
+ * - All action dispatch             → ActionDispatcher
+ * - All Redis state R/W             → AutomationStateStore
+ * - All log buffering               → AutomationLogStream
+ * - Delivery tracking (in-memory)   → ActionDeliveryTracker (Redis-backed)
+ * - Graph derivation at eval time   → ExecutionPlanCompiler (compile once on save)
+ * - Plan caching                    → PlanCache
+ * - EXEC_LOCK (60s blunt lock)      → CAS in AutomationStateStore
+ * - @EventListener PeriodicCheckEvent + CallerRunsPolicy → direct orchestrator.execute()
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AutomationService {
 
-    private final DeviceRepository deviceRepository;
     private final AutomationRepository automationRepository;
-    private final SimpMessagingTemplate messagingTemplate;
-    private final RedisService redisService;
+    private final AutomationDetailRepository automationDetailRepository;
+    private final AutomationVersionService automationVersionService;
+    private final AutomationValidationService validationService;
+    private final AutomationAbTestService abTestService;
+    private final ExecutionPlanCompiler planCompiler;
+    private final ExecutionPlanRepository planRepository;
+    private final AutomationOrchestrator orchestrator;
+    private final AutomationStateStore stateStore;
+    private final AutomationLogStream logStream;
+    private final ActionDispatcher dispatcher;
+    private final ActionDeliveryTracker deliveryTracker;
+    private final PlanCache planCache;
+    private final FeatureService featureService;
+    private final ScheduledAutomationManager scheduledAutomationManager;
     private final MainService mainService;
     private final NotificationService notificationService;
-    private final AutomationDetailRepository automationDetailRepository;
-    private final DeviceActionStateRepository deviceActionStateRepository;
+    private final SimpMessagingTemplate messagingTemplate;
     private final MessageChannel mqttOutboundChannel;
-    private final AutomationLogRepository automationLogRepository;
-    private final AutomationValidationService validationService;
-    private final FeatureService featureService;
-    private final ApplicationEventPublisher eventPublisher;
-    private final AutomationLogBuffer logBuffer;
-    private final ActionDeliveryTracker deliveryTracker;
-    private final ScheduledAutomationManager scheduledAutomationManager;
-    private final AutomationEngine automationEngine;
-    private final AutomationVersionService automationVersionService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final DeviceRepository deviceRepository;
+    // RedisService used directly for device data — never for automation logs
+    private final RedisService redisService;
+    private final ObjectMapper objectMapper;
 
     private static final String TOPIC_ACTION = "action/";
-    private static final long AUTOMATION_TIMEOUT_SECONDS = 30;
-    private static final long LOCK_TTL_SECONDS = 60;
-
-    private final Executor automationExecutor = new ThreadPoolExecutor(
-            2, 4, 30L, TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(50),
-            new ThreadFactory() {
-                private final AtomicInteger count = new AtomicInteger();
-
-                public Thread newThread(Runnable r) {
-                    return new Thread(r, "automation-" + count.incrementAndGet());
-                }
-            },
-            new ThreadPoolExecutor.CallerRunsPolicy()
-    );
-
-    private static final ScheduledExecutorService delayScheduler =
-            Executors.newScheduledThreadPool(2, r -> {
-                Thread t = new Thread(r, "automation-delay-scheduler");
-                t.setDaemon(true);
-                return t;
-            });
 
 
     // ═════════════════════════════════════════════════════════════════════
-    // PUBLIC API
+    // CRUD API
     // ═════════════════════════════════════════════════════════════════════
 
     public List<Automation> findAll() {
@@ -101,41 +111,29 @@ public class AutomationService {
             a.setIsEnabled(enabled);
             automationRepository.save(a);
             notificationService.sendNotification("Automation updated", "success");
-            refreshCacheForAutomation(a);
+            orchestrator.invalidatePlan(id);
         });
         return "success";
     }
 
-    public String ackAction(String deviceId, Map<String, Object> payload) {
-        if (payload.containsKey("actionAck")) {
-//            messagingTemplate.convertAndSend("/topic/data",
-//                    Map.of("deviceId", deviceId, "ack", payload));
-            if (payload.containsKey("actionType")) {
-                notificationService.sendNotification("Action sent to device", "success");
-            }
 
-            // Confirm delivery if the ack includes a correlationId
-            if (payload.containsKey("_cid")) {
-                deliveryTracker.confirm(payload.get("_cid").toString());
-            }
-        }
-        return "success";
-    }
+    // ═════════════════════════════════════════════════════════════════════
+    // HANDLE ACTION  (live device event entry point)
+    // ═════════════════════════════════════════════════════════════════════
 
     public String handleAction(String deviceId, Map<String, Object> payload,
                                String deviceType, String user) {
+
         if ("WLED".equals(deviceType)) {
-            handleWLED(deviceId, payload, user);
-            return "success";
+            return handleWLED(deviceId, payload, user);
         }
 
         if ("System".equals(deviceType)) {
-            var key = payload.get("key").toString();
-            var data = payload.get(key).toString();
-            if ("alert".equals(payload.get("key")))
-                notificationService.sendNotification("", data);
-            if ("app_notify".equals(payload.get("key")))
-                notificationService.sendNotify("Automation", data, "low");
+            String key = payload.get("key").toString();
+            String data = payload.get(key).toString();
+            if ("alert".equals(key)) notificationService.sendNotification("", data);
+            if ("app_notify".equals(key)) notificationService.sendNotify("Automation", data, "low");
+            return "success";
         }
 
         if ("reboot".equals(payload.get("key"))) {
@@ -143,34 +141,53 @@ public class AutomationService {
         }
 
         if (payload.containsKey("automation")) {
-            var id = payload.get(payload.get("key").toString()).toString();
-            automationRepository.findById(id).ifPresent(
-                    a -> executeAutomationImmediate(a, new HashMap<>(), user));
+            String id = payload.get(payload.get("key").toString()).toString();
+            automationRepository.findById(id)
+                    .ifPresent(a -> orchestrator.execute(a.getId(), new HashMap<>(), user));
             return "success";
         }
 
         if (payload.containsValue("master")) {
-            var id = payload.get("deviceId").toString();
-            var device = deviceRepository.findById(id);
-            var key = payload.get("key").toString();
-            var value = Integer.parseInt(payload.get("value").toString());
-            var req = new HashMap<String, Object>();
+            String id = payload.get("deviceId").toString();
+            int value = Integer.parseInt(payload.get("value").toString());
+            String key = payload.get("key").toString();
+            Map<String, Object> req = new HashMap<>();
             req.put("key", key);
             req.put(key, value);
             req.put("direct", true);
             req.put("deviceId", id);
-            device.ifPresent(d -> handleAction(id, req, d.getType(), user));
+            deviceRepository.findById(id)
+                    .ifPresent(d -> handleAction(id, req, d.getType(), user));
+            return "success";
         }
 
-        if (payload.containsKey("direct") && Boolean.parseBoolean(payload.get("direct").toString())) {
-            sendDirectAction(deviceId, payload);
-            return "No saved action found but sent directly";
+        if (payload.containsKey("direct")
+                && Boolean.parseBoolean(payload.get("direct").toString())) {
+            dispatcher.dispatchDirect(deviceId, payload);
+            return "Direct action sent";
         }
 
-        automationRepository.findByTrigger_DeviceId(deviceId)
-                .forEach(a -> eventPublisher.publishEvent(new PeriodicCheckEvent(this, a, payload, "user")));
+        // Write live payload to Redis — overwrites previous value, no MongoDB
+        writeDeviceData(deviceId, payload);
 
-        return "Action successfully sent!";
+        List<Automation> automations = automationRepository.findByTrigger_DeviceId(deviceId);
+        if (automations.isEmpty()) return "No automations for device";
+
+        automations.stream()
+                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
+                .forEach(a -> orchestrator.execute(a.getId(), payload, user));
+
+        return "Action routed to " + automations.size() + " automation(s)";
+    }
+
+    public String ackAction(String deviceId, Map<String, Object> payload) {
+        if (payload.containsKey("actionAck")) {
+            if (payload.containsKey("actionType"))
+                notificationService.sendNotification("Action sent to device", "success");
+            if (payload.containsKey("_cid"))
+                deliveryTracker.confirm(payload.get("_cid").toString());
+        }
+        return "success";
     }
 
     public String rebootAllDevices() {
@@ -181,12 +198,12 @@ public class AutomationService {
     }
 
     public Object sendConditionToDevice(String deviceId) {
-        var payload = new HashMap<String, Object>();
-        var keyJoiner = new StringJoiner(",");
+        Map<String, Object> payload = new HashMap<>();
+        StringJoiner keyJoiner = new StringJoiner(",");
         for (Automation a : automationRepository.findByTrigger_DeviceId(deviceId)) {
-            var conditions = a.getConditions();
-            if (conditions == null || conditions.isEmpty()) continue;
-            var c = conditions.get(0);
+            List<Automation.Condition> conds = a.getConditions();
+            if (conds == null || conds.isEmpty()) continue;
+            Automation.Condition c = conds.get(0);
             String v = a.getTrigger().getKey();
             v += Boolean.TRUE.equals(c.getIsExact())
                     ? "=" + c.getValue()
@@ -205,87 +222,73 @@ public class AutomationService {
     // EVENT LISTENERS
     // ═════════════════════════════════════════════════════════════════════
 
-    @Async
-    @EventListener
-    public void onPeriodicCheck(PeriodicCheckEvent event) {
-        checkAndExecuteSingleAutomation(event.getAutomation(), event.getRecentData(), event.getTriggerSource());
-    }
-
+    /**
+     * Receives live device data events published within the application.
+     * <p>
+     * This is the ONLY write path for live device data → Redis.
+     * Data is written as a plain Redis hash/string with a short TTL.
+     * It is NEVER written to MongoDB here.
+     * <p>
+     * Key normalization: device_id is lowercased so it matches MongoDB's
+     * ObjectId hex format regardless of how the IoT device capitalizes it.
+     */
     @EventListener
     public void onCustomEvent(LiveEvent event) {
-        var payload = event.getPayload();
-        redisService.setRecentDeviceData(payload.get("device_id").toString(), payload);
+        Map<String, Object> payload = event.getPayload();
+        String rawId = payload.get("device_id").toString();
+        String normalizedId = rawId.toLowerCase(Locale.ROOT);
+        writeDeviceData(normalizedId, payload);
+        // Also write original key for backward compatibility
+        if (!normalizedId.equals(rawId)) {
+            writeDeviceData(rawId, payload);
+        }
     }
 
-    /**
-     * Returns the list of enabled automations for a device, served from a
-     * short-lived Redis cache (TTL = 5 min) to avoid hitting MongoDB on every
-     * live-data event (15+ devices * 1 event/sec = 15 MongoDB queries/sec otherwise).
-     * <p>
-     * The cache is invalidated in refreshCacheForAutomation() whenever an
-     * automation is saved or toggled, so staleness is bounded by save operations.
-     */
-    private List<Automation> getCachedAutomationsForDevice(String deviceId) {
-        String key = "AUTOMATIONS_BY_DEVICE:" + deviceId;
-        try {
-            Object cached = redisService.get(key);
-            if (cached != null) {
-                // Redis stores it as a JSON string via ObjectMapper
-                return objectMapper.readValue(
-                        cached.toString(),
-                        objectMapper.getTypeFactory()
-                                .constructCollectionType(List.class, Automation.class));
-            }
-        } catch (Exception e) {
-            log.warn("Automation list cache miss (parse error) for device {}: {}", deviceId, e.getMessage());
-        }
-        List<Automation> fresh = automationRepository.findByTrigger_DeviceId(deviceId);
-        try {
-            redisService.setWithExpiry(key, objectMapper.writeValueAsString(fresh), 300);
-        } catch (Exception e) {
-            log.warn("Failed to cache automation list for device {}: {}", deviceId, e.getMessage());
-        }
-        return fresh;
-    }
 
     // ═════════════════════════════════════════════════════════════════════
     // SCHEDULED JOBS
     // ═════════════════════════════════════════════════════════════════════
 
+    /**
+     * Periodic evaluation tick — every 12 seconds.
+     * <p>
+     * For data-driven automations: fetches the latest device data from Redis
+     * (a plain GET — no lock, no complex query) and calls orchestrator.execute()
+     * which is @Async("automationExecutor").
+     * <p>
+     * For schedule-only automations: passes empty payload — the evaluator
+     * checks schedule conditions independently.
+     * <p>
+     * Redis is read-only here (getRecentDeviceData).
+     * MongoDB is NOT touched in this method.
+     */
     @Scheduled(fixedRate = 12_000)
     public void triggerPeriodicAutomations() {
+        if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) return;
+
+
         automationRepository.findEnabledForExecution().stream()
                 .filter(a -> !scheduledAutomationManager.hasOnlyScheduledConditions(a))
                 .forEach(a -> {
-                    AutomationCache cached = redisService.getAutomationCache(a.getTrigger().getDeviceId() + ":" + a.getId());
-                    Automation toRun = (cached != null && cached.getAutomation() != null) ? cached.getAutomation() : a;
-                    Map<String, Object> recentData = redisService.getRecentDeviceData(a.getTrigger().getDeviceId());
-                    eventPublisher.publishEvent(new PeriodicCheckEvent(this, toRun, recentData));
+                    String deviceId = a.getTrigger().getDeviceId();
+
+                    // Redis GET — returns null if device has never published or TTL expired
+                    Map<String, Object> recentData =
+                            redisService.getRecentDeviceData(deviceId);
+
+                    if ((recentData == null || recentData.isEmpty())
+                            && planHasDataDrivenTrigger(a.getId())) {
+                        log.warn("⚠️ [{}] Skipping — no cached data for device '{}'",
+                                a.getName(), deviceId);
+                        return;
+                    }
+
+                    warnMissingSecondaryData(a);
+
+                    orchestrator.execute(a.getId(),
+                            recentData != null ? recentData : Map.of(),
+                            "scheduler");
                 });
-    }
-
-    @Scheduled(fixedRate = 60_000 * 5)
-    public void updateRedisStorage() {
-        Date fiveMinutesAgo = new Date(System.currentTimeMillis() - 5 * 60 * 1000);
-        automationRepository.findAll().forEach(a -> {
-            String cacheKey = a.getTrigger().getDeviceId() + ":" + a.getId();
-            AutomationCache existing = redisService.getAutomationCache(cacheKey);
-            if (existing != null && existing.getLastUpdate() != null
-                    && existing.getLastUpdate().after(fiveMinutesAgo)) return;
-
-            redisService.setAutomationCache(cacheKey, AutomationCache.builder()
-                    .id(a.getId()).automation(a)
-                    .triggerDeviceType(a.getTriggerDeviceType())
-                    .enabled(a.getIsEnabled())
-                    .state(existing != null ? existing.getState() : AutomationState.IDLE)
-                    .branchStates(existing != null ? existing.getBranchStates() : new HashMap<>())
-                    .triggerDeviceId(a.getTrigger().getDeviceId())
-                    .isActive(existing != null && Boolean.TRUE.equals(existing.getIsActive()))
-                    .triggeredPreviously(existing != null && existing.isTriggeredPreviously())
-                    .previousExecutionTime(existing != null ? existing.getPreviousExecutionTime() : null)
-                    .lastUpdate(existing != null ? existing.getLastUpdate() : null)
-                    .build());
-        });
     }
 
     @Scheduled(fixedRate = 65_000)
@@ -314,24 +317,18 @@ public class AutomationService {
         return saveAutomationDetailInternal(detail);
     }
 
-
-    /**
-     * Explicit save with version annotation — used when user provides a change note.
-     */
     public String saveAutomationDetailAnnotated(AutomationDetail detail,
-                                                String savedBy,
-                                                String changeNote) {
+                                                String savedBy, String changeNote) {
         String result = saveAutomationDetailInternal(detail);
-        if ("success".equals(result)) {
-            // Update the just-created snapshot with the user's annotation
+        if ("success".equals(result))
             automationRepository.findById(detail.getId()).ifPresent(a ->
                     automationVersionService.snapshot(a, detail, savedBy, changeNote));
-        }
         return result;
     }
 
     private String saveAutomationDetailInternal(AutomationDetail detail) {
-        log.info("Saving automation detail: {}", detail);
+        log.info("Saving automation: {}", detail.getId());
+
         var automationBuilder = Automation.builder()
                 .isEnabled(true).updateDate(new Date()).isActive(false);
 
@@ -371,7 +368,8 @@ public class AutomationService {
                                 c.getValue(), c.getTime(), c.getTriggerKey(), c.getIsExact(),
                                 c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays(),
                                 c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(),
-                                c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef(), c.getDeviceId()))
+                                c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef(),
+                                c.getDeviceId()))
                         .collect(Collectors.toList()));
 
         automationBuilder.operators(
@@ -380,1046 +378,218 @@ public class AutomationService {
                         .filter(Objects::nonNull)
                         .map(c -> new Automation.Operator(
                                 c.getType(), c.getLogicType(),
-                                c.getPreviousNodeRef(), c.getNodeId(),
-                                c.getPriority()))          // ← priority preserved
+                                c.getPreviousNodeRef(), c.getNodeId(), c.getPriority()))
                         .collect(Collectors.toList()));
 
-
-        var automation = automationBuilder.build();
+        Automation automation = automationBuilder.build();
         List<String> subscribers = automation.getTrigger().getSources().stream()
                 .filter(s -> "primary".equals(s.getRole()))
                 .map(TriggerSource::getDeviceId)
                 .toList();
         automation.setSubscriberDeviceIds(subscribers);
-        automation.setTriggerDeviceType(mainService.getDevice(automation.getTrigger().getDeviceId()).getType());
+        automation.setTriggerDeviceType(
+                mainService.getDevice(automation.getTrigger().getDeviceId()).getType());
 
-        var saved = automationRepository.save(automation);
+        Automation saved = automationRepository.save(automation);
         detail.setId(saved.getId());
         detail.setUpdateDate(new Date());
         automationDetailRepository.save(detail);
 
-        notificationService.sendNotification("Automation saved successfully", "success");
-        refreshCacheForAutomation(saved);
+        // ── Compile ExecutionPlan (once per save, never at eval time) ──────
+        try {
+            ExecutionPlan plan = planCompiler.compile(saved);
+            orchestrator.updatePlan(saved.getId(), plan);
+            log.info("✅ ExecutionPlan compiled for '{}'", saved.getName());
+        } catch (Exception e) {
+            log.error("❌ Plan compilation failed for '{}': {}", saved.getName(), e.getMessage(), e);
+            notificationService.sendNotification(
+                    "Plan compilation failed for " + saved.getName(), "error");
+        }
 
-        // 3.9 — snapshot this version for history / rollback
+        // ── Reset runtime state to IDLE on save ────────────────────────────
+        stateStore.forceWrite(saved.getId(), AutomationRuntimeState.idle());
+
+        // ── Clean up schedule keys ─────────────────────────────────────────
+        if (saved.getConditions() != null)
+            saved.getConditions().forEach(c ->
+                    stateStore.deleteIntervalAndRunningKeys(saved.getId(), c.getNodeId()));
+
+        // ── Version snapshot ───────────────────────────────────────────────
         automationVersionService.snapshot(saved, detail, "system", null);
 
+        notificationService.sendNotification("Automation saved successfully", "success");
         return "success";
     }
 
-    private boolean hasDataDrivenCondition(Automation automation) {
-        if (automation.getConditions() == null) return false;
-        Set<String> operatorIds = automation.getOperators().stream()
-                .map(Automation.Operator::getNodeId)
-                .collect(Collectors.toSet());
-        // trigger conditions (non-gate) that are NOT "scheduled"
-        return automation.getConditions().stream()
-                .filter(Automation.Condition::isEnabled)
-                .filter(c -> !automationEngine.isGateCondition(c, operatorIds))
-                .anyMatch(c -> !"scheduled".equals(c.getCondition()));
+
+    // ═════════════════════════════════════════════════════════════════════
+    // DELETE AUTOMATION
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * Full cleanup: disables, deletes plan from all layers, bulk-deletes all
+     * Redis keys owned by this automation, cancels scheduled jobs, deletes
+     * MongoDB documents, notifies other nodes.
+     * <p>
+     * Previously returned null — left all Redis keys orphaned indefinitely.
+     */
+    public Map<String, String> deleteAutomation(String id, String user) {
+        Automation automation = automationRepository.findById(id).orElse(null);
+        if (automation == null)
+            return Map.of("status", "error", "reason", "Automation not found");
+
+        try {
+            automation.setIsEnabled(false);
+            automationRepository.save(automation);
+
+            planCache.delete(id);
+            stateStore.deleteAllKeys(id);
+            scheduledAutomationManager.cancel(id);
+            automationRepository.deleteById(id);
+            automationDetailRepository.deleteById(id);
+            orchestrator.invalidatePlan(id);
+
+            log.info("🗑️ Automation '{}' (id={}) deleted by '{}'",
+                    automation.getName(), id, user);
+            notificationService.sendNotification(
+                    "'" + automation.getName() + "' deleted", "success");
+            return Map.of("status", "success", "deletedId", id);
+
+        } catch (Exception e) {
+            log.error("Delete failed for automation '{}': {}", id, e.getMessage(), e);
+            notificationService.sendNotification("Delete failed: " + e.getMessage(), "error");
+            return Map.of("status", "error", "reason", e.getMessage());
+        }
     }
 
+
     // ═════════════════════════════════════════════════════════════════════
-    // CACHE REFRESH
+    // COPY / ROLLBACK
     // ═════════════════════════════════════════════════════════════════════
 
-    private void refreshCacheForAutomation(Automation automation) {
-        automation.getConditions().forEach(c -> {
-            redisService.delete("INTERVAL:" + automation.getId() + ":" + c.getNodeId());
-            redisService.delete("RUNNING:" + automation.getId() + ":" + c.getNodeId());
+    public Map<String, Object> copyAutomation(String id, String user) {
+        Automation original = automationRepository.findById(id).orElse(null);
+        if (original == null) return new HashMap<>();
+
+        Automation copy = Automation.builder()
+                .name(original.getName() + " (copy)")
+                .trigger(original.getTrigger())
+                .triggerDeviceType(original.getTriggerDeviceType())
+                .conditions(original.getConditions())
+                .actions(original.getActions())
+                .operators(original.getOperators())
+                .isEnabled(false).isActive(false).updateDate(new Date())
+                .build();
+        Automation saved = automationRepository.save(copy);
+
+        automationDetailRepository.findById(id).ifPresent(d -> {
+            AutomationDetail dc = new AutomationDetail();
+            dc.setId(saved.getId());
+            dc.setNodes(d.getNodes());
+            dc.setEdges(d.getEdges());
+            dc.setViewport(d.getViewport());
+            dc.setUpdateDate(new Date());
+            automationDetailRepository.save(dc);
         });
-        String cacheKey = automation.getTrigger().getDeviceId() + ":" + automation.getId();
+
         try {
-            AutomationCache existing = redisService.getAutomationCache(cacheKey);
-            redisService.setAutomationCache(cacheKey, AutomationCache.builder()
-                    .id(automation.getId()).automation(automation)
-                    .triggerDeviceType(automation.getTriggerDeviceType())
-                    .enabled(automation.getIsEnabled())
-                    .state(existing != null ? existing.getState() : AutomationState.IDLE)
-                    .branchStates(existing != null ? existing.getBranchStates() : new HashMap<>())
-                    .triggerDeviceId(automation.getTrigger().getDeviceId())
-                    .isActive(existing != null && Boolean.TRUE.equals(existing.getIsActive()))
-                    .triggeredPreviously(existing != null && existing.isTriggeredPreviously())
-                    .previousExecutionTime(existing != null ? existing.getPreviousExecutionTime() : null)
-                    .lastUpdate(new Date())
-                    .build());
-            log.info("🔄 Cache refreshed: {}", automation.getName());
-            scheduledAutomationManager.refresh(automation);
+            ExecutionPlan plan = planCompiler.compile(saved);
+            orchestrator.updatePlan(saved.getId(), plan);
         } catch (Exception e) {
-            log.warn("⚠️ Cache refresh failed for '{}': {}", automation.getName(), e.getMessage());
+            log.warn("Plan compilation failed for copy '{}': {}", saved.getName(), e.getMessage());
+        }
+
+        stateStore.forceWrite(saved.getId(), AutomationRuntimeState.idle());
+        log.info("📋 '{}' copied to '{}' by {}", original.getName(), saved.getName(), user);
+        notificationService.sendNotification("'" + original.getName() + "' copied", "success");
+        return Map.of("status", "success", "newId", saved.getId(), "newName", saved.getName());
+    }
+
+    public String rollbackToVersion(String automationId, int targetVersion, String user) {
+        try {
+            AutomationVersionService.RollbackResult rollback =
+                    automationVersionService.rollback(automationId, targetVersion);
+            AutomationDetail detail = rollback.detail();
+            detail.setUpdateDate(new Date());
+            String result = saveAutomationDetailInternal(detail);
+            if ("success".equals(result)) {
+                automationRepository.findById(automationId).ifPresent(a ->
+                        automationVersionService.snapshot(a, detail, user,
+                                "Rolled back to version " + targetVersion));
+                notificationService.sendNotification(
+                        "Rolled back to version " + targetVersion, "success");
+            }
+            return result;
+        } catch (Exception e) {
+            log.error("Rollback failed for '{}': {}", automationId, e.getMessage(), e);
+            notificationService.sendNotification("Rollback failed: " + e.getMessage(), "error");
+            return "error: " + e.getMessage();
         }
     }
 
 
     // ═════════════════════════════════════════════════════════════════════
-    // CORE EXECUTION  — new per-branch model
+    // SCENE EXECUTION
     // ═════════════════════════════════════════════════════════════════════
 
-    public void checkAndExecuteSingleAutomation(Automation automation,
-                                                Map<String, Object> data,
-                                                String user) {
-
-        if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) {
-            log.error("Automation service is currently disabled.");
-            if ("user".equals(user)) {
-                notificationService.sendNotification("Automation Service is disabled.", "info");
-            }
-            return;
-        }
-        Date now = new Date();
-        String deviceId = automation.getTrigger().getDeviceId();
-        String cacheKey = deviceId + ":" + automation.getId();
-
-        // ── Execution lock (UUID-safe) ────────────────────────────────────
-        String lockKey = "EXEC_LOCK:" + automation.getId();
-        String lockValue = UUID.randomUUID().toString();          // ← fix: UUID, not "locked"
-        boolean lockAcquired = redisService.setIfAbsent(lockKey, lockValue, LOCK_TTL_SECONDS);
-
-        var logBuilder = AutomationLog.builder()
-                .automationId(automation.getId())
-                .user(user)
-                .automationName(automation.getName())
-                .payload(data != null ? data : Map.of())
-                .triggerDeviceId(deviceId)
-                .timestamp(now);
-
-        if (!lockAcquired) {
-            log.debug("⏭️ Skipping {} — lock held", automation.getName());
-            saveLog(logBuilder.status(AutomationLog.LogStatus.SKIPPED)
-                    .reason("Execution lock held by concurrent caller").build());
-            return;
-        }
-
-        try {
-            // ── Snooze / timed-disable gate ───────────────────────────────
-            if (redisService.exists("SNOOZE:" + automation.getId())) {
-                long rem = redisService.getTTL("SNOOZE:" + automation.getId());
-                saveLog(logBuilder.status(AutomationLog.LogStatus.SKIPPED)
-                        .snoozeState("SNOOZED")
-                        .reason("Snoozed — " + rem / 60 + " min remaining").build());
-                return;
-            }
-            if (redisService.exists("TIMED_DISABLE:" + automation.getId())) {
-                long rem = redisService.getTTL("TIMED_DISABLE:" + automation.getId());
-                saveLog(logBuilder.status(AutomationLog.LogStatus.SKIPPED)
-                        .reason("Timed-disabled — " + rem / 60 + " min remaining").build());
-                return;
-            }
-
-            // ── Prepare payload ───────────────────────────────────────────
-            Map<String, Object> payload = new HashMap<>();
-            if (data != null) payload.putAll(data);
-            else payload.putAll(mainService.getLastData(deviceId));
-
-            // ── Load / init cache ─────────────────────────────────────────
-            AutomationCache cache = loadOrInitCache(cacheKey, automation);
-
-            // ── Evaluate the full graph ───────────────────────────────────
-            ExecutionContext ctx = new ExecutionContext();
-            NodeResult rootResult = automationEngine.evaluate(automation, payload, ctx, cache);   // populates ctx for all nodes
-            List<Automation.Action> noneActions = automation.getActions().stream()
-                    .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                    .filter(a -> "none".equalsIgnoreCase(a.getConditionGroup()))
-                    .filter(a -> a.getPreviousNodeRef() != null
-                            && a.getPreviousNodeRef().stream()
-                            .anyMatch(ref -> ctx.getTrueNodes().contains(ref.getNodeId())))
-                    .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-                    .toList();
-
-            if (!noneActions.isEmpty()) {
-                log.info("⚡ [{}] [{}] Firing {} stateless action(s)",
-                        user, automation.getName(), noneActions.size());
-                executeWithTimeout(noneActions, payload, user, automation.getId(), automation.getName());
-                saveLog(logBuilder
-                        .conditionResults(buildConditionResults(automation, ctx, payload))
-                        .status(AutomationLog.LogStatus.TRIGGERED)
-                        .reason("Stateless actions fired: " + actionSummary(noneActions))
-                        .build());
-                return;
-            }
-            // ── Classify conditions ───────────────────────────────────────
-            Set<String> operatorIds = automation.getOperators() == null ? Set.of() :
-                    automation.getOperators().stream()
-                    .map(Automation.Operator::getNodeId)
-                    .collect(Collectors.toSet());
-
-            List<Automation.Condition> triggerConditions = automation.getConditions().stream()
-                    .filter(Automation.Condition::isEnabled)
-                    .filter(c -> !automationEngine.isGateCondition(c, operatorIds))
-                    .toList();
-
-            // ── Phase 1: c1 (trigger conditions) ─────────────────────────
-            // All trigger conditions combined with implicit AND (same as before).
-            boolean c1True = rootResult != null && rootResult.isTrue();
-//            boolean c1True = triggerConditions.stream()
-//                    .map(c -> ctx.get(c.getNodeId()))
-//                    .filter(Objects::nonNull)
-//                    .allMatch(NodeResult::isTrue);
-
-
-            if (!c1True) {
-                // ── c1 FALSE ─────────────────────────────────────────────
-                // 1. Fire informational actions (notifications, alerts) unconditionally.
-                // 2. If any branch was ACTIVE, fire the c1-negative actions
-                //    (e.g. "lux out of range — dim everything") and reset all branches.
-                //    These are actions whose previousNodeRef points to a trigger-condition
-                //    node with a cond-negative handle.
-                // No state machine advancement — branches stay / go IDLE.
-
-                List<Automation.Action> informational = resolveInformationalActions(automation, ctx);
-                if (!informational.isEmpty()) {
-                    log.info("ℹ️ [{}] [{}] trigger condition not met — firing {} informational action(s)", user,
-                            automation.getName(), informational.size());
-                    executeWithTimeout(informational, payload, user, automation.getId(), automation.getName());
-                }
-
-                // Revert active branches using c1-negative actions if any branch was active
-                boolean anyWasActive = automation.getConditions().stream()
-                        .filter(Automation.Condition::isEnabled)
-                        .filter(c -> automationEngine.isGateCondition(c, operatorIds))
-                        .anyMatch(c -> {
-                            AutomationState s = cache.getBranchState(c.getNodeId());
-                            return s == AutomationState.ACTIVE || s == AutomationState.HOLDING;
-                        });
-
-                if (anyWasActive) {
-                    List<Automation.Action> c1NegActions =
-                            resolveC1NegativeActions(automation, triggerConditions);
-                    if (!c1NegActions.isEmpty()) {
-                        log.info("⏹️ [{}] [{}] trigger condition false, reverting all branches — {}", user,
-                                automation.getName(), actionSummary(c1NegActions));
-                        executeWithTimeout(c1NegActions, payload, user, automation.getId(), automation.getName())
-                                .thenAccept(ok -> {
-                                    if (Boolean.TRUE.equals(ok)) {
-                                        // Reset all branch states
-                                        automation.getConditions().stream()
-                                                .filter(Automation.Condition::isEnabled)
-                                                .filter(c -> automationEngine.isGateCondition(c, operatorIds))
-                                                .forEach(c -> {
-                                                    cache.setBranchState(c.getNodeId(), AutomationState.IDLE);
-                                                    redisService.delete("RUNNING:" + automation.getId()
-                                                            + ":" + c.getNodeId());
-                                                });
-                                        cache.setLastUpdate(new Date());
-                                        redisService.setAutomationCache(cacheKey, cache);
-                                        notificationService.sendNotification(automation.getName() + " — condition lost", "info");
-                                    }
-                                });
-                    }
-                }
-
-                saveLog(logBuilder.status(AutomationLog.LogStatus.TRIGGER_FALSE)
-                        .reason("Trigger condition false"
-                                + (anyWasActive ? " — branches reset, c1-negative actions fired" : ""))
-                        .build());
-                return;  // ← critical: never advance branch states
-            }
-
-            // ── Phase 2: resolve gate branches, sorted by priority DESC ───
-            List<GateBranch> branches = resolveGateBranches(automation, ctx);
-
-            if (branches.isEmpty()) {
-                // No gate conditions — this automation has no branch structure.
-                // Fall back to single-state behaviour (positive / negative on root).
-                handleNoBranchAutomation(automation, ctx, payload, cache,
-                        cacheKey, user, logBuilder, now);
-                return;
-            }
-
-            // ── Determine this tick's winner ──────────────────────────────
-            // Winner = highest-priority branch whose gate is currently TRUE.
-            List<GateBranch> trueBranches = branches.stream()
-                    .filter(b -> {
-                        NodeResult nr = ctx.get(b.gateNodeId());
-                        return nr != null && nr.isTrue();
-                    })
-                    .toList(); // already sorted DESC by priority from resolveGateBranches()
-
-            GateBranch winner = trueBranches.isEmpty() ? null : trueBranches.get(0);
-
-            // ── Process each branch atomically in the same tick ───────────
-            // Order: first revert all branches that should stop,
-            //        then promote the winner if it was IDLE.
-            // This gives atomic handoff (no gap between scene changes).
-
-            List<CompletableFuture<Void>> tickFutures = new ArrayList<>();
-            boolean anyBranchWasOrIsActive = false;
-
-            for (GateBranch branch : branches) {
-                boolean gateTrue = trueBranches.contains(branch);
-                boolean isWinner = branch == winner;
-                AutomationState branchState = cache.getBranchState(branch.gateNodeId());
-
-                if (branchState == AutomationState.ACTIVE
-                        || branchState == AutomationState.HOLDING) {
-
-                    if (!gateTrue || !isWinner) {
-                        // ── Revert: gate turned false OR outprioritised ───
-                        String reason = !gateTrue
-                                ? "Condition no longer met (" + describeBranch(branch) + ")"
-                                : "Overridden by '" + describeBranch(winner) + "'";
-                        String revertMsg = !gateTrue
-                                ? "⏹️ " + automation.getName() + " — " + describeBranch(branch) + " ended"
-                                : "⏹️ " + automation.getName() + " — " + describeBranch(branch) + " overridden by " + describeBranch(winner);
-
-                        log.info("⏹️ [{}] [{}] '{}' reverting — {}", user,
-                                automation.getName(), describeBranch(branch), revertMsg);
-
-                        final AutomationCache finalCache = cache;
-                        final GateBranch fb = branch;
-
-                        CompletableFuture<Void> revertFuture =
-                                executeWithTimeout(branch.negativeActions(), payload,
-                                        user, automation.getId(), automation.getName())
-                                        .thenAccept(ok -> {
-                                            if (Boolean.TRUE.equals(ok)) {
-                                                finalCache.setBranchState(
-                                                        fb.gateNodeId(), AutomationState.IDLE);
-                                                finalCache.setLastUpdate(new Date());
-                                                redisService.setAutomationCache(cacheKey, finalCache);
-                                                // Clear duration timers for this branch
-                                                redisService.delete("RUNNING:" + automation.getId()
-                                                        + ":" + fb.gateNodeId());
-                                                notificationService.sendNotification(automation.getName() + " — " + reason, "info");
-                                                log.info("🔁 [{}] [{}] '{}' → IDLE — {}", user,
-                                                        automation.getName(), describeBranch(fb), reason);
-                                            }
-                                        });
-                        tickFutures.add(revertFuture);
-                    } else {
-                        anyBranchWasOrIsActive = true; // still running
-                    }
-
-                } else if (branchState == AutomationState.IDLE) {
-
-                    if (gateTrue && isWinner) {
-                        // ── Interval cooldown check ───────────────────────
-                        Automation.Condition gc = branch.gateCondition();
-                        if ("interval".equals(gc.getScheduleType())
-                                && gc.getIntervalMinutes() > 0
-                                && cache.getPreviousExecutionTime() != null) {
-
-                            long secondsSinceLast =
-                                    (now.getTime() - cache.getPreviousExecutionTime().getTime()) / 1000;
-                            long intervalSec = gc.getIntervalMinutes() * 60L;
-                            if (secondsSinceLast < intervalSec) {
-                                log.debug("⏳ [{}] [{}] '{}' — interval cooldown, {}s until next run", user,
-                                        automation.getName(), describeBranch(branch),
-                                        intervalSec - secondsSinceLast);
-                                continue;
-                            }
-                        }
-                        // ── Trigger: gate true + winner ───────────────────
-                        final AutomationCache finalCache = cache;
-                        final GateBranch fb = branch;
-
-                        log.info("🚀 [{}] [{}] Branch '{}' triggering — {} (priority {})", user,
-                                automation.getName(), branch.gateNodeId(),
-                                describeBranch(branch), branch.priority());
-
-                        CompletableFuture<Void> triggerFuture =
-                                executeWithTimeout(branch.positiveActions(), payload,
-                                        user, automation.getId(), automation.getName())
-                                        .thenAccept(ok -> {
-                                            if (!Boolean.TRUE.equals(ok)) {
-                                                log.warn("⚠️ [{}] [{}] '{}' — execution failed", user,
-                                                        automation.getName(), describeBranch(fb));
-                                                return;
-                                            }
-                                            boolean hasDuration =
-                                                    fb.gateCondition().getDurationMinutes() > 0;
-
-                                            boolean hasNegatives = !branch.negativeActions().isEmpty();
-
-                                            // Only go ACTIVE/HOLDING if there's something to revert to
-
-                                            AutomationState nextState = hasDuration
-                                                    ? AutomationState.HOLDING
-                                                    : AutomationState.ACTIVE;
-
-                                            finalCache.setBranchState(fb.gateNodeId(), nextState);
-                                            finalCache.setTriggeredPreviously(true);
-                                            finalCache.setPreviousExecutionTime(now);
-                                            finalCache.setLastUpdate(new Date());
-
-                                            if (hasDuration) {
-                                                String runKey = "RUNNING:" + automation.getId()
-                                                        + ":" + fb.gateNodeId();
-                                                redisService.setWithExpiry(runKey, "active",
-                                                        fb.gateCondition().getDurationMinutes() * 60L);
-                                                log.info("⏱️ [{}] [{}] '{}' — active for {} min", user,
-                                                        automation.getName(), describeBranch(fb),
-                                                        fb.gateCondition().getDurationMinutes());
-                                            } else if (hasNegatives) {
-                                                finalCache.setBranchState(fb.gateNodeId(), AutomationState.ACTIVE);
-                                            }
-
-                                            redisService.setAutomationCache(cacheKey, finalCache);
-                                            notificationService.sendNotification(automation.getName() + " triggered", "success");
-                                        });
-                        tickFutures.add(triggerFuture);
-                        anyBranchWasOrIsActive = true;
-
-                    } else if (gateTrue || !isWinner) {
-                        // ── Suppressed by higher-priority branch ──────────
-                        log.debug("⏸️ [{}] [{}] '{}' suppressed by '{}'", user,
-                                automation.getName(), describeBranch(branch),
-                                winner != null ? describeBranch(winner) : "?");
-                        saveLog(AutomationLog.builder()
-                                .automationId(automation.getId())
-                                .automationName(automation.getName())
-                                .user(user)
-                                .triggerDeviceId(deviceId)
-                                .timestamp(now)
-                                .status(AutomationLog.LogStatus.SUPPRESSED)
-                                .reason(describeBranch(branch) + " matched but suppressed — "
-                                        + (winner != null ? describeBranch(winner) : "unknown")
-                                        + " has higher priority (" + (winner != null ? winner.priority() : "?") + ")")
-                                .build());
-                    }
-                    // IDLE + gate false → quiet path, nothing to do
-                }
-
-                // ── HOLDING: check if duration timer expired ──────────────
-                if (branchState == AutomationState.HOLDING) {
-                    String runKey = "RUNNING:" + automation.getId() + ":" + branch.gateNodeId();
-                    if (!redisService.exists(runKey)) {
-                        // Timer expired → revert
-                        final AutomationCache finalCache = cache;
-                        final GateBranch fb = branch;
-
-                        log.info("⏱️ [{}] [{}] '{}' — duration expired, reverting", user,
-                                automation.getName(), describeBranch(branch));
-
-                        CompletableFuture<Void> expiryRevert =
-                                executeWithTimeout(branch.negativeActions(), payload,
-                                        user, automation.getId(), automation.getName())
-                                        .thenAccept(ok -> {
-                                            if (Boolean.TRUE.equals(ok)) {
-                                                finalCache.setBranchState(
-                                                        fb.gateNodeId(), AutomationState.IDLE);
-                                                finalCache.setLastUpdate(new Date());
-                                                redisService.setAutomationCache(cacheKey, finalCache);
-                                                notificationService.sendNotification(automation.getName() + " — " + describeBranch(fb) + " timer expired", "info");
-                                                log.info("🔁 [{}] [{}] '{}' → IDLE (timer expired)", user,
-                                                        automation.getName(), describeBranch(fb));
-                                            }
-                                        });
-                        tickFutures.add(expiryRevert);
-                    } else {
-                        anyBranchWasOrIsActive = true;
-                    }
-                }
-            }
-
-            // ── Phase 3: c1 true but NO branch fired or active ────────────
-            // This is the "time window not matched" fallback.
-            if (!anyBranchWasOrIsActive && winner == null) {
-                List<Automation.Action> c1Fallback =
-                        resolveC1FallbackActions(automation, ctx, triggerConditions);
-                if (!c1Fallback.isEmpty()) {
-                    log.info("ℹ️ [{}] [{}] trigger met but no time window matched — firing fallback", user,
-                            automation.getName());
-                    executeWithTimeout(c1Fallback, payload, user, automation.getId(), automation.getName());
-                    saveLog(logBuilder
-                            .status(AutomationLog.LogStatus.TRIGGER_FALSE)
-                            .reason("c1 true, no gate branch matched — c1 fallback fired").build());
-                } else {
-                    saveLog(logBuilder.status(AutomationLog.LogStatus.NOT_MET)
-                            .reason("c1 true but no gate branch matched and no fallback actions").build());
-                }
-                return;
-            }
-            List<AutomationLog.ConditionResult> conditionResults =
-                    buildConditionResults(automation, ctx, payload);
-            logBuilder.conditionResults(conditionResults).payload(payload);
-            // ── Wait for all this-tick futures then save a single log ─────
-            boolean finalAnyBranchWasOrIsActive = anyBranchWasOrIsActive;
-            CompletableFuture.allOf(tickFutures.toArray(new CompletableFuture[0]))
-                    .thenRun(() -> saveLog(logBuilder
-                            .status(finalAnyBranchWasOrIsActive
-                                    ? AutomationLog.LogStatus.TRIGGERED
-                                    : AutomationLog.LogStatus.SKIPPED)
-                            .reason("Branch evaluation complete").build()));
-
-        } catch (Exception e) {
-            log.error("❌ Error in automation {}: {}", automation.getName(), e.getMessage(), e);
-            notificationService.sendNotification(automation.getName() + " error", "error");
-            saveLog(logBuilder.status(AutomationLog.LogStatus.ERROR)
-                    .reason("Execution failed: " + e.getMessage()).build());
-        } finally {
-            releaseLock(lockKey, lockValue);
-        }
-    }
-
-    /**
-     * Fallback path for automations that have NO gate conditions at all
-     * (pure trigger → positive/negative, no operators needed).
-     * Preserves the original single-state machine behaviour.
-     */
-    private void handleNoBranchAutomation(Automation automation,
-                                          ExecutionContext ctx,
-                                          Map<String, Object> payload,
-                                          AutomationCache cache,
-                                          String cacheKey,
-                                          String user,
-                                          AutomationLog.AutomationLogBuilder logBuilder,
-                                          Date now) {
-        // Use the root result directly
-        NodeResult root = automationEngine.findRootResult(automation, ctx);
-        boolean conditionNow = root != null && root.isTrue();
-
-        AutomationState currentState = resolveState(cache.getState());
-
-        List<Automation.Action> positiveActions = resolveActionsForGroup(automation, ctx, "positive");
-        List<Automation.Action> negativeActions = resolveActionsForGroup(automation, ctx, "negative");
-
-        if (currentState == AutomationState.IDLE && conditionNow) {
-            final AutomationCache fc = cache;
-
-            // Detect stateless automations: no negative actions defined means
-            // this is a fire-and-forget event (knock, button press, etc.)
-            // Don't advance to ACTIVE — stay IDLE so next event fires again.
-            boolean hasNegativeActions = !negativeActions.isEmpty();
-
-            executeWithTimeout(positiveActions, payload, user, automation.getId(), automation.getName())
-                    .thenAccept(ok -> {
-                        if (!Boolean.TRUE.equals(ok)) return;
-                        if (hasNegativeActions) {
-                            // Stateful — advance to ACTIVE, wait for revert
-                            fc.setState(AutomationState.ACTIVE);
-                        }
-                        // Stateless — stay IDLE, ready for next event
-                        fc.setTriggeredPreviously(true);
-                        fc.setPreviousExecutionTime(now);
-                        fc.setLastUpdate(new Date());
-                        redisService.setAutomationCache(cacheKey, fc);
-                        notificationService.sendNotification(automation.getName() + " triggered", "success");
-                    });
-            logBuilder.status(AutomationLog.LogStatus.TRIGGERED)
-                    .reason((hasNegativeActions ? "Stateful" : "Stateless")
-                            + " — condition met, " + actionSummary(positiveActions) + " fired");
-
-
-        } else if ((currentState == AutomationState.ACTIVE
-                || currentState == AutomationState.HOLDING) && !conditionNow) {
-            final AutomationCache fc = cache;
-            executeWithTimeout(negativeActions, payload, user, automation.getId(), automation.getName())
-                    .thenAccept(ok -> {
-                        if (!Boolean.TRUE.equals(ok)) return;
-                        fc.setState(AutomationState.IDLE);
-                        fc.setTriggeredPreviously(false);
-                        fc.setLastUpdate(new Date());
-                        redisService.setAutomationCache(cacheKey, fc);
-                        notificationService.sendNotification(automation.getName() + " — condition cleared", "info");
-                    });
-            logBuilder.status(AutomationLog.LogStatus.RESTORED)
-                    .reason("Condition cleared — " + actionSummary(negativeActions) + " fired");
-
-        } else if (currentState == AutomationState.IDLE) {
-            logBuilder.status(AutomationLog.LogStatus.NOT_MET)
-                    .reason("Condition not satisfied");
-        } else {
-            logBuilder.status(AutomationLog.LogStatus.SKIPPED)
-                    .reason("No state change (state=" + currentState + ", conditionNow=" + conditionNow + ")");
-        }
-        saveLog(logBuilder.build());
-    }
-
-
-    /**
-     * 3.7 — Public entry point for scene execution.
-     * Fires a specific list of actions for an automation without touching
-     * the state machine. Used by AutomationSceneService.
-     */
     public void executeSceneActions(Automation automation,
                                     List<Automation.Action> actions,
                                     Map<String, Object> payload,
                                     String user) {
-        executeWithTimeout(actions, payload, user, automation.getId(), automation.getName());
-    }
-
-
-    // ═════════════════════════════════════════════════════════════════════
-    // BRANCH RESOLUTION HELPERS
-    // ═════════════════════════════════════════════════════════════════════
-
-    /**
-     * Resolves all gate branches for this automation, sorted by operator priority DESC.
-     * Each branch is: operator → gate condition → positive/negative actions.
-     */
-    private List<GateBranch> resolveGateBranches(Automation automation, ExecutionContext ctx) {
-        if (automation.getOperators() == null || automation.getOperators().isEmpty())
-            return List.of();
-
-        Set<String> operatorIds = automation.getOperators().stream()
-                .map(Automation.Operator::getNodeId)
-                .collect(Collectors.toSet());
-
-        return automation.getConditions().stream()
-                .filter(Automation.Condition::isEnabled)
-                .filter(c -> automationEngine.isGateCondition(c, operatorIds))
-                .map(gateCondition -> {
-                    // Find the operator this gate is downstream of
-                    String opNodeId = gateCondition.getPreviousNodeRef().stream()
-                            .filter(ref -> operatorIds.contains(ref.getNodeId()))
-                            .map(NodeRef::getNodeId)
-                            .findFirst()
-                            .orElse(null);
-
-                    if (opNodeId == null) return null;
-
-                    Automation.Operator op = automation.getOperators().stream()
-                            .filter(o -> o.getNodeId().equals(opNodeId))
-                            .findFirst().orElse(null);
-
-                    if (op == null) return null;
-
-                    return new GateBranch(
-                            op,
-                            gateCondition,
-                            resolveActionsForNode(automation, ctx, gateCondition.getNodeId(), "positive"),
-                            resolveActionsForNode(automation, ctx, gateCondition.getNodeId(), "negative")
-                    );
+        List<ExecutionPlan.CompiledAction> compiled = actions.stream()
+                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
+                .map(a -> {
+                    String dt;
+                    try {
+                        dt = mainService.getDevice(a.getDeviceId()).getType();
+                    } catch (Exception e) {
+                        dt = "sensor";
+                    }
+                    return ExecutionPlan.CompiledAction.builder()
+                            .nodeId(a.getNodeId()).deviceId(a.getDeviceId())
+                            .key(a.getKey()).data(a.getData()).order(a.getOrder())
+                            .delaySeconds(a.getDelaySeconds()).name(a.getName())
+                            .deviceType(dt).build();
                 })
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(GateBranch::priority).reversed()) // DESC
+                .sorted(Comparator.comparingInt(
+                        c -> c.getOrder() != 0 ? c.getOrder() : Integer.MAX_VALUE))
                 .toList();
-    }
-
-    /**
-     * Actions tied to a specific gate condition node and group (positive/negative).
-     */
-    public List<Automation.Action> resolveActionsForNode(
-            Automation automation,
-            ExecutionContext ctx,
-            String nodeId,
-            String group) {
-
-        Set<String> trueNodes = ctx.getTrueNodes();
-        Set<String> falseNodes = ctx.getFalseNodes();
-
-        return automation.getActions().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> group.equalsIgnoreCase(a.getConditionGroup()))
-                .filter(a -> {
-                    if (a.getPreviousNodeRef() == null || a.getPreviousNodeRef().isEmpty())
-                        return false; // gate-targeted actions must have a ref
-                    return a.getPreviousNodeRef().stream().anyMatch(ref -> {
-                        if (!ref.getNodeId().equals(nodeId)) return false;
-                        String handle = ref.getHandle();
-                        if (handle != null && handle.contains("cond-negative"))
-                            return falseNodes.contains(ref.getNodeId());
-                        return trueNodes.contains(ref.getNodeId())
-                                || (handle == null); // no handle = include always
-                    });
-                })
-                .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-                .toList();
-    }
-
-    /**
-     * "Informational" actions: conditionGroup == "informational".
-     * Fired when c1 is false — no state machine involvement.
-     */
-    private List<Automation.Action> resolveInformationalActions(
-            Automation automation, ExecutionContext ctx) {
-        return automation.getActions().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> "informational".equalsIgnoreCase(a.getConditionGroup()))
-                .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-                .toList();
-    }
-
-    /**
-     * c1-fallback actions for Phase 3: c1 is TRUE but no gate branch matched
-     * (e.g. lux in range but current time is outside all schedule windows).
-     * <p>
-     * Picks up "negative" actions whose previousNodeRef points to a TRIGGER
-     * condition node WITH a cond-negative handle.  These are intended as
-     * "nothing matched" fallback actions.
-     * <p>
-     * NOTE: do NOT confuse with resolveC1NegativeActions() which fires when
-     * c1 itself turns false and active branches need to be reverted.
-     */
-    private List<Automation.Action> resolveC1FallbackActions(
-            Automation automation,
-            ExecutionContext ctx,
-            List<Automation.Condition> triggerConditions) {
-
-        Set<String> triggerNodeIds = triggerConditions.stream()
-                .map(Automation.Condition::getNodeId)
-                .collect(Collectors.toSet());
-
-        return automation.getActions().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> "negative".equalsIgnoreCase(a.getConditionGroup()))
-                .filter(a -> a.getPreviousNodeRef() != null
-                        && a.getPreviousNodeRef().stream().anyMatch(ref ->
-                        triggerNodeIds.contains(ref.getNodeId())
-                                && ref.getHandle() != null
-                                && ref.getHandle().contains("cond-negative")))
-                .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-                .toList();
-    }
-
-    /**
-     * c1-negative revert actions: fired when c1 turns FALSE and at least one
-     * branch was ACTIVE.
-     * <p>
-     * These are "negative" actions whose previousNodeRef points to a TRIGGER
-     * condition node — meaning "lux left the valid range, dim everything".
-     * Same node-ref filter as resolveC1FallbackActions but semantically fires
-     * on c1=false rather than c1=true-no-branch.
-     */
-    private List<Automation.Action> resolveC1NegativeActions(
-            Automation automation,
-            List<Automation.Condition> triggerConditions) {
-
-        Set<String> triggerNodeIds = triggerConditions.stream()
-                .map(Automation.Condition::getNodeId)
-                .collect(Collectors.toSet());
-
-        return automation.getActions().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> "negative".equalsIgnoreCase(a.getConditionGroup()))
-                .filter(a -> a.getPreviousNodeRef() != null
-                        && a.getPreviousNodeRef().stream().anyMatch(ref ->
-                        triggerNodeIds.contains(ref.getNodeId())))
-                .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-                .toList();
-    }
-
-    /**
-     * Backward-compatible resolveActions — used by handleNoBranchAutomation.
-     */
-    public List<Automation.Action> resolveActionsForGroup(
-            Automation automation, ExecutionContext ctx, String group) {
-
-        Set<String> trueNodes = ctx.getTrueNodes();
-        Set<String> falseNodes = ctx.getFalseNodes();
-
-        return automation.getActions().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> group.equalsIgnoreCase(a.getConditionGroup()))
-                .filter(a -> {
-                    if (a.getPreviousNodeRef() == null || a.getPreviousNodeRef().isEmpty())
-                        return true; // global action
-                    return a.getPreviousNodeRef().stream().anyMatch(ref -> {
-                        String handle = ref.getHandle();
-                        if (handle != null && handle.contains("cond-negative"))
-                            return falseNodes.contains(ref.getNodeId());
-                        return trueNodes.contains(ref.getNodeId());
-                    });
-                })
-                .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-                .toList();
+        String traceId = "evt-" + automation.getId()
+                + "-" + System.currentTimeMillis();
+        dispatcher.dispatch(compiled, payload, user, automation.getId(), automation.getName(), traceId);
     }
 
 
     // ═════════════════════════════════════════════════════════════════════
-    // IMMEDIATE / OVERRIDE EXECUTION
+    // PRIVATE HELPERS
     // ═════════════════════════════════════════════════════════════════════
 
-    private void executeAutomationImmediate(Automation automation,
-                                            Map<String, Object> payload,
-                                            String user) {
-        if (!automation.getIsEnabled()) return;
+    /**
+     * Write device data to Redis only — overwrites previous value.
+     * key is normalized to lowercase.
+     * TTL is managed by RedisService.setRecentDeviceData() internally.
+     * This NEVER writes to MongoDB.
+     */
+    private void writeDeviceData(String deviceId, Map<String, Object> payload) {
+        redisService.setRecentDeviceData(deviceId.toLowerCase(Locale.ROOT), payload);
+    }
 
-        var logBuilder = AutomationLog.builder()
-                .automationId(automation.getId()).automationName(automation.getName())
-                .conditionResults(new ArrayList<>()).operatorLogic("")
-                .payload(payload).triggerType(automation.getTrigger().getType())
-                .triggerDeviceId(automation.getTrigger().getDeviceId())
-                .timestamp(new Date());
+    private boolean planHasDataDrivenTrigger(String automationId) {
+        ExecutionPlan plan = planCache.get(automationId);
+        return plan != null && plan.hasDataDrivenTrigger();
+    }
 
-        executeWithTimeout(automation.getActions(), payload, user, automation.getId(), automation.getName())
-                .thenAccept(success -> saveLog(logBuilder
-                        .status(Boolean.TRUE.equals(success)
-                                ? AutomationLog.LogStatus.USER_OVERRIDE
-                                : AutomationLog.LogStatus.ERROR)
-                        .reason(Boolean.TRUE.equals(success)
-                                ? "Triggered manually by user: " + user
-                                : "User override FAILED for user: " + user)
-                        .build()))
-                .exceptionally(ex -> {
-                    saveLog(logBuilder.status(AutomationLog.LogStatus.ERROR)
-                            .reason("User override FAILED: " + ex.getMessage()).build());
-                    return null;
+    private void warnMissingSecondaryData(Automation a) {
+        if (a.getTrigger().getSources() == null) return;
+        a.getTrigger().getSources().stream()
+                .filter(s -> !"primary".equals(s.getRole()))
+                .forEach(s -> {
+                    Map<String, Object> d = redisService.getRecentDeviceData(s.getDeviceId());
+                    if (d == null || d.isEmpty())
+                        log.warn("⚠️ [{}] Secondary device '{}' has no cached Redis data",
+                                a.getName(), s.getDeviceId());
                 });
     }
-
-
-    // ═════════════════════════════════════════════════════════════════════
-    // ACTION EXECUTION  (unchanged)
-    // ═════════════════════════════════════════════════════════════════════
-
-    private CompletableFuture<Boolean> executeWithTimeout(List<Automation.Action> actions,
-                                                          Map<String, Object> payload,
-                                                          String user,
-                                                          String automationId,
-                                                          String automationName) {
-        return executeActionsInternal(actions, user, payload, automationId, automationName)
-                .orTimeout(AUTOMATION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .exceptionally(ex -> {
-                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    if (cause instanceof TimeoutException)
-                        log.error("⏱️ Timeout: {}", automationName);
-                    else
-                        log.error("❌ Async error in {}: {}", automationName,
-                                cause.getMessage(), cause);
-                    return false;
-                });
-    }
-
-    private CompletableFuture<Boolean> executeActionsInternal(List<Automation.Action> actions,
-                                                              String user,
-                                                              Map<String, Object> payload,
-                                                              String automationId,
-                                                              String automationName
-    ) {
-        CompletableFuture<Boolean> chain = CompletableFuture.completedFuture(true);
-
-        for (Automation.Action action : actions) {
-            chain = chain.thenCompose(previousOk -> {
-                CompletableFuture<Boolean> actionFuture =
-                        CompletableFuture.supplyAsync(() -> {
-                            try {
-                                log.info("▶️ [{}] Executing action: {} (order={})",
-                                        automationName, action.getName(), action.getOrder());
-                                executeSingleAction(action, user, payload, automationId, automationName);
-                                return true;
-                            } catch (Exception e) {
-                                log.error("❌ [{}] Failed action: {}",
-                                        automationName, action.getName(), e);
-                                return false;
-                            }
-                        }, automationExecutor);
-
-                int delaySec = action.getDelaySeconds();
-                if (delaySec > 0) {
-                    return actionFuture.thenCompose(ok -> {
-                        CompletableFuture<Boolean> delayed = new CompletableFuture<>();
-                        delayScheduler.schedule(() -> delayed.complete(ok),
-                                delaySec, TimeUnit.SECONDS);
-                        return delayed;
-                    });
-                }
-                return actionFuture;
-            });
-        }
-        return chain;
-    }
-
-    private void executeSingleAction(Automation.Action action,
-                                     String user,
-                                     Map<String, Object> value, String automationId, String automationName) {
-        Object parsedData = parseData(action.getData());
-        Map<String, Object> payload = Map.of(action.getKey(), parsedData, "key", action.getKey());
-
-        if ("alert".equals(action.getKey())) {
-            notificationService.sendAlert(
-                    "Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
-
-        } else if ("app_notify".equals(action.getKey())) {
-            notificationService.sendNotify("Automation",
-                    action.getData() + " and live data are " + value, "low");
-
-        } else if ("WLED".equals(mainService.getDevice(action.getDeviceId()).getType())) {
-            handleWLED(action.getDeviceId(), new HashMap<>(payload), user);
-
-        } else {
-            String correlationId = UUID.randomUUID().toString();
-            Map<String, Object> trackedPayload = new HashMap<>(payload);
-            trackedPayload.put("_cid", correlationId);
-
-            deviceActionStateRepository.save(DeviceActionState.builder()
-                    .user(user).deviceId(action.getDeviceId())
-                    .timestamp(new Date()).payload(trackedPayload).deviceType("sensor").build());
-            messagingTemplate.convertAndSend("action/" + action.getDeviceId(), trackedPayload);
-            sendToTopic("action/" + action.getDeviceId(), trackedPayload);
-
-            // Register for ack tracking — non-blocking
-            String deviceName = automationEngine.resolveDeviceLabel(action.getDeviceId(), action.getName());
-            deliveryTracker.register(correlationId, automationId, automationName,
-                    action.getDeviceId(), deviceName, trackedPayload);
-        }
-    }
-
-
-    // ═════════════════════════════════════════════════════════════════════
-    // CONDITION RESULT BUILDER  (updated with operatorNodeId + suppressedBy)
-    // ═════════════════════════════════════════════════════════════════════
-
-    private List<AutomationLog.ConditionResult> buildConditionResults(
-            Automation automation, ExecutionContext ctx, Map<String, Object> payload) {
-
-        List<AutomationLog.ConditionResult> results = new ArrayList<>();
-
-        Set<String> operatorIds = automation.getOperators() == null ? Set.of() :
-                automation.getOperators().stream()
-                .map(Automation.Operator::getNodeId).collect(Collectors.toSet());
-
-        for (Automation.Condition c : automation.getConditions()) {
-            NodeResult nr = ctx.get(c.getNodeId());
-            if (nr == null) continue;
-
-            // Find parent operator for gate conditions
-            String parentOpId = null;
-            if (c.getPreviousNodeRef() != null) {
-                parentOpId = c.getPreviousNodeRef().stream()
-                        .map(NodeRef::getNodeId)
-                        .filter(operatorIds::contains)
-                        .findFirst().orElse(null);
-            }
-
-            var builder = AutomationLog.ConditionResult.builder()
-                    .conditionNodeId(c.getNodeId())
-                    .conditionType(c.getCondition())
-                    .triggerKey(c.getTriggerKey())
-                    .passed(nr.isTrue())
-                    .isGateCondition(parentOpId != null)
-                    .operatorNodeId(parentOpId);
-
-            if ("scheduled".equals(c.getCondition())) {
-                String schedType = c.getScheduleType() != null ? c.getScheduleType() : "exact";
-                String expected = switch (schedType) {
-                    case "range" -> c.getFromTime() + " – " + c.getToTime();
-                    case "solar" -> c.getSolarType() + " +" + c.getOffsetMinutes() + "min";
-                    case "interval" -> "every " + c.getIntervalMinutes() + "min";
-                    default -> c.getTime();
-                };
-                builder.conditionType("scheduled/" + schedType)
-                        .triggerKey("schedule")
-                        .expectedValue(expected)
-                        .actualValue(LocalTime.now(ZoneId.of("Asia/Kolkata")).toString())
-                        .detail(nr.isTrue() ? "Schedule matched" : "Outside schedule window")
-                        .days(c.getDays());
-
-            } else if (c.getTriggerKey() != null && payload.containsKey(c.getTriggerKey())) {
-                String raw = payload.get(c.getTriggerKey()).toString();
-                String expected = switch (c.getCondition()) {
-                    case "above" -> "> " + c.getValue();
-                    case "below" -> "< " + c.getValue();
-                    case "range" -> c.getAbove() + " < x < " + c.getBelow();
-                    default -> c.getValue();
-                };
-                String detail = switch (c.getCondition()) {
-                    case "above" -> raw + " > " + c.getValue()
-                            + " → " + (nr.isTrue() ? "PASS" : "FAIL");
-                    case "below" -> raw + " < " + c.getValue()
-                            + " → " + (nr.isTrue() ? "PASS" : "FAIL");
-                    case "range" -> raw + " in (" + c.getAbove() + ", " + c.getBelow() + ")"
-                            + " → " + (nr.isTrue() ? "PASS" : "FAIL");
-                    default -> raw + " == " + c.getValue()
-                            + " → " + (nr.isTrue() ? "PASS" : "FAIL");
-                };
-                builder.actualValue(raw).expectedValue(expected).detail(detail);
-            } else {
-                builder.actualValue("missing").expectedValue(c.getValue())
-                        .detail("Key '" + c.getTriggerKey() + "' not present in payload");
-            }
-            results.add(builder.build());
-        }
-
-        // Operator nodes
-        if (automation.getOperators() != null) {
-            for (Automation.Operator op : automation.getOperators()) {
-                NodeResult nr = ctx.get(op.getNodeId());
-                if (nr == null) continue;
-
-                List<String> inputIds = op.getPreviousNodeRef().stream()
-                        .map(NodeRef::getNodeId).toList();
-                List<String> inputResults = inputIds.stream()
-                        .map(id -> id + "=" + (ctx.get(id) != null ? ctx.get(id).isTrue() : "?"))
-                        .toList();
-
-                results.add(AutomationLog.ConditionResult.builder()
-                        .conditionNodeId(op.getNodeId())
-                        .conditionType("operator/" + op.getLogicType()
-                                + " (priority=" + op.getPriority() + ")")
-                        .triggerKey("operator")
-                        .passed(nr.isTrue())
-                        .expectedValue(op.getLogicType() + "(" + String.join(", ", inputIds) + ")")
-                        .actualValue(String.join(", ", inputResults))
-                        .detail(op.getLogicType() + "([" + String.join(", ", inputResults) + "]) → "
-                                + (nr.isTrue() ? "TRUE" : "FALSE"))
-                        .isGateCondition(false)
-                        .build());
-            }
-        }
-        return results;
-    }
-
-
-    // ═════════════════════════════════════════════════════════════════════
-    // REDIS / CACHE HELPERS
-    // ═════════════════════════════════════════════════════════════════════
-
-    private AutomationCache loadOrInitCache(String cacheKey, Automation automation) {
-        // Redis GET is atomic — no lock needed for a read.
-        // The withLock pattern here added 2 Redis round-trips (lock acquire + release)
-        // on every event with no safety benefit since reads don't need mutual exclusion.
-        AutomationCache cache = redisService.getAutomationCache(cacheKey);
-        if (cache == null)
-            cache = AutomationCache.builder()
-                    .id(automation.getId())
-                    .triggeredPreviously(false)
-                    .previousExecutionTime(null)
-                    .lastUpdate(new Date())
-                    .state(AutomationState.IDLE)
-                    .branchStates(new HashMap<>())
-                    .build();
-        return cache;
-    }
-
-    private <T> T withLock(String lockKey, long ttlSeconds, Supplier<T> function) {
-        String lockValue = UUID.randomUUID().toString();
-        boolean acquired = false;
-        try {
-            acquired = redisService.setIfAbsent(lockKey, lockValue, ttlSeconds);
-            if (!acquired) {
-                log.warn("Could not acquire lock: {} — returning null for fallback", lockKey);
-                return null;
-            }
-            return function.get();
-        } finally {
-            if (acquired) releaseLock(lockKey, lockValue);
-        }
-    }
-
-    private void releaseLock(String lockKey, String lockValue) {
-        try {
-            redisService.deleteIfEquals(lockKey, lockValue);
-            log.debug("🔓 Lock released: {}", lockKey);
-        } catch (Exception e) {
-            log.error("Failed to release lock: {}", lockKey, e);
-        }
-    }
-
-    private AutomationState resolveState(AutomationState stored) {
-        if (stored == null) return AutomationState.IDLE;
-        try {
-            return AutomationState.valueOf(stored.name());
-        } catch (IllegalArgumentException e) {
-            return AutomationState.IDLE;
-        }
-    }
-
-    private void saveLog(AutomationLog log) {
-        if (log.getStatus() == AutomationLog.LogStatus.NOT_MET
-                || log.getStatus() == AutomationLog.LogStatus.SKIPPED) {
-            String key = "LOG_DEBOUNCE:" + log.getAutomationId();
-            if (redisService.exists(key)) return;
-            redisService.setWithExpiry(key, "1", 60);
-        }
-        logBuffer.add(log);
-    }
-
-
-    // ═════════════════════════════════════════════════════════════════════
-    // DEVICE / MQTT HELPERS  (unchanged)
-    // ═════════════════════════════════════════════════════════════════════
 
     private void sendToTopic(String topic, Map<String, Object> payload) {
         try {
@@ -1433,188 +603,28 @@ public class AutomationService {
 
     private String rebootDevice(Device device) {
         if (device == null) return "Device not found";
-        Map<String, Object> map = Map.of("deviceId", device.getId(),
-                "reboot", true, "key", "reboot");
+        Map<String, Object> map = Map.of(
+                "deviceId", device.getId(), "reboot", true, "key", "reboot");
         messagingTemplate.convertAndSend("/topic/action." + device.getId(), map);
         sendToTopic(TOPIC_ACTION + device.getId(), map);
         try {
             new RestTemplate().getForObject(device.getAccessUrl() + "/restart", String.class);
         } catch (Exception e) {
-            notificationService.sendNotification(
-                    "Reboot failed: " + device.getName(), "error");
+            notificationService.sendNotification("Reboot failed: " + device.getName(), "error");
         }
         return "Rebooting device";
     }
 
-    private void sendDirectAction(String deviceId, Map<String, Object> payload) {
-        var key = payload.get("key").toString();
-        var map = new HashMap<String, Object>();
-        map.put(key, payload.get(key));
-        map.put("key", key);
-        map.put("actionType", "direct");
-        messagingTemplate.convertAndSend("/topic/action." + deviceId, map);
-        sendToTopic(TOPIC_ACTION + deviceId, map);
-
-    }
-
     private String handleWLED(String deviceId, Map<String, Object> payload, String user) {
-        var device = deviceRepository.findById(deviceId).orElse(null);
-        if (device == null) return "Not found";
-        try {
-            return new Wled(mqttOutboundChannel, device).handleAction(payload);
-        } catch (Exception e) {
-            log.error("WLED error: {}", e.getMessage());
-            return "Error";
-        }
-    }
-
-    private Object parseData(String data) {
-        if (data == null) return null;
-        if ("true".equalsIgnoreCase(data)) return Boolean.TRUE;
-        if ("false".equalsIgnoreCase(data)) return Boolean.FALSE;
-        try {
-            return data.contains(".") ? Double.parseDouble(data) : Integer.parseInt(data);
-        } catch (NumberFormatException ignored) {
-            return data;
-        }
-    }
-
-    // =========================================================================
-    // HUMAN-READABLE MESSAGE HELPERS
-    // =========================================================================
-
-    /**
-     * Short label describing what a gate branch represents.
-     * <p>
-     * Scheduled examples:
-     * "Every 30 min (active for 20 min)"
-     * "Time window 13:05-01:00"
-     * "Sunrise +10 min"
-     * "At 02:20"
-     * <p>
-     * Sensor/data examples:
-     * "percent < 65"
-     * "range in 5-600"
-     */
-    private String describeBranch(GateBranch branch) {
-        return automationEngine.describeCondition(branch.gateCondition());
-    }
-
-    /**
-     * Full notification string for a triggered branch.
-     * <p>
-     * Example:
-     * "[Light On] Time window 13:05-01:00 -> Monitor Light preset=8, Light Strip preset=3"
-     */
-    private String describeTriggered(String automationName, GateBranch fb) {
-        String branchDesc = automationEngine.describeCondition(fb.gateCondition());
-        String actionsDesc = actionSummary(fb.positiveActions());
-        return "[" + automationName + "] " + branchDesc + " -> " + actionsDesc;
-    }
-
-    /**
-     * Compact summary of an action list.
-     * <p>
-     * Example: "Monitor Light preset=8, Light Strip bright=100"
-     */
-    String actionSummary(List<Automation.Action> actions) {
-        if (actions == null || actions.isEmpty()) return "no actions";
-        return actions.stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .map(a -> automationEngine.resolveDeviceLabel(a.getDeviceId(), a.getName())
-                        + " " + a.getKey() + "=" + a.getData())
-                .collect(Collectors.joining(", "));
-    }
-
-    /**
-     * 3.9 — Rolls back an automation to a specific version.
-     * Restores both the Automation and AutomationDetail from the snapshot,
-     * re-saves them (which creates a new version with a rollback note),
-     * and refreshes the cache.
-     */
-    public String rollbackToVersion(String automationId, int targetVersion, String user) {
-        try {
-            AutomationVersionService.RollbackResult rollback =
-                    automationVersionService.rollback(automationId, targetVersion);
-
-            // Re-save through the normal save path so cache, scheduler,
-            // and version history are all updated correctly
-            AutomationDetail detail = rollback.detail();
-            detail.setUpdateDate(new Date());
-
-            String result = saveAutomationDetailInternal(detail);
-            if ("success".equals(result)) {
-                // Overwrite the auto-snapshot with a rollback-annotated one
-                automationRepository.findById(automationId).ifPresent(a ->
-                        automationVersionService.snapshot(a, detail, user,
-                                "Rolled back to version " + targetVersion));
-                notificationService.sendNotification(
-                        "Rolled back to version " + targetVersion, "success");
-            }
-            return result;
-        } catch (Exception e) {
-            log.error("Rollback failed for automation {}: {}", automationId, e.getMessage(), e);
-            notificationService.sendNotification("Rollback failed: " + e.getMessage(), "error");
-            return "error: " + e.getMessage();
-        }
-    }
-
-    public Map<String, Object> copyAutomation(String id, String user) {
-        Automation original = automationRepository.findById(id)
-                .orElse(null);
-        if (original == null)
-            return new HashMap<>();
-
-        // Deep copy — clear ID so MongoDB assigns a new one
-        Automation copy = Automation.builder()
-                .name(original.getName() + " (copy)")
-                .trigger(original.getTrigger())
-                .triggerDeviceType(original.getTriggerDeviceType())
-                .conditions(original.getConditions())
-                .actions(original.getActions())
-                .operators(original.getOperators())
-                .isEnabled(false)          // always disabled until reviewed
-                .isActive(false)
-                .updateDate(new Date())
-                .build();
-
-        Automation saved = automationRepository.save(copy);
-
-        // Copy the AutomationDetail (visual graph layout)
-        AutomationDetail detailCopy = automationDetailRepository.findById(id)
-                .map(d -> {
-                    AutomationDetail dc = new AutomationDetail();
-                    dc.setId(saved.getId());   // new ID matching new automation
-                    dc.setNodes(d.getNodes());
-                    dc.setEdges(d.getEdges());
-                    dc.setViewport(d.getViewport());
-                    dc.setUpdateDate(new Date());
-                    return dc;
+        return deviceRepository.findById(deviceId)
+                .map(device -> {
+                    try {
+                        return new Wled(mqttOutboundChannel, device).handleAction(payload);
+                    } catch (Exception e) {
+                        log.error("WLED error: {}", e.getMessage());
+                        return "Error";
+                    }
                 })
-                .orElseGet(() -> {
-                    AutomationDetail dc = new AutomationDetail();
-                    dc.setId(saved.getId());
-                    dc.setUpdateDate(new Date());
-                    return dc;
-                });
-        automationDetailRepository.save(detailCopy);
-
-        // Warm Redis cache for the new automation
-        refreshCacheForAutomation(saved);
-
-        log.info("📋 Automation '{}' copied to '{}' by {}",
-                original.getName(), saved.getName(), user);
-        notificationService.sendNotification(
-                "'" + original.getName() + "' copied", "success");
-
-        return Map.of(
-                "status", "success",
-                "newId", saved.getId(),
-                "newName", saved.getName()
-        );
-    }
-
-    public Map<String, String> deleteAutomation(String id, String user) {
-        return null;
+                .orElse("Not found");
     }
 }

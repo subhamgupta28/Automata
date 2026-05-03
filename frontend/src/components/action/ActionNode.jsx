@@ -278,7 +278,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
                     <div>
 
                         <FormControl fullWidth sx={{marginTop: 3}} className='nodrag'>
-                            <InputLabel>Trigger Device</InputLabel>
+                            <InputLabel>Action Device</InputLabel>
                             <Select
                                 variant='outlined'
                                 size='small'
@@ -295,7 +295,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
                             </Select>
                         </FormControl>
                         <FormControl fullWidth sx={{marginBottom: 1, marginTop: 1}} className='nodrag'>
-                            <InputLabel>Trigger Key</InputLabel>
+                            <InputLabel>Action Key</InputLabel>
                             <Select
                                 variant='outlined'
                                 size='small'

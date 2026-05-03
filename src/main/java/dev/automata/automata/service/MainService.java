@@ -622,4 +622,8 @@ public class MainService {
         }
         return null;
     }
+
+    public void setRecentDeviceData(String id, Map<String, Object> payload) {
+
+    }
 }

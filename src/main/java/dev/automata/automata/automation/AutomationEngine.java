@@ -64,18 +64,36 @@ public class AutomationEngine {
                 .map(Automation.Operator::getNodeId)
                 .collect(Collectors.toSet());
 
-        List<Automation.Condition> triggerConditions = new ArrayList<>();
+        // ── Classify conditions ───────────────────────────────────────────
+        // Gate condition: previousNodeRef points to an operator node.
+        // Chained trigger condition: previousNodeRef points to another condition node
+        //   (NOT the trigger root, NOT an operator) — e.g. node_condition_11 refs
+        //   node_condition_5.  These must be evaluated AFTER their parent condition
+        //   and only when the parent passed.
+        // Trigger root condition: previousNodeRef points to the trigger node (or has no ref).
+
+        Set<String> conditionNodeIds = conditions.stream()
+                .map(Automation.Condition::getNodeId)
+                .collect(Collectors.toSet());
+
+        // topological sort: root triggers first, then chained, then gates
+        List<Automation.Condition> rootTriggerConditions = new ArrayList<>();
+        List<Automation.Condition> chainedConditions = new ArrayList<>();
         List<Automation.Condition> gateConditions = new ArrayList<>();
 
         for (Automation.Condition c : conditions) {
             if (!c.isEnabled()) continue;
-            (isGateCondition(c, operatorIds) ? gateConditions : triggerConditions).add(c);
+            if (isGateCondition(c, operatorIds)) {
+                gateConditions.add(c);
+            } else if (isChainedCondition(c, conditionNodeIds, operatorIds)) {
+                chainedConditions.add(c);
+            } else {
+                rootTriggerConditions.add(c);
+            }
         }
 
-        // Phase 1 — trigger conditions
-        for (Automation.Condition c : triggerConditions) {
-            // wasActive for hysteresis: a trigger condition has no per-branch state,
-            // so we use the top-level cache state.
+        // ── Phase 1: root trigger conditions ─────────────────────────────
+        for (Automation.Condition c : rootTriggerConditions) {
             boolean wasActive = cache != null
                     && (cache.getState() == AutomationState.ACTIVE
                     || cache.getState() == AutomationState.HOLDING);
@@ -83,9 +101,38 @@ public class AutomationEngine {
             NodeResult nr = new NodeResult(c.getNodeId(), result);
             nr.getContributors().add(c.getNodeId());
             ctx.put(nr);
+            log.debug("📊 [{}] Trigger condition '{}' ({} {}) → {}",
+                    automation.getName(), c.getNodeId(), c.getCondition(),
+                    c.getTriggerKey() != null ? c.getTriggerKey() : "scheduled", result);
         }
 
-        // Phase 1b — operators
+        // ── Phase 1b: chained trigger conditions (parent-aware) ───────────
+        // A chained condition is only evaluated if its parent condition passed.
+        // This preserves the graph dependency: node_condition_11 refs
+        // node_condition_5, so it only runs when node_condition_5 is true.
+        for (Automation.Condition c : chainedConditions) {
+            boolean parentTrue = c.getPreviousNodeRef().stream()
+                    .map(ref -> ctx.get(ref.getNodeId()))
+                    .filter(Objects::nonNull)
+                    .anyMatch(NodeResult::isTrue);
+
+            boolean result = false;
+            if (parentTrue) {
+                boolean wasActive = cache != null
+                        && (cache.getState() == AutomationState.ACTIVE
+                        || cache.getState() == AutomationState.HOLDING);
+                result = evaluateCondition(automation, c, payload, wasActive);
+            }
+            NodeResult nr = new NodeResult(c.getNodeId(), result);
+            if (result) nr.getContributors().add(c.getNodeId());
+            ctx.put(nr);
+            log.debug("📊 [{}] Chained condition '{}' ({} {}) parentTrue={} → {}",
+                    automation.getName(), c.getNodeId(), c.getCondition(),
+                    c.getTriggerKey() != null ? c.getTriggerKey() : "scheduled",
+                    parentTrue, result);
+        }
+
+        // ── Phase 1c: operators ───────────────────────────────────────────
         for (Automation.Operator op : operators) {
             List<NodeResult> inputs = op.getPreviousNodeRef().stream()
                     .map(ref -> ctx.get(ref.getNodeId()))
@@ -110,11 +157,12 @@ public class AutomationEngine {
             NodeResult opResult = new NodeResult(op.getNodeId(), result);
             opResult.getContributors().addAll(contributors);
             ctx.put(opResult);
+            log.debug("📊 [{}] Operator '{}' ({}) → {}",
+                    automation.getName(), op.getNodeId(), op.getLogicType(), result);
         }
 
-        // Phase 2 — gate conditions
+        // ── Phase 2: gate conditions ──────────────────────────────────────
         for (Automation.Condition c : gateConditions) {
-            // wasActive for hysteresis: use this branch's state from cache
             boolean wasActive = cache != null
                     && (cache.getBranchState(c.getNodeId()) == AutomationState.ACTIVE
                     || cache.getBranchState(c.getNodeId()) == AutomationState.HOLDING);
@@ -128,15 +176,69 @@ public class AutomationEngine {
             NodeResult nr = new NodeResult(c.getNodeId(), result);
             if (result) nr.getContributors().add(c.getNodeId());
             ctx.put(nr);
+            log.debug("📊 [{}] Gate condition '{}' ({}) parentTrue={} → {}",
+                    automation.getName(), c.getNodeId(), c.getCondition(), parentTrue, result);
         }
 
         return findRootResult(automation, ctx);
     }
 
 
+    // ═════════════════════════════════════════════════════════════════════
+    // CONDITION CLASSIFICATION
+    // ═════════════════════════════════════════════════════════════════════
+
     /**
-     * Actions tied to a specific gate condition node and group (positive/negative).
+     * Gate condition: its previousNodeRef points to an operator node.
      */
+    public boolean isGateCondition(Automation.Condition c, Set<String> operatorIds) {
+        return c.getPreviousNodeRef() != null &&
+                c.getPreviousNodeRef().stream()
+                        .anyMatch(ref -> operatorIds.contains(ref.getNodeId()));
+    }
+
+    /**
+     * Chained trigger condition: its previousNodeRef points to another CONDITION node
+     * (not the trigger root node, not an operator node).
+     * Example: node_condition_11 refs node_condition_5.
+     * These must be evaluated after their parent condition and inherit its pass/fail.
+     */
+    public boolean isChainedCondition(Automation.Condition c,
+                                      Set<String> conditionNodeIds,
+                                      Set<String> operatorIds) {
+        if (c.getPreviousNodeRef() == null || c.getPreviousNodeRef().isEmpty()) return false;
+        return c.getPreviousNodeRef().stream()
+                .anyMatch(ref -> conditionNodeIds.contains(ref.getNodeId())
+                        && !operatorIds.contains(ref.getNodeId()));
+    }
+
+    /**
+     * Returns ALL trigger-side conditions: root triggers + chained triggers.
+     * Used by AutomationService to classify which conditions form c1.
+     */
+    public List<Automation.Condition> getTriggerConditions(Automation automation) {
+        Set<String> operatorIds = automation.getOperators() == null ? Set.of() :
+                automation.getOperators().stream()
+                .map(Automation.Operator::getNodeId)
+                .collect(Collectors.toSet());
+
+        Set<String> conditionNodeIds = automation.getConditions() == null ? Set.of() :
+                automation.getConditions().stream()
+                .map(Automation.Condition::getNodeId)
+                .collect(Collectors.toSet());
+
+        return automation.getConditions() == null ? List.of() :
+                automation.getConditions().stream()
+                .filter(Automation.Condition::isEnabled)
+                .filter(c -> !isGateCondition(c, operatorIds))
+                .toList(); // includes both root and chained
+    }
+
+
+    // ═════════════════════════════════════════════════════════════════════
+    // ACTION RESOLUTION  (kept here for AutomationAbTestService use)
+    // ═════════════════════════════════════════════════════════════════════
+
     public List<Automation.Action> resolveActionsForNode(
             Automation automation,
             ExecutionContext ctx,
@@ -165,81 +267,6 @@ public class AutomationEngine {
                 .toList();
     }
 
-    /**
-     * "Informational" actions: conditionGroup == "informational".
-     * Fired when c1 is false — no state machine involvement.
-     */
-    private List<Automation.Action> resolveInformationalActions(
-            Automation automation, ExecutionContext ctx) {
-        return automation.getActions().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> "informational".equalsIgnoreCase(a.getConditionGroup()))
-                .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-                .toList();
-    }
-
-    /**
-     * c1-fallback actions for Phase 3: c1 is TRUE but no gate branch matched
-     * (e.g. lux in range but current time is outside all schedule windows).
-     * <p>
-     * Picks up "negative" actions whose previousNodeRef points to a TRIGGER
-     * condition node WITH a cond-negative handle.  These are intended as
-     * "nothing matched" fallback actions.
-     * <p>
-     * NOTE: do NOT confuse with resolveC1NegativeActions() which fires when
-     * c1 itself turns false and active branches need to be reverted.
-     */
-    private List<Automation.Action> resolveC1FallbackActions(
-            Automation automation,
-            ExecutionContext ctx,
-            List<Automation.Condition> triggerConditions) {
-
-        Set<String> triggerNodeIds = triggerConditions.stream()
-                .map(Automation.Condition::getNodeId)
-                .collect(Collectors.toSet());
-
-        return automation.getActions().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> "negative".equalsIgnoreCase(a.getConditionGroup()))
-                .filter(a -> a.getPreviousNodeRef() != null
-                        && a.getPreviousNodeRef().stream().anyMatch(ref ->
-                        triggerNodeIds.contains(ref.getNodeId())
-                                && ref.getHandle() != null
-                                && ref.getHandle().contains("cond-negative")))
-                .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-                .toList();
-    }
-
-    /**
-     * c1-negative revert actions: fired when c1 turns FALSE and at least one
-     * branch was ACTIVE.
-     * <p>
-     * These are "negative" actions whose previousNodeRef points to a TRIGGER
-     * condition node — meaning "lux left the valid range, dim everything".
-     * Same node-ref filter as resolveC1FallbackActions but semantically fires
-     * on c1=false rather than c1=true-no-branch.
-     */
-    private List<Automation.Action> resolveC1NegativeActions(
-            Automation automation,
-            List<Automation.Condition> triggerConditions) {
-
-        Set<String> triggerNodeIds = triggerConditions.stream()
-                .map(Automation.Condition::getNodeId)
-                .collect(Collectors.toSet());
-
-        return automation.getActions().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> "negative".equalsIgnoreCase(a.getConditionGroup()))
-                .filter(a -> a.getPreviousNodeRef() != null
-                        && a.getPreviousNodeRef().stream().anyMatch(ref ->
-                        triggerNodeIds.contains(ref.getNodeId())))
-                .sorted(Comparator.comparingInt(a -> a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE))
-                .toList();
-    }
-
-    /**
-     * Backward-compatible resolveActions — used by handleNoBranchAutomation.
-     */
     public List<Automation.Action> resolveActionsForGroup(
             Automation automation, ExecutionContext ctx, String group) {
 
@@ -263,15 +290,9 @@ public class AutomationEngine {
                 .toList();
     }
 
-    public boolean isGateCondition(Automation.Condition c, Set<String> operatorIds) {
-        return c.getPreviousNodeRef() != null &&
-                c.getPreviousNodeRef().stream()
-                        .anyMatch(ref -> operatorIds.contains(ref.getNodeId()));
-    }
-
 
     // ═════════════════════════════════════════════════════════════════════
-    // CONDITION EVALUATION  (unchanged)
+    // CONDITION EVALUATION
     // ═════════════════════════════════════════════════════════════════════
 
     private boolean evaluateCondition(Automation automation, Automation.Condition condition,
@@ -286,13 +307,31 @@ public class AutomationEngine {
                 && !condDeviceId.equals(automation.getTrigger().getDeviceId())) {
             // Secondary device — fetch latest from Redis cache
             payload = redisService.getRecentDeviceData(condDeviceId);
-            if (payload == null) payload = Map.of();
+            if (payload == null || payload.isEmpty()) {
+                // FIX Bug#6: warn so the missing key is observable in logs
+                log.warn("⚠️ [{}] Secondary device '{}' has no cached data in Redis — " +
+                                "condition '{}' ({}) will return false. " +
+                                "Ensure the device is publishing live events.",
+                        automation.getName(), condDeviceId,
+                        condition.getNodeId(), condition.getCondition());
+                return false;
+            }
         } else {
             // Primary device — use the incoming payload
             payload = primaryPayload;
         }
+
         String key = condition.getTriggerKey();
-        if (key == null || !payload.containsKey(key)) return false;
+        if (key == null || key.isBlank()) {
+            log.warn("⚠️ [{}] Condition '{}' has no triggerKey — returning false",
+                    automation.getName(), condition.getNodeId());
+            return false;
+        }
+        if (!payload.containsKey(key)) {
+            log.warn("⚠️ [{}] Condition '{}': key '{}' not present in payload (keys: {}) — returning false",
+                    automation.getName(), condition.getNodeId(), key, payload.keySet());
+            return false;
+        }
 
         String value = payload.get(key).toString();
 
@@ -300,7 +339,9 @@ public class AutomationEngine {
             return value.equals(condition.getValue());
 
         double v = Double.parseDouble(value);
-        double buffer = 5.0;
+
+        // FIX Bug#7: percentage-based hysteresis (2% of threshold) instead of hardcoded 5.0
+        double buffer = getBuffer(condition);
 
         if (Boolean.TRUE.equals(condition.getIsExact()))
             return condition.getValue().equals(value);
@@ -310,11 +351,9 @@ public class AutomationEngine {
             case "above" -> wasActive
                     ? v > (Double.parseDouble(condition.getValue()) - buffer)
                     : v > Double.parseDouble(condition.getValue());
-
             case "below" -> wasActive
                     ? v < (Double.parseDouble(condition.getValue()) + buffer)
                     : v < Double.parseDouble(condition.getValue());
-
             case "range" -> {
                 double above = Double.parseDouble(condition.getAbove());
                 double below = Double.parseDouble(condition.getBelow());
@@ -324,6 +363,22 @@ public class AutomationEngine {
             }
             default -> false;
         };
+    }
+
+    private static double getBuffer(Automation.Condition condition) {
+        double thresholdValue;
+        try {
+            thresholdValue = switch (condition.getCondition()) {
+                case "above", "below", "equal" -> Double.parseDouble(condition.getValue());
+                case "range" -> (Double.parseDouble(condition.getAbove())
+                        + Double.parseDouble(condition.getBelow())) / 2.0;
+                default -> Double.parseDouble(condition.getValue());
+            };
+        } catch (NumberFormatException e) {
+            thresholdValue = 0;
+        }
+        // 2%, min 1 unit
+        return Math.max(1.0, Math.abs(thresholdValue) * 0.02);
     }
 
     private LocalTime parseTime(String timeText) {
@@ -343,6 +398,7 @@ public class AutomationEngine {
         }
     }
 
+
     // ═════════════════════════════════════════════════════════════════════
     // ROOT RESOLUTION
     // ═════════════════════════════════════════════════════════════════════
@@ -355,14 +411,22 @@ public class AutomationEngine {
                 .map(Automation.Operator::getNodeId)
                 .collect(Collectors.toSet());
 
-        Set<String> triggerNodeIds = automation.getConditions() == null ? Set.of() :
+        Set<String> conditionNodeIds = automation.getConditions() == null ? Set.of() :
                 automation.getConditions().stream()
-                .filter(Automation.Condition::isEnabled)
-                .filter(c -> !isGateCondition(c, operatorIds))
                 .map(Automation.Condition::getNodeId)
                 .collect(Collectors.toSet());
 
-        List<Automation.Condition> triggerConditions = automation.getConditions() == null
+        // Root trigger conditions: not gate, not chained
+        List<Automation.Condition> rootTriggerConditions = automation.getConditions() == null
+                ? List.of()
+                : automation.getConditions().stream()
+                  .filter(Automation.Condition::isEnabled)
+                  .filter(c -> !isGateCondition(c, operatorIds))
+                  .filter(c -> !isChainedCondition(c, conditionNodeIds, operatorIds))
+                  .toList();
+
+        // All trigger-side conditions (root + chained) — used for implicit AND
+        List<Automation.Condition> allTriggerConditions = automation.getConditions() == null
                 ? List.of()
                 : automation.getConditions().stream()
                   .filter(Automation.Condition::isEnabled)
@@ -384,8 +448,12 @@ public class AutomationEngine {
                     .orElseGet(() -> ctx.get(operators.get(operators.size() - 1).getNodeId()));
         }
 
-        if (triggerConditions.size() > 1) {
-            boolean allTrue = triggerConditions.stream()
+        // FIX: implicit AND covers ALL trigger-side conditions (root + chained),
+        // not just root-level ones.  For this automation:
+        // allTriggerConditions = [node_condition_5, node_condition_11]
+        // root = node_condition_5 AND node_condition_11
+        if (allTriggerConditions.size() > 1) {
+            boolean allTrue = allTriggerConditions.stream()
                     .map(c -> ctx.get(c.getNodeId()))
                     .filter(Objects::nonNull)
                     .allMatch(NodeResult::isTrue);
@@ -394,8 +462,8 @@ public class AutomationEngine {
             return synthetic;
         }
 
-        if (!triggerConditions.isEmpty()) {
-            NodeResult nr = ctx.get(triggerConditions.getFirst().getNodeId());
+        if (!allTriggerConditions.isEmpty()) {
+            NodeResult nr = ctx.get(allTriggerConditions.getFirst().getNodeId());
             if (nr != null) return nr;
         }
 
@@ -404,7 +472,7 @@ public class AutomationEngine {
 
 
     // ═════════════════════════════════════════════════════════════════════
-    // SCHEDULE EVALUATION  (unchanged)
+    // SCHEDULE EVALUATION
     // ═════════════════════════════════════════════════════════════════════
 
     private boolean isCurrentTimeWithDailyTracking(Automation automation,
@@ -509,7 +577,7 @@ public class AutomationEngine {
 
 
     // ═════════════════════════════════════════════════════════════════════
-    // CONDITION RESULT BUILDER  (updated with operatorNodeId + suppressedBy)
+    // CONDITION RESULT BUILDER
     // ═════════════════════════════════════════════════════════════════════
 
     private List<AutomationLog.ConditionResult> buildConditionResults(
@@ -525,7 +593,6 @@ public class AutomationEngine {
             NodeResult nr = ctx.get(c.getNodeId());
             if (nr == null) continue;
 
-            // Find parent operator for gate conditions
             String parentOpId = null;
             if (c.getPreviousNodeRef() != null) {
                 parentOpId = c.getPreviousNodeRef().stream()
@@ -557,28 +624,39 @@ public class AutomationEngine {
                         .detail(nr.isTrue() ? "Schedule matched" : "Outside schedule window")
                         .days(c.getDays());
 
-            } else if (c.getTriggerKey() != null && payload.containsKey(c.getTriggerKey())) {
-                String raw = payload.get(c.getTriggerKey()).toString();
-                String expected = switch (c.getCondition()) {
-                    case "above" -> "> " + c.getValue();
-                    case "below" -> "< " + c.getValue();
-                    case "range" -> c.getAbove() + " < x < " + c.getBelow();
-                    default -> c.getValue();
-                };
-                String detail = switch (c.getCondition()) {
-                    case "above" -> raw + " > " + c.getValue()
-                            + " → " + (nr.isTrue() ? "PASS" : "FAIL");
-                    case "below" -> raw + " < " + c.getValue()
-                            + " → " + (nr.isTrue() ? "PASS" : "FAIL");
-                    case "range" -> raw + " in (" + c.getAbove() + ", " + c.getBelow() + ")"
-                            + " → " + (nr.isTrue() ? "PASS" : "FAIL");
-                    default -> raw + " == " + c.getValue()
-                            + " → " + (nr.isTrue() ? "PASS" : "FAIL");
-                };
-                builder.actualValue(raw).expectedValue(expected).detail(detail);
             } else {
-                builder.actualValue("missing").expectedValue(c.getValue())
-                        .detail("Key '" + c.getTriggerKey() + "' not present in payload");
+                // Resolve which payload to show in the log (primary vs secondary)
+                Map<String, Object> condPayload = payload;
+                if (c.getDeviceId() != null && !c.getDeviceId().isBlank()
+                        && !c.getDeviceId().equals(automation.getTrigger().getDeviceId())) {
+                    Map<String, Object> secondaryData =
+                            redisService.getRecentDeviceData(c.getDeviceId());
+                    if (secondaryData != null) condPayload = secondaryData;
+                }
+
+                if (c.getTriggerKey() != null && condPayload.containsKey(c.getTriggerKey())) {
+                    String raw = condPayload.get(c.getTriggerKey()).toString();
+                    String expected = switch (c.getCondition()) {
+                        case "above" -> "> " + c.getValue();
+                        case "below" -> "< " + c.getValue();
+                        case "range" -> c.getAbove() + " < x < " + c.getBelow();
+                        default -> c.getValue();
+                    };
+                    String detail = switch (c.getCondition()) {
+                        case "above" -> raw + " > " + c.getValue()
+                                + " → " + (nr.isTrue() ? "PASS" : "FAIL");
+                        case "below" -> raw + " < " + c.getValue()
+                                + " → " + (nr.isTrue() ? "PASS" : "FAIL");
+                        case "range" -> raw + " in (" + c.getAbove() + ", " + c.getBelow() + ")"
+                                + " → " + (nr.isTrue() ? "PASS" : "FAIL");
+                        default -> raw + " == " + c.getValue()
+                                + " → " + (nr.isTrue() ? "PASS" : "FAIL");
+                    };
+                    builder.actualValue(raw).expectedValue(expected).detail(detail);
+                } else {
+                    builder.actualValue("missing").expectedValue(c.getValue())
+                            .detail("Key '" + c.getTriggerKey() + "' not present in payload");
+                }
             }
             results.add(builder.build());
         }
@@ -612,11 +690,19 @@ public class AutomationEngine {
         return results;
     }
 
+    /**
+     * Public wrapper for buildConditionResults — used by AutomationAbTestService
+     * to build condition result sets for variant B without duplicating logic.
+     */
+    public List<AutomationLog.ConditionResult> buildConditionResultsPublic(
+            Automation automation, ExecutionContext ctx, Map<String, Object> payload) {
+        return buildConditionResults(automation, ctx, payload);
+    }
 
-    // =========================================================================
-    // HUMAN-READABLE MESSAGE HELPERS
-    // =========================================================================
 
+    // ═════════════════════════════════════════════════════════════════════
+    // HUMAN-READABLE HELPERS
+    // ═════════════════════════════════════════════════════════════════════
 
     public String describeCondition(Automation.Condition c) {
         if ("scheduled".equals(c.getCondition())) {
@@ -640,23 +726,6 @@ public class AutomationEngine {
         };
     }
 
-    /**
-     * Full notification string for a triggered branch.
-     * <p>
-     * Example:
-     * "[Light On] Time window 13:05-01:00 -> Monitor Light preset=8, Light Strip preset=3"
-     */
-    private String describeTriggered(String automationName, GateBranch fb) {
-        String branchDesc = describeCondition(fb.gateCondition());
-        String actionsDesc = actionSummary(fb.positiveActions());
-        return "[" + automationName + "] " + branchDesc + " -> " + actionsDesc;
-    }
-
-    /**
-     * Compact summary of an action list.
-     * <p>
-     * Example: "Monitor Light preset=8, Light Strip bright=100"
-     */
     String actionSummary(List<Automation.Action> actions) {
         if (actions == null || actions.isEmpty()) return "no actions";
         return actions.stream()
@@ -666,19 +735,6 @@ public class AutomationEngine {
                 .collect(Collectors.joining(", "));
     }
 
-    /**
-     * 3.8 — Public wrapper for buildConditionResults used by AutomationAbTestService
-     * to build condition result sets for variant B without duplicating logic.
-     */
-    public List<AutomationLog.ConditionResult> buildConditionResultsPublic(
-            Automation automation, ExecutionContext ctx, Map<String, Object> payload) {
-        return buildConditionResults(automation, ctx, payload);
-    }
-
-    /**
-     * Returns device name from MainService, falling back to the action name
-     * so raw device IDs never appear in user-facing messages.
-     */
     public String resolveDeviceLabel(String deviceId, String actionName) {
         try {
             Device d = mainService.getDevice(deviceId);
@@ -689,9 +745,6 @@ public class AutomationEngine {
         return (actionName != null && !actionName.isBlank()) ? actionName : deviceId;
     }
 
-    /**
-     * Strips seconds: "13:05:00" -> "13:05", handles AM/PM strings too.
-     */
     private String fmtTime(String raw) {
         if (raw == null || raw.isBlank()) return "?";
         return raw.replaceAll(":\\d{2}(\\s*[AaPp][Mm])?$", "$1").trim();

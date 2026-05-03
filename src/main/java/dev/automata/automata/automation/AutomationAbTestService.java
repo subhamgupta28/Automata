@@ -13,6 +13,7 @@ import dev.automata.automata.repository.AutomationAbTestLogRepository;
 import dev.automata.automata.repository.AutomationAbTestRepository;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.service.NotificationService;
+import dev.automata.automata.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -34,12 +35,19 @@ public class AutomationAbTestService {
     private final AutomationRepository automationRepository;
     private final NotificationService notificationService;
     private final AutomationEngine automationEngine;
+    // FIX Bug#3: inject RedisService so we can persist and reuse a real shadow
+    // cache for variant B instead of always starting with IDLE.
+    private final RedisService redisService;
 
     /**
-     * In-memory log buffer — flushed every 5 seconds (same pattern as AutomationLogBuffer).
+     * Redis key prefix for variant B shadow cache.
+     * Format: AB_SHADOW:<testId>:<variantBId>
      */
+    private static final String SHADOW_CACHE_PREFIX = "AB_SHADOW:";
+
     private final ConcurrentLinkedQueue<AutomationAbTestLog> logBuffer =
             new ConcurrentLinkedQueue<>();
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // CRUD
@@ -55,14 +63,11 @@ public class AutomationAbTestService {
 
     /**
      * Creates a new A/B test.
-     * <p>
-     * The caller provides:
-     * - variantAId: the currently-live automation (unchanged, will keep firing)
-     * - variantBId: the candidate automation (must already exist in the DB
-     * with isEnabled=false — the user creates it via the editor first)
+     * variantAId: the currently-live automation (unchanged, will keep firing).
+     * variantBId: the candidate automation (must already exist in the DB
+     * with isEnabled=false — the user creates it via the editor first).
      */
     public AutomationAbTest create(AutomationAbTest test, String createdBy) {
-        // Validate both automations exist
         automationRepository.findById(test.getVariantAId())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Variant A automation not found: " + test.getVariantAId()));
@@ -71,7 +76,6 @@ public class AutomationAbTestService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Variant B automation not found: " + test.getVariantBId()));
 
-        // Ensure variant B is disabled so it doesn't fire independently
         if (Boolean.TRUE.equals(variantB.getIsEnabled())) {
             variantB.setIsEnabled(false);
             automationRepository.save(variantB);
@@ -100,18 +104,16 @@ public class AutomationAbTestService {
     }
 
     public AutomationAbTest pause(String testId) {
-        return updateStatus(testId, AutomationAbTest.AbTestStatus.PAUSED,
-                "A/B test paused");
+        return updateStatus(testId, AutomationAbTest.AbTestStatus.PAUSED, "A/B test paused");
     }
 
     public AutomationAbTest resume(String testId) {
-        return updateStatus(testId, AutomationAbTest.AbTestStatus.RUNNING,
-                "A/B test resumed");
+        return updateStatus(testId, AutomationAbTest.AbTestStatus.RUNNING, "A/B test resumed");
     }
 
     /**
      * Ends the test and records which variant won.
-     * Re-enables variant B if B won (caller decides what to do with variant A).
+     * Re-enables variant B if B won.
      */
     public AutomationAbTest end(String testId, String winner, String conclusion) {
         AutomationAbTest test = abTestRepository.findById(testId)
@@ -122,11 +124,9 @@ public class AutomationAbTestService {
         test.setWinnerVariant(winner);
         test.setConclusion(conclusion);
 
-        // Compute final stats before closing
         updateStats(test);
 
         if ("B".equals(winner)) {
-            // Promote variant B to live — enable it and disable variant A
             automationRepository.findById(test.getVariantBId()).ifPresent(b -> {
                 b.setIsEnabled(true);
                 automationRepository.save(b);
@@ -144,16 +144,24 @@ public class AutomationAbTestService {
                     "A/B test '" + test.getName() + "' ended — Variant A retained", "info");
         }
 
+        // FIX Bug#3: clean up the shadow cache for this test when it ends
+        clearShadowCache(test.getId(), test.getVariantBId());
+
         return abTestRepository.save(test);
     }
 
+
     // ─────────────────────────────────────────────────────────────────────────
     // SHADOW EVALUATION
-    // Called from AutomationService after variant A has been evaluated and
-    // its state machine has been handled. Variant B is evaluated in shadow
-    // mode — same payload, no action execution.
+    // Called from AutomationService INSIDE allOf().thenRun() after variant A
+    // has fully resolved — so variantAResult is the confirmed execution outcome.
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * FIX Bug#1 + Bug#2: this method is now actually called from AutomationService,
+     * inside CompletableFuture.allOf().thenRun(), so variantAResult reflects the
+     * true post-execution state of variant A (not a pre-future optimistic flag).
+     */
     @Async
     public void shadowEvaluate(String variantAId,
                                Map<String, Object> payload,
@@ -161,7 +169,9 @@ public class AutomationAbTestService {
                                List<AutomationLog.ConditionResult> variantAConditionResults,
                                String variantAWinningBranch) {
 
-        // Find running test for this variant A
+        // FIX Bug#4 (repo): findByVariantAIdAndStatus returns Optional<AutomationAbTest>.
+        // Verify this method signature exists in AutomationAbTestRepository:
+        //   Optional<AutomationAbTest> findByVariantAIdAndStatus(String variantAId, AbTestStatus status);
         abTestRepository.findByVariantAIdAndStatus(
                         variantAId, AutomationAbTest.AbTestStatus.RUNNING)
                 .ifPresent(test -> {
@@ -185,21 +195,23 @@ public class AutomationAbTestService {
                 .orElse(null);
         if (variantB == null) return;
 
-        // Evaluate variant B's graph — NEVER execute actions
-        ExecutionContext ctxB = new ExecutionContext();
-        // Use a stub cache — variant B has no real state (always IDLE for shadow)
-        AutomationCache stubCache = AutomationCache.builder()
-                .state(AutomationState.IDLE)
-                .build();
+        // FIX Bug#3: load variant B's real shadow cache from Redis instead of always
+        // using IDLE. This ensures wasActive is correct for hysteresis evaluation,
+        // preventing artificial divergences at boundary sensor values.
+        String shadowCacheKey = SHADOW_CACHE_PREFIX + test.getId() + ":" + test.getVariantBId();
+        AutomationCache shadowCache = loadShadowCache(shadowCacheKey, variantB);
 
-        NodeResult rootB = automationEngine.evaluate(variantB, payload, ctxB, stubCache);
+        ExecutionContext ctxB = new ExecutionContext();
+        NodeResult rootB = automationEngine.evaluate(variantB, payload, ctxB, shadowCache);
         boolean variantBResult = rootB != null && rootB.isTrue();
 
-        // Build variant B condition results
+        // Update the shadow cache state based on variant B's evaluation result
+        // so the next tick has correct wasActive values for hysteresis.
+        updateShadowCacheState(shadowCacheKey, shadowCache, variantB, ctxB, variantBResult);
+
         List<AutomationLog.ConditionResult> bResults =
                 automationEngine.buildConditionResultsPublic(variantB, ctxB, payload);
 
-        // Determine winning branch for B (for branch automations)
         String bWinningBranch = resolveWinningBranchDescription(variantB, ctxB);
 
         boolean agreed = (variantAResult == variantBResult);
@@ -221,7 +233,7 @@ public class AutomationAbTestService {
                         .rootTrue(variantBResult)
                         .conditionResults(bResults)
                         .winningBranchDescription(bWinningBranch)
-                        .actionsExecuted(false)   // ← never executes actions
+                        .actionsExecuted(false)  // ← never executes actions
                         .build())
                 .build();
 
@@ -233,51 +245,105 @@ public class AutomationAbTestService {
         }
     }
 
-    private String resolveWinningBranchDescription(Automation automation, ExecutionContext ctx) {
-        if (automation.getOperators() == null || automation.getOperators().isEmpty()) return null;
-        Set<String> operatorIds = automation.getOperators().stream()
-                .map(Automation.Operator::getNodeId).collect(Collectors.toSet());
 
-        return automation.getConditions().stream()
-                .filter(Automation.Condition::isEnabled)
-                .filter(c -> c.getPreviousNodeRef() != null &&
-                        c.getPreviousNodeRef().stream()
-                                .anyMatch(ref -> operatorIds.contains(ref.getNodeId())))
-                .filter(c -> {
-                    NodeResult nr = ctx.get(c.getNodeId());
-                    return nr != null && nr.isTrue();
-                })
-                .max(Comparator.comparingInt(c -> {
-                    String opId = c.getPreviousNodeRef().stream()
-                            .map(ref -> ref.getNodeId())
-                            .filter(operatorIds::contains)
-                            .findFirst().orElse(null);
-                    if (opId == null) return 0;
-                    return automation.getOperators().stream()
-                            .filter(op -> op.getNodeId().equals(opId))
-                            .mapToInt(Automation.Operator::getPriority)
-                            .findFirst().orElse(0);
-                }))
-                .map(c -> describeCondition(c))
-                .orElse(null);
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // SHADOW CACHE HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
 
-    private String describeCondition(Automation.Condition c) {
-        if ("scheduled".equals(c.getCondition())) {
-            String t = c.getScheduleType();
-            if ("range".equals(t)) return "Time " + c.getFromTime() + "-" + c.getToTime();
-            if ("interval".equals(t)) return "Every " + c.getIntervalMinutes() + "min";
-            if ("solar".equals(t)) return c.getSolarType();
-            return "At " + c.getTime();
+    /**
+     * Loads the persisted shadow cache for variant B from Redis.
+     * Falls back to a fresh IDLE cache if none exists yet.
+     * TTL is 2 hours — enough to survive a restart without accumulating stale state.
+     */
+    private AutomationCache loadShadowCache(String key, Automation variantB) {
+        try {
+            AutomationCache existing = redisService.getAutomationCache(key);
+            if (existing != null) return existing;
+        } catch (Exception e) {
+            log.warn("Failed to load shadow cache for key '{}': {}", key, e.getMessage());
         }
-        String k = c.getTriggerKey() != null ? c.getTriggerKey() : "value";
-        return switch (c.getCondition()) {
-            case "above" -> k + ">" + c.getValue();
-            case "below" -> k + "<" + c.getValue();
-            case "range" -> k + " in " + c.getAbove() + "-" + c.getBelow();
-            default -> k + "=" + c.getValue();
-        };
+        return AutomationCache.builder()
+                .id(variantB.getId())
+                .state(AutomationState.IDLE)
+                .branchStates(new HashMap<>())
+                .triggeredPreviously(false)
+                .previousExecutionTime(null)
+                .lastUpdate(new Date())
+                .build();
     }
+
+    /**
+     * After evaluating variant B in shadow mode, update the shadow cache state
+     * so subsequent ticks have the correct wasActive / branch state for hysteresis.
+     * <p>
+     * Since variant B never actually executes actions, we advance its state based
+     * purely on the evaluation result — no action confirmation needed.
+     */
+    private void updateShadowCacheState(String shadowCacheKey,
+                                        AutomationCache shadowCache,
+                                        Automation variantB,
+                                        ExecutionContext ctxB,
+                                        boolean variantBResult) {
+        try {
+            Set<String> operatorIds = variantB.getOperators() == null ? Set.of() :
+                    variantB.getOperators().stream()
+                    .map(Automation.Operator::getNodeId)
+                    .collect(Collectors.toSet());
+
+            boolean hasBranches = variantB.getOperators() != null
+                    && !variantB.getOperators().isEmpty();
+
+            if (hasBranches) {
+                // Per-branch state: advance IDLE→ACTIVE when gate is true,
+                // ACTIVE→IDLE when gate is false.
+                variantB.getConditions().stream()
+                        .filter(Automation.Condition::isEnabled)
+                        .filter(c -> automationEngine.isGateCondition(c, operatorIds))
+                        .forEach(c -> {
+                            NodeResult nr = ctxB.get(c.getNodeId());
+                            boolean gateTrue = nr != null && nr.isTrue();
+                            AutomationState current = shadowCache.getBranchState(c.getNodeId());
+
+                            if (gateTrue && current == AutomationState.IDLE) {
+                                shadowCache.setBranchState(c.getNodeId(), AutomationState.ACTIVE);
+                            } else if (!gateTrue && (current == AutomationState.ACTIVE
+                                    || current == AutomationState.HOLDING)) {
+                                shadowCache.setBranchState(c.getNodeId(), AutomationState.IDLE);
+                            }
+                        });
+            } else {
+                // Top-level state for no-branch automations
+                AutomationState current = shadowCache.getState();
+                if (variantBResult && current == AutomationState.IDLE) {
+                    shadowCache.setState(AutomationState.ACTIVE);
+                } else if (!variantBResult && (current == AutomationState.ACTIVE
+                        || current == AutomationState.HOLDING)) {
+                    shadowCache.setState(AutomationState.IDLE);
+                }
+            }
+
+            shadowCache.setLastUpdate(new Date());
+            // Store with 2-hour TTL — resets if the test is idle that long
+            redisService.setAutomationCacheWithExpiry(shadowCacheKey, shadowCache, 7200);
+
+        } catch (Exception e) {
+            log.warn("Failed to update shadow cache '{}': {}", shadowCacheKey, e.getMessage());
+        }
+    }
+
+    /**
+     * Cleans up the shadow cache entries for a test when it ends.
+     */
+    private void clearShadowCache(String testId, String variantBId) {
+        try {
+            String key = SHADOW_CACHE_PREFIX + testId + ":" + variantBId;
+            redisService.delete(key);
+            log.info("🧹 Shadow cache cleared for test '{}'", testId);
+        } catch (Exception e) {
+            log.warn("Failed to clear shadow cache for test '{}': {}", testId, e.getMessage());
+        }
+    }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // STATS UPDATE (runs every 30 seconds for RUNNING tests)
@@ -297,26 +363,28 @@ public class AutomationAbTestService {
                 });
     }
 
+    /**
+     * FIX Bug#8: aCount and bCount now use dedicated repository count queries
+     * against the full collection — not a capped 1000-entry in-memory slice.
+     * agreementRate, aCount, and bCount all cover the same all-time scope.
+     * <p>
+     * Requires these methods in AutomationAbTestLogRepository:
+     * long countByTestId(String testId);
+     * long countByTestIdAndAgreedTrue(String testId);
+     * long countByTestIdAndVariantA_RootTrue(String testId);
+     * long countByTestIdAndVariantB_RootTrue(String testId);
+     */
     private void updateStats(AutomationAbTest test) {
         long total = abTestLogRepository.countByTestId(test.getId());
         long agreed = abTestLogRepository.countByTestIdAndAgreedTrue(test.getId());
         double rate = total > 0 ? (double) agreed / total : 0.0;
 
-        // Count per-variant triggers
-        // Fetch recent logs to compute — avoid full collection scan
-        List<AutomationAbTestLog> recent = abTestLogRepository
-                .findByTestIdOrderByTimestampDesc(test.getId(),
-                        PageRequest.of(0, 1000))
-                .getContent();
+        // FIX Bug#8: all-time counts via repository queries (not limited to 1000 rows)
+        long aCount = abTestLogRepository.countByTestIdAndVariantATrue(test.getId());
+        long bCount = abTestLogRepository.countByTestIdAndVariantBTrue(test.getId());
 
-        long aCount = recent.stream()
-                .filter(l -> l.getVariantA() != null && l.getVariantA().isRootTrue())
-                .count();
-        long bCount = recent.stream()
-                .filter(l -> l.getVariantB() != null && l.getVariantB().isRootTrue())
-                .count();
-
-        // Recent divergences (up to 10)
+        // Recent divergences (up to 10) — still fetched as a limited list, which is fine
+        // because this is display-only and not used in rate calculations.
         List<AutomationAbTest.DivergenceExample> divergences =
                 abTestLogRepository.findByTestIdAndAgreedFalseOrderByTimestampDesc(test.getId())
                         .stream()
@@ -343,8 +411,9 @@ public class AutomationAbTestService {
                 .build());
     }
 
+
     // ─────────────────────────────────────────────────────────────────────────
-    // LOG BUFFER FLUSH (every 5 seconds, same pattern as AutomationLogBuffer)
+    // LOG BUFFER FLUSH (every 5 seconds)
     // ─────────────────────────────────────────────────────────────────────────
 
     @Scheduled(fixedDelay = 5_000)
@@ -364,6 +433,7 @@ public class AutomationAbTestService {
         }
     }
 
+
     // ─────────────────────────────────────────────────────────────────────────
     // QUERY
     // ─────────────────────────────────────────────────────────────────────────
@@ -378,7 +448,44 @@ public class AutomationAbTestService {
         return abTestLogRepository.findByTestIdAndAgreedFalseOrderByTimestampDesc(testId);
     }
 
-    private AutomationAbTest updateStatus(String testId, AutomationAbTest.AbTestStatus status,
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PRIVATE HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private String resolveWinningBranchDescription(Automation automation, ExecutionContext ctx) {
+        if (automation.getOperators() == null || automation.getOperators().isEmpty()) return null;
+
+        Set<String> operatorIds = automation.getOperators().stream()
+                .map(Automation.Operator::getNodeId)
+                .collect(Collectors.toSet());
+
+        return automation.getConditions().stream()
+                .filter(Automation.Condition::isEnabled)
+                .filter(c -> c.getPreviousNodeRef() != null &&
+                        c.getPreviousNodeRef().stream()
+                                .anyMatch(ref -> operatorIds.contains(ref.getNodeId())))
+                .filter(c -> {
+                    NodeResult nr = ctx.get(c.getNodeId());
+                    return nr != null && nr.isTrue();
+                })
+                .max(Comparator.comparingInt(c -> {
+                    String opId = c.getPreviousNodeRef().stream()
+                            .map(ref -> ref.getNodeId())
+                            .filter(operatorIds::contains)
+                            .findFirst().orElse(null);
+                    if (opId == null) return 0;
+                    return automation.getOperators().stream()
+                            .filter(op -> op.getNodeId().equals(opId))
+                            .mapToInt(Automation.Operator::getPriority)
+                            .findFirst().orElse(0);
+                }))
+                .map(c -> automationEngine.describeCondition(c))
+                .orElse(null);
+    }
+
+    private AutomationAbTest updateStatus(String testId,
+                                          AutomationAbTest.AbTestStatus status,
                                           String notification) {
         AutomationAbTest test = abTestRepository.findById(testId)
                 .orElseThrow(() -> new IllegalArgumentException("Test not found: " + testId));

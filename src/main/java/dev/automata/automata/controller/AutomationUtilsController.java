@@ -1,8 +1,11 @@
 package dev.automata.automata.controller;
 
 import dev.automata.automata.automation.AutomationAbTestService;
+import dev.automata.automata.automation.AutomationAnalyticsService;
 import dev.automata.automata.automation.AutomationSceneService;
 import dev.automata.automata.automation.AutomationVersionService;
+import dev.automata.automata.dto.AutomationAnalyticsDto;
+import dev.automata.automata.dto.AutomationAnalyticsSummaryDto;
 import dev.automata.automata.model.AutomationAbTest;
 import dev.automata.automata.model.AutomationAbTestLog;
 import dev.automata.automata.model.AutomationScene;
@@ -25,6 +28,27 @@ public class AutomationUtilsController {
     private final AutomationService automationService;
     private final AutomationSceneService sceneService;
     private final AutomationAbTestService abTestService;
+    private final AutomationAnalyticsService analyticsService;
+
+
+    /**
+     * GET /automations/analytics
+     * Returns per-automation analytics for the last 24 hours.
+     * Sorted by status severity (errors first) by the frontend.
+     */
+    @GetMapping("analytics")
+    public ResponseEntity<List<AutomationAnalyticsDto>> getAnalytics() {
+        return ResponseEntity.ok(analyticsService.getAnalytics());
+    }
+
+    /**
+     * GET /automations/analytics/summary
+     * Returns aggregate counts across all automations.
+     */
+    @GetMapping("analytics/summary")
+    public ResponseEntity<AutomationAnalyticsSummaryDto> getSummary() {
+        return ResponseEntity.ok(analyticsService.getSummary());
+    }
 
     /**
      * GET /api/automations/{id}/versions

@@ -571,7 +571,15 @@ export const getAbLogs = async (id) => {
     return response.data;
 };
 
+export const getAutomationAnalyticsSummary = async () => {
+    const response = await api.get(`automations/analytics/summary`);
+    return response.data;
+};
 
+export const getAutomationAnalyticsV2 = async () => {
+    const response = await api.get(`automations/analytics`);
+    return response.data;
+};
 // Versions
 export const getVersions = async (aid) => {
     const response = await api.get(`automations/${aid}/versions`);

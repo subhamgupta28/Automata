@@ -15,4 +15,8 @@ public interface AutomationAbTestLogRepository extends MongoRepository<Automatio
     Slice<AutomationAbTestLog> findByTestIdOrderByTimestampDesc(String id, PageRequest of);
 
     List<AutomationAbTestLog> findByTestIdAndAgreedFalseOrderByTimestampDesc(String id);
+
+    long countByTestIdAndVariantATrue(String testId);
+
+    long countByTestIdAndVariantBTrue(String testId);
 }
