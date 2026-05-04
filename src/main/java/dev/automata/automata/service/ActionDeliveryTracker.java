@@ -1,5 +1,6 @@
 package dev.automata.automata.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.model.AutomationLog;
 import dev.automata.automata.v2.AutomationLogStream;
@@ -36,7 +37,7 @@ public class ActionDeliveryTracker {
 
     private static final String PREFIX = "DELIVERY:";
     private static final long TTL_SEC = 60L;
-
+    private static final long WLED_TIMEOUT_MS = 15_000L; // WLED responds fast over MQTT
 
     // ─────────────────────────────────────────────────────────────────────
     // REGISTER
@@ -75,6 +76,41 @@ public class ActionDeliveryTracker {
         }
     }
 
+    /**
+     * Register a WLED dispatch for delivery tracking.
+     * Called from ActionDispatcher.dispatchWled() instead of marking NOT_APPLICABLE.
+     *
+     * @param deviceId       the WLED device ID (used to match the incoming /v message)
+     * @param automationId   for logging
+     * @param automationName for logging
+     * @param deviceName     for logging
+     * @param traceId        from the originating execute() call
+     */
+    public void registerWled(String deviceId,
+                             String automationId,
+                             String automationName,
+                             String deviceName,
+                             Map<String, Object> payload, String traceId) {
+
+        try {
+            DeliveryRecord record = DeliveryRecord.builder()
+                    .automationId(automationId)
+                    .automationName(automationName)
+                    .deviceId(deviceId)
+                    .deviceName(deviceName)
+                    .payload(payload)
+                    .registeredAt(new Date())
+                    .traceId(traceId)
+                    .build();
+
+            String json = objectMapper.writeValueAsString(record);
+            redisTemplate.opsForValue().set(PREFIX + deviceId, json, TTL_SEC, TimeUnit.SECONDS);
+            log.info("📡 WLED delivery pending: device='{}' traceId='{}'", deviceId, traceId);
+        } catch (Exception e) {
+            log.warn("Failed to register delivery for cid='{}': {}", deviceName, e.getMessage());
+        }
+
+    }
 
     // ─────────────────────────────────────────────────────────────────────
     // CONFIRM
@@ -109,6 +145,38 @@ public class ActionDeliveryTracker {
         } catch (Exception e) {
             log.warn("Failed to confirm delivery for cid='{}': {}", correlationId, e.getMessage());
         }
+    }
+
+    /**
+     * Called from the WLED MQTT handler when a /v state message arrives.
+     * This is the WLED equivalent of a device ACK — it confirms the command
+     * was received and applied (WLED only publishes /v after processing a command).
+     *
+     * @param deviceId the device ID resolved from the MQTT topic
+     */
+    public void confirmWled(String deviceId, String deviceName) {
+        try {
+            String raw = redisTemplate.opsForValue().getAndDelete(PREFIX + deviceId);
+            if (raw == null) {
+                log.debug("📭 Ack received for unknown/expired cid='{}'", deviceId);
+                return;
+            }
+
+            DeliveryRecord record = objectMapper.readValue(raw, DeliveryRecord.class);
+            long latencyMs = new Date().getTime() - record.getRegisteredAt().getTime();
+            log.info("✅ WLED delivered: automation='{}' device='{}' latency={}ms traceId={}",
+                    record.getAutomationName(), deviceName,
+                    latencyMs, record.getTraceId());
+
+            logStream.updateDeliveryStatus(
+                    record.getTraceId(),
+                    AutomationLog.DeliveryStatus.DELIVERED,
+                    new Date());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
+
     }
 
     @Scheduled(fixedRate = 30_000)

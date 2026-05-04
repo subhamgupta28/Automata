@@ -18,6 +18,7 @@ import {EnergyNode} from "./EnergyNode.jsx";
 import NodeInspector from "../home/NodeInspector.jsx";
 import {Edit} from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
+import AutomationSummaryBar from "./AutomationAnalytics.jsx";
 
 
 const nodeTypes = {
@@ -135,6 +136,9 @@ function DashboardDetail() {
                                 style={{marginLeft: '10px'}}>
                         <Edit fontSize="small"/>
                     </IconButton>
+                </Panel>
+                <Panel position="bottom-center">
+                    <AutomationSummaryBar/>
                 </Panel>
                 <Controls orientation="horizontal"/>
                 {/*<ZoomSlider position="bottom-left"/>*/}
