@@ -146,14 +146,6 @@ export default function AutomationSummaryBar() {
                     tooltip="Total evaluations exceeding the 200ms threshold"
                 />
             )}
-
-            {/* Timestamp */}
-            <Typography
-                variant="caption"
-                sx={{ml: "auto"}}
-            >
-                {new Date().toLocaleTimeString()}
-            </Typography>
         </Stack>
     );
 }

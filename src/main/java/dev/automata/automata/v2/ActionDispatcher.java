@@ -185,7 +185,7 @@ public class ActionDispatcher {
             return;
         }
         if ("WLED".equals(action.getDeviceType())) {
-            dispatchWled(action.getDeviceId(), new HashMap<>(payload), user);
+            dispatchWled(action.getDeviceId(), new HashMap<>(payload), user, automationId, automationName, traceId);
             // WLED has no ACK path currently — mark NOT_APPLICABLE
             logStream.updateDeliveryStatus(
                     traceId, AutomationLog.DeliveryStatus.NOT_APPLICABLE, new Date());
@@ -221,6 +221,30 @@ public class ActionDispatcher {
                 new Wled(mqttOutboundChannel, device).handleAction(payload);
             } catch (Exception e) {
                 log.error("WLED dispatch error for '{}': {}", deviceId, e.getMessage());
+            }
+        });
+    }
+
+    private void dispatchWled(String deviceId,
+                              Map<String, Object> payload,
+                              String user,
+                              String automationId,
+                              String automationName,
+                              String traceId) {           // ← added params vs original
+        deviceRepository.findById(deviceId).ifPresent(device -> {
+            try {
+                new Wled(mqttOutboundChannel, device).handleAction(payload);
+
+                // Register for WLED delivery tracking instead of NOT_APPLICABLE.
+                // Confirmation arrives via handleWled() when WLED publishes /v.
+                deliveryTracker.registerWled(
+                        deviceId, automationId, automationName, device.getName(), payload, traceId);
+
+            } catch (Exception e) {
+                log.error("WLED dispatch error for '{}': {}", deviceId, e.getMessage());
+                // Dispatch itself failed — mark immediately
+                logStream.updateDeliveryStatus(
+                        traceId, AutomationLog.DeliveryStatus.DELIVERY_FAILED, new Date());
             }
         });
     }

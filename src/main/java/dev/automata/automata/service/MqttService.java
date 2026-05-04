@@ -25,6 +25,7 @@ public class MqttService {
     private final MainService mainService;
     private final AutomationService actionService;
     private final ApplicationEventPublisher publisher;
+    private final ActionDeliveryTracker deliveryTracker;
 
 
     @ServiceActivator(inputChannel = "sendData")
@@ -130,7 +131,14 @@ public class MqttService {
             var data = wled.convertToMap(response, device.getId());
             mainService.saveData(device.getId(), data);
             messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", data));
-            System.err.println("WLED Response for " + device.getName() + " data:" + response);
+            // ── Confirm WLED delivery ─────────────────────────────────────
+            // WLED publishes /v only after successfully processing a command,
+            // so this message IS the ACK. confirmWled() resolves the pending
+            // delivery entry registered in ActionDeliveryTracker.registerWled().
+            // If no pending entry exists (spontaneous publish), confirmWled()
+            // is a no-op.
+            deliveryTracker.confirmWled(device.getId(), deviceName);   // ← NEW
+            log.info("WLED Response for [{}]  data: [{}]", device.getName(), response);
         }
 
 
