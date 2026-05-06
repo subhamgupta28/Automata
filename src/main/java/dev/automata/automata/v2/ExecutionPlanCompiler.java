@@ -1,5 +1,6 @@
 package dev.automata.automata.v2;
 
+import dev.automata.automata.dto.NodeRef;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
@@ -153,7 +154,7 @@ public class ExecutionPlanCompiler {
     }
 
     /**
-     * DFS topological sort so parent conditions always precede their children.
+     * DFS topological sort — validates that sort is correct.
      */
     private List<Automation.Condition> topoSortChained(
             List<Automation.Condition> chained, Set<String> conditionNodeIds) {
@@ -161,10 +162,64 @@ public class ExecutionPlanCompiler {
                 .collect(Collectors.toMap(Automation.Condition::getNodeId, c -> c));
         List<Automation.Condition> sorted = new ArrayList<>();
         Set<String> visited = new HashSet<>();
+        Set<String> visiting = new HashSet<>();  // ← Add to detect cycles
+
         for (Automation.Condition c : chained)
             if (!visited.contains(c.getNodeId()))
-                dfsVisit(c, byId, conditionNodeIds, visited, sorted);
+                dfsVisit(c, byId, conditionNodeIds, visited, visiting, sorted);
+
+        // FIX: Validate that all parents appear before children in sorted list
+        Map<String, Integer> sortIndex = new HashMap<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            sortIndex.put(sorted.get(i).getNodeId(), i);
+        }
+
+        for (Automation.Condition c : sorted) {
+            if (c.getPreviousNodeRef() != null) {
+                c.getPreviousNodeRef().stream()
+                        .map(r -> r.getNodeId())
+                        .filter(id -> byId.containsKey(id))
+                        .forEach(parentId -> {
+                            Integer parentIdx = sortIndex.get(parentId);
+                            Integer childIdx = sortIndex.get(c.getNodeId());
+                            if (parentIdx == null || childIdx == null || parentIdx > childIdx) {
+                                throw new IllegalStateException(
+                                        "Topological sort failed: parent '" + parentId +
+                                                "' (index " + parentIdx + ") must come before child '" +
+                                                c.getNodeId() + "' (index " + childIdx + ")");
+                            }
+                        });
+            }
+        }
+
         return sorted;
+    }
+
+    private void dfsVisit(Automation.Condition c,
+                          Map<String, Automation.Condition> byId,
+                          Set<String> conditionNodeIds,
+                          Set<String> visited,
+                          Set<String> visiting,  // ← Add
+                          List<Automation.Condition> sorted) {
+        if (visiting.contains(c.getNodeId())) {
+            throw new IllegalStateException(
+                    "Circular dependency detected in chained conditions: " + c.getNodeId());
+        }
+        if (visited.contains(c.getNodeId())) {
+            return;
+        }
+
+        visiting.add(c.getNodeId());
+
+        if (c.getPreviousNodeRef() != null)
+            c.getPreviousNodeRef().stream()
+                    .map(NodeRef::getNodeId)
+                    .filter(id -> conditionNodeIds.contains(id) && byId.containsKey(id))
+                    .forEach(id -> dfsVisit(byId.get(id), byId, conditionNodeIds, visited, visiting, sorted));
+
+        visiting.remove(c.getNodeId());
+        visited.add(c.getNodeId());
+        sorted.add(c);
     }
 
     private void dfsVisit(Automation.Condition c,
@@ -175,7 +230,7 @@ public class ExecutionPlanCompiler {
         visited.add(c.getNodeId());
         if (c.getPreviousNodeRef() != null)
             c.getPreviousNodeRef().stream()
-                    .map(r -> r.getNodeId())
+                    .map(NodeRef::getNodeId)
                     .filter(id -> conditionNodeIds.contains(id) && byId.containsKey(id)
                             && !visited.contains(id))
                     .forEach(id -> dfsVisit(byId.get(id), byId, conditionNodeIds, visited, sorted));

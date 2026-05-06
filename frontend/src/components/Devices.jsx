@@ -8,9 +8,11 @@ import {
     CardActions,
     Switch,
     Snackbar,
-    CircularProgress, Backdrop, Collapse, Box, Stack
+    CircularProgress, Backdrop, Collapse, Box, Stack, Button
 } from '@mui/material';
+import {Add} from '@mui/icons-material';
 import {updateAttribute, updateShowInDashboard} from "../services/apis.jsx";
+import CreateDeviceDialog from "./CreateDeviceDialog.jsx";
 import {styled} from '@mui/material/styles';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -49,6 +51,7 @@ function DevicesComponent() {
     const [openRow, setOpenRow] = useState("");
     const [showInDashboard, setShowInDashboard] = useState(false);
     const [openBackdrop, setOpenBackdrop] = useState(false);
+    const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
     useEffect(() => {
         setOpenBackdrop(loading)
@@ -96,6 +99,22 @@ function DevicesComponent() {
                 boxSizing: 'border-box',
             }}
         >
+            <Box display="flex" justifyContent="flex-end" mb={1}>
+                <Button
+                    variant="contained"
+                    startIcon={<Add/>}
+                    onClick={() => setCreateDialogOpen(true)}
+                >
+                    New Device
+                </Button>
+            </Box>
+
+            <CreateDeviceDialog
+                open={createDialogOpen}
+                onClose={() => setCreateDialogOpen(false)}
+                onCreated={() => {/* devices refresh via cache */}}
+            />
+
             {/*<Action/>*/}
             <TableContainer component={Paper}
                             sx={{

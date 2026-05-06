@@ -7,6 +7,7 @@ import dev.automata.automata.dto.WledXmlResponse;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Async;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 
+@Slf4j
 public class Wled {
     private String deviceTopic = "automata-wled/all/";
     private final MessageChannel mqttOutboundChannel;
@@ -57,9 +59,9 @@ public class Wled {
                             .setHeader("mqtt_topic", topic)
                             .build()
             );
-            System.out.println("📤 Sent to " + topic + " => " + payload);
+            log.info("📤 Sent to {} => {}", topic, payload);
         } catch (Exception e) {
-            System.err.println(e);
+            log.error("WLED: sendToTopic", e);
         }
     }
 
@@ -96,14 +98,13 @@ public class Wled {
 
             return res;
         } catch (Exception e) {
-            System.err.println(e);
+            log.error("WLED:", e);
         }
         return null;
     }
 
     public String handleAction(Map<String, Object> input) {
         try {
-            System.err.println("INPUT: " + input);
             StringBuilder payload = new StringBuilder();
             if (input.containsKey("reboot")) {
                 reboot();
@@ -132,7 +133,7 @@ public class Wled {
             sendToTopic(deviceTopic + "/api", payload.toString());
 
         } catch (Exception e) {
-            System.err.println(e);
+            log.error("WLED:", e);
             return null;
         }
         return "success";
@@ -254,7 +255,7 @@ public class Wled {
                 return lastState;
                 // Get the root element
             } catch (Exception e) {
-                System.err.println(e);
+                log.error("WLED:", e);
             }
 
         }

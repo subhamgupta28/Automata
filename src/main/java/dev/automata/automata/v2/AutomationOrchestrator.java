@@ -20,8 +20,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 /**
  * Core automation orchestrator.
@@ -124,9 +123,6 @@ public class AutomationOrchestrator {
      */
     @Async("automationExecutor")
     public void execute(String automationId, Map<String, Object> payload, String user) {
-        // Generate trace ID here — this is the root of the execution tree.
-        // Format: <automationId-prefix>-<epoch-ms>-<random-4-hex> keeps it
-        // human-readable in logs while being unique per invocation.
         String traceId = automationId.substring(0, Math.min(8, automationId.length()))
                 + "-" + System.currentTimeMillis()
                 + "-" + Integer.toHexString((int) (Math.random() * 0xFFFF));
@@ -158,9 +154,16 @@ public class AutomationOrchestrator {
         // 3. Read state
         AutomationRuntimeState state = stateStore.read(automationId);
 
-        // 4. Evaluate — traceId flows into EvalResult
-        AutomationEvaluator.EvalResult result =
-                evaluator.evaluate(plan, payload, state, automationId, traceId); // ← traceId added
+        // 4. Evaluate
+        AutomationEvaluator.EvalResult result;
+        try {
+            result = evaluator.evaluate(plan, payload, state, automationId, traceId);
+        } catch (Exception e) {
+            log.error("❌ [traceId={}] Evaluation failed: {}", traceId, e.getMessage(), e);
+            publishSkippedLog(automationId, plan, user, payload,
+                    "Evaluation error: " + e.getMessage(), traceId);
+            return;
+        }
 
         // 5. No state change
         if (!result.hasChanges()) {
@@ -171,17 +174,25 @@ public class AutomationOrchestrator {
         // 6. Compute next state
         AutomationRuntimeState nextState = computeNextState(state, result, plan);
 
-        // 7. CAS write
+        // 7. CAS write with retry
         boolean written = false;
         for (int attempt = 0; attempt < CAS_MAX_RETRIES && !written; attempt++) {
             if (attempt > 0) {
-                state = stateStore.read(automationId);
-                result = evaluator.evaluate(plan, payload, state, automationId, traceId);
-                if (!result.hasChanges()) {
-                    publishLog(automationId, plan, user, payload, result);
+                try {
+                    state = stateStore.read(automationId);
+                    result = evaluator.evaluate(plan, payload, state, automationId, traceId);
+                    if (!result.hasChanges()) {
+                        publishLog(automationId, plan, user, payload, result);
+                        return;
+                    }
+                    nextState = computeNextState(state, result, plan);
+                } catch (Exception e) {
+                    log.error("❌ [traceId={}] Evaluation failed on retry attempt {}: {}",
+                            traceId, attempt, e.getMessage(), e);
+                    publishSkippedLog(automationId, plan, user, payload,
+                            "Evaluation error on retry: " + e.getMessage(), traceId);
                     return;
                 }
-                nextState = computeNextState(state, result, plan);
             }
             written = stateStore.compareAndSet(automationId, state.getVersion(), nextState);
         }
@@ -332,16 +343,6 @@ public class AutomationOrchestrator {
                                          String automationName) {
         if (result.getBranchDecisions() == null) return;
 
-        // Fix: separate reverts from triggers and run them sequentially:
-        //   ALL reverts → (complete) → ALL triggers → (complete) → log
-        //
-        // Running them concurrently (allOf) causes a RACE when the same device
-        // is targeted by both a REVERT and a TRIGGER decision on the same tick
-        // (e.g. window boundary handoff: node_condition_10 exits ACTIVE → REVERT
-        // sends bright=10, node_condition_8 wins → TRIGGER sends bright=20).
-        // MQTT delivery order is non-deterministic so the device could end at
-        // bright=10 (revert wins last) instead of bright=20 (trigger should win).
-        // Sequencing guarantees: device state = trigger outcome, no flicker.
         List<CompletableFuture<Void>> revertFutures = new ArrayList<>();
         List<CompletableFuture<Void>> triggerFutures = new ArrayList<>();
 
@@ -351,7 +352,6 @@ public class AutomationOrchestrator {
             String branchDesc = describeBranch(branch);
 
             switch (decision.getType()) {
-
                 case TRIGGER -> {
                     CompletableFuture<Void> f =
                             dispatcher.dispatch(branch.getPositiveActions(), payload,
@@ -362,7 +362,6 @@ public class AutomationOrchestrator {
                                                     automationName, branchDesc);
                                             return;
                                         }
-                                        // Write schedule keys only after confirmed dispatch
                                         if (branch.hasDuration()) {
                                             stateStore.setRunningKey(automationId, gateNodeId,
                                                     branch.getGateCondition().getDurationMinutes() * 60L);
@@ -403,17 +402,38 @@ public class AutomationOrchestrator {
                 case SUPPRESSED -> log.debug("⏸️ [{}] '{}' suppressed — {}",
                         automationName, branchDesc, decision.getReason());
 
-                default -> { /* KEEP_ACTIVE, COOLDOWN — nothing to dispatch */ }
+                default -> { /* KEEP_ACTIVE, COOLDOWN */ }
             }
         }
 
-        // Chain: reverts complete first → then triggers → then log
-        // This prevents race conditions when the same device appears in both
-        // a revert action list and a trigger action list on the same tick.
-        CompletableFuture.allOf(revertFutures.toArray(new CompletableFuture[0]))
-                .thenCompose(v -> CompletableFuture.allOf(
-                        triggerFutures.toArray(new CompletableFuture[0])))
-                .thenRun(() -> publishLog(automationId, plan, user, payload, result));
+        // FIX: Add 5-second timeout to prevent cascading hangs
+        try (ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1)) {
+
+            CompletableFuture.allOf(revertFutures.toArray(new CompletableFuture[0]))
+                    .thenCompose(v -> CompletableFuture.allOf(
+                            triggerFutures.toArray(new CompletableFuture[0])))
+                    .orTimeout(5, TimeUnit.SECONDS)  // ← Add timeout
+                    .thenRun(() -> publishLog(automationId, plan, user, payload, result))
+                    .exceptionally(ex -> {
+                        if (ex instanceof TimeoutException) {
+                            log.error("⏱️ [{}] Dispatch timeout after 5s for '{}' — " +
+                                            "some actions may not have completed",
+                                    automationName, automationId);
+                            publishSkippedLog(automationId, plan, user, payload,
+                                    "Dispatch timeout (5s) — " +
+                                            (revertFutures.stream().filter(f -> !f.isDone()).count() +
+                                                    triggerFutures.stream().filter(f -> !f.isDone()).count()) +
+                                            " actions still pending",
+                                    result.getTraceId());
+                        } else {
+                            log.error("❌ [{}] Dispatch error: {}", automationName, ex.getMessage(), ex);
+                            publishSkippedLog(automationId, plan, user, payload,
+                                    "Dispatch error: " + ex.getMessage(), result.getTraceId());
+                        }
+                        return null;
+                    })
+                    .thenRun(scheduler::shutdown);
+        }
     }
 
     private void writeDailyKeysIfNeeded(String automationId,

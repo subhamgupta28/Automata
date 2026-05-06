@@ -7,6 +7,7 @@ import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class SystemMetrics {
 
@@ -171,10 +173,10 @@ public class SystemMetrics {
 
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(response);
-            System.err.println(response);
+            log.info(response);
             for (JsonNode tunnel : root.get("tunnels")) {
                 String publicUrl = tunnel.get("public_url").asText();
-                System.out.println("Ngrok Public URL: " + publicUrl);
+                log.info("Ngrok Public URL: {}", publicUrl);
                 // Parse host and port from URL
                 URI uri = new URI(publicUrl);
                 String host = uri.getHost();
@@ -186,7 +188,7 @@ public class SystemMetrics {
             }
             return map;
         } catch (Exception e) {
-            System.err.println(e);
+            log.error("SystemMetrics: getNgrokDetails", e);
         }
         return Map.of("msg", "error");
     }
@@ -209,7 +211,7 @@ public class SystemMetrics {
 
 
         } catch (Exception e) {
-            System.err.println(e);
+            log.error("SystemMetrics: shutdownSystem", e);
         }
 
     }
@@ -333,7 +335,7 @@ public class SystemMetrics {
 
     @EventListener
     public void handleApplicationReadyEvent(ApplicationReadyEvent event) {
-        System.err.println("ready...");
+        log.info("ready...");
         registerSystemMetrics();
         var device = mainService.getDeviceByName("System");
         if (device == null) {

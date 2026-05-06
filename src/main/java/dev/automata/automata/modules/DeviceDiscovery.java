@@ -5,6 +5,7 @@ import dev.automata.automata.service.NotificationService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.jmdns.JmDNS;
@@ -18,6 +19,7 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
 
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class DeviceDiscovery {
@@ -39,7 +41,7 @@ public class DeviceDiscovery {
             jmdns.addServiceListener("_wled._tcp.local.",
                     new WledListener(mainService, notificationService));
 
-            System.out.println("✅ Device discovery started (ESP32 + WLED)");
+            log.info("✅ Device discovery started (ESP32 + WLED)");
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -51,7 +53,7 @@ public class DeviceDiscovery {
         try {
             if (jmdns != null) {
                 jmdns.close();
-                System.out.println("🛑 Discovery stopped.");
+                log.info("🛑 Discovery stopped.");
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -68,12 +70,12 @@ public class DeviceDiscovery {
 
         @Override
         public void serviceAdded(ServiceEvent event) {
-            System.out.println("📡 ESP32 added: " + event.getName());
+            log.info("📡 ESP32 added: {}", event.getName());
         }
 
         @Override
         public void serviceRemoved(ServiceEvent event) {
-            System.out.println("❌ ESP32 removed: " + event.getName());
+            log.info("❌ ESP32 removed: {}", event.getName());
         }
 
         @Override
@@ -84,8 +86,8 @@ public class DeviceDiscovery {
             int port = info.getPort();
             String deviceId = info.getPropertyString("deviceId");
 
-            System.out.println("🔍 ESP32 resolved: " + deviceId);
-            System.out.println("IP: " + ip + ":" + port);
+            log.info("🔍 ESP32 resolved: {}", deviceId);
+            log.info("IP: {}:{}", ip, port);
 
             if (deviceId == null || deviceId.isEmpty()) {
                 deviceId = ip; // fallback
@@ -93,7 +95,7 @@ public class DeviceDiscovery {
 
             var existing = mainService.getDevice(deviceId);
             if (existing == null) {
-                System.out.println("✨ New ESP32 discovered");
+                log.info("✨ New ESP32 discovered");
 
 //                mainService.registerDevice(
 //                        deviceId,
@@ -116,12 +118,12 @@ public class DeviceDiscovery {
 
         @Override
         public void serviceAdded(ServiceEvent event) {
-            System.out.println("💡 WLED added: " + event.getName());
+            log.info("💡 WLED added: {}", event.getName());
         }
 
         @Override
         public void serviceRemoved(ServiceEvent event) {
-            System.out.println("❌ WLED removed: " + event.getName());
+            log.info("❌ WLED removed: {}", event.getName());
         }
 
         @Override
@@ -132,8 +134,8 @@ public class DeviceDiscovery {
             int port = info.getPort();
             String name = event.getName();
 
-            System.out.println("💡 WLED resolved: " + name);
-            System.out.println("IP: " + ip + ":" + port);
+            log.info("💡 WLED resolved: {}", name);
+            log.info("IP: {}:{}", ip, port);
 
             try {
                 // Fetch metadata from WLED
@@ -148,7 +150,7 @@ public class DeviceDiscovery {
 
                 var existing = mainService.getDevice(deviceId);
                 if (existing == null) {
-                    System.out.println("✨ New WLED discovered: " + deviceName);
+                    log.info("✨ New WLED discovered: {} ", deviceName);
 
 //                    mainService.registerDevice(
 //                            deviceId,
