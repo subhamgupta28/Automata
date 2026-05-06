@@ -47,7 +47,7 @@ public class ApplicationConfiguration {
     public Executor actionDispatchExecutor() {
         return new ThreadPoolExecutor(
                 2,                          // core threads
-                8,                          // max threads
+                12,                          // max threads
                 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(100),
                 new ThreadFactory() {

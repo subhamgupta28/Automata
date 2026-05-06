@@ -2,6 +2,7 @@ package dev.automata.automata.v2;
 
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.BranchDecision;
+import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,10 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.TextStyle;
@@ -50,6 +48,7 @@ public class AutomationEvaluator {
 
     private final RedisService redisService;
     private final AutomationStateStore stateStore;
+    private final MainService mainService;
 
     @Value("${app.location.lat}")
     private String LOCATION_LAT;
@@ -387,9 +386,15 @@ public class AutomationEvaluator {
         if (c.getDeviceId() != null && !c.getDeviceId().isBlank()) {
             Map<String, Object> secondary = redisService.getRecentDeviceData(c.getDeviceId());
             if (secondary == null || secondary.isEmpty()) {
-                log.warn("⚠️ [{}] Secondary device '{}' has no Redis data — condition '{}' = false",
-                        automationId, c.getDeviceId(), c.getNodeId());
-                return false;
+                log.warn("⚠️ [{}] Secondary device '{}' has no Redis data — fetching from DB",
+                        automationId, c.getDeviceId());
+                var data = mainService.getLastFullData(c.getDeviceId());
+                var currentTime = Instant.now();
+                if (currentTime.getEpochSecond() - data.getUpdateDate().getEpochSecond() > 500_000) {
+                    log.warn("⚠️ [{}] Data in DB is older than 5 min, [{}] Condition = false", automationId, c.getDeviceId());
+                    return false;
+                }
+                secondary = data.getData();
             }
             payload = secondary;
         }
@@ -478,8 +483,24 @@ public class AutomationEvaluator {
         }
 
         if ("interval".equals(st)) {
-            if (stateStore.runningKeyExists(automationId, c.getNodeId())) return true;
-            return !stateStore.intervalKeyExists(automationId, c.getNodeId());
+            // Check if currently running
+            if (stateStore.runningKeyExists(automationId, c.getNodeId()))
+                return true;
+
+            // FIX: Check interval key, but also reset daily
+            boolean intervalPending = stateStore.intervalKeyExists(automationId, c.getNodeId());
+
+            if (!intervalPending) {
+                // Set interval key with TTL = interval duration (so it expires when next interval starts)
+                long ttlSeconds = c.getIntervalMinutes() * 60L;
+                stateStore.setIntervalKey(automationId, c.getNodeId(), ttlSeconds);
+
+                // Also write daily fire key to track that we fired today
+                writeDailyKeysIfNeeded(automationId, c);
+                return true;
+            }
+
+            return false;  // Still in cooldown
         }
 
         // "at" / exact time
@@ -487,6 +508,43 @@ public class AutomationEvaluator {
         if (target == null) return false;
         if (Math.abs(ChronoUnit.MINUTES.between(target, current)) > 1) return false;
         return !stateStore.dailyFireKeyExists(automationId, now.toLocalDate().toString());
+    }
+
+
+    /**
+     * Writes daily schedule markers (fire once per day enforcement).
+     * Called AFTER dispatch completes, to mark that the automation fired.
+     * <p>
+     * Now includes interval schedule type.
+     */
+    private void writeDailyKeysIfNeeded(String automationId,
+                                        ExecutionPlan.CompiledCondition gc) {
+        ZonedDateTime now = ZonedDateTime.now(IST);
+        String today = now.toLocalDate().toString();  // YYYY-MM-DD
+
+        // TTL = seconds until tomorrow 00:00:00 IST
+        long ttl = ChronoUnit.SECONDS.between(now,
+                now.plusDays(1).truncatedTo(ChronoUnit.DAYS));
+
+        String st = gc.getScheduleType();
+
+        if ("solar".equals(st)) {
+            // Sunrise/sunset — fire once per day
+            stateStore.setDailySolarKey(automationId, today, ttl);
+            log.info("📅 Set DAILY_SOLAR marker for '{}' (fires {}min until midnight)",
+                    automationId, ttl / 60);
+        } else if ("interval".equals(st)) {
+            // FIXED: Interval schedule — fire once per calendar day
+            // (but interval key prevents multiple fires within the same interval window)
+            stateStore.setDailyIntervalKey(automationId, gc.getNodeId(), today, ttl);
+            log.info("📅 Set DAILY_INTERVAL marker for '{}:{}' (resets at midnight, {}s)",
+                    automationId, gc.getNodeId(), ttl);
+        } else if (gc.getScheduleType() == null || "at".equals(st)) {
+            // Exact time — fire once per day
+            stateStore.setDailyFireKey(automationId, today, ttl);
+            log.info("📅 Set DAILY_FIRE marker for '{}' (resets at midnight, {}s)",
+                    automationId, ttl);
+        }
     }
 
     private LocalTime parseTime(String s) {
@@ -507,21 +565,30 @@ public class AutomationEvaluator {
 
     private LocalTime getSunTime(String solarType) {
         try {
-            String today = LocalDate.now(IST).toString();
-            String cacheKey = "SUN_TIME:" + solarType + "-" + today;
+            LocalDate today = LocalDate.now(IST);
+            String cacheKey = "SUN_TIME:" + solarType + "-" + today.toString();
             Object cached = redisService.get(cacheKey);
             if (cached != null) return LocalTime.parse(cached.toString());
+
             Map<String, Object> response = new RestTemplate().getForObject(
                     "https://api.sunrise-sunset.org/json?lat=" + LOCATION_LAT
                             + "&lng=" + LOCATION_LONG + "&formatted=0", Map.class);
             if (response == null || !response.containsKey("results")) return null;
+
             @SuppressWarnings("unchecked")
             Map<String, String> results = (Map<String, String>) response.get("results");
             String ts = "sunrise".equalsIgnoreCase(solarType)
                     ? results.get("sunrise") : results.get("sunset");
             if (ts == null) return null;
+
             LocalTime result = ZonedDateTime.parse(ts).withZoneSameInstant(IST).toLocalTime();
-            redisService.setWithExpiry(cacheKey, result.toString(), 86400);
+
+            // FIX: TTL = seconds until tomorrow 00:00:00 IST, not fixed 86400
+            ZonedDateTime now = ZonedDateTime.now(IST);
+            ZonedDateTime tomorrow = now.plusDays(1).truncatedTo(ChronoUnit.DAYS);
+            long ttlSeconds = ChronoUnit.SECONDS.between(now, tomorrow);
+
+            redisService.setWithExpiry(cacheKey, result.toString(), ttlSeconds);
             return result;
         } catch (Exception e) {
             log.error("❌ Sun time fetch failed: {}", e.getMessage());

@@ -9,6 +9,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
@@ -304,5 +305,79 @@ public class AutomationStateStore {
 
     private String dailySolarKey(String automationId, String date) {
         return "DAILY_SOLAR:" + automationId + ":" + date;
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // DAILY INTERVAL KEY (Interval schedule reset marker - NEW)
+    // ═════════════════════════════════════════════════════════════════════
+
+    /**
+     * Set daily interval marker to track that an interval automation has fired today.
+     * This key resets at midnight (TTL expires when new day starts).
+     * <p>
+     * Used by AutomationEvaluator.evalScheduled() to prevent interval automations
+     * from firing more than once per calendar day.
+     * <p>
+     * Example scenario:
+     * Automation: "Every 30min interval"
+     * Day 1, 09:00: fire → setDailyIntervalKey()
+     * Day 1, 09:30: key exists → skip
+     * Day 1, 23:59: key still exists → skip (same day)
+     * Day 2, 00:00: key expired → fire again (new day)
+     *
+     * @param automationId The automation ID
+     * @param nodeId       The schedule condition node ID
+     * @param today        The date string (YYYY-MM-DD format)
+     * @param ttlSeconds   Seconds until midnight (typically 86400 - elapsed seconds in day)
+     */
+    public void setDailyIntervalKey(String automationId, String nodeId, String today,
+                                    long ttlSeconds) {
+        String key = "daily:interval:" + automationId + ":" + nodeId + ":" + today;
+        redisTemplate.opsForValue().set(key, "1",
+                Duration.ofSeconds(ttlSeconds));
+        log.debug("📆 Set DAILY_INTERVAL key for '{}:{}' on {} with {}s TTL (until midnight)",
+                automationId, nodeId, today, ttlSeconds);
+    }
+
+    /**
+     * Check if daily interval marker exists for this node on this date.
+     * If exists, the automation has already fired during this calendar day.
+     *
+     * @param automationId The automation ID
+     * @param nodeId       The schedule condition node ID
+     * @param today        The date string (YYYY-MM-DD format)
+     * @return true if key exists (automation fired today), false if expired (new day)
+     */
+    public boolean dailyIntervalKeyExists(String automationId, String nodeId, String today) {
+        String key = "daily:interval:" + automationId + ":" + nodeId + ":" + today;
+        return redisTemplate.hasKey(key);
+    }
+
+    /**
+     * Delete the daily interval marker (rarely needed — usually expires naturally).
+     * Used for testing or manual reset.
+     *
+     * @param automationId The automation ID
+     * @param nodeId       The schedule condition node ID
+     * @param today        The date string (YYYY-MM-DD format)
+     */
+    public void deleteDailyIntervalKey(String automationId, String nodeId, String today) {
+        String key = "daily:interval:" + automationId + ":" + nodeId + ":" + today;
+        redisTemplate.delete(key);
+        log.debug("🗑️ Deleted DAILY_INTERVAL key for '{}:{}' on {}",
+                automationId, nodeId, today);
+    }
+
+    /**
+     * Get TTL remaining on daily interval key (for debugging).
+     *
+     * @param automationId The automation ID
+     * @param nodeId       The schedule condition node ID
+     * @param today        The date string (YYYY-MM-DD format)
+     * @return Seconds remaining, or -2 if key doesn't exist, -1 if no TTL set
+     */
+    public long getDailyIntervalKeyTTL(String automationId, String nodeId, String today) {
+        String key = "daily:interval:" + automationId + ":" + nodeId + ":" + today;
+        return redisTemplate.getExpire(key, java.util.concurrent.TimeUnit.SECONDS);
     }
 }
