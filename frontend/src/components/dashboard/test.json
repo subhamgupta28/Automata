@@ -1,92 +1,278 @@
-{
-  "0": {
-    "id": "69591fa55435a3287696e1e8",
-    "name": "Weather",
-    "x": 0,
-    "y": 0,
-    "width": 0,
-    "height": 0,
-    "lastModified": "2026-01-03T14:41:22.883+00:00",
-    "tag": "Weather",
-    "deviceIds": [
-      "670edfe8166ab22722fbf728"
+[
+  {
+    "_id": {
+      "$oid": "689f53b668dded22326d935e"
+    },
+    "_class": "dev.automata.automata.model.Automation",
+    "actions": [
+      {
+        "key": "channel1",
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "data": "true",
+        "name": "LiFePO4 816WH",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 1,
+        "delaySeconds": 1,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-positive:node_condition_1"
+          }
+        ],
+        "nodeId": "node_action_2"
+      },
+      {
+        "key": "channel1",
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "data": "false",
+        "name": "LiFePO4 816WH",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 1,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-negative:node_condition_1"
+          }
+        ],
+        "nodeId": "node_action_4"
+      },
+      {
+        "key": "app_notify",
+        "deviceId": "678d3ea52d39db1f7a8d8b43",
+        "data": "Battery 500 charging stopped",
+        "name": "System",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-negative:node_condition_1"
+          }
+        ],
+        "nodeId": "node_action_8"
+      },
+      {
+        "key": "app_notify",
+        "deviceId": "678d3ea52d39db1f7a8d8b43",
+        "data": "Battery 500 Charging started",
+        "name": "System",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-positive:node_condition_1"
+          }
+        ],
+        "nodeId": "node_action_10"
+      },
+      {
+        "key": "bright",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "20",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_5",
+            "handle": "out:cond-negative:node_condition_5"
+          }
+        ],
+        "nodeId": "node_action_13"
+      },
+      {
+        "key": "channel1",
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "data": "false",
+        "name": "LiFePO4 816WH",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_11",
+            "handle": "out:cond-negative:node_condition_11"
+          }
+        ],
+        "nodeId": "node_action_14"
+      },
+      {
+        "key": "channel1",
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "data": "false",
+        "name": "LiFePO4 816WH",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_5",
+            "handle": "out:cond-negative:node_condition_5"
+          }
+        ],
+        "nodeId": "node_action_16"
+      }
     ],
-    "attributes": {
-      "670edfe8166ab22722fbf728": [
+    "conditions": [
+      {
+        "nodeId": "node_condition_1",
+        "condition": "scheduled",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "10",
+        "time": "Invalid Date",
+        "triggerKey": "",
+        "isExact": false,
+        "scheduleType": "interval",
+        "fromTime": "09:12:50 PM",
+        "toTime": "09:12:50 PM",
+        "days": [
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri",
+          "Sat",
+          "Sun"
+        ],
+        "offsetMinutes": 0,
+        "intervalMinutes": 30,
+        "durationMinutes": 20,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_and_6",
+            "handle": "out:operator:node_and_6"
+          }
+        ]
+      },
+      {
+        "nodeId": "node_condition_5",
+        "condition": "below",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "65",
+        "time": "02:20:05 AM",
+        "triggerKey": "percent",
+        "isExact": false,
+        "scheduleType": "at",
+        "fromTime": "02:20:05 AM",
+        "toTime": "02:20:05 AM",
+        "days": [
+          "Everyday"
+        ],
+        "solarType": "sunset",
+        "offsetMinutes": 0,
+        "intervalMinutes": 30,
+        "durationMinutes": 5,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_trigger_0",
+            "handle": "rootNode:triggerNode:node_trigger_0"
+          }
+        ]
+      },
+      {
+        "nodeId": "node_condition_11",
+        "condition": "above",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "25",
+        "time": "02:20:05 AM",
+        "triggerKey": "percent",
+        "isExact": false,
+        "scheduleType": "at",
+        "fromTime": "02:20:05 AM",
+        "toTime": "02:20:05 AM",
+        "days": [
+          "Everyday"
+        ],
+        "solarType": "sunset",
+        "offsetMinutes": 0,
+        "intervalMinutes": 0,
+        "durationMinutes": 0,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_5",
+            "handle": "out:cond-positive:node_condition_5"
+          }
+        ],
+        "deviceId": "6755d5ec3667d03a2c053eff"
+      }
+    ],
+    "isActive": false,
+    "isEnabled": true,
+    "name": "Periodic Bat 500 charging",
+    "operators": [
+      {
+        "type": "operator",
+        "logicType": "AND",
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_11",
+            "handle": "out:cond-positive:node_condition_11"
+          }
+        ],
+        "nodeId": "node_and_6",
+        "priority": 10
+      }
+    ],
+    "subscriberDeviceIds": [
+      "67dafae9fa67e36c0a25687e"
+    ],
+    "trigger": {
+      "deviceId": "67dafae9fa67e36c0a25687e",
+      "type": "state",
+      "keys": [
+        "percent"
+      ],
+      "name": "Periodic Bat 500 charging",
+      "priority": 5,
+      "nodeId": "node_trigger_0",
+      "sources": [
         {
-          "id": "6958e9668f598b2fda7128fb",
-          "displayName": "CO2",
-          "key": "s_co2",
-          "units": "ppm",
-          "visible": true,
-          "type": "DATA|MAIN",
-          "extras": null,
-          "deviceId": "670edfe8166ab22722fbf728"
+          "deviceId": "67dafae9fa67e36c0a25687e",
+          "keys": [
+            "percent"
+          ],
+          "role": "primary"
         },
         {
-          "id": "6958e9668f598b2fda7128fe",
-          "displayName": "Temp 2",
-          "key": "temp",
-          "units": "C",
-          "visible": true,
-          "type": "DATA|MAIN",
-          "extras": null,
-          "deviceId": "670edfe8166ab22722fbf728"
-        },
-        {
-          "id": "6958e9668f598b2fda712900",
-          "displayName": "Humidity 2",
-          "key": "humid",
-          "units": "%",
-          "visible": true,
-          "type": "DATA|MAIN",
-          "extras": {
-            "max": 100,
-            "min": 0
-          },
-          "deviceId": "670edfe8166ab22722fbf728"
-        },
-        {
-          "id": "6958e9668f598b2fda712901",
-          "displayName": "AQI",
-          "key": "aqi",
-          "units": "",
-          "visible": true,
-          "type": "DATA|MAIN",
-          "extras": null,
-          "deviceId": "670edfe8166ab22722fbf728"
-        },
-        {
-          "id": "6958e9668f598b2fda712905",
-          "displayName": "TVOC",
-          "key": "tvoc",
-          "units": "mg/m³",
-          "visible": true,
-          "type": "DATA|AUX",
-          "extras": null,
-          "deviceId": "670edfe8166ab22722fbf728"
-        },
-        {
-          "id": "6958e9668f598b2fda712906",
-          "displayName": "CH2O",
-          "key": "ch2o",
-          "units": "ppb",
-          "visible": true,
-          "type": "DATA|AUX",
-          "extras": null,
-          "deviceId": "670edfe8166ab22722fbf728"
-        },
-        {
-          "id": "6958e9668f598b2fda712904",
-          "displayName": "Light",
-          "key": "lux",
-          "units": "lx",
-          "visible": true,
-          "type": "DATA|MAIN",
-          "extras": null,
-          "deviceId": "670edfe8166ab22722fbf728"
+          "deviceId": "6755d5ec3667d03a2c053eff",
+          "keys": [
+            "percent"
+          ],
+          "role": "secondary"
         }
       ]
+    },
+    "triggerDeviceType": "sensor",
+    "updateDate": {
+      "$date": "2026-05-03T12:17:56.995Z"
     }
   }
-}
+]

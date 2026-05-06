@@ -329,6 +329,10 @@ public class MainService {
         return data.getData();
     }
 
+    public Data getLastFullData(String deviceId) {
+        return dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId).orElse(new Data());
+    }
+
     public String updateDevicePosition(String deviceId, String x, String y) {
         var device = deviceDashboardRepository.findByDeviceId(deviceId).orElse(null);
         if (device == null) {

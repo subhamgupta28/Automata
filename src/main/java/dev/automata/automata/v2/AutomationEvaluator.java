@@ -2,6 +2,7 @@ package dev.automata.automata.v2;
 
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.BranchDecision;
+import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,10 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.TextStyle;
@@ -50,6 +48,7 @@ public class AutomationEvaluator {
 
     private final RedisService redisService;
     private final AutomationStateStore stateStore;
+    private final MainService mainService;
 
     @Value("${app.location.lat}")
     private String LOCATION_LAT;
@@ -387,9 +386,15 @@ public class AutomationEvaluator {
         if (c.getDeviceId() != null && !c.getDeviceId().isBlank()) {
             Map<String, Object> secondary = redisService.getRecentDeviceData(c.getDeviceId());
             if (secondary == null || secondary.isEmpty()) {
-                log.warn("⚠️ [{}] Secondary device '{}' has no Redis data — condition '{}' = false",
-                        automationId, c.getDeviceId(), c.getNodeId());
-                return false;
+                log.warn("⚠️ [{}] Secondary device '{}' has no Redis data — fetching from DB",
+                        automationId, c.getDeviceId());
+                var data = mainService.getLastFullData(c.getDeviceId());
+                var currentTime = Instant.now();
+                if (currentTime.getEpochSecond() - data.getUpdateDate().getEpochSecond() > 500_000) {
+                    log.warn("⚠️ [{}] Data in DB is older than 5 min, [{}] Condition = false", automationId, c.getDeviceId());
+                    return false;
+                }
+                secondary = data.getData();
             }
             payload = secondary;
         }
