@@ -1,7 +1,17 @@
-import React, {memo, useEffect, useState} from 'react';
-import {Backdrop, Box, Button, Chip, CircularProgress, Collapse, Divider, Stack, Switch} from '@mui/material';
+import React, {useEffect, useState, memo} from 'react';
+import {
+    Card,
+    CardContent,
+    Typography,
+    Chip,
+    Divider,
+    CardActions,
+    Switch,
+    Snackbar,
+    CircularProgress, Backdrop, Collapse, Box, Stack, Button
+} from '@mui/material';
 import {Add} from '@mui/icons-material';
-import {updateAttribute} from "../services/apis.jsx";
+import {updateAttribute, updateShowInDashboard} from "../services/apis.jsx";
 import CreateDeviceDialog from "./CreateDeviceDialog.jsx";
 import {styled} from '@mui/material/styles';
 import Table from '@mui/material/Table';
@@ -13,9 +23,6 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import {useCachedDevices} from "../services/AppCacheContext.jsx";
 import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
-
-dayjs.extend(relativeTime)
 
 
 const StyledTableCell = styled(TableCell)(({theme}) => ({
@@ -105,8 +112,7 @@ function DevicesComponent() {
             <CreateDeviceDialog
                 open={createDialogOpen}
                 onClose={() => setCreateDialogOpen(false)}
-                onCreated={() => {/* devices refresh via cache */
-                }}
+                onCreated={() => {/* devices refresh via cache */}}
             />
 
             {/*<Action/>*/}
