@@ -1,14 +1,18 @@
-version: "3.8"
 services:
-  mongodb:
-    image: mongo
-    container_name: mongodb
+  automata:
+    build: .
+    container_name: automata
     ports:
-      - 27017:27017
-    volumes:
-      - data:/data
+      - "8010:8010"
+    networks:
+      - default
+      - automata-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=rootuser
-      - MONGO_INITDB_ROOT_PASSWORD=rootpass
-volumes:
-  data: {}
+      - SPRING_PROFILES_ACTIVE=prod
+
+networks:
+  automata-net:
+    driver: bridge
