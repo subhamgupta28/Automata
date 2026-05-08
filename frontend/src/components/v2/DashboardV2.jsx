@@ -12,7 +12,6 @@ import {
     useNodesState,
     useReactFlow
 } from "@xyflow/react";
-import '@xyflow/react/dist/style.css';
 
 import {VirtualDevice} from "./VirtualDevice.jsx";
 import {EnergyNode} from "./EnergyNode.jsx";

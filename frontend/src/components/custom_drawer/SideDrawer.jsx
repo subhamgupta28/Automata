@@ -1,5 +1,4 @@
 import * as React from 'react';
-import {lazy, Suspense} from 'react';
 import {styled} from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
@@ -11,7 +10,14 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Tooltip from '@mui/material/Tooltip';
 import {NavLink, Route, Routes, useLocation} from "react-router-dom";
+import DeviceNodes from "../home/DeviceNodes.jsx";
+import Devices from "../Devices.jsx";
+import MobileView from "../dashboard/MobileView.jsx";
+import AnalyticsView from "../dashboard/AnalyticsView.jsx";
+import AutomationAnalyticsView from "../automation/AutomationAnalyticsView.jsx";
+import {ConfigurationView} from "../dashboard/ConfigurationView.jsx";
 import {AppCacheProvider} from "../../services/AppCacheContext.jsx";
+import ActionBoard from "../action/ActionBoard.jsx";
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HomeIcon from '@mui/icons-material/Home';
 import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
@@ -20,7 +26,9 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import Notifications from "../Notifications.jsx";
 import {SnackbarProvider} from "notistack";
-import {Card, CircularProgress} from "@mui/material";
+import {Card} from "@mui/material";
+import Exp from "../dashboard/Exp.jsx";
+import {DeviceDataProvider} from "../../services/DeviceDataProvider.jsx";
 import SignUp from "../auth/SignUp.jsx";
 import SignIn from "../auth/SignIn.jsx";
 import PrivateRoute from "../auth/PrivateRoute.jsx";
@@ -29,30 +37,14 @@ import LoginIcon from '@mui/icons-material/Login';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import OptionsMenu from "./OptionsMenu.jsx";
 import isEmpty from "../../utils/Helper.jsx";
+import Welcome from "../Welcome.jsx";
+import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
+import VirtualDeviceForm from "../v2/VirtualDeviceForm.jsx";
 import {Dashboard, GridView, PlayCircleFilled, TrendingUp} from "@mui/icons-material";
+import DashboardV2 from "../v2/DashboardV2.jsx";
+import Presentation from "../demo/Presentation.jsx";
 import AppIcon from "../../../public/icon-color.png"
-
-// Lazy-load heavy route components so their JS+state is only in memory when visited
-const DeviceNodes = lazy(() => import("../home/DeviceNodes.jsx"));
-const Devices = lazy(() => import("../Devices.jsx"));
-const MobileView = lazy(() => import("../dashboard/MobileView.jsx"));
-const AnalyticsView = lazy(() => import("../dashboard/AnalyticsView.jsx"));
-const AutomationAnalyticsView = lazy(() => import("../automation/AutomationAnalyticsView.jsx"));
-const ConfigurationView = lazy(() => import("../dashboard/ConfigurationView.jsx"));
-const ActionBoard = lazy(() => import("../action/ActionBoard.jsx"));
-const Exp = lazy(() => import("../dashboard/Exp.jsx"));
-const Welcome = lazy(() => import("../Welcome.jsx"));
-const SpotifyPlayer = lazy(() => import("../integrations/SpotifyPlayer.jsx"));
-const VirtualDeviceForm = lazy(() => import("../v2/VirtualDeviceForm.jsx"));
-const DashboardV2 = lazy(() => import("../v2/DashboardV2.jsx"));
-const Presentation = lazy(() => import("../demo/Presentation.jsx"));
-
-const PageLoader = () => (
-    <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%'}}>
-        <CircularProgress size={32} sx={{color: '#ffd821'}}/>
-    </Box>
-);
 
 const drawerWidth = 200;
 
@@ -293,8 +285,8 @@ export default function SideDrawer() {
 
                 {/*<div style={{position: 'relative', zIndex: 2}}>*/}
                 <AppCacheProvider>
-                    <ReactFlowProvider>
-                        <Suspense fallback={<PageLoader/>}>
+                    <DeviceDataProvider key={location.pathname}>
+                        <ReactFlowProvider>
                             <Routes location={location} key={location.pathname}>
                                 {/*open*/}
                                 <Route path="/welcome" element={<Welcome/>}/>
@@ -306,6 +298,7 @@ export default function SideDrawer() {
                                 {/*protected*/}
 
                                 <Route index element={<PrivateRoute element={<DashboardV2/>}/>}/>
+                                {/*<Route path="/" element={<PrivateRoute element={<DeviceNodes/>}/>}/>*/}
                                 <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
                                 <Route path="automation-analytics"
                                        element={<PrivateRoute element={<AutomationAnalyticsView/>}/>}/>
@@ -317,8 +310,8 @@ export default function SideDrawer() {
                                 <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>
                                 <Route path="configure" element={<PrivateRoute element={<ConfigurationView/>}/>}/>
                             </Routes>
-                        </Suspense>
-                    </ReactFlowProvider>
+                        </ReactFlowProvider>
+                    </DeviceDataProvider>
                 </AppCacheProvider>
                 {/*</div>*/}
 

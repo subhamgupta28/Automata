@@ -1,17 +1,14 @@
-FROM maven:3.9-eclipse-temurin-21 AS build
+# Use the official OpenJDK image to build the application
+FROM openjdk:21-jdk-slim as builder
 
+# Set the working directory
 WORKDIR /app
 
-COPY . .
+# Copy the built JAR file into the container
+COPY target/Automata-0.0.1-SNAPSHOT.jar app.jar
 
-RUN mvn clean package -DskipTests
-
-FROM eclipse-temurin:21-jdk-jammy
-
-WORKDIR /app
-
-COPY --from=build /app/target/*.jar app.jar
-
+# Expose the port the app runs on
 EXPOSE 8010
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Run the Spring Boot application
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

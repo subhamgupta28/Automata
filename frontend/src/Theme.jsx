@@ -1,10 +1,10 @@
-import {createTheme} from '@mui/material/styles';
+import { createTheme } from '@mui/material/styles';
 
 export const darkTheme = createTheme({
     palette: {
         mode: 'dark',
         primary: {
-            main: '#ffffff', // Primary yellow accent
+            main: '#ffd821', // Primary yellow accent
         },
         secondary: {
             main: 'rgb(120,126,45)', // Secondary blue for highlights
