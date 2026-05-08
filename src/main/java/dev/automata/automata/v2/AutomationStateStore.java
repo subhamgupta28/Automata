@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -337,6 +338,11 @@ public class AutomationStateStore {
                 Duration.ofSeconds(ttlSeconds));
         log.debug("📆 Set DAILY_INTERVAL key for '{}:{}' on {} with {}s TTL (until midnight)",
                 automationId, nodeId, today, ttlSeconds);
+    }
+
+    @Scheduled(fixedRate = 30_000)
+    public void testing() {
+        log.info("Test");
     }
 
     /**
