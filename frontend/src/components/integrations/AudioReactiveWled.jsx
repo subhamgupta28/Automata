@@ -191,6 +191,8 @@ export default function AudioReactiveWled() {
     const smoothRef = useRef([]);
     const sendingRef = useRef(false);
     const lastSend = useRef(0);
+    // Reuse frequency data buffer across frames to avoid per-frame GC pressure
+    const freqDataRef = useRef(null);
 
     // ── Connect ───────────────────────────────────────────────────────────────
     const testConnection = useCallback(async () => {
@@ -328,7 +330,11 @@ export default function AudioReactiveWled() {
             if (!analyser) return;
 
             const bins = analyser.frequencyBinCount;
-            const data = new Uint8Array(bins);
+            // Reuse the same buffer instead of allocating a new one each frame
+            if (!freqDataRef.current || freqDataRef.current.length !== bins) {
+                freqDataRef.current = new Uint8Array(bins);
+            }
+            const data = freqDataRef.current;
             analyser.getByteFrequencyData(data);
 
             const sr = audioCtxRef.current.sampleRate;
@@ -396,6 +402,7 @@ export default function AudioReactiveWled() {
         streamRef.current?.getTracks().forEach(t => t.stop());
         audioCtxRef.current?.close();
         analyserRef.current = null;
+        freqDataRef.current = null;
         setListening(false);
         setVuLevel(0);
         setBands([]);

@@ -1,110 +1,76 @@
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useRef, useState} from "react";
 import axios from "axios";
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, Title, Tooltip, Legend, PointElement } from "chart.js";
-import { Chart } from "react-chartjs-2";
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend);
+import {Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis,} from "recharts";
 
 const TrafficChart = () => {
     const [data, setData] = useState([]);
     const [totalRequests, setTotalRequests] = useState(0);
-    const [chartData, setChartData] = useState({ labels: [], datasets: [] });
+    const abortRef = useRef(null);
 
     const fetchMetrics = async () => {
+        // Cancel any in-flight request before starting a new one
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+
         try {
             const base = "http://localhost:8010/actuator/metrics/http.server.requests";
-            const response = await axios.get(base);
+            const response = await axios.get(base, {signal: controller.signal});
             const uriTag = response.data.availableTags?.find(tag => tag.tag === "uri");
 
             if (!uriTag || !uriTag.values.length) {
                 console.warn("No URI data.");
-                setChartData({ labels: [], datasets: [] });
+                setData([]);
                 return;
             }
 
             const metrics = await Promise.all(
                 uriTag.values.map(async (uri) => {
                     const encodedUri = encodeURIComponent(uri);
-                    const res = await axios.get(`${base}?tag=uri:${encodedUri}`);
+                    const res = await axios.get(`${base}?tag=uri:${encodedUri}`, {signal: controller.signal});
                     const count = res.data.measurements.find(m => m.statistic === "COUNT")?.value || 0;
                     const latency = res.data.measurements.find(m => m.statistic === "MAX")?.value || 0;
-                    return { uri, count, latency };
+                    return {uri, count, latency};
                 })
             );
 
-            const total = metrics.reduce((sum, m) => sum + m.count, 0);
-            setTotalRequests(total);
-
-            setChartData({
-                labels: metrics.map(m => m.uri),
-                datasets: [
-                    {
-                        type: "bar",
-                        label: "Request Count",
-                        data: metrics.map(m => m.count),
-                        backgroundColor: "rgba(75,192,192,0.6)"
-                    },
-                    {
-                        type: "line",
-                        label: "Latency (s)",
-                        data: metrics.map(m => m.latency),
-                        borderColor: "rgba(255,99,132,1)",
-                        backgroundColor: "rgba(255,99,132,0.2)",
-                        yAxisID: 'latency'
-                    }
-                ]
-            });
+            setTotalRequests(metrics.reduce((sum, m) => sum + m.count, 0));
+            setData(metrics);
         } catch (err) {
-            console.error("Failed to load metrics", err);
+            if (!axios.isCancel(err) && err.name !== 'CanceledError') {
+                console.error("Failed to load metrics", err);
+            }
         }
     };
 
     useEffect(() => {
         fetchMetrics();
-        const interval = setInterval(fetchMetrics, 10000); // refresh every 10s
-        return () => clearInterval(interval);
+        const interval = setInterval(fetchMetrics, 10000);
+        return () => {
+            clearInterval(interval);
+            abortRef.current?.abort();
+        };
     }, []);
 
     return (
         <div className="p-4">
             <h2 className="text-2xl font-semibold mb-2">HTTP Traffic Dashboard</h2>
             <p className="mb-4 text-gray-600">Total Requests: <strong>{totalRequests}</strong></p>
-            <Chart
-                type="bar"
-                data={chartData}
-                options={{
-                    responsive: true,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    stacked: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: "Request Count and Latency per URI"
-                        },
-                        legend: {
-                            position: "top"
-                        }
-                    },
-                    scales: {
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: { display: true, text: 'Request Count' }
-                        },
-                        latency: {
-                            type: 'linear',
-                            display: true,
-                            position: 'right',
-                            title: { display: true, text: 'Latency (ms)' },
-                            grid: { drawOnChartArea: false }
-                        }
-                    }
-                }}
-            />
+            <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3"/>
+                    <XAxis dataKey="uri" tick={{fontSize: 11}} interval={0} angle={-30} textAnchor="end" height={60}/>
+                    <YAxis yAxisId="count" orientation="left"
+                           label={{value: 'Request Count', angle: -90, position: 'insideLeft'}}/>
+                    <YAxis yAxisId="latency" orientation="right"
+                           label={{value: 'Latency (s)', angle: 90, position: 'insideRight'}}/>
+                    <Tooltip/>
+                    <Legend/>
+                    <Bar yAxisId="count" dataKey="count" name="Request Count" fill="rgba(75,192,192,0.6)"/>
+                    <Line yAxisId="latency" type="monotone" dataKey="latency" name="Latency (s)"
+                          stroke="rgba(255,99,132,1)" dot={false}/>
+                </ComposedChart>
+            </ResponsiveContainer>
         </div>
     );
 };
