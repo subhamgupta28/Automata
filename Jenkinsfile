@@ -15,7 +15,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 echo "Checking out code from repository..."
-                git branch: 'main',
+                git branch: 'master',
                     url: 'https://github.com/subhamgupta28/Automata.git'
                 sh 'git log -1 --pretty=format:"%h - %an - %s"'
             }
