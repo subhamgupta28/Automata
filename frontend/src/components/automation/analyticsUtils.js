@@ -5,6 +5,7 @@
 
 let analyticsCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 50; // prevent unbounded growth
 
 export const getAnalyticsCacheKey = (days) => `analytics_overview_${days}`;
 
@@ -25,6 +26,10 @@ export const getCachedAnalytics = (days) => {
  */
 export const setCachedAnalytics = (days, data) => {
     const key = getAnalyticsCacheKey(days);
+    // Evict oldest entry when at capacity
+    if (analyticsCache.size >= MAX_CACHE_SIZE && !analyticsCache.has(key)) {
+        analyticsCache.delete(analyticsCache.keys().next().value);
+    }
     analyticsCache.set(key, {
         data,
         timestamp: Date.now(),

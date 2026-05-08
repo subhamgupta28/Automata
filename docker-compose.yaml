@@ -1,14 +1,80 @@
-version: "3.8"
+# Project name: 'automata' (matches Jenkins: -p automata)
+# Used in service naming: automata-automata-smart-home-1
+
 services:
-  mongodb:
-    image: mongo
-    container_name: mongodb
+  automata-smart-home:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # Container name - matches Jenkins CONTAINER_NAME
+    container_name: automata-smart-home
+
+    # Image name and tag - matches Jenkins IMAGE_NAME:IMAGE_TAG
+    image: automata:latest
+
+    # Use host network for mDNS/UPnP/ARP discovery to work properly
+    # This is CRITICAL for device discovery to function
+    #    network_mode: host
+    networks:
+      - automata-net
+
+    # Port mapping - Jenkins expects 8010 to be accessible
     ports:
-      - 27017:27017
-    volumes:
-      - data:/data
+      - "8010:8010"
+
+    # Environment variables
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=rootuser
-      - MONGO_INITDB_ROOT_PASSWORD=rootpass
+      # Spring Boot Profile
+      SPRING_PROFILES_ACTIVE: "prod"
+
+      # Network subnet for ARP scanning (should match Jenkins NETWORK_SUBNET)
+      NETWORK_SUBNET: "${NETWORK_SUBNET:-192.168.1.0/24}"
+
+      # Java options for memory management
+      JAVA_OPTS: "-Xmx512m -Xms256m"
+
+      # Optional: Enable debug logging
+      # LOGGING_LEVEL_ROOT: "INFO"
+
+    # Persistent volumes for data and logs
+    volumes:
+      # Persistent storage for discovered devices database
+      - automata-data:/app/data
+
+      # Persistent logs volume
+      - automata-logs:/app/logs
+
+    # Restart policy - matches Jenkins deployment
+    restart: unless-stopped
+
+    # Health check - Jenkins uses this to verify deployment
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8010/api/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Capabilities for network scanning (ARP, mDNS, UPnP)
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Named volumes for persistent data
 volumes:
-  data: {}
+  automata-data:
+    driver: local
+  automata-logs:
+    driver: local
+
+networks:
+  automata-net:
+    external: true
