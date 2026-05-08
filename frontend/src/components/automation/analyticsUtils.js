@@ -5,6 +5,7 @@
 
 let analyticsCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 50; // prevent unbounded growth
 
 export const getAnalyticsCacheKey = (days) => `analytics_overview_${days}`;
 
@@ -25,6 +26,10 @@ export const getCachedAnalytics = (days) => {
  */
 export const setCachedAnalytics = (days, data) => {
     const key = getAnalyticsCacheKey(days);
+    // Evict oldest entry when at capacity
+    if (analyticsCache.size >= MAX_CACHE_SIZE && !analyticsCache.has(key)) {
+        analyticsCache.delete(analyticsCache.keys().next().value);
+    }
     analyticsCache.set(key, {
         data,
         timestamp: Date.now(),
@@ -37,12 +42,12 @@ export const setCachedAnalytics = (days, data) => {
  */
 export const getTopPerformersFromData = (allAnalytics, limit = 5) => {
     if (!allAnalytics || allAnalytics.length === 0) return [];
-    
+
     // For large datasets, use a min-heap approach instead of full sort
     if (allAnalytics.length > 1000) {
         return getTopN(allAnalytics, limit, (a, b) => b.triggeredCount - a.triggeredCount);
     }
-    
+
     return allAnalytics
         .sort((a, b) => b.triggeredCount - a.triggeredCount)
         .slice(0, limit);
@@ -54,7 +59,7 @@ export const getTopPerformersFromData = (allAnalytics, limit = 5) => {
  */
 export const getProblematicFromData = (allAnalytics, successThreshold = 70) => {
     if (!allAnalytics || allAnalytics.length === 0) return [];
-    
+
     return allAnalytics
         .filter((a) => a.successRate < successThreshold && a.totalEvaluations > 10)
         .sort((a, b) => a.successRate - b.successRate)
@@ -66,7 +71,7 @@ export const getProblematicFromData = (allAnalytics, successThreshold = 70) => {
  */
 const getTopN = (array, n, compareFn) => {
     const heap = [];
-    
+
     for (let i = 0; i < array.length; i++) {
         if (heap.length < n) {
             heap.push(array[i]);
@@ -78,7 +83,7 @@ const getTopN = (array, n, compareFn) => {
             heap.sort(compareFn);
         }
     }
-    
+
     return heap;
 };
 
