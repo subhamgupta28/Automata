@@ -15,4 +15,4 @@ services:
 
 networks:
   automata-net:
-    driver: bridge
+    external: true

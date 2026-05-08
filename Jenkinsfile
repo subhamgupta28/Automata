@@ -114,7 +114,13 @@ pipeline {
     }
 
     post {
-        success { echo 'Deployment successful!' }
-        failure { echo 'Deployment failed.' }
+        success {
+            echo 'Deployment successful!'
+            // Cleans up unused images/layers to save disk space
+            sh 'docker image prune -f'
+        }
+        failure {
+            echo 'Deployment failed.'
+        }
     }
 }
