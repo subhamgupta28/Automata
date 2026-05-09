@@ -1,7 +1,7 @@
-ENV TZ=Asia/Kolkata
+
 # Use the official OpenJDK image to build the application
 FROM openjdk:21-jdk-slim as builder
-
+ENV TZ=Asia/Kolkata
 # Set the working directory
 WORKDIR /app
 
