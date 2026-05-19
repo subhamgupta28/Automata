@@ -12,6 +12,7 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,6 +36,7 @@ public class MqttService {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("No device found");
         }
+        payload.put("last_seen", System.currentTimeMillis());
         if (payload.size() > 1)
             mainService.saveData(deviceId, payload);
 //        var device = mainService.setStatus(deviceId, Status.ONLINE);
@@ -74,6 +76,7 @@ public class MqttService {
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             System.err.println("No device found");
         }
+        payload.put("last_seen", new Date());
         var event = new LiveEvent();
         event.setPayload(payload);
         publisher.publishEvent(event);

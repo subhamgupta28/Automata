@@ -22,4 +22,6 @@ public interface AutomationLogRepository extends MongoRepository<AutomationLog, 
     List<AutomationLog> findByAutomationIdAndTimestampAfterAndStatusEquals(String automationId, Date timestampAfter, AutomationLog.LogStatus status);
 
     void deleteByAutomationId(String id);
+
+//    void updateDeliveryStatus(String mongoId, AutomationLog.DeliveryStatus status, Date deliveredAt);
 }

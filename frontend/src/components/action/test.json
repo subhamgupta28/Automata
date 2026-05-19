@@ -1,14 +1,68 @@
 [
   {
     "_id": {
-      "$oid": "689b7d3f948aef4ed997ec34"
+      "$oid": "689f53b668dded22326d935e"
     },
     "_class": "dev.automata.automata.model.Automation",
     "actions": [
       {
-        "key": "alert",
+        "key": "channel1",
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "data": "true",
+        "name": "LiFePO4 816WH",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 1,
+        "delaySeconds": 1,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-positive:node_condition_1"
+          }
+        ],
+        "nodeId": "node_action_2"
+      },
+      {
+        "key": "channel1",
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "data": "false",
+        "name": "LiFePO4 816WH",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 1,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-negative:node_condition_1"
+          }
+        ],
+        "nodeId": "node_action_4"
+      },
+      {
+        "key": "app_notify",
         "deviceId": "678d3ea52d39db1f7a8d8b43",
-        "data": "warning",
+        "data": "Battery 500 charging stopped",
+        "name": "System",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_1",
+            "handle": "out:cond-negative:node_condition_1"
+          }
+        ],
+        "nodeId": "node_action_8"
+      },
+      {
+        "key": "app_notify",
+        "deviceId": "678d3ea52d39db1f7a8d8b43",
+        "data": "Battery 500 Charging started",
         "name": "System",
         "isEnabled": true,
         "revert": false,
@@ -21,89 +75,211 @@
             "handle": "out:cond-positive:node_condition_1"
           }
         ],
-        "nodeId": "node_action_6"
+        "nodeId": "node_action_10"
       },
       {
-        "key": "onOff",
-        "deviceId": "6955a0bf597f2017005e2b0d",
-        "data": "true",
-        "name": "Monitor Light",
+        "key": "bright",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "20",
+        "name": "Ring Light",
         "isEnabled": true,
         "revert": false,
-        "conditionGroup": "positive",
+        "conditionGroup": "negative",
         "order": 1,
         "delaySeconds": 0,
         "previousNodeRef": [
           {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-positive:node_condition_1"
+            "nodeId": "node_condition_5",
+            "handle": "out:cond-negative:node_condition_5"
           }
         ],
-        "nodeId": "node_action_8"
+        "nodeId": "node_action_13"
       },
       {
-        "key": "onOff",
-        "deviceId": "67571bf46f2d631aa77cc632",
-        "data": "true",
-        "name": "Light Strip",
+        "key": "channel1",
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "data": "false",
+        "name": "LiFePO4 816WH",
         "isEnabled": true,
         "revert": false,
-        "conditionGroup": "positive",
+        "conditionGroup": "negative",
         "order": 1,
         "delaySeconds": 0,
         "previousNodeRef": [
           {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-positive:node_condition_1"
+            "nodeId": "node_condition_11",
+            "handle": "out:cond-negative:node_condition_11"
           }
         ],
-        "nodeId": "node_action_12"
+        "nodeId": "node_action_14"
+      },
+      {
+        "key": "channel1",
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "data": "false",
+        "name": "LiFePO4 816WH",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_5",
+            "handle": "out:cond-negative:node_condition_5"
+          }
+        ],
+        "nodeId": "node_action_16"
       }
     ],
     "conditions": [
       {
         "nodeId": "node_condition_1",
-        "condition": "equal",
+        "condition": "scheduled",
         "valueType": "int",
         "above": "0",
         "below": "0",
-        "value": "1",
-        "time": "07:00:00 AM",
-        "triggerKey": "knock",
-        "isExact": true,
-        "scheduleType": "at",
-        "fromTime": "08:00:47 AM",
-        "toTime": "08:30:47 PM",
-        "days": [],
+        "value": "10",
+        "time": "Invalid Date",
+        "triggerKey": "",
+        "isExact": false,
+        "scheduleType": "interval",
+        "fromTime": "09:12:50 PM",
+        "toTime": "09:12:50 PM",
+        "days": [
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri",
+          "Sat",
+          "Sun"
+        ],
         "offsetMinutes": 0,
-        "intervalMinutes": 0,
-        "durationMinutes": 0,
+        "intervalMinutes": 30,
+        "durationMinutes": 20,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_and_6",
+            "handle": "out:operator:node_and_6"
+          }
+        ],
+        "memoryPolicyValue": 0
+      },
+      {
+        "nodeId": "node_condition_5",
+        "condition": "below",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "65",
+        "time": "02:20:05 AM",
+        "triggerKey": "percent",
+        "isExact": false,
+        "scheduleType": "at",
+        "fromTime": "02:20:05 AM",
+        "toTime": "02:20:05 AM",
+        "days": [
+          "Everyday"
+        ],
+        "solarType": "sunset",
+        "offsetMinutes": 0,
+        "intervalMinutes": 30,
+        "durationMinutes": 5,
         "enabled": true,
         "previousNodeRef": [
           {
             "nodeId": "node_trigger_0",
             "handle": "rootNode:triggerNode:node_trigger_0"
           }
-        ]
+        ],
+        "memoryPolicy": "DURATION",
+        "memoryPolicyValue": 60
+      },
+      {
+        "nodeId": "node_condition_11",
+        "condition": "above",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "30",
+        "time": "02:20:05 AM",
+        "triggerKey": "percent",
+        "isExact": false,
+        "scheduleType": "at",
+        "fromTime": "02:20:05 AM",
+        "toTime": "02:20:05 AM",
+        "days": [
+          "Everyday"
+        ],
+        "solarType": "sunset",
+        "offsetMinutes": 0,
+        "intervalMinutes": 0,
+        "durationMinutes": 0,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_5",
+            "handle": "out:cond-positive:node_condition_5"
+          }
+        ],
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "memoryPolicy": "DURATION",
+        "memoryPolicyValue": 60
       }
     ],
     "isActive": false,
     "isEnabled": true,
-    "name": "Knock 1",
-    "operators": [],
+    "name": "Periodic Bat 500 charging",
+    "operators": [
+      {
+        "type": "operator",
+        "logicType": "AND",
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_11",
+            "handle": "out:cond-positive:node_condition_11"
+          }
+        ],
+        "nodeId": "node_and_6",
+        "priority": 10
+      }
+    ],
+    "subscriberDeviceIds": [
+      "67dafae9fa67e36c0a25687e"
+    ],
     "trigger": {
-      "deviceId": "69d0182254593a2915884c46",
+      "deviceId": "67dafae9fa67e36c0a25687e",
       "type": "state",
       "keys": [
-        "knock"
+        "percent"
       ],
-      "name": "Knock 1",
-      "priority": 8,
-      "nodeId": "node_trigger_0"
+      "name": "Periodic Bat 500 charging",
+      "priority": 5,
+      "nodeId": "node_trigger_0",
+      "sources": [
+        {
+          "deviceId": "67dafae9fa67e36c0a25687e",
+          "keys": [
+            "percent"
+          ],
+          "role": "primary"
+        },
+        {
+          "deviceId": "6755d5ec3667d03a2c053eff",
+          "keys": [
+            "percent"
+          ],
+          "role": "secondary"
+        }
+      ],
+      "coalitionMode": "ANY",
+      "coalitionWindowSeconds": 0
     },
     "triggerDeviceType": "sensor",
     "updateDate": {
-      "$date": "2026-04-23T05:37:36.939Z"
+      "$date": "2026-05-17T08:01:12.350Z"
     }
   }
 ]

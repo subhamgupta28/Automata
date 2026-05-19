@@ -4,13 +4,13 @@ export const darkTheme = createTheme({
     palette: {
         mode: 'dark',
         primary: {
-            main: '#ffffff', // Primary yellow accent
+            main: '#ffd821', // Primary yellow accent
         },
         secondary: {
             main: 'rgb(120,126,45)', // Secondary blue for highlights
         },
         background: {
-            default: '#000000', // Dark background for the main canvas
+            default: '#161616', // Dark background for the main canvas
             // paper: '#1c1c1c', // Slightly lighter background for cards and paper
         },
         text: {

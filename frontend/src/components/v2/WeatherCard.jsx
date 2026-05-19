@@ -4,7 +4,7 @@ import CloudIcon from "@mui/icons-material/Cloud";
 import WaterDropIcon from "@mui/icons-material/WaterDrop";
 import OpacityIcon from "@mui/icons-material/Opacity";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import dayjs from "dayjs";
 import {Lightbulb, Thermostat} from "@mui/icons-material";
 import {GasBubble, GasLegend} from "./GasBubble.jsx";
@@ -15,6 +15,9 @@ import {CustomModal} from "../home/CustomModal.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import GrainIcon from "@mui/icons-material/Grain";
 import ThunderstormIcon from "@mui/icons-material/Thunderstorm";
+import '/src/App.css'
+import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
+
 
 const getWeatherIcon = (condition, humid) => {
     const c = condition;
@@ -217,6 +220,9 @@ export const WeatherCard = React.memo(({id, data, isConnectable, selected}) => {
             pm25: 0
         }
     });
+
+    const cardRef = useRef(null);
+    useCardGlowEffect(cardRef, true);
     // console.log("data", data.value)
     const {
         attributes,
@@ -344,16 +350,21 @@ export const WeatherCard = React.memo(({id, data, isConnectable, selected}) => {
     }, [devices])
     return (
         <Card
+            ref={cardRef}
+            className="card-glow-container"
             variant="outlined"
             sx={{
                 background: 'transparent',
                 backgroundColor: 'rgb(0 0 0 / 0%)',
                 borderRadius: '10px',
                 width,
+                // backdropFilter: 'blur(4px)',
                 height: {height},
                 p: 1,
             }}
         >
+            <div className="card-glow"/>
+
             {isModalOpen && (
                 <CustomModal
                     map={null}

@@ -12,7 +12,6 @@ import {
     Select,
     TextField
 } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
@@ -40,10 +39,10 @@ const conditionStyle = {
 export const ConditionNode = ({id, data, isConnectable}) => {
     const conditionData = data.conditionData || {
         condition: 'equal',
-        valueType: 'int',
+        valueType: 'numeric', // time
         below: '0',
         above: '0',
-        value: '0',
+        value: '0', // numeric or time based on valueType
         triggerKey: '',
         time: '2:20:05 AM',
         isExact: true,
@@ -57,7 +56,9 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         intervalMinutes: 0,
         durationMinutes: 0,
         deviceId: null,    // NEW: null = use primary trigger device
-        nodeId: id
+        nodeId: id,
+        memoryPolicy: '',
+        memoryPolicyValue: 0
     };
 
     const [scheduleType, setScheduleType] = useState(conditionData.scheduleType);
@@ -76,11 +77,15 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     const [below, setBelow] = useState(conditionData.below);
     const [isRange, setIsRange] = useState(conditionData.isExact);
     const [conditionValue, setConditionValue] = useState(conditionData.value);
+    const [valueType, setValueType] = useState(conditionData.valueType);
     const [solarType, setSolarType] = useState(conditionData.solarType);
     const [intervalMinutes, setIntervalMinutes] = useState(conditionData.intervalMinutes);
     const [offsetMinutes, setOffsetMinutes] = useState(conditionData.offsetMinutes);
     const [durationMinutes, setDurationMinutes] = useState(conditionData.durationMinutes);
-
+    const [memoryPolicy, setMemoryPolicy] = useState(conditionData.memoryPolicy);
+    const [memoryPolicyValue, setMemoryPolicyValue] = useState(
+        conditionData.memoryPolicyValue
+    );
     // NEW: which device this condition reads from
     // null / '' = primary trigger device (default, backward compatible)
     const [conditionDeviceId, setConditionDeviceId] = useState(conditionData.deviceId || '');
@@ -156,7 +161,11 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         const td = conditionNodes.length > 0 && conditionNodes[0].data.triggerData
             ? conditionNodes[0].data.triggerData
             : {keys: [], value: '', name: '', deviceId: '', type: '', sources: []};
-
+        if (condition === 'stale') {
+            // stale conditions always read the last_seen field
+            setTriggerKey('last_seen');
+            return;
+        }
         if (conditionDeviceId) {
             // Secondary device selected — find the key the user picked for this
             // device in the trigger node's sources list and auto-populate it.
@@ -174,7 +183,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
         setTriggerData(td);
         setType(td.type);
-    }, [conditionNodes, id, conditionDeviceId]);
+    }, [conditionNodes, id, conditionDeviceId, condition]);
 
     // When condition device changes, reset triggerKey
     const handleConditionDeviceChange = (deviceId) => {
@@ -188,15 +197,25 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             handle: conn.sourceHandle
         }));
 
+        let belowVal = below;
+        let aboveVal = above;
+        let equalVal = conditionValue;
+
+        if (valueType === 'time') {
+            belowVal = toTime.format("hh:mm:ss A");
+            aboveVal = fromTime.format("hh:mm:ss A");
+            equalVal = time.format("hh:mm:ss A");
+        }
+
         const newData = {
             nodeId: id,
             condition,
             triggerKey,
-            valueType: 'int',
-            below,
-            above,
+            valueType,
+            below: belowVal,
+            above: aboveVal,
             type,
-            value: conditionValue,
+            value: equalVal,
             isExact: isRange,
             time: time.format("hh:mm:ss A"),
             scheduleType: scheduleType !== undefined ? scheduleType : '',
@@ -212,6 +231,8 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             // NEW: which device owns this condition's data
             // null/'' = primary trigger device (backend falls back automatically)
             deviceId: conditionDeviceId || null,
+            memoryPolicy: memoryPolicy || null,
+            memoryPolicyValue: memoryPolicyValue || 0,
         };
 
         if (JSON.stringify(data.conditionData) !== JSON.stringify(newData)) {
@@ -221,17 +242,24 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         condition, conditionValue, below, above, isRange, time, type,
         triggerKey, scheduleType, fromTime, toTime, days, solarType,
         offsetMinutes, intervalMinutes, durationMinutes, connections,
-        conditionDeviceId,  // NEW dependency
+        conditionDeviceId,
+        memoryPolicy,
+        memoryPolicyValue// NEW dependency
     ]);
 
     const handleChange = (e, select) => {
         let value = e?.target?.value ?? e;
-        if (select === 'value') setConditionValue(value);
-        else if (select === 'condition') {
+        console.log("value", e)
+        if (select === 'value') {
+            setConditionValue(value);
+        } else if (select === 'condition') {
             setIsRange(value === 'equal');
             setCondition(value);
-        } else if (select === 'above') setAbove(value);
-        else if (select === 'below') setBelow(value);
+        } else if (select === 'above') {
+            setAbove(value);
+        } else if (select === 'below') {
+            setBelow(value);
+        } else if (select === 'valueType') setValueType(value);
         else if (select === 'time') {
             if (e && e.isValid()) setTime(e);
         }
@@ -252,6 +280,12 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         if (condition === 'equal') return `${devicePrefix}${triggerKey} = ${conditionValue}`;
         if (condition === 'above') return `${devicePrefix}${triggerKey} > ${conditionValue}`;
         if (condition === 'below') return `${devicePrefix}${triggerKey} < ${conditionValue}`;
+        if (condition === 'stale') {
+            const devicePrefix = conditionDeviceId && devices
+                ? (devices.find(d => d.id === conditionDeviceId)?.name || '') + ' · '
+                : '';
+            return `${devicePrefix}offline > ${conditionValue}min`;
+        }
         return '';
     };
 
@@ -260,17 +294,13 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     return (
         <>
             <Handle
-                style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
+                style={{width: '18px', height: '18px', background: '#FFEB3B',}}
                 type="target"
                 position={Position.Left}
                 id={"in:condition:" + id}
                 isConnectable={isConnectable}
             />
-            <AddIcon style={{
-                background: '#FFEB3B', top: '50%',
-                left: 0,
-                transform: 'translate(-50%, -50%)'
-            }} className='react-flow__handle'/>
+
 
             <div style={{display: 'flex', justifyContent: 'center', gap: '6px', margin: '4px', alignItems: 'center'}}>
                 <Chip size="small" label={"Duration: " + durationMinutes}/>
@@ -298,6 +328,19 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                         </div>
                     ) : (
                         <div style={{marginBottom: '18px'}}>
+                            {/*<FormControl fullWidth className='nodrag' sx={{mb: 2, mt: 2}}>*/}
+                            {/*    <InputLabel>Value Type</InputLabel>*/}
+                            {/*    <Select*/}
+                            {/*        value={valueType}*/}
+                            {/*        size='small'*/}
+                            {/*        label="Value Type"*/}
+                            {/*        onChange={(e) => handleChange(e, 'valueType')}*/}
+                            {/*        variant='outlined'*/}
+                            {/*    >*/}
+                            {/*        <MenuItem value={'numeric'}>Numeric</MenuItem>*/}
+                            {/*        <MenuItem value={'time'}>Time Based</MenuItem>*/}
+                            {/*    </Select>*/}
+                            {/*</FormControl>*/}
                             <FormControl fullWidth className='nodrag' sx={{mb: 2, mt: 2}}>
                                 <InputLabel>Condition</InputLabel>
                                 <Select
@@ -312,6 +355,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                     <MenuItem value={'above'}>above</MenuItem>
                                     <MenuItem value={'below'}>below</MenuItem>
                                     <MenuItem value={'scheduled'}>Scheduled</MenuItem>
+                                    <MenuItem value={'stale'}>Device offline / stale</MenuItem>
                                 </Select>
                             </FormControl>
 
@@ -420,47 +464,94 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                         </FormControl>
                                     )}
 
-                                    {/* ── Trigger key ──────────────────────────────────────
-                                        Shows attributes for whichever device is selected
-                                        (primary or secondary). Falls back to primary if none.
-                                    ─────────────────────────────────────────────────────── */}
-                                    {/*<FormControl fullWidth size="small" className='nodrag' sx={{mb: 2}}>*/}
-                                    {/*    <InputLabel>Key</InputLabel>*/}
-                                    {/*    <Select*/}
-                                    {/*        variant="outlined"*/}
-                                    {/*        value={triggerKey}*/}
-                                    {/*        label="Key"*/}
-                                    {/*        onChange={(e) => setTriggerKey(e.target.value)}*/}
-                                    {/*    >*/}
-                                    {/*        {availableAttributes.length === 0 && (*/}
-                                    {/*            <MenuItem value="" disabled>*/}
-                                    {/*                <em>No attributes found</em>*/}
-                                    {/*            </MenuItem>*/}
-                                    {/*        )}*/}
-                                    {/*        {availableAttributes.map(attr => (*/}
-                                    {/*            <MenuItem key={attr.id} value={attr.key}>*/}
-                                    {/*                {attr.displayName}*/}
-                                    {/*            </MenuItem>*/}
-                                    {/*        ))}*/}
-                                    {/*    </Select>*/}
-                                    {/*</FormControl>*/}
+                                    <LocalizationProvider dateAdapter={AdapterDayjs}>
 
-                                    {/* ── Value inputs ─────────────────────────────────── */}
-                                    {(isRange || condition === 'above' || condition === 'below') ? (
-                                        <TextField size='small' label="Value" fullWidth
-                                                   value={conditionValue}
-                                                   onChange={(e) => handleChange(e, 'value')}/>
-                                    ) : (
-                                        <div>
-                                            <TextField size='small' label="Below" fullWidth value={below}
-                                                       onChange={(e) => handleChange(e, 'below')}
-                                                       sx={{mb: 2}}/>
-                                            <TextField size='small' label="Above" fullWidth value={above}
-                                                       onChange={(e) => handleChange(e, 'above')}/>
-                                        </div>
-                                    )}
+                                        {/* ── Value inputs ─────────────────────────────────── */}
+                                        {condition === 'stale' ? (
+                                            <TextField
+                                                size='small'
+                                                label="Offline threshold (minutes)"
+                                                type="number"
+                                                fullWidth
+                                                value={conditionValue}
+                                                onChange={(e) => handleChange(e, 'value')}
+                                                helperText="Fire if no data received for longer than this"
+                                                inputProps={{min: 1}}
+                                            />
+                                        ) : (isRange || condition === 'above' || condition === 'below') ? (
+                                            <TextField size='small' label="Value" fullWidth
+                                                       value={conditionValue}
+                                                       onChange={(e) => handleChange(e, 'value')}/>
+                                        ) : (
+                                            <div style={{display: 'flex', gap: '10px'}}>
+                                                <TextField size='small' label="Below" fullWidth value={below}
+                                                           onChange={(e) => handleChange(e, 'below')}
+                                                           sx={{mb: 2}}/>
+                                                <TextField size='small' label="Above" fullWidth value={above}
+                                                           onChange={(e) => handleChange(e, 'above')}/>
+                                            </div>
+                                        )}
+                                    </LocalizationProvider>
                                 </div>
                             )}
+                        </div>
+                    )}
+                    {/* Memory Policy — shown for non-scheduled conditions only */}
+                    {!isScheduled && (
+                        <div>
+
+                            <Typography variant="caption">
+                                {memoryPolicy
+                                    ? `Memory: ${memoryPolicy}${memoryPolicyValue > 0 ? ` (${memoryPolicyValue})` : ''}`
+                                    : 'Memory Policy (optional)'}
+                            </Typography>
+
+                            <FormControl fullWidth size="small" className='nodrag' sx={{mb: 2}}>
+                                <InputLabel>Policy</InputLabel>
+                                <Select
+                                    variant="outlined"
+                                    value={memoryPolicy}
+                                    label="Policy"
+                                    onChange={(e) => {
+                                        setMemoryPolicy(e.target.value);
+                                        setMemoryPolicyValue(0);
+                                    }}
+                                >
+                                    <MenuItem value=""><em>None (fire immediately)</em></MenuItem>
+                                    <MenuItem value="DURATION">Must be true for N seconds</MenuItem>
+                                    <MenuItem value="CONSECUTIVE_TICKS">Must be true for N evaluations</MenuItem>
+                                    <MenuItem value="EDGE_RISING">Fire once on rising edge (false→true)</MenuItem>
+                                    <MenuItem value="EDGE_FALLING">Fire once on falling edge (true→false)</MenuItem>
+                                    <MenuItem value="EDGE_BOTH">Fire on any transition</MenuItem>
+                                </Select>
+                            </FormControl>
+
+                            {(memoryPolicy === 'DURATION') && (
+                                <TextField
+                                    size="small" fullWidth type="number"
+                                    label="Required duration (seconds)"
+                                    value={memoryPolicyValue}
+                                    onChange={(e) => setMemoryPolicyValue(Number(e.target.value))}
+                                    helperText="Condition must be continuously true for this long"
+                                />
+                            )}
+                            {(memoryPolicy === 'CONSECUTIVE_TICKS') && (
+                                <TextField
+                                    size="small" fullWidth type="number"
+                                    label="Required consecutive evaluations"
+                                    value={memoryPolicyValue}
+                                    onChange={(e) => setMemoryPolicyValue(Number(e.target.value))}
+                                    helperText="Condition must be true this many evaluations in a row"
+                                />
+                            )}
+                            {(memoryPolicy === 'EDGE_RISING' ||
+                                memoryPolicy === 'EDGE_FALLING' ||
+                                memoryPolicy === 'EDGE_BOTH') && (
+                                <Typography variant="caption" color="text.secondary">
+                                    Fires exactly once per transition — no value needed.
+                                </Typography>
+                            )}
+
                         </div>
                     )}
                 </AccordionDetails>

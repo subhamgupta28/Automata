@@ -197,7 +197,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
             nodeId: conn.source,
             handle: conn.sourceHandle
         }));
-        console.log("connection: action", connections)
+        // console.log("connection: action", connections)
 
         const newData = {
             nodeId: id,

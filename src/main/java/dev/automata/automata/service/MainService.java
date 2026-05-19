@@ -83,9 +83,18 @@ public class MainService {
                 .lastRegistered(new Date())
                 .status(registerDevice.getStatus()).build();
 
+        var timestampAttr = Attribute.builder()
+                .units("time")
+                .deviceId(device.getId())
+                .visible(true)
+                .type("DATA|AUX")
+                .key("last_seen")
+                .displayName("Last Seen")
+                .build();
 
 //        var isAlreadyRegistered = deviceRepository.findById(registerDevice.getDeviceId()).orElse(null);
         var attributes = new ArrayList<Attribute>();
+        attributes.add(timestampAttr);
         var isMacAddrPresent = deviceRepository.findByMacAddr(registerDevice.getMacAddr());
 
         if (!isMacAddrPresent.isEmpty()) {
@@ -93,8 +102,8 @@ public class MainService {
             device.setId(dev.getId());
             var attr = attributeRepository.findByDeviceId(dev.getId());
             if (!attr.isEmpty()) {
-                System.err.print("Attributes: ");
-                System.err.println(attr);
+//                System.err.print("Attributes: ");
+//                System.err.println(attr);
                 attributeRepository.deleteByDeviceId(dev.getId());
             }
 

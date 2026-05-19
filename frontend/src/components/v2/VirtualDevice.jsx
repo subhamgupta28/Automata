@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import {Card, LinearProgress} from "@mui/material";
 import Typography from "@mui/material/Typography";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
@@ -9,6 +9,8 @@ import WledDevices from "../device_types/WledDevices.jsx";
 import HVACDevices from "../device_types/HVACDevices.jsx";
 import {CustomModal} from "../home/CustomModal.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
+import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
+import '../../App.css'
 
 export const combineAttributes = (attributesByDevice) => {
     const map = new Map();
@@ -56,7 +58,8 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
         x,
         y,
     } = data.value;
-
+    const cardRef = useRef(null);
+    useCardGlowEffect(cardRef, true);
 
     // console.log("att", combineAttributes(attributes))
     useEffect(() => {
@@ -108,12 +111,16 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
             {/*/>*/}
 
 
-            <Card variant="outlined" style={{
+            <Card
+                ref={cardRef}
+                className="card-glow-container"
+                variant="outlined" style={{
                 background: 'transparent',
+                // backdropFilter: 'blur(4px)',
                 // backgroundColor: 'rgb(0 0 0 / 20%)',
                 minHeight: height, height: '100%', minWidth: width, borderRadius: '10px', padding: '0px',
             }}>
-
+                <div className="card-glow"/>
                 <div
                     style={{
                         // padding: '0px', width: '100%', height: '100%',

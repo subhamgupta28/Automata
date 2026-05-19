@@ -1,6 +1,5 @@
-import {NodeResizer,} from "@xyflow/react";
-import React, {useEffect, useState} from "react";
-import {Box, Card, CircularProgress, LinearProgress} from "@mui/material";
+import React, {useEffect, useRef, useState} from "react";
+import {Box, Card, LinearProgress} from "@mui/material";
 import Typography from "@mui/material/Typography";
 import {Chart} from "react-google-charts";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
@@ -15,7 +14,8 @@ import {CompactWeeklyEnergyRadarWidget} from "../charts/CompactWeeklyEnergyRadar
 import IconButton from "@mui/material/IconButton";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {CustomModal} from "../home/CustomModal.jsx";
-
+import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
+import '../../App.css'
 
 export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
     const {devices, loading, error} = useCachedDevices();
@@ -23,7 +23,8 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
     const [chartData, setChartData] = useState([]);
     const [deviceList, setDeviceList] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-
+    const cardRef = useRef(null);
+    useCardGlowEffect(cardRef, true);
     const {
         attributes,
         deviceIds,
@@ -140,12 +141,16 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
             {/*    minWidth={width}*/}
             {/*    minHeight={height}*/}
             {/*/>*/}
-            <Card variant="outlined" style={{
+            <Card
+                ref={cardRef}
+                className="card-glow-container"
+                variant="outlined" style={{
                 background: 'transparent',
+                // backdropFilter: 'blur(4px)',
                 backgroundColor: 'rgb(0 0 0 / 0%)',
                 minHeight: height, height: '100%', minWidth: width, padding: '10px', borderRadius: '12px'
             }}>
-
+                <div className="card-glow"/>
                 <div style={{display: 'flex'}}>
                     <Typography
                         style={{

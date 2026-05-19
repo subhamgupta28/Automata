@@ -139,6 +139,10 @@ public class AutomationDetail {
                 private int priority;
                 private String nodeId;
                 private List<TriggerSource> sources;
+                // In Automation.Trigger — OPTIONAL, only needed for UI-configurable coalition
+                String coalitionMode;      // "ANY" | "ALL" | "SEQUENCE" — defaults to "ANY" if null
+                int coalitionWindowSeconds; // defaults to 60 if 0
+
 
                 @Getter
                 @Setter
@@ -179,6 +183,9 @@ public class AutomationDetail {
                 private boolean enabled = false;
                 private List<NodeRef> previousNodeRef;
                 private String deviceId;
+                // In Automation.Condition — OPTIONAL, only needed for UI-configurable memory policies
+                String memoryPolicy;       // "DURATION" | "CONSECUTIVE_TICKS" | "EDGE_RISING" | etc.
+                int memoryPolicyValue;     // requiredDurationSeconds or requiredTicks depending on type
             }
 
             @Getter

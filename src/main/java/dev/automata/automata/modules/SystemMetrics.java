@@ -19,6 +19,7 @@ import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
 
 import java.net.URI;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -277,6 +278,7 @@ public class SystemMetrics {
             data.put("availableMemory", formatBytes(getAvailableMemory()));
             data.put("cpuFreq", cpuFreq);
             data.put("device_id", deviceId);
+            data.put("last_seen", new Date());
             data.put("host", systemInfo.getOperatingSystem().getNetworkParams().getHostName());
             data.put("cpu_temp", systemInfo.getHardware().getSensors().getCpuTemperature());
 

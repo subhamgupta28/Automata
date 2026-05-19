@@ -69,6 +69,8 @@ public class Automation {
         private int priority;
         private String nodeId;
         private List<TriggerSource> sources;
+        String coalitionMode;      // "ANY" | "ALL" | "SEQUENCE" — defaults to "ANY" if null
+        int coalitionWindowSeconds; // defaults to 60 if 0
     }
 
     @Getter
@@ -117,6 +119,8 @@ public class Automation {
         private boolean enabled = false;
         private List<NodeRef> previousNodeRef;
         private String deviceId;
+        String memoryPolicy;       // "DURATION" | "CONSECUTIVE_TICKS" | "EDGE_RISING" | etc.
+        int memoryPolicyValue;     // requiredDurationSeconds or requiredTicks depending on type
     }
 
     @Builder

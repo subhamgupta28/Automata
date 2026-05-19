@@ -34,6 +34,8 @@ export const TriggerNode = ({id, data, isConnectable}) => {
         type: 'state',
         keys: [],
         priority: 5,
+        coalitionMode: 'ANY',
+        coalitionWindowSeconds: 60,
         sources: [],        // NEW: [{ deviceId, keys: [string], role: 'primary'|'secondary' }]
     };
 
@@ -45,7 +47,12 @@ export const TriggerNode = ({id, data, isConnectable}) => {
     const [type, setType] = useState(initialTriggerData.type);
     const [priority, setPriority] = useState(initialTriggerData.priority || 5);
     const [selectedDevice, setSelectedDevice] = useState({id: initialTriggerData.deviceId, name: ''});
-
+    const [coalitionMode, setCoalitionMode] = useState(
+        initialTriggerData.coalitionMode
+    );
+    const [coalitionWindowSeconds, setCoalitionWindowSeconds] = useState(
+        initialTriggerData.coalitionWindowSeconds
+    );
     // NEW: secondary devices — each entry: { deviceId: string, key: string }
     const [secondaryDevices, setSecondaryDevices] = useState(
         () => {
@@ -124,6 +131,8 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                 rootNode: true,
                 sources,
                 subscriberDeviceIds,
+                coalitionMode,                    // NEW
+                coalitionWindowSeconds,
             }
         };
 
@@ -132,7 +141,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
             lastDataRef.current = serialized;
             updateNodeData(id, newData);
         }
-    }, [selectedDevice?.id, triggerKeys, name, type, priority, secondaryDevices]);
+    }, [selectedDevice?.id, triggerKeys, name, type, priority, secondaryDevices, coalitionMode, coalitionWindowSeconds]);
 
     const selectTriggerDevice = (e) => {
         const dev = devices.find(d => d.id === e.target.value);
@@ -359,7 +368,48 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                     >
                         <Typography>Add secondary device</Typography>
                     </Button>
+                    {/* Only show coalition config when there are secondary devices */}
+                    {secondaryDevices.length > 0 && (
+                        <>
+                            <FormControl fullWidth size="small" className='nodrag' sx={{mt: 2, mb: 1}}>
+                                <InputLabel>Coalition Mode</InputLabel>
+                                <Select
+                                    variant="outlined"
+                                    value={coalitionMode}
+                                    label="Coalition Mode"
+                                    onChange={(e) => setCoalitionMode(e.target.value)}
+                                >
+                                    <MenuItem value="ANY">Any device fires (OR)</MenuItem>
+                                    <MenuItem value="ALL">All devices must fire within window (AND)</MenuItem>
+                                    <MenuItem value="SEQUENCE">Devices must fire in order</MenuItem>
+                                </Select>
+                            </FormControl>
 
+                            {(coalitionMode === 'ALL' || coalitionMode === 'SEQUENCE') && (
+                                <TextField
+                                    size="small"
+                                    fullWidth
+                                    label="Window (seconds)"
+                                    type="number"
+                                    value={coalitionWindowSeconds}
+                                    onChange={(e) => setCoalitionWindowSeconds(Number(e.target.value))}
+                                    helperText={
+                                        coalitionMode === 'ALL'
+                                            ? 'All devices must fire within this window'
+                                            : 'Each device must fire within this seconds of the previous'
+                                    }
+                                    sx={{mb: 2}}
+                                />
+                            )}
+
+                            {/* For SEQUENCE: show numbered order of secondary devices */}
+                            {coalitionMode === 'SEQUENCE' && (
+                                <Typography variant="caption" color="text.secondary" sx={{ml: 1}}>
+                                    Sequence order: Primary (1st), then secondary devices in listed order
+                                </Typography>
+                            )}
+                        </>
+                    )}
                     <NumberSpinner
                         label="Priority"
                         min={0}

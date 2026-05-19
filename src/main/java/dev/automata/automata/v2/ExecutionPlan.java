@@ -1,173 +1,175 @@
 package dev.automata.automata.v2;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
+import lombok.Value;
 
 import java.util.Date;
 import java.util.List;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@Document("automation_plans")
+/**
+ * Immutable compiled representation of one Automation.
+ * <p>
+ * Changes vs previous version
+ * ───────────────────────────
+ * 1. triggerCoalition (Point 1)
+ * Replaces the implicit single-trigger model. When non-null, the orchestrator
+ * runs CoalitionGuard before calling the evaluator. null = legacy single-trigger.
+ * <p>
+ * 2. CompiledConditionNode.memoryPolicy (Point 2)
+ * Optional per-node memory policy. When non-null, the evaluator wraps the raw
+ * evalSingleCondition result through applyMemoryPolicy() before using it.
+ * Memory state is stored in AutomationRuntimeState.conditionMemories.
+ */
+@Value
+@Builder(toBuilder = true)
 public class ExecutionPlan {
 
-    @Id
-    private String automationId;
+    public static final int CURRENT_SCHEMA_VERSION = 4;   // bumped from 3
 
-    private String automationName;
-    @Indexed
-    private String triggerDeviceId;
+    // ── Identity ──────────────────────────────────────────────────────────
+    String automationId;
+    String automationName;
+    String triggerDeviceId;          // legacy — still populated for backward compat
+    int schemaVersion;
+    Date compiledAt;
 
-    /**
-     * Bump this constant whenever compilation logic changes.
-     * Startup reconciliation skips plans with schemaVersion < CURRENT and
-     * logs a warning to re-save those automations.
-     */
-    public static final int CURRENT_SCHEMA_VERSION = 2;
-    private int schemaVersion;
-    private Date compiledAt;
+    // ── Point 1: multi-trigger coalition ──────────────────────────────────
+    // null → legacy single-trigger path (triggerDeviceId used, no quorum check)
+    TriggerCoalition triggerCoalition;
 
-    // ── Trigger-side conditions, topologically sorted (root first, chained after) ──
-    private List<CompiledCondition> triggerConditions;
+    // ── Condition tree ────────────────────────────────────────────────────
+    List<CompiledConditionNode> conditionTree;
+    List<String> rootConditionNodeIds;
 
-    // ── Gate branches sorted by operator priority DESC ────────────────────
-    // Empty/null = no-branch automation → uses topLevelPositiveActions/topLevelNegativeActions
-    private List<CompiledBranch> branches;
+    // ── Gate branches ─────────────────────────────────────────────────────
+    List<CompiledBranch> branches;
 
-    // ── Top-level positive/negative for no-branch automations ────────────
-    // Bug fix: previously these actions had no compiled slot and were silently
-    // lost at eval time.  These are conditionGroup="positive"/"negative" actions
-    // that reference trigger condition nodes (no operator/gate in between).
-    private List<CompiledAction> topLevelPositiveActions;
-    private List<CompiledAction> topLevelNegativeActions;
+    // ── Action groups ─────────────────────────────────────────────────────
+    List<CompiledAction> statelessActions;
+    List<CompiledAction> fallbackActions;
+    List<CompiledAction> informationalActions;
+    List<CompiledAction> topLevelPositiveActions;
+    List<CompiledAction> topLevelNegativeActions;
 
-    // ── Global action groups ───────────────────────────────────────────────
-    /**
-     * conditionGroup="informational" — fire only when c1 false AND a branch was active
-     */
-    private List<CompiledAction> informationalActions;
-
-    /**
-     * conditionGroup="fallback" — fire when c1 true but no gate branch matched
-     */
-    private List<CompiledAction> fallbackActions;
-
-    /**
-     * conditionGroup="none" — stateless, fires whenever referenced node is true
-     */
-    private List<CompiledAction> statelessActions;
-
-    /**
-     * conditionGroup="negative" referencing trigger condition nodes.
-     * Fires when c1 turns false and at least one branch was ACTIVE.
-     */
-    private List<CompiledAction> c1NegativeActions;
-
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Nested types
-    // ─────────────────────────────────────────────────────────────────────
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CompiledCondition {
-        private String nodeId;
-        private String conditionType;  // "range"|"above"|"below"|"equal"|"scheduled"
-        private String triggerKey;
-        private String deviceId;       // null = primary device payload
-
-        private String value;
-        private String above;
-        private String below;
-        private boolean isExact;
-
-        private String scheduleType;   // "range"|"interval"|"solar"|"at"
-        private String fromTime;
-        private String toTime;
-        private String time;
-        private List<String> days;
-        private String solarType;
-        private int offsetMinutes;
-        private int intervalMinutes;
-        private int durationMinutes;
-
-        /**
-         * For chained conditions: nodeId of parent condition. null for root triggers.
-         */
-        private String parentConditionNodeId;
-        private boolean isChained;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CompiledBranch {
-        private String gateNodeId;
-        private int priority;
-        private CompiledCondition gateCondition;
-        /**
-         * Pre-sorted by action order ASC
-         */
-        private List<CompiledAction> positiveActions;
-        /**
-         * Pre-sorted by action order ASC. Deduplicated by (deviceId,key,data).
-         */
-        private List<CompiledAction> negativeActions;
-
-        public boolean hasDuration() {
-            return gateCondition != null && gateCondition.getDurationMinutes() > 0;
-        }
-
-        public boolean hasNegativeActions() {
-            return negativeActions != null && !negativeActions.isEmpty();
-        }
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CompiledAction {
-        private String nodeId;
-        private String deviceId;
-        private String key;
-        private String data;
-        private int order;
-        private int delaySeconds;
-        private String name;
-        private String deviceType; // cached at compile time — avoids DB lookup per action
-    }
-
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Convenience
-    // ─────────────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────
 
     public boolean hasBranches() {
         return branches != null && !branches.isEmpty();
     }
 
-    public boolean hasDataDrivenTrigger() {
-        if (triggerConditions == null) return false;
-        return triggerConditions.stream()
-                .anyMatch(c -> !"scheduled".equals(c.getConditionType()));
-    }
-
-    public boolean hasTopLevelPositiveActions() {
-        return topLevelPositiveActions != null && !topLevelPositiveActions.isEmpty();
+    public boolean hasConditionTree() {
+        return conditionTree != null && !conditionTree.isEmpty();
     }
 
     public boolean hasTopLevelNegativeActions() {
         return topLevelNegativeActions != null && !topLevelNegativeActions.isEmpty();
+    }
+
+    public boolean hasCoalition() {
+        return triggerCoalition != null;
+    }
+
+    public boolean hasDataDrivenTrigger() {
+        if (conditionTree != null) {
+            return conditionTree.stream()
+                    .anyMatch(n -> n.getCondition() != null
+                            && !"scheduled".equals(n.getCondition().getConditionType()));
+        }
+        return true;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // COMPILED CONDITION NODE
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Value
+    @Builder
+    public static class CompiledConditionNode {
+        String nodeId;
+        CompiledCondition condition;
+        List<CompiledAction> positiveActions;
+        List<CompiledAction> negativeActions;
+        List<String> positiveChildNodeIds;
+        List<String> negativeChildNodeIds;
+        boolean stateful;
+
+        /**
+         * Point 2: optional memory policy.
+         * null → no memory behaviour (raw evalSingleCondition result used directly).
+         * non-null → result is post-processed through applyMemoryPolicy() in the evaluator.
+         */
+        ConditionMemoryPolicy memoryPolicy;
+
+        public boolean hasMemoryPolicy() {
+            return memoryPolicy != null;
+        }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // COMPILED BRANCH
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Value
+    @Builder
+    public static class CompiledBranch {
+        String gateNodeId;
+        int priority;
+        String logicType;
+        List<String> siblingGateNodeIds;
+        CompiledCondition gateCondition;
+        List<CompiledAction> positiveActions;
+        List<CompiledAction> negativeActions;
+
+        public boolean hasDuration() {
+            return gateCondition != null && gateCondition.getDurationMinutes() > 0;
+        }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // COMPILED CONDITION
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Value
+    @Builder
+    public static class CompiledCondition {
+        String nodeId;
+        String conditionType;
+        String triggerKey;
+        String deviceId;
+        String value;
+        String above;
+        String below;
+        boolean isExact;
+        String scheduleType;
+        String fromTime;
+        String toTime;
+        String time;
+        List<String> days;
+        String solarType;
+        int offsetMinutes;
+        int intervalMinutes;
+        int durationMinutes;
+        String valueType;
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // COMPILED ACTION
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Value
+    @Builder
+    public static class CompiledAction {
+        String nodeId;
+        String deviceId;
+        String deviceType;
+        String key;
+        String data;
+        int order;
+        int delaySeconds;
+        String name;
     }
 }
