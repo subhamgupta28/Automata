@@ -6,6 +6,8 @@ import {BrowserRouter} from "react-router-dom";
 import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
 import {AuthProvider} from "./components/auth/AuthContext.jsx";
 import {DeviceDataProvider, useDeviceLiveData} from "./services/DeviceDataProvider.jsx";
+import './utils/Glow.css'
+import StarfieldBackground from "./components/integrations/StarfieldBackground.jsx";
 
 function getBreathingClass(alertLevel) {
     switch (alertLevel) {
@@ -47,7 +49,7 @@ function AppContent() {
     }, [alertMessages]);
 
     return (
-        <main className={getBreathingClass(alertLevel)}>
+        <main className={getBreathingClass(alertLevel)} style={{position: 'relative'}}>
             <SideDrawer/>
         </main>
     );
@@ -59,6 +61,7 @@ function App() {
             <BrowserRouter>
                 <AuthProvider>
                     <DeviceDataProvider>
+                        <StarfieldBackground/>
                         <AppContent/>
                     </DeviceDataProvider>
                 </AuthProvider>

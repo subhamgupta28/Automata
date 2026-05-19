@@ -1,0 +1,101 @@
+.glow-card {
+    position: relative;
+    overflow: hidden;
+
+    border-radius: 20px;
+    background: #111;
+
+    min-height: 300px;
+    padding: 2rem;
+
+    isolation: isolate;
+}
+
+.card-content {
+    position: relative;
+    z-index: 2;
+}
+
+/* GLOW */
+.glow {
+    position: absolute;
+
+    width: 300px;
+    height: 300px;
+
+    border-radius: 50%;
+
+    filter: blur(70px);
+    opacity: 0.7;
+
+    z-index: 1;
+
+    will-change: transform;
+}
+
+.glow-1 {
+    background: #8a8a8a;
+
+    animation: moveGlow1 12s linear infinite alternate;
+}
+
+.glow-2 {
+    background: #ff00ff;
+
+    animation: moveGlow2 15s linear infinite alternate;
+}
+
+/* FULL AREA MOVEMENT */
+@keyframes moveGlow1 {
+    0% {
+        top: -20%;
+        left: -20%;
+    }
+
+    25% {
+        top: -10%;
+        left: 70%;
+    }
+
+    50% {
+        top: 60%;
+        left: 60%;
+    }
+
+    75% {
+        top: 70%;
+        left: -10%;
+    }
+
+    100% {
+        top: -20%;
+        left: -20%;
+    }
+}
+
+@keyframes moveGlow2 {
+    0% {
+        top: 70%;
+        left: 70%;
+    }
+
+    25% {
+        top: 10%;
+        left: 50%;
+    }
+
+    50% {
+        top: -20%;
+        left: 10%;
+    }
+
+    75% {
+        top: 50%;
+        left: -20%;
+    }
+
+    100% {
+        top: 70%;
+        left: 70%;
+    }
+}

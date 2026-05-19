@@ -1,5 +1,5 @@
 import * as React from "react";
-import {Box, Card, IconButton, Typography} from "@mui/material";
+import {Box, IconButton, Typography} from "@mui/material";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import {sendAction} from "../../services/apis.jsx";
 import dayjs from "dayjs";
@@ -39,9 +39,9 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
     };
 
     return (
-        <Card
+        <div
 
-            sx={{
+            style={{
                 margin: '6px',
                 width: 220,
                 borderRadius: "8px",
@@ -89,6 +89,6 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
 
 
             </Box>
-        </Card>
+        </div>
     );
 }

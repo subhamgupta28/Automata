@@ -1,6 +1,5 @@
 import {Chip, Typography} from "@mui/material";
 import {Handle, Position, useNodeConnections, useReactFlow} from "@xyflow/react";
-import AddIcon from "@mui/icons-material/Add";
 import React, {useEffect, useState} from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
 import IconButton from "@mui/material/IconButton";
@@ -83,17 +82,12 @@ export const And = ({id, data, isConnectable}) => {
                 </IconButton>
             </div>
             <Handle
-                style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
+                style={{width: '18px', height: '18px', background: '#FFEB3B',}}
                 type="target"
                 position={Position.Left}
                 id={"in:operator:" + id}
                 isConnectable={isConnectable}
             />
-            <AddIcon style={{
-                background: '#FFEB3B', top: '50%',
-                left: 0,
-                transform: 'translate(-50%, -50%)'
-            }} className='react-flow__handle'/>
             <div style={{
                 ...conditionStyle,
                 border: `2px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`
@@ -112,17 +106,12 @@ export const And = ({id, data, isConnectable}) => {
             </div>
 
             <Handle
-                style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
+                style={{width: '18px', height: '18px', background: '#FFEB3B',}}
                 type="source"
                 id={"out:operator:" + id}
                 position={Position.Right}
                 isConnectable={isConnectable}
             />
-            <AddIcon style={{
-                background: '#FFEB3B', top: '50%',
-                right: 0,
-                transform: 'translate(50%, -50%)'
-            }} className='react-flow__handle'/>
 
         </div>
     );
@@ -184,17 +173,12 @@ export const Or = ({id, data, isConnectable}) => {
                 </IconButton>
             </div>
             <Handle
-                style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
+                style={{width: '18px', height: '18px', background: '#FFEB3B',}}
                 type="target"
                 position={Position.Left}
                 id={"in:operator:" + id}
                 isConnectable={isConnectable}
             />
-            <AddIcon style={{
-                background: '#FFEB3B', top: '50%',
-                left: 0,
-                transform: 'translate(-50%, -50%)'
-            }} className='react-flow__handle'/>
             <div style={{
                 ...conditionStyle,
                 border: `2px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`
@@ -215,17 +199,12 @@ export const Or = ({id, data, isConnectable}) => {
 
 
             <Handle
-                style={{width: '18px', height: '18px', background: '#FFEB3B', opacity: 0}}
+                style={{width: '18px', height: '18px', background: '#FFEB3B',}}
                 type="source"
                 id={"out:operator:" + id}
                 position={Position.Right}
                 isConnectable={isConnectable}
             />
-            <AddIcon style={{
-                background: '#FFEB3B', top: '50%',
-                right: 0,
-                transform: 'translate(50%, -50%)'
-            }} className='react-flow__handle'/>
         </div>
     );
 };

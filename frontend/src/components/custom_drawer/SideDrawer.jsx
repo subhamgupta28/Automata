@@ -30,7 +30,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import OptionsMenu from "./OptionsMenu.jsx";
 import isEmpty from "../../utils/Helper.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
-import {Dashboard, GridView, PlayCircleFilled, TrendingUp} from "@mui/icons-material";
+import {Dashboard, GridView, TrendingUp} from "@mui/icons-material";
 import AppIcon from "../../../public/icon-color.png"
 
 // Lazy-load heavy route components so their JS+state is only in memory when visited
@@ -137,7 +137,7 @@ export default function SideDrawer() {
         {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
         {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
         {name: 'Configure', url: '/configure', icon: <SettingsIcon/>},
-        {name: 'Presentation', url: '/presentation', icon: <PlayCircleFilled/>},
+        // {name: 'Presentation', url: '/presentation', icon: <PlayCircleFilled/>},
     ];
 
     const authActions = isEmpty(user)

@@ -606,3 +606,57 @@ export const deleteAutomation = async (id) => {
     const response = await api.delete(`action/${id}`);
     return response.data;
 };
+
+export const getAutomations = async () => {
+    const response = await api.get("action/getAction");
+    return response.data;
+};
+
+// ─── Inspector: state + plan ──────────────────────────────────────────────────
+
+export const getAutomationState = async (id) => {
+    const response = await api.get(`automations/${id}/state`);
+    return response.data;
+};
+
+export const getAutomationPlan = async (id) => {
+    const response = await api.get(`automations/${id}/plan`);
+    return response.data;
+};
+
+/**
+ * Fetches state and plan in parallel.
+ * Returns { state, plan } on success; throws on any non-OK response.
+ */
+export const getAutomationStateAndPlan = async (id) => {
+    const [state, plan] = await Promise.all([
+        getAutomationState(id),
+        getAutomationPlan(id),
+    ]);
+    return {state, plan};
+};
+
+/**
+ * @param {string} id          - automation ID
+ * @param {string} action      - e.g. "FORCE_ACTIVE" | "FORCE_IDLE" | "RESET" | "RESET_MEMORY" | "RESET_COALITION"
+ */
+export const postAutomationOverride = async (id, action) => {
+    const response = await api.post(`automations/${id}/override`, {action});
+    return response.data; // { success: boolean, message: string }
+};
+
+// ─── Snooze ───────────────────────────────────────────────────────────────────
+
+/**
+ * @param {string} id      - automation ID
+ * @param {number} minutes - snooze duration (1–1440)
+ */
+export const postAutomationSnooze = async (id, minutes) => {
+    const response = await api.post(`automations/${id}/snooze`, {minutes});
+    return response.data; // { success: boolean, message: string }
+};
+
+export const deleteAutomationSnooze = async (id) => {
+    const response = await api.delete(`automations/${id}/snooze`);
+    return response.data; // { success: boolean, message: string }
+};

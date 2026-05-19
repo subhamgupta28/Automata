@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Box, Card, CardContent, IconButton, Typography,} from "@mui/material";
+import {Box, CardContent, IconButton, Typography,} from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -56,8 +56,8 @@ export default function ThermostatCard({device, messages}) {
 
 
     return (
-        <Card
-            sx={{
+        <div
+            style={{
                 // width: 220,
                 borderRadius: '8px',
                 boxShadow: 2,
@@ -114,6 +114,6 @@ export default function ThermostatCard({device, messages}) {
                     </IconButton>
                 </Box>
             </CardContent>
-        </Card>
+        </div>
     );
 }

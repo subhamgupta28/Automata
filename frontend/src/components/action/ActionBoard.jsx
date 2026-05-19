@@ -1091,7 +1091,7 @@ function ActionBoardDetailComponent() {
         const deduped = new Map();
         for (const edge of cleanEdges) {
             const k = `${edge.source}→${edge.target}`;
-            edge.animated = true;
+            edge.animated = false;
             if (!deduped.has(k) || edge.targetHandle?.includes('action:in:')) deduped.set(k, edge);
         }
         setNodes(detail.nodes || []);
@@ -1112,15 +1112,32 @@ function ActionBoardDetailComponent() {
 
     const onNodesChange = useCallback(c => setNodes(nds => applyNodeChanges(c, nds)), [setNodes]);
     const onEdgesChange = useCallback(c => setEdges(eds => applyEdgeChanges(c, eds)), [setEdges]);
-    const onConnect = useCallback(conn => {
-        setEdges(eds => eds.filter(e => e.target !== conn.target));
+    // const onConnect = useCallback(conn => {
+    //     setEdges(eds => eds.filter(e => e.target !== conn.target));
+    //     const isNeg = conn.sourceHandle?.includes('cond-negative');
+    //     setEdges(eds => addEdge({
+    //         ...conn,
+    //         type: 'custom-edge',
+    //         animated: false,
+    //         data: {color: isNeg ? '#f44336' : '#4caf50'}
+    //     }, eds));
+    // }, [setEdges]);
+    const onConnect = useCallback((conn) => {
         const isNeg = conn.sourceHandle?.includes('cond-negative');
-        setEdges(eds => addEdge({
-            ...conn,
-            type: 'custom-edge',
-            animated: true,
-            data: {color: isNeg ? '#f44336' : '#4caf50'}
-        }, eds));
+
+        setEdges((eds) =>
+            addEdge(
+                {
+                    ...conn,
+                    type: 'custom-edge',
+                    animated: false,
+                    data: {
+                        color: isNeg ? '#f44336' : '#4caf50',
+                    },
+                },
+                eds
+            )
+        );
     }, [setEdges]);
 
     const defaultViewport = useMemo(() => ({x: 0, y: 50, zoom: 0.75}), []);

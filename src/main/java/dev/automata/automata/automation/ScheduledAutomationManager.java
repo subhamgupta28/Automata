@@ -32,9 +32,9 @@ public class ScheduledAutomationManager {
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
     // automationId → list of running futures (one automation can have multiple jobs)
-    private final Map<String, List<ScheduledFuture<?>>> scheduledJobs = new ConcurrentHashMap<>();
+//    private final Map<String, List<ScheduledFuture<?>>> scheduledJobs = new ConcurrentHashMap<>();
 
-
+    private final Map<String, ScheduledFuture<?>> scheduledJobs = new ConcurrentHashMap<>();
     // ── Startup: register all schedule-only automations ──────────────────
 
     @EventListener(ApplicationReadyEvent.class)
@@ -64,11 +64,10 @@ public class ScheduledAutomationManager {
     }
 
     public void cancel(String automationId) {
-        List<ScheduledFuture<?>> futures = scheduledJobs.remove(automationId);
-        if (futures != null) {
-            futures.forEach(f -> f.cancel(false));
-            log.debug("Cancelled {} scheduled job(s) for automation {}",
-                    futures.size(), automationId);
+        ScheduledFuture<?> job = scheduledJobs.remove(automationId);
+        if (job != null && !job.isDone()) {
+            job.cancel(false);
+            log.info("🛑 Cancelled scheduled job for automation '{}'", automationId);
         }
     }
 
@@ -94,7 +93,7 @@ public class ScheduledAutomationManager {
         }
 
         if (!futures.isEmpty()) {
-            scheduledJobs.put(automation.getId(), futures);
+//            scheduledJobs.put(automation.getId(), futures);
             log.info("Registered {} job(s) for '{}'", futures.size(), automation.getName());
         }
     }
@@ -322,5 +321,56 @@ public class ScheduledAutomationManager {
                 return null;
             }
         }
+    }
+
+    public void register(String automationId, ScheduledFuture<?> future) {
+        ScheduledFuture<?> existing = scheduledJobs.put(automationId, future);
+        if (existing != null && !existing.isDone()) {
+            existing.cancel(false);
+        }
+    }
+
+
+    public boolean isScheduled(String automationId) {
+        ScheduledFuture<?> job = scheduledJobs.get(automationId);
+        return job != null && !job.isDone();
+    }
+
+
+    // ── Condition type helpers ────────────────────────────────────────────
+
+    /**
+     * Returns true if the automation has AT LEAST ONE scheduled condition.
+     * <p>
+     * Use this to include an automation in the periodic evaluation tick —
+     * automations with scheduled gates need to be polled continuously so
+     * that time-based conditions (interval, range, solar) are evaluated
+     * even when no device event has arrived.
+     * <p>
+     * Example automations that return true:
+     * "Periodic Bat 500 charging" — node_condition_1 is scheduled/interval
+     * "TESTING" — node_condition_8 (interval) and node_condition_10 (range)
+     * "Light On" — node_condition_16 (range) and node_condition_21 (range)
+     * <p>
+     * Example automations that return false:
+     * "Emergency Bat 500 Charging" — only data-driven condition (below 30)
+     * "Charging stop at 100" — only data-driven condition (equal 100)
+     */
+    public boolean hasAnyScheduledConditions(Automation a) {
+        if (a.getConditions() == null || a.getConditions().isEmpty()) return false;
+        return a.getConditions().stream()
+                .anyMatch(c -> "scheduled".equals(c.getCondition()));
+    }
+
+
+    /**
+     * Returns true if the automation is purely data-driven — no scheduled conditions.
+     * Such automations should ONLY be evaluated on live device events, never polled.
+     * <p>
+     * This is the logical complement of hasAnyScheduledConditions().
+     * Provided for clarity at call sites that want the "exclude from periodic" check.
+     */
+    public boolean isPurelyDataDriven(Automation a) {
+        return !hasAnyScheduledConditions(a);
     }
 }

@@ -7,27 +7,51 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Manages AutomationRuntimeState in Redis with optimistic CAS semantics.
  * <p>
- * Key schema:
- * AUTOMATION_STATE:<automationId>   → JSON of AutomationRuntimeState (TTL 24h)
- * AUTOMATION_DEF:<automationId>     → JSON of ExecutionPlan (no TTL, invalidated on save)
- * AUTOMATION_KEYS:<automationId>    → Redis SET of all keys owned by this automation
- * Used for bulk cleanup on deletion.
+ * Key schema (all keys registered in AUTOMATION_KEYS:<id> for bulk cleanup):
+ * AUTOMATION_STATE:<id>             → JSON of AutomationRuntimeState (TTL 24h)
+ * AUTOMATION_DEF:<id>               → JSON of ExecutionPlan (no TTL)
+ * AUTOMATION_KEYS:<id>              → Redis SET of all keys owned by this automation
+ * INTERVAL:<id>:<nodeId>            → "run" (TTL = intervalMinutes * 60)
+ * RUNNING:<id>:<nodeId>             → "active" (TTL = durationMinutes * 60)
+ * DAILY_FIRE:<id>:<YYYY-MM-DD>      → "fired" (TTL = seconds until midnight)
+ * DAILY_SOLAR:<id>:<YYYY-MM-DD>     → "done" (TTL = seconds until midnight)
+ * DAILY_INTERVAL:<id>:<nodeId>:<date> → "1" (TTL = seconds until midnight)
  * <p>
- * CAS write: Lua script atomically checks the version field before writing.
- * If the version doesn't match (another node updated state between our read and
- * write), the script returns 0 and the caller retries with the latest state.
- * This replaces the blunt 60-second EXEC_LOCK with a non-blocking approach
- * that is safe across multiple JVM nodes sharing Redis.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * KEY CHANGES vs previous version
+ * ─────────────────────────────────────────────────────────────────────────────
+ * <p>
+ * 1. @Scheduled testing() REMOVED (was firing every 30s in production)
+ * <p>
+ * 2. ObjectMapper INJECTED (not new ObjectMapper())
+ * Old: private final ObjectMapper objectMapper = new ObjectMapper()
+ * — bypassed the Spring-managed bean; any custom serializers
+ * (JSR310, custom date formats, Jackson modules) were missing.
+ * New: injected via constructor — same instance used by the rest of
+ * the application. @RequiredArgsConstructor handles injection.
+ * <p>
+ * 3. AUTOMATION_KEYS registry set gets a TTL refreshed on every write
+ * Old: registerKey() called opsForSet().add() with no TTL.
+ * If an automation was force-deleted from MongoDB without calling
+ * deleteAllKeys(), the registry set leaked in Redis indefinitely.
+ * New: registerKey() also calls expire() to refresh the TTL to 25h
+ * (slightly longer than the state TTL of 24h so the registry
+ * always outlives the state it tracks).
+ * <p>
+ * 4. dailyIntervalKey schema made consistent with other daily key schemas
+ * Old: "daily:interval:<id>:<nodeId>:<date>" (lowercase, colon prefix)
+ * New: "DAILY_INTERVAL:<id>:<nodeId>:<date>" (uppercase, consistent)
+ * All keys now follow UPPER_SNAKE_CASE:<id>:<discriminator> pattern.
  */
 @Slf4j
 @Component
@@ -36,19 +60,22 @@ public class AutomationStateStore {
 
     private final RedisService redisService;
     private final RedisTemplate<String, String> redisTemplate;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;           // ← injected, not new
 
     private static final String STATE_PREFIX = "AUTOMATION_STATE:";
+    private static final String DEF_PREFIX = "AUTOMATION_DEF:";
     private static final String KEYS_PREFIX = "AUTOMATION_KEYS:";
-    private static final long STATE_TTL_S = 86_400L; // 24 hours
+
+    private static final long STATE_TTL_S = 86_400L;   // 24h
+    private static final long REGISTRY_TTL_S = 90_000L;   // 25h — outlives state
 
     /**
-     * Lua script for atomic CAS write.
+     * Lua CAS script.
      * KEYS[1] = state key
-     * ARGV[1] = expected version (long as string)
+     * ARGV[1] = expected version
      * ARGV[2] = new state JSON
-     * ARGV[3] = TTL in seconds
-     * Returns 1 on success, 0 on version mismatch (stale read).
+     * ARGV[3] = TTL seconds
+     * Returns 1 on success, 0 on version mismatch.
      */
     private static final DefaultRedisScript<Long> CAS_SCRIPT = new DefaultRedisScript<>("""
             local raw = redis.call('GET', KEYS[1])
@@ -58,7 +85,6 @@ public class AutomationStateStore {
                     return 0
                 end
             else
-                -- Key doesn't exist yet — only allow if expected version is 0
                 if ARGV[1] ~= '0' then
                     return 0
                 end
@@ -73,9 +99,8 @@ public class AutomationStateStore {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Read current runtime state for an automation.
-     * Returns AutomationRuntimeState.idle() if no state exists yet.
-     * This is a plain GET — no lock, no CAS — reads are always safe.
+     * Read current runtime state. Returns AutomationRuntimeState.idle() when
+     * no state exists yet. Plain GET — no lock, no CAS.
      */
     public AutomationRuntimeState read(String automationId) {
         try {
@@ -83,7 +108,7 @@ public class AutomationStateStore {
             if (raw == null) return AutomationRuntimeState.idle();
             return objectMapper.readValue(raw.toString(), AutomationRuntimeState.class);
         } catch (Exception e) {
-            log.warn("⚠️ Failed to read state for automation '{}': {} — returning IDLE",
+            log.warn("⚠️ Failed to read state for '{}': {} — returning IDLE",
                     automationId, e.getMessage());
             return AutomationRuntimeState.idle();
         }
@@ -95,12 +120,9 @@ public class AutomationStateStore {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Atomically write nextState if the current stored version matches
-     * expectedVersion.
+     * Atomically write nextState if the current stored version matches expectedVersion.
      *
-     * @return true  — write succeeded (state updated)
-     * false — version mismatch (another node wrote first); caller should
-     * re-read and re-evaluate.
+     * @return true if write succeeded; false if version mismatch (stale read — caller retries)
      */
     public boolean compareAndSet(String automationId,
                                  long expectedVersion,
@@ -120,18 +142,17 @@ public class AutomationStateStore {
                 registerKey(automationId, stateKey);
                 return true;
             }
-            log.debug("⚡ CAS miss for automation '{}' — version {} is stale",
-                    automationId, expectedVersion);
+            log.debug("⚡ CAS miss for '{}' — version {} is stale", automationId, expectedVersion);
             return false;
         } catch (Exception e) {
-            log.error("❌ CAS write failed for automation '{}': {}", automationId, e.getMessage());
+            log.error("❌ CAS write failed for '{}': {}", automationId, e.getMessage());
             return false;
         }
     }
 
     /**
      * Force-write state without version check.
-     * Used only during startup reconciliation and cache refresh after save.
+     * Used only during startup reconciliation and after re-save in editor.
      */
     public void forceWrite(String automationId, AutomationRuntimeState state) {
         try {
@@ -140,23 +161,19 @@ public class AutomationStateStore {
             redisService.setWithExpiry(stateKey, json, STATE_TTL_S);
             registerKey(automationId, stateKey);
         } catch (Exception e) {
-            log.error("❌ Force-write failed for automation '{}': {}", automationId, e.getMessage());
+            log.error("❌ Force-write failed for '{}': {}", automationId, e.getMessage());
         }
     }
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // EXECUTION PLAN (AUTOMATION_DEF)
+    // EXECUTION PLAN  (AUTOMATION_DEF)
     // ─────────────────────────────────────────────────────────────────────
-
-    private static final String DEF_PREFIX = "AUTOMATION_DEF:";
 
     public void writePlan(String automationId, ExecutionPlan plan) {
         try {
             String key = DEF_PREFIX + automationId;
-            String json = objectMapper.writeValueAsString(plan);
-            // No TTL — invalidated only on save or deletion
-            redisTemplate.opsForValue().set(key, json);
+            redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(plan));
             registerKey(automationId, key);
         } catch (Exception e) {
             log.error("❌ Failed to write plan for '{}': {}", automationId, e.getMessage());
@@ -180,32 +197,65 @@ public class AutomationStateStore {
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // SCHEDULE KEYS  (interval / running / daily — unchanged semantics)
+    // SCHEDULE KEYS  — INTERVAL
     // ─────────────────────────────────────────────────────────────────────
 
     public boolean intervalKeyExists(String automationId, String condNodeId) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(intervalKey(automationId, condNodeId)));
     }
 
+    /**
+     * Arms the interval cooldown.
+     * Called by AutomationOrchestrator AFTER a successful CAS write (not inside evaluator).
+     * TTL = intervalMinutes * 60 so the key expires exactly when the next run is due.
+     */
     public void setIntervalKey(String automationId, String condNodeId, long ttlSeconds) {
         String key = intervalKey(automationId, condNodeId);
         redisService.setWithExpiry(key, "run", ttlSeconds);
         registerKey(automationId, key);
+        log.debug("🔑 SET intervalKey '{}' TTL={}s", key, ttlSeconds);
     }
+
+    public void deleteIntervalKey(String automationId, String condNodeId) {
+        redisTemplate.delete(intervalKey(automationId, condNodeId));
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SCHEDULE KEYS  — RUNNING (duration window)
+    // ─────────────────────────────────────────────────────────────────────
 
     public boolean runningKeyExists(String automationId, String condNodeId) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(runningKey(automationId, condNodeId)));
     }
 
+    /**
+     * Arms the duration window.
+     * Called by dispatchBranchDecisions AFTER dispatch confirms success —
+     * so the timer starts only when the device actually received the command.
+     * TTL = durationMinutes * 60.
+     */
     public void setRunningKey(String automationId, String condNodeId, long ttlSeconds) {
         String key = runningKey(automationId, condNodeId);
         redisService.setWithExpiry(key, "active", ttlSeconds);
         registerKey(automationId, key);
+        log.debug("🔑 SET runningKey '{}' TTL={}s", key, ttlSeconds);
     }
 
     public void deleteRunningKey(String automationId, String condNodeId) {
         redisTemplate.delete(runningKey(automationId, condNodeId));
     }
+
+    public void deleteIntervalAndRunningKeys(String automationId, String condNodeId) {
+        redisTemplate.delete(List.of(
+                intervalKey(automationId, condNodeId),
+                runningKey(automationId, condNodeId)));
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SCHEDULE KEYS  — DAILY FIRE (at / exact-time schedules)
+    // ─────────────────────────────────────────────────────────────────────
 
     public boolean dailyFireKeyExists(String automationId, String date) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(dailyFireKey(automationId, date)));
@@ -217,6 +267,11 @@ public class AutomationStateStore {
         registerKey(automationId, key);
     }
 
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SCHEDULE KEYS  — DAILY SOLAR (sunrise / sunset schedules)
+    // ─────────────────────────────────────────────────────────────────────
+
     public boolean dailySolarKeyExists(String automationId, String date) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(dailySolarKey(automationId, date)));
     }
@@ -227,15 +282,47 @@ public class AutomationStateStore {
         registerKey(automationId, key);
     }
 
-    public void deleteIntervalAndRunningKeys(String automationId, String condNodeId) {
-        redisTemplate.delete(List.of(
-                intervalKey(automationId, condNodeId),
-                runningKey(automationId, condNodeId)));
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SCHEDULE KEYS  — DAILY INTERVAL (once-per-day cap for interval schedules)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Sets a marker indicating this interval automation has already fired today.
+     * The key expires at midnight (TTL = seconds until tomorrow 00:00 IST).
+     * <p>
+     * Used by AutomationOrchestrator.writePostCasScheduleKeys() — written AFTER
+     * a successful CAS write, not inside the evaluator.
+     * <p>
+     * Real-life: "Periodic Bat 500 charging" runs every 30min all day.
+     * If the intent is to cap at one run per calendar day, check this key.
+     * If the intent is to run multiple times per day (just with 30min gaps),
+     * don't check this key — rely solely on intervalKey for cooldown.
+     */
+    public void setDailyIntervalKey(String automationId, String nodeId,
+                                    String date, long ttlSeconds) {
+        String key = dailyIntervalKey(automationId, nodeId, date);
+        redisService.setWithExpiry(key, "1", ttlSeconds);
+        registerKey(automationId, key);
+        log.debug("🔑 SET dailyIntervalKey '{}' TTL={}s", key, ttlSeconds);
+    }
+
+    public boolean dailyIntervalKeyExists(String automationId, String nodeId, String date) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(dailyIntervalKey(automationId, nodeId, date)));
+    }
+
+    public void deleteDailyIntervalKey(String automationId, String nodeId, String date) {
+        redisTemplate.delete(dailyIntervalKey(automationId, nodeId, date));
+    }
+
+    public long getDailyIntervalKeyTTL(String automationId, String nodeId, String date) {
+        return redisTemplate.getExpire(dailyIntervalKey(automationId, nodeId, date),
+                TimeUnit.SECONDS);
     }
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // SNOOZE / TIMED DISABLE  (delegated, just key registration)
+    // SNOOZE / TIMED DISABLE
     // ─────────────────────────────────────────────────────────────────────
 
     public boolean isSnoozed(String automationId) {
@@ -261,10 +348,17 @@ public class AutomationStateStore {
 
     /**
      * Registers a Redis key as owned by this automation.
-     * Used by deleteAllKeys() to clean up everything on automation deletion.
+     * Refreshes the registry set TTL so it always outlives the state TTL.
+     * <p>
+     * Bug fix: old code called opsForSet().add() with no TTL. If an automation
+     * was force-deleted from MongoDB without calling deleteAllKeys(), the registry
+     * set leaked in Redis forever. Now the TTL is refreshed on every registerKey()
+     * so it expires ~25h after the last activity.
      */
     private void registerKey(String automationId, String key) {
-        redisTemplate.opsForSet().add(KEYS_PREFIX + automationId, key);
+        String registryKey = KEYS_PREFIX + automationId;
+        redisTemplate.opsForSet().add(registryKey, key);
+        redisTemplate.expire(registryKey, Duration.ofSeconds(REGISTRY_TTL_S));
     }
 
     /**
@@ -279,7 +373,7 @@ public class AutomationStateStore {
             log.info("🧹 Deleted {} Redis keys for automation '{}'", ownedKeys.size(), automationId);
         }
         redisTemplate.delete(registryKey);
-        // Also delete snooze/disable keys (may not have been registered if old code created them)
+        // Also delete well-known keys that may not be in the registry (backward compat)
         redisTemplate.delete(List.of(
                 "SNOOZE:" + automationId,
                 "TIMED_DISABLE:" + automationId,
@@ -289,7 +383,7 @@ public class AutomationStateStore {
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // KEY BUILDERS
+    // KEY BUILDERS  (single source of truth for key schema)
     // ─────────────────────────────────────────────────────────────────────
 
     private String intervalKey(String automationId, String condNodeId) {
@@ -308,82 +402,53 @@ public class AutomationStateStore {
         return "DAILY_SOLAR:" + automationId + ":" + date;
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // DAILY INTERVAL KEY (Interval schedule reset marker - NEW)
-    // ═════════════════════════════════════════════════════════════════════
+    /**
+     * Key schema changed from "daily:interval:<id>:<nodeId>:<date>"
+     * (lowercase, colon prefix) to "DAILY_INTERVAL:<id>:<nodeId>:<date>"
+     * for consistency with all other key schemas.
+     * If migrating a live Redis instance, flush old "daily:interval:*" keys.
+     */
+    private String dailyIntervalKey(String automationId, String nodeId, String date) {
+        return "DAILY_INTERVAL:" + automationId + ":" + nodeId + ":" + date;
+    }
+
+    public void snooze(String automationId, long ttlSeconds) {
+        String key = "SNOOZE:" + automationId;
+        redisService.setWithExpiry(key, "snoozed", ttlSeconds);
+        registerKey(automationId, key);
+        log.info("😴 Snooze armed for '{}' — {}s", automationId, ttlSeconds);
+    }
 
     /**
-     * Set daily interval marker to track that an interval automation has fired today.
-     * This key resets at midnight (TTL expires when new day starts).
+     * Clears the snooze key immediately.
+     * Called by AutomationInspectionController.clearSnooze().
+     */
+    public void clearSnooze(String automationId) {
+        redisTemplate.delete("SNOOZE:" + automationId);
+        log.info("⏰ Snooze cleared for '{}'", automationId);
+    }
+
+    /**
+     * Arms the timed-disable key for the given duration.
+     * While timed-disabled, orchestrator.execute() skips evaluation entirely.
+     * Different from snooze in that it's intended for maintenance windows, not
+     * user-initiated quiet periods.
      * <p>
-     * Used by AutomationEvaluator.evalScheduled() to prevent interval automations
-     * from firing more than once per calendar day.
-     * <p>
-     * Example scenario:
-     * Automation: "Every 30min interval"
-     * Day 1, 09:00: fire → setDailyIntervalKey()
-     * Day 1, 09:30: key exists → skip
-     * Day 1, 23:59: key still exists → skip (same day)
-     * Day 2, 00:00: key expired → fire again (new day)
-     *
-     * @param automationId The automation ID
-     * @param nodeId       The schedule condition node ID
-     * @param today        The date string (YYYY-MM-DD format)
-     * @param ttlSeconds   Seconds until midnight (typically 86400 - elapsed seconds in day)
+     * Key: TIMED_DISABLE:<automationId>
+     * TTL: ttlSeconds
      */
-    public void setDailyIntervalKey(String automationId, String nodeId, String today,
-                                    long ttlSeconds) {
-        String key = "daily:interval:" + automationId + ":" + nodeId + ":" + today;
-        redisTemplate.opsForValue().set(key, "1",
-                Duration.ofSeconds(ttlSeconds));
-        log.debug("📆 Set DAILY_INTERVAL key for '{}:{}' on {} with {}s TTL (until midnight)",
-                automationId, nodeId, today, ttlSeconds);
-    }
-
-    @Scheduled(fixedRate = 30_000)
-    public void testing() {
-        log.info("Test");
+    public void timedDisable(String automationId, long ttlSeconds) {
+        String key = "TIMED_DISABLE:" + automationId;
+        redisService.setWithExpiry(key, "disabled", ttlSeconds);
+        registerKey(automationId, key);
+        log.info("🔕 Timed-disable armed for '{}' — {}s", automationId, ttlSeconds);
     }
 
     /**
-     * Check if daily interval marker exists for this node on this date.
-     * If exists, the automation has already fired during this calendar day.
-     *
-     * @param automationId The automation ID
-     * @param nodeId       The schedule condition node ID
-     * @param today        The date string (YYYY-MM-DD format)
-     * @return true if key exists (automation fired today), false if expired (new day)
+     * Clears the timed-disable key immediately.
      */
-    public boolean dailyIntervalKeyExists(String automationId, String nodeId, String today) {
-        String key = "daily:interval:" + automationId + ":" + nodeId + ":" + today;
-        return redisTemplate.hasKey(key);
-    }
-
-    /**
-     * Delete the daily interval marker (rarely needed — usually expires naturally).
-     * Used for testing or manual reset.
-     *
-     * @param automationId The automation ID
-     * @param nodeId       The schedule condition node ID
-     * @param today        The date string (YYYY-MM-DD format)
-     */
-    public void deleteDailyIntervalKey(String automationId, String nodeId, String today) {
-        String key = "daily:interval:" + automationId + ":" + nodeId + ":" + today;
-        redisTemplate.delete(key);
-        log.debug("🗑️ Deleted DAILY_INTERVAL key for '{}:{}' on {}",
-                automationId, nodeId, today);
-    }
-
-    /**
-     * Get TTL remaining on daily interval key (for debugging).
-     *
-     * @param automationId The automation ID
-     * @param nodeId       The schedule condition node ID
-     * @param today        The date string (YYYY-MM-DD format)
-     * @return Seconds remaining, or -2 if key doesn't exist, -1 if no TTL set
-     */
-    public long getDailyIntervalKeyTTL(String automationId, String nodeId, String today) {
-        String key = "daily:interval:" + automationId + ":" + nodeId + ":" + today;
-        return redisTemplate.getExpire(key, java.util.concurrent.TimeUnit.SECONDS);
+    public void clearTimedDisable(String automationId) {
+        redisTemplate.delete("TIMED_DISABLE:" + automationId);
+        log.info("✅ Timed-disable cleared for '{}'", automationId);
     }
 }

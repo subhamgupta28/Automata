@@ -4,6 +4,7 @@ import React from 'react';
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
 import {WLEDDiscovery} from "../../services/WLEDDiscovery.jsx";
+import {AutomationLiveInspector} from "../automation/AutomationInspector.jsx";
 import AutomationSummaryBar, {AutomationAnalyticsList} from "../v2/AutomationAnalytics.jsx";
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
@@ -74,6 +75,7 @@ const Exp = () => {
             <WLEDDiscovery/>
             <AutomationSummaryBar/>
             <AutomationAnalyticsList/>
+            <AutomationLiveInspector/>
 
         </div>
     );

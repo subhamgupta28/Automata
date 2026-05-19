@@ -1,11 +1,18 @@
 import axios from "axios";
 
 const BASE_URL = __API_MODE__ === 'serve'
-    ? 'http://localhost:8010/api/v1/' // Local API server for development
-    : window.location.protocol + "//" + window.location.host + "/api/v1/";
+    ? 'http://localhost:8010/api/' // Local API server for development
+    : window.location.protocol + "//" + window.location.host + "/api/";
 
 const api = axios.create({
-    baseURL: BASE_URL,
+    baseURL: BASE_URL + "v1/",
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
+const apiV2 = axios.create({
+    baseURL: BASE_URL + "v2/",
     headers: {
         'Content-Type': 'application/json',
     },
@@ -18,6 +25,14 @@ const getToken = () => getStoredUser()?.access_token || "";
 const getRefreshToken = () => getStoredUser()?.refresh_token || "";
 
 api.interceptors.request.use(config => {
+    const token = getToken();
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+apiV2.interceptors.request.use(config => {
     const token = getToken();
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
