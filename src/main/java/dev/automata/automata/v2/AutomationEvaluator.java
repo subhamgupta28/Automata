@@ -602,6 +602,7 @@ public class AutomationEvaluator {
         if ("scheduled".equals(c.getConditionType()))
             return evalScheduled(c, automationId, now);
 
+        // ── Payload resolution (secondary device or primary) ───────────────
         Map<String, Object> payload = primaryPayload;
         if (c.getDeviceId() != null && !c.getDeviceId().isBlank()) {
             Map<String, Object> secondary = redisService.getRecentDeviceData(c.getDeviceId());
@@ -609,16 +610,32 @@ public class AutomationEvaluator {
                 log.warn("⚠️ [{}] Secondary device '{}' has no Redis data — fetching from DB",
                         automationId, c.getDeviceId());
                 var data = mainService.getLastFullData(c.getDeviceId());
+                // Fix: 500_000 was wrong (5.7 days). For stale conditions skip this
+                // guard entirely — stale data IS the signal. For others: 300s = 5min.
                 var currentTime = Instant.now();
-                if (currentTime.getEpochSecond() - data.getUpdateDate().getEpochSecond() > 300) {
-                    log.warn("⚠️ [{}] Data in DB is older than 5 min — condition=false", automationId);
+                if (!"stale".equals(c.getConditionType())
+                        && currentTime.getEpochSecond() - data.getUpdateDate().getEpochSecond() > 300) {
+                    log.warn("⚠️ [{}] Secondary DB data older than 5min — condition=false",
+                            automationId);
                     return false;
                 }
-                secondary = data.getData();
+                secondary = data.getData() != null ? new HashMap<>(data.getData()) : new HashMap<>();
+                // Inject last_seen from the DB record's updateDate into the secondary map
+                if (data.getUpdateDate() != null)
+                    secondary.put("last_seen", data.getUpdateDate().getEpochSecond() * 1000L);
             }
             payload = secondary;
         }
 
+        // ── STALE condition — intercept before generic key/numeric handling ─
+        // conditionType="stale": true when (now - last_seen) > value minutes.
+        // last_seen is resolved from the payload (stamped by writeDeviceData for
+        // online devices, or injected by buildDbFallbackPayload for offline ones).
+        if ("stale".equals(c.getConditionType())) {
+            return evalStale(c, payload, automationId, now);
+        }
+
+        // ── Generic key lookup ─────────────────────────────────────────────
         String key = c.getTriggerKey();
         if (key == null || key.isBlank()) {
             log.warn("⚠️ [{}] Condition '{}' has no triggerKey", automationId, c.getNodeId());
@@ -658,29 +675,47 @@ public class AutomationEvaluator {
                 double bufHigh = Math.max(1.0, Math.abs(b) * 0.02);
                 yield wasActive ? v > (a - bufLow) && v < (b + bufHigh) : v > a && v < b;
             }
-            // In evalSingleCondition(), in the switch block, add:
-            case "stale" -> {
-                long lastSeenMs = resolveLastSeenMs(c, payload, primaryPayload, automationId);
-                if (lastSeenMs <= 0) {
-                    log.warn("⚠️ [{}] Condition '{}': last_seen unresolvable — treating as stale",
-                            automationId, c.getNodeId());
-                    yield true;  // device never seen = definitely stale
-                }
-
-                double thresholdMinutes = Double.parseDouble(c.getValue());
-                long thresholdMs = (long) (thresholdMinutes * 60_000);
-                long staleMs = Instant.now().toEpochMilli() - lastSeenMs;
-                boolean isStale = staleMs > thresholdMs;
-
-                log.debug("⏱️ [{}] Stale check: last_seen={}s ago, threshold={}min → {}",
-                        automationId,
-                        staleMs / 1000,
-                        (int) thresholdMinutes,
-                        isStale ? "STALE" : "FRESH");
-                yield isStale;
-            }
             default -> false;
         };
+    }
+
+    /**
+     * Evaluates a stale condition: returns true when the device has not sent
+     * data for longer than the configured threshold.
+     * <p>
+     * last_seen resolution (in order):
+     * 1. payload.get("last_seen") — stamped by writeDeviceData (online devices)
+     * or injected by buildDbFallbackPayload / secondary DB fallback (offline)
+     * 2. Any numeric field named by c.getTriggerKey() if different from "last_seen"
+     * 3. 0 — never seen → treat as stale (conservative, correct for new devices)
+     * <p>
+     * value = threshold in minutes (stored as string in CompiledCondition.value)
+     */
+    private boolean evalStale(ExecutionPlan.CompiledCondition c,
+                              Map<String, Object> payload,
+                              String automationId,
+                              ZonedDateTime now) {
+        String key = c.getTriggerKey() != null && !c.getTriggerKey().isBlank()
+                ? c.getTriggerKey() : "last_seen";
+
+        long lastSeenMs = extractLastSeenMs(payload, key);
+        if (lastSeenMs <= 0) {
+            log.warn("⚠️ [{}] Stale condition '{}': last_seen not resolvable (payload keys: {})"
+                            + " — treating as STALE",
+                    automationId, c.getNodeId(), payload.keySet());
+            return true;  // never seen = stale
+        }
+
+        long thresholdMs = (long) (Double.parseDouble(c.getValue()) * 60_000);
+        long staleMs = now.toInstant().toEpochMilli() - lastSeenMs;
+        boolean isStale = staleMs > thresholdMs;
+
+        log.debug("⏱️ [{}] Stale '{}': last_seen={}s ago, threshold={}min → {}",
+                automationId, c.getNodeId(),
+                staleMs / 1000, c.getValue(),
+                isStale ? "STALE" : "FRESH");
+
+        return isStale;
     }
 
     /**
@@ -708,15 +743,15 @@ public class AutomationEvaluator {
         String key = c.getTriggerKey();  // e.g. "last_seen"
 
         // 1. Try the current evaluation payload first (fastest path)
-        Long fromPayload = extractLastSeenMs(payload, key);
-        if (fromPayload != null && fromPayload > 0) return fromPayload;
+        long fromPayload = extractLastSeenMs(payload, key);
+        if (fromPayload > 0) return fromPayload;
 
         // 2. If a secondary deviceId is specified, try its Redis data then DB
         if (c.getDeviceId() != null && !c.getDeviceId().isBlank()) {
             Map<String, Object> secondary = redisService.getRecentDeviceData(c.getDeviceId());
             if (secondary != null && !secondary.isEmpty()) {
-                Long fromSecondary = extractLastSeenMs(secondary, key);
-                if (fromSecondary != null && fromSecondary > 0) return fromSecondary;
+                long fromSecondary = extractLastSeenMs(secondary, key);
+                if (fromSecondary > 0) return fromSecondary;
             }
             // DB fallback for secondary device
             try {
@@ -737,8 +772,8 @@ public class AutomationEvaluator {
         // 3. Primary device — Redis fallback (device may be offline, no live payload)
         // The primary payload IS the Redis data when triggerPeriodicAutomations runs,
         // so check it again by key in case it has last_seen but under a different path.
-        Long fromPrimary = extractLastSeenMs(primaryPayload, key);
-        if (fromPrimary != null && fromPrimary > 0) return fromPrimary;
+        long fromPrimary = extractLastSeenMs(primaryPayload, key);
+        if (fromPrimary > 0) return fromPrimary;
 
         // 4. DB fallback for primary device — use the record's updateDate as last_seen
         // This is what "no data has arrived at all" looks like.
@@ -764,37 +799,42 @@ public class AutomationEvaluator {
      * - Long epoch-s:    1747508058   (detected if value < 1e10)
      * - Date object (from Jackson deserialisation)
      */
-    private Long extractLastSeenMs(Map<String, Object> payload, String key) {
-        if (payload == null || key == null || !payload.containsKey(key)) return null;
+    private long extractLastSeenMs(Map<String, Object> payload, String key) {
+        if (payload == null || !payload.containsKey(key)) return 0L;
         Object raw = payload.get(key);
-        if (raw == null) return null;
-
-        if (raw instanceof Number n) {
-            long v = n.longValue();
-            // Epoch-seconds are typically 10 digits; epoch-ms are 13 digits
-            return v < 10_000_000_000L ? v * 1000L : v;
+        switch (raw) {
+            case null -> {
+                return 0L;
+            }
+            case Number n -> {
+                long v = n.longValue();
+                return v < 10_000_000_000L ? v * 1000L : v;  // normalise epoch-s → epoch-ms
+            }
+            case Date d -> {
+                return d.getTime();
+            }
+            default -> {
+            }
         }
 
-        if (raw instanceof Date d) return d.getTime();
-
         String s = raw.toString().trim();
-        // Try numeric string first
         try {
             long v = Long.parseLong(s);
             return v < 10_000_000_000L ? v * 1000L : v;
         } catch (NumberFormatException ignored) {
         }
 
-        // ISO-8601 string
         try {
             return java.time.OffsetDateTime.parse(s).toInstant().toEpochMilli();
-        } catch (Exception e1) {
-            try {
-                return java.time.Instant.parse(s).toEpochMilli();
-            } catch (Exception e2) {
-                return null;
-            }
+        } catch (Exception ignored) {
         }
+        try {
+            return java.time.Instant.parse(s).toEpochMilli();
+        } catch (Exception ignored) {
+        }
+
+        log.warn("⚠️ Unparseable last_seen value '{}' (type={})", s, raw.getClass().getSimpleName());
+        return 0L;
     }
     // ─────────────────────────────────────────────────────────────────────
     // SCHEDULE EVALUATION

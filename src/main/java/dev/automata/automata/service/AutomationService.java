@@ -300,22 +300,25 @@ public class AutomationService {
         if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) return;
 
         automationRepository.findEnabledForExecution().stream()
+                // Fix Bug 3: was !hasOnlyScheduledConditions (inverted / wrong semantics)
                 .filter(scheduledAutomationManager::hasAnyScheduledConditions)
                 .forEach(a -> {
                     String deviceId = a.getTrigger().getDeviceId();
                     Map<String, Object> recentData = redisService.getRecentDeviceData(deviceId);
-                    boolean hasData = recentData != null && !recentData.isEmpty();
+                    boolean hasRedisData = recentData != null && !recentData.isEmpty();
 
-                    if (!hasData && planHasDataDrivenTrigger(a.getId())) {
+                    if (!hasRedisData && planHasDataDrivenTrigger(a.getId())) {
 
-                        // BUG FIX: watchdog (stale) automations MUST still run when
-                        // Redis is empty — that is precisely the condition they detect.
-                        // For these, build the payload from DB and inject a synthetic
-                        // last_seen so the stale evaluator has something to compare.
+                        // Stale-condition automations MUST run when Redis is empty —
+                        // missing data is exactly what they detect.
+                        // Build a synthetic payload from the DB record's updateDate
+                        // so evalSingleCondition has a last_seen to compare against.
                         if (planHasStaleCondition(a.getId())) {
-                            Map<String, Object> dbPayload = buildDbFallbackPayload(deviceId, a.getName());
+                            Map<String, Object> dbPayload = buildDbFallbackPayload(
+                                    deviceId, a.getName());
+                            log.info("🐕 [{}] Redis empty — running stale check with DB payload",
+                                    a.getName());
                             warnMissingSecondaryData(a);
-                            log.info("[{}] has payload [{}]", a.getName(), dbPayload);
                             orchestrator.execute(a.getId(), dbPayload, "scheduler");
                             return;
                         }
@@ -333,46 +336,69 @@ public class AutomationService {
     }
 
     /**
-     * Builds a minimal payload from the DB record for offline/watchdog automations.
-     * Injects last_seen from the DB record's updateDate so the stale evaluator
-     * can compute (now - last_seen) even when Redis has no data.
+     * Builds a minimal payload for a device that has no Redis data.
+     * Fetches the device's last record from MongoDB and injects last_seen
+     * as epoch-ms so the stale evaluator can compute (now - last_seen).
+     * <p>
+     * If the DB record has a getData() map, it is included in full so any
+     * other conditions on the same automation can also evaluate normally.
+     * If getData() is null or empty, only last_seen is injected.
+     * If no DB record exists at all, last_seen=0 is injected — the evaluator
+     * treats 0 as "never seen" and the stale condition returns true immediately.
      */
     private Map<String, Object> buildDbFallbackPayload(String deviceId, String automationName) {
         try {
-            var data = mainService.getLastFullData(deviceId);
-            if (data == null) {
-                log.warn("⚠️ [{}] DB fallback: no record found for device '{}'", automationName, deviceId);
-                return Map.of("last_seen", 0L);   // never seen — evaluator will treat as stale
+            var record = mainService.getLastFullData(deviceId);
+            if (record == null) {
+                log.warn("🐕 [{}] DB fallback: no record found for device '{}' — last_seen=0",
+                        automationName, deviceId);
+                return new HashMap<>(Map.of("last_seen", 0L));
             }
-            Map<String, Object> payload = new HashMap<>(
-                    data.getData() != null ? data.getData() : Map.of());
-            // Inject last_seen as epoch-ms from DB record's updateDate
-            if (data.getUpdateDate() != null) {
-                payload.put("last_seen", data.getUpdateDate().getEpochSecond() * 1000L);
-            } else {
-                payload.put("last_seen", 0L);
-            }
-            log.info("📦 [{}] DB fallback payload built for device '{}', last_seen={}",
-                    automationName, deviceId,
-                    data.getUpdateDate() != null ? data.getUpdateDate() : "never");
+
+            Map<String, Object> payload = new HashMap<>();
+            if (record.getData() != null) payload.putAll(record.getData());
+
+            long lastSeenMs = record.getUpdateDate() != null
+                    ? record.getUpdateDate().getEpochSecond() * 1000L
+                    : 0L;
+            payload.put("last_seen", lastSeenMs);
+
+            log.info("🐕 [{}] DB fallback: device='{}' last DB record={}",
+                    automationName, deviceId, record.getUpdateDate());
             return payload;
+
         } catch (Exception e) {
-            log.error("❌ [{}] DB fallback failed for device '{}': {}", automationName, deviceId, e.getMessage());
-            return Map.of("last_seen", 0L);
+            log.error("❌ [{}] DB fallback failed for device '{}': {}",
+                    automationName, deviceId, e.getMessage());
+            return new HashMap<>(Map.of("last_seen", 0L));
         }
     }
 
     /**
-     * Returns true if the compiled plan for this automation contains any
-     * condition with conditionType="stale".  These automations must never
-     * be skipped when Redis is empty — missing data IS the alert condition.
+     * Returns true if the compiled plan contains any condition with
+     * conditionType="stale".  These automations must never be skipped
+     * when Redis is empty — no data IS the alert condition.
      */
     private boolean planHasStaleCondition(String automationId) {
         ExecutionPlan plan = planCache.get(automationId);
-        if (plan == null || plan.getConditionTree() == null) return false;
-        return plan.getConditionTree().stream()
-                .anyMatch(n -> n.getCondition() != null
-                        && "stale".equals(n.getCondition().getConditionType()));
+        if (plan == null) return false;
+
+        // Check condition tree nodes
+        if (plan.getConditionTree() != null) {
+            boolean inTree = plan.getConditionTree().stream()
+                    .anyMatch(n -> n.getCondition() != null
+                            && "stale".equals(n.getCondition().getConditionType()));
+            if (inTree) return true;
+        }
+
+        // Also check gate branches — stale can be a gate condition too
+        if (plan.getBranches() != null) {
+            return plan.getBranches().stream()
+                    .anyMatch(b -> b.getGateCondition() != null
+                            && "stale".equals(b.getGateCondition().getConditionType()));
+        }
+
+        return false;
     }
 
     @Scheduled(fixedRate = 65_000)
