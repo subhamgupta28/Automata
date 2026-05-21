@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -162,6 +163,15 @@ public class AutomationLivePublisher {
                     .build()).collect(Collectors.toList());
         }
 
+        // Extract action node IDs that have been triggered for execution
+        List<String> executedActionNodeIds = null;
+        if (result.getActionsToFire() != null) {
+            executedActionNodeIds = result.getActionsToFire().stream()
+                    .map(ExecutionPlan.CompiledAction::getNodeId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+
         return LiveEvalEvent.builder()
                 .type("EVAL")
                 .automationId(plan.getAutomationId())
@@ -179,6 +189,15 @@ public class AutomationLivePublisher {
                 .branchStates(branchStates)
                 .coalitionLastFired(nextState != null ? nextState.getTriggerMemberLastFired() : null)
                 .sequenceProgress(nextState != null ? nextState.getSequenceProgress() : 0)
+                .executedActionNodeIds(executedActionNodeIds)
+                .firedActionNodeIds(
+                        result.getActionsToFire() != null
+                                ? result.getActionsToFire().stream()
+                                  .map(ExecutionPlan.CompiledAction::getNodeId)
+                                  .filter(Objects::nonNull)
+                                  .collect(Collectors.toList())
+                                : List.of()
+                )
                 .build();
     }
 
@@ -255,6 +274,8 @@ public class AutomationLivePublisher {
         List<LiveBranchState> branchStates;
         Map<String, Long> coalitionLastFired;
         int sequenceProgress;
+        List<String> executedActionNodeIds;
+        List<String> firedActionNodeIds;
     }
 
     @Value

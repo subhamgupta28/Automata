@@ -4,8 +4,7 @@ import React from 'react';
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
 import {WLEDDiscovery} from "../../services/WLEDDiscovery.jsx";
-import {AutomationLiveInspector} from "../automation/AutomationInspector.jsx";
-import AutomationSummaryBar, {AutomationAnalyticsList} from "../v2/AutomationAnalytics.jsx";
+import TopBar, {StatsRow} from "./SmartHomeDashboard.jsx";
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
     let color = theme.palette.success.main;
@@ -70,12 +69,16 @@ const Exp = () => {
 
 
     return (
-        <div style={{marginTop: '100px'}}>
+        <div style={{marginTop: '10px'}}>
 
             <WLEDDiscovery/>
-            <AutomationSummaryBar/>
-            <AutomationAnalyticsList/>
-            <AutomationLiveInspector/>
+            {/*<AutomationSummaryBar/>*/}
+            {/*<AutomationAnalyticsList/>*/}
+            {/*<AutomationFlowInspector/>*/}
+            <TopBar/>
+            <StatsRow/>
+            {/*<RoomsGrid/>*/}
+            {/*<SmartHomeDashboard2/>*/}
 
         </div>
     );

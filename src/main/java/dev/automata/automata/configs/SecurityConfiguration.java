@@ -38,7 +38,7 @@ public class SecurityConfiguration {
             "/vite.svg",
             "/marker-icon-2x.png",
             "/marker-shadow.png",
-            "/", // for root
+            "/**", // for root
             "/api/automation/validate/**", // for root
             "/devices/**", // for root
             "/signin/**", // for root
@@ -52,6 +52,7 @@ public class SecurityConfiguration {
             "/actuator/metrics/**", // for root
             "/ws/**",
             "/ws",
+            "/webhook/**",
             "/exp",
 //            "/api/v1/virtual/**",
             "/api/v1/main/updateDevice",

@@ -21,17 +21,10 @@ import java.util.concurrent.*;
 /**
  * Dispatches compiled actions to devices.
  * <p>
- * Bug fix vs previous version:
- * - Uses the Spring bean "actionDispatchExecutor" (defined in AsyncConfig)
- * instead of a private ThreadPoolExecutor field that was never registered
- * as a Spring bean — @Async("automationExecutor") was failing silently.
- * - Uses the Spring bean "actionDelayScheduler" for delay steps.
- * <p>
- * Execution model:
- * - Actions within a branch are chained sequentially (respects delaySeconds)
- * - The chain runs on actionDispatchExecutor (bounded, from AsyncConfig)
- * - Timeout applies to the entire chain
- * - Returns CompletableFuture<Boolean>: true = all actions dispatched
+ * Change vs previous version:
+ * - Injects AutomationLivePublisher and calls publishActionFired() after every
+ * successful (or failed) single-action dispatch so the inspector's Actions
+ * Fired tab receives live events on /topic/automation.{id}.actions.
  */
 @Slf4j
 @Component
@@ -48,6 +41,7 @@ public class ActionDispatcher {
     private final Executor actionDispatchExecutor;
     private final ScheduledExecutorService actionDelayScheduler;
     private final AutomationLogStream logStream;
+    private final AutomationLivePublisher livePublisher;   // ← ADDED
 
     private static final long ACTION_TIMEOUT_SECONDS = 30;
 
@@ -61,7 +55,7 @@ public class ActionDispatcher {
                                                String user,
                                                String automationId,
                                                String automationName,
-                                               String traceId) {      // ← NEW PARAM
+                                               String traceId) {
         if (actions == null || actions.isEmpty()) {
             // No trackable actions — resolve delivery immediately as NOT_APPLICABLE
             logStream.updateDeliveryStatus(
@@ -122,22 +116,28 @@ public class ActionDispatcher {
                                                   String user,
                                                   String automationId,
                                                   String automationName,
-                                                  String traceId) {   // ← NEW PARAM
+                                                  String traceId) {
         CompletableFuture<Boolean> chain = CompletableFuture.completedFuture(true);
 
         for (ExecutionPlan.CompiledAction action : actions) {
             chain = chain.thenCompose(prevOk -> {
                 CompletableFuture<Boolean> step = CompletableFuture.supplyAsync(() -> {
+                    boolean success = false;
                     try {
                         log.info("▶️ [traceId={}] [{}] Dispatching: {} {}={} (order={})",
                                 traceId, automationName, action.getName(),
                                 action.getKey(), action.getData(), action.getOrder());
                         dispatchSingle(action, payload, user, automationId, automationName, traceId);
+                        success = true;
                         return true;
                     } catch (Exception e) {
                         log.error("❌ [traceId={}] [{}] Failed dispatch '{}': {}",
                                 traceId, automationName, action.getName(), e.getMessage(), e);
                         return false;
+                    } finally {
+                        // ── Publish live action event regardless of success/failure ──
+                        livePublisher.publishActionFired(
+                                automationId, automationName, action, success, traceId);
                     }
                 }, actionDispatchExecutor);
 
@@ -166,7 +166,7 @@ public class ActionDispatcher {
                                 String user,
                                 String automationId,
                                 String automationName,
-                                String traceId) {             // ← NEW PARAM
+                                String traceId) {
         Object parsedData = parseData(action.getData());
         Map<String, Object> payload = Map.of(action.getKey(), parsedData, "key", action.getKey());
 
@@ -207,7 +207,7 @@ public class ActionDispatcher {
         // device ACKs, ActionDeliveryTracker can call logStream.updateDeliveryStatus()
         deliveryTracker.register(correlationId, automationId, automationName,
                 action.getDeviceId(), action.getName(), trackedPayload,
-                traceId);                                      // ← NEW PARAM
+                traceId);
     }
 
     private void sendToDevice(String deviceId, Map<String, Object> payload) {
@@ -230,7 +230,7 @@ public class ActionDispatcher {
                               String user,
                               String automationId,
                               String automationName,
-                              String traceId) {           // ← added params vs original
+                              String traceId) {
         deviceRepository.findById(deviceId).ifPresent(device -> {
             try {
                 new Wled(mqttOutboundChannel, device).handleAction(payload);

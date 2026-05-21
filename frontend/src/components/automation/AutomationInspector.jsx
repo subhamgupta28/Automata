@@ -55,6 +55,8 @@ import HistoryIcon from "@mui/icons-material/History";
 import SearchIcon from "@mui/icons-material/Search";
 import FlashOnIcon from "@mui/icons-material/FlashOn";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
+import ElectricBoltIcon from "@mui/icons-material/ElectricBolt";
+import DevicesIcon from "@mui/icons-material/Devices";
 import {
     deleteAutomationSnooze,
     getAutomations,
@@ -68,6 +70,7 @@ const WS_URL = __API_MODE__ === 'serve'
     ? 'http://localhost:8010/ws'
     : `${window.location.protocol}//${window.location.host}/ws`;
 const MAX_LOG = 50;
+const MAX_ACTIONS = 100;
 const DRAWER_WIDTH = 320;
 
 const T = {
@@ -322,6 +325,222 @@ function LogRow({event}) {
     );
 }
 
+// ─── Action fired row ─────────────────────────────────────────────────────────
+function ActionFiredRow({event, isNew}) {
+    const [open, setOpen] = useState(false);
+    const hasData = event.data != null && event.data !== "";
+    return (
+        <Box sx={{
+            py: "6px",
+            borderBottom: `0.5px solid ${T.border}`,
+            transition: "background 0.4s",
+            background: isNew ? "rgba(99,202,183,0.06)" : "transparent",
+        }}>
+            <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                {/* timestamp */}
+                <Typography
+                    sx={{fontSize: 11, color: "text.disabled", minWidth: 68, fontFamily: T.mono, flexShrink: 0}}>
+                    {fmtDate(event.firedAt)}
+                </Typography>
+
+                {/* success / fail indicator */}
+                {event.success
+                    ? <CheckCircleOutlineIcon sx={{fontSize: 14, color: "success.main", flexShrink: 0}}/>
+                    : <CancelOutlinedIcon sx={{fontSize: 14, color: "error.main", flexShrink: 0}}/>
+                }
+
+                {/* device name / id */}
+                <Stack direction="row" spacing={0.5} alignItems="center" sx={{flexShrink: 0}}>
+                    <DevicesIcon sx={{fontSize: 13, color: "text.disabled"}}/>
+                    <Typography sx={{fontSize: 12, color: "text.primary", fontFamily: T.mono}}>
+                        {event.deviceName || event.deviceId}
+                    </Typography>
+                </Stack>
+
+                {/* key */}
+                <Chip
+                    label={event.key}
+                    size="small"
+                    color="info"
+                    variant="outlined"
+                    sx={{fontSize: 10, height: 18, fontFamily: T.mono}}
+                />
+
+                {/* data preview or expand toggle */}
+                {hasData && (
+                    <Box sx={{display: "flex", alignItems: "center", gap: 0.5, ml: "auto"}}>
+                        <Mono sx={{
+                            color: "text.disabled",
+                            maxWidth: 160,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontSize: 11,
+                        }}>
+                            {open ? "" : event.data}
+                        </Mono>
+                        <IconButton size="small" onClick={() => setOpen(p => !p)} sx={{p: 0.25}}>
+                            {open
+                                ? <ExpandLessIcon sx={{fontSize: 13}}/>
+                                : <ExpandMoreIcon sx={{fontSize: 13}}/>
+                            }
+                        </IconButton>
+                    </Box>
+                )}
+
+                {/* node id badge */}
+                {event.nodeId && (
+                    <Mono sx={{color: "text.disabled", fontSize: 10, ml: hasData ? 0 : "auto"}}>
+                        {event.nodeId}
+                    </Mono>
+                )}
+            </Stack>
+
+            {/* expanded data payload */}
+            {hasData && (
+                <Collapse in={open}>
+                    <Box sx={{
+                        mt: 1, ml: "76px", p: "8px 10px", borderRadius: 1.5,
+                        background: "rgba(255,255,255,0.04)",
+                        border: `0.5px solid ${T.border}`,
+                    }}>
+                        <SLabel>payload</SLabel>
+                        <Mono sx={{color: "text.secondary", whiteSpace: "pre-wrap", wordBreak: "break-all"}}>
+                            {(() => {
+                                try {
+                                    return JSON.stringify(JSON.parse(event.data), null, 2);
+                                } catch {
+                                    return event.data;
+                                }
+                            })()}
+                        </Mono>
+                        {event.traceId && (
+                            <Mono sx={{color: "text.disabled", fontSize: 10, mt: 1}}>
+                                trace: {event.traceId}
+                            </Mono>
+                        )}
+                    </Box>
+                </Collapse>
+            )}
+        </Box>
+    );
+}
+
+// ─── Actions tab ──────────────────────────────────────────────────────────────
+function ActionsTab({actionLog, onClear, connStatus}) {
+    const [filterFailed, setFilterFailed] = useState(false);
+    const [newIds, setNewIds] = useState(new Set());
+    const prevLenRef = useRef(0);
+
+    // Flash newly added rows
+    useEffect(() => {
+        if (actionLog.length > prevLenRef.current) {
+            const added = new Set(actionLog.slice(0, actionLog.length - prevLenRef.current).map((_, i) => i));
+            setNewIds(added);
+            const t = setTimeout(() => setNewIds(new Set()), 800);
+            prevLenRef.current = actionLog.length;
+            return () => clearTimeout(t);
+        }
+        prevLenRef.current = actionLog.length;
+    }, [actionLog]);
+
+    const filtered = filterFailed ? actionLog.filter(e => !e.success) : actionLog;
+
+    // Group by traceId so we can show bursts together
+    const groups = useMemo(() => {
+        const out = [];
+        let currentTrace = null;
+        let currentGroup = [];
+        for (const evt of filtered) {
+            if (evt.traceId && evt.traceId !== currentTrace) {
+                if (currentGroup.length) out.push({traceId: currentTrace, events: currentGroup});
+                currentTrace = evt.traceId;
+                currentGroup = [evt];
+            } else {
+                currentGroup.push(evt);
+            }
+        }
+        if (currentGroup.length) out.push({traceId: currentTrace, events: currentGroup});
+        return out;
+    }, [filtered]);
+
+    return (
+        <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{mb: 1.5}}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <FormControlLabel
+                        control={<Switch size="small" checked={filterFailed}
+                                         onChange={e => setFilterFailed(e.target.checked)}/>}
+                        label={<Typography sx={{fontSize: 12}}>Failed only</Typography>}
+                    />
+                    <Chip
+                        label={`${actionLog.length} dispatched`}
+                        size="small"
+                        color={actionLog.length > 0 ? "primary" : "default"}
+                        sx={{fontSize: 10, height: 20}}
+                    />
+                    {actionLog.filter(e => !e.success).length > 0 && (
+                        <Chip
+                            label={`${actionLog.filter(e => !e.success).length} failed`}
+                            size="small"
+                            color="error"
+                            sx={{fontSize: 10, height: 20}}
+                        />
+                    )}
+                </Stack>
+                <Button size="small" onClick={onClear} sx={{fontSize: 11, color: "text.secondary"}}>
+                    Clear
+                </Button>
+            </Stack>
+
+            {filtered.length === 0 ? (
+                <Box sx={{py: 6, textAlign: "center"}}>
+                    <ElectricBoltIcon sx={{fontSize: 36, color: "text.disabled", mb: 1}}/>
+                    <Typography color="text.disabled" fontSize={13}>
+                        {connStatus === "connected"
+                            ? filterFailed ? "No failed actions yet." : "Waiting for actions to fire…"
+                            : "Connect to see live action dispatches"}
+                    </Typography>
+                </Box>
+            ) : (
+                groups.map((group, gi) => (
+                    <Box key={group.traceId || gi} sx={{mb: 1.5}}>
+                        {/* Trace header */}
+                        {group.traceId && (
+                            <Stack direction="row" spacing={0.75} alignItems="center" sx={{mb: 0.5}}>
+                                <Box sx={{
+                                    height: "1px", flex: 1,
+                                    background: `linear-gradient(to right, ${T.border}, transparent)`
+                                }}/>
+                                <Mono sx={{color: "text.disabled", fontSize: 10}}>
+                                    trace {group.traceId.slice(-8)}
+                                </Mono>
+                                <Chip
+                                    label={`${group.events.length} action${group.events.length !== 1 ? "s" : ""}`}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{fontSize: 10, height: 16}}
+                                />
+                                <Box sx={{
+                                    height: "1px", flex: 1,
+                                    background: `linear-gradient(to left, ${T.border}, transparent)`
+                                }}/>
+                            </Stack>
+                        )}
+                        {group.events.map((evt, ei) => (
+                            <ActionFiredRow
+                                key={ei}
+                                event={evt}
+                                isNew={gi === 0 && newIds.has(ei)}
+                            />
+                        ))}
+                    </Box>
+                ))
+            )}
+        </Box>
+    );
+}
+
 // ─── Override tab ─────────────────────────────────────────────────────────────
 function OverrideTab({automationId, hasCoalition, onSuccess}) {
     const [loading, setLoading] = useState(null);
@@ -458,7 +677,6 @@ function AutomationListPanel({liveSummaries, onSelect, loading}) {
         );
     }, [automations, search]);
 
-    // Count how many automations have received a live event
     const liveCount = Object.keys(liveSummaries).length;
 
     return (
@@ -582,18 +800,13 @@ export function AutomationLiveInspector({defaultId = ""}) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-    // ── List panel & live summaries ───────────────────────────────────────────
-    // liveSummaries is populated by the /topic/automation.all WS topic.
-    // Keys are automationId; values are the latest LiveEvalEvent for that automation.
     const [liveSummaries, setLiveSummaries] = useState({});
     const [drawerOpen, setDrawerOpen] = useState(true);
 
-    // Close drawer by default on mobile
     useEffect(() => {
         if (isMobile) setDrawerOpen(false);
     }, [isMobile]);
 
-    // ── Inspector state ───────────────────────────────────────────────────────
     const [inputId, setInputId] = useState(defaultId);
     const [automationId, setAutomationId] = useState(defaultId);
     const resolvedIdRef = useRef(defaultId);
@@ -607,6 +820,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
     const prevEventRef = useRef(null);
     const [flash, setFlash] = useState(false);
     const [log, setLog] = useState([]);
+    const [actionLog, setActionLog] = useState([]);   // ← NEW: ActionFiredEvent log
     const [connStatus, setConnStatus] = useState("disconnected");
     const [showSkipped, setShowSkipped] = useState(false);
 
@@ -614,7 +828,8 @@ export function AutomationLiveInspector({defaultId = ""}) {
     const [toast, setToast] = useState({open: false, message: "", severity: "success"});
 
     const stompRef = useRef(null);
-    const perSubRef = useRef(null);  // current per-automation STOMP subscription
+    const perSubRef = useRef(null);
+    const actionSubRef = useRef(null);   // ← NEW: subscription for action events
 
     // ── HTTP fetch ────────────────────────────────────────────────────────────
     const fetchHttp = useCallback(async (id) => {
@@ -640,22 +855,27 @@ export function AutomationLiveInspector({defaultId = ""}) {
         }
     }, []);
 
-    // ── Subscribe to a per-automation topic (re-uses existing client) ─────────
+    // ── Subscribe to per-automation eval + action topics ──────────────────────
     const subscribeToAutomation = useCallback((id) => {
         const client = stompRef.current;
         if (!client?.connected || !id) return;
 
-        // Drop previous per-automation subscription
+        // Drop previous subscriptions
         try {
             perSubRef.current?.unsubscribe();
         } catch (_) {
         }
+        try {
+            actionSubRef.current?.unsubscribe();
+        } catch (_) {
+        }
 
+        // Eval events
         perSubRef.current = client.subscribe(`/topic/automation.${id}`, msg => {
             try {
                 const event = JSON.parse(msg.body);
                 setLiveEvent(prev => {
-                    prevEventRef.current = prev;   // capture old value before updating
+                    prevEventRef.current = prev;
                     return event;
                 });
                 setFlash(true);
@@ -665,9 +885,21 @@ export function AutomationLiveInspector({defaultId = ""}) {
                 console.warn("Failed to parse live event", e);
             }
         });
+
+        // Action fired events
+        actionSubRef.current = client.subscribe(`/topic/automation.${id}.actions`, msg => {
+            try {
+                const event = JSON.parse(msg.body);
+                console.debug("[actions] received:", event);
+                setActionLog(prev => [event, ...prev].slice(0, MAX_ACTIONS));
+            } catch (e) {
+                console.warn("Failed to parse action event", e);
+            }
+        });
+        console.debug("[actions] subscribed to /topic/automation." + id + ".actions");
     }, []);
 
-    // ── WebSocket: single client for the component lifetime ──────────────────
+    // ── WebSocket lifecycle ───────────────────────────────────────────────────
     useEffect(() => {
         const client = new Client({
             webSocketFactory: () => new SockJS(WS_URL),
@@ -676,7 +908,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
             onConnect: () => {
                 setConnStatus("connected");
 
-                // 1. Broadcast feed → powers the list panel outcome badges
+                // Broadcast feed for the list panel
                 client.subscribe("/topic/automation.all", msg => {
                     try {
                         const event = JSON.parse(msg.body);
@@ -688,25 +920,12 @@ export function AutomationLiveInspector({defaultId = ""}) {
                     }
                 });
 
-                // 2. Per-automation feed → powers the inspector detail panel
+                // Re-subscribe to whichever automation was selected before disconnect.
+                // subscribeToAutomation reads stompRef.current and checks client.connected,
+                // so we must set stompRef first, then call it after a tick to ensure
+                // the STOMP client reports connected = true.
                 if (resolvedIdRef.current) {
-                    perSubRef.current = client.subscribe(
-                        `/topic/automation.${resolvedIdRef.current}`,
-                        msg => {
-                            try {
-                                const event = JSON.parse(msg.body);
-                                setLiveEvent(prev => {
-                                    prevEventRef.current = prev;
-                                    return event;
-                                });
-                                setFlash(true);
-                                setTimeout(() => setFlash(false), 800);
-                                setLog(prev => [event, ...prev].slice(0, MAX_LOG));
-                            } catch (e) {
-                                console.warn("Failed to parse live event", e);
-                            }
-                        }
-                    );
+                    setTimeout(() => subscribeToAutomation(resolvedIdRef.current), 0);
                 }
             },
 
@@ -720,14 +939,12 @@ export function AutomationLiveInspector({defaultId = ""}) {
         return () => {
             client.deactivate();
         };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [subscribeToAutomation]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Re-subscribe whenever the selected automationId changes
     useEffect(() => {
         if (automationId) subscribeToAutomation(automationId);
     }, [automationId, subscribeToAutomation]);
 
-    // Fetch on mount if defaultId given
     useEffect(() => {
         if (defaultId) fetchHttp(defaultId);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -744,6 +961,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
         setLiveEvent(null);
         prevEventRef.current = null;
         setLog([]);
+        setActionLog([]);   // ← clear action log on new automation
         fetchHttp(id);
         subscribeToAutomation(id);
     };
@@ -756,6 +974,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
         setLiveEvent(null);
         prevEventRef.current = null;
         setLog([]);
+        setActionLog([]);   // ← clear action log on new automation
         setTab(0);
         fetchHttp(id);
         subscribeToAutomation(id);
@@ -780,6 +999,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
     };
 
     // ── Tabs ──────────────────────────────────────────────────────────────────
+    const failedActionsCount = actionLog.filter(e => !e.success).length;
     const tabs = [
         {label: "Condition tree", icon: <AccountTreeIcon sx={{fontSize: 15}}/>},
         {label: "Branches", icon: <CallSplitIcon sx={{fontSize: 15}}/>},
@@ -787,13 +1007,24 @@ export function AutomationLiveInspector({defaultId = ""}) {
             label: "Live log",
             icon: <Badge badgeContent={log.length} color="primary" max={99}><HistoryIcon sx={{fontSize: 15}}/></Badge>
         },
+        {
+            label: "Actions fired",
+            icon: (
+                <Badge
+                    badgeContent={failedActionsCount > 0 ? failedActionsCount : actionLog.length}
+                    color={failedActionsCount > 0 ? "error" : "primary"}
+                    max={99}
+                >
+                    <ElectricBoltIcon sx={{fontSize: 15}}/>
+                </Badge>
+            )
+        },
         {label: "Coalition", icon: <GroupsIcon sx={{fontSize: 15}}/>},
         {label: "Override", icon: <TuneIcon sx={{fontSize: 15}}/>},
     ];
 
     const hasData = httpState !== null;
 
-    // ── List panel (shared between Drawer and persistent sidebar) ─────────────
     const listPanel = (
         <AutomationListPanel
             liveSummaries={liveSummaries}
@@ -803,7 +1034,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
     );
 
     return (
-        <Box sx={{display: "flex", height: "60vh", overflow: "hidden"}}>
+        <Box sx={{display: "flex", height: "100vh", overflow: "hidden"}}>
 
             {/* ── Sidebar ─────────────────────────────────────────────────────── */}
             {isMobile ? (
@@ -832,40 +1063,13 @@ export function AutomationLiveInspector({defaultId = ""}) {
             <Box sx={{flex: 1, overflowY: "auto"}}>
                 <Box sx={{p: 2}}>
 
-                    {/* Toolbar row: toggle + ID input */}
+                    {/* Toolbar row */}
                     <Stack direction="row" alignItems="flex-start" spacing={1} sx={{mb: 2}}>
                         <Tooltip title={drawerOpen ? "Hide list" : "Show automation list"}>
                             <IconButton size="small" onClick={() => setDrawerOpen(p => !p)} sx={{mt: "6px"}}>
                                 <FormatListBulletedIcon sx={{fontSize: 18}}/>
                             </IconButton>
                         </Tooltip>
-
-                        {/*<Card elevation={0} sx={{*/}
-                        {/*    flex: 1,*/}
-                        {/*    border: "0.5px solid",*/}
-                        {/*    borderColor: "divider",*/}
-                        {/*    borderRadius: 2,*/}
-                        {/*    background: T.surface*/}
-                        {/*}}>*/}
-                        {/*    <CardContent sx={{p: "10px 12px !important"}}>*/}
-                        {/*        <SLabel>automation id</SLabel>*/}
-                        {/*        <Stack direction="row" spacing={1}>*/}
-                        {/*            <TextField fullWidth size="small"*/}
-                        {/*                       placeholder="e.g. 689f53b668dded22326d935e"*/}
-                        {/*                       value={inputId}*/}
-                        {/*                       onChange={e => setInputId(e.target.value)}*/}
-                        {/*                       onKeyDown={e => e.key === "Enter" && handleFetch()}*/}
-                        {/*                       error={!!httpError} helperText={httpError}*/}
-                        {/*                       inputProps={{style: {fontFamily: T.mono, fontSize: 12}}}*/}
-                        {/*            />*/}
-                        {/*            <Button variant="outlined" onClick={handleFetch} disabled={httpLoading}*/}
-                        {/*                    startIcon={httpLoading ? <CircularProgress size={13}/> : <RefreshIcon/>}*/}
-                        {/*                    sx={{whiteSpace: "nowrap", fontSize: 12}}>*/}
-                        {/*                Fetch*/}
-                        {/*            </Button>*/}
-                        {/*        </Stack>*/}
-                        {/*    </CardContent>*/}
-                        {/*</Card>*/}
                     </Stack>
 
                     {hasData && (
@@ -911,7 +1115,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                     },
                                     {label: "tree nodes", value: currentNodes.length},
                                     {label: "branches", value: currentBranches.length},
-                                    {label: "log events", value: log.length},
+                                    {label: "actions fired", value: actionLog.length},
                                 ].map(({label, value}) => (
                                     <Grid item xs={3} key={label}>
                                         <Paper elevation={0} sx={{
@@ -1040,8 +1244,17 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                 </Box>
                             )}
 
-                            {/* Tab: Coalition */}
+                            {/* Tab: Actions fired  ← NEW */}
                             {tab === 3 && (
+                                <ActionsTab
+                                    actionLog={actionLog}
+                                    onClear={() => setActionLog([])}
+                                    connStatus={connStatus}
+                                />
+                            )}
+
+                            {/* Tab: Coalition */}
+                            {tab === 4 && (
                                 !httpState?.coalition
                                     ? <Typography color="text.disabled" fontSize={13} sx={{py: 4, textAlign: "center"}}>
                                         No coalition — single-trigger mode.
@@ -1078,8 +1291,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                                         const inWindow = lastFired > 0 && agoS < httpState.coalition.windowSeconds;
                                                         return (
                                                             <Box key={i} sx={{
-                                                                p: "8px 10px",
-                                                                borderRadius: 1.5,
+                                                                p: "8px 10px", borderRadius: 1.5,
                                                                 background: "rgba(255,255,255,0.03)",
                                                                 border: `0.5px solid ${T.border}`,
                                                             }}>
@@ -1110,7 +1322,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
                             )}
 
                             {/* Tab: Override */}
-                            {tab === 4 && (
+                            {tab === 5 && (
                                 <OverrideTab
                                     automationId={automationId}
                                     hasCoalition={httpState?.hasCoalition}

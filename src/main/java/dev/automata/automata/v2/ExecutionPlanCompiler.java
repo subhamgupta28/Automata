@@ -156,7 +156,7 @@ public class ExecutionPlanCompiler {
 
         // ── Gate branches ─────────────────────────────────────────────────
         List<ExecutionPlan.CompiledBranch> branches =
-                buildBranches(gateConditions, operators, operatorIds, actions);
+                buildBranches(gateConditions, operators, operatorIds, actions, automation.getTrigger().getDeviceId());
 
         // ── Informational / fallback / stateless actions ──────────────────
         List<ExecutionPlan.CompiledAction> informational = compileByGroup(actions, "informational");
@@ -381,7 +381,8 @@ public class ExecutionPlanCompiler {
             List<Automation.Condition> gateConditions,
             List<Automation.Operator> operators,
             Set<String> operatorIds,
-            List<Automation.Action> actions) {
+            List<Automation.Action> actions,
+            String triggerDeviceId) {
 
         Map<String, Automation.Operator> opById = operators.stream()
                 .collect(Collectors.toMap(Automation.Operator::getNodeId, o -> o));
@@ -433,7 +434,7 @@ public class ExecutionPlanCompiler {
                         .priority(op.getPriority())
                         .logicType(op.getLogicType() != null ? op.getLogicType() : "OR")
                         .siblingGateNodeIds(siblings)
-                        .gateCondition(compileCondition(gc, gc.getDeviceId()))  // same condition, evaluated independently
+                        .gateCondition(compileCondition(gc, triggerDeviceId))  // same condition, evaluated independently
                         .positiveActions(compileActionsForGate(actions, gc.getNodeId(), "positive"))
                         .negativeActions(deduplicateActions(
                                 compileActionsForGate(actions, gc.getNodeId(), "negative")))
@@ -520,13 +521,16 @@ public class ExecutionPlanCompiler {
 
         String deviceId = c.getDeviceId();
         if ("stale".equals(c.getCondition()) && (deviceId == null || deviceId.isBlank())) {
-            deviceId = triggerDeviceId;
+            deviceId = triggerDeviceId;  // so evalStale DB fallback knows which device
+        }
+        String triggerKey = c.getTriggerKey();
+        if ("stale".equals(c.getCondition()) && (triggerKey == null || triggerKey.isBlank())) {
+            triggerKey = "last_seen";   // default key for stale conditions
         }
         return ExecutionPlan.CompiledCondition.builder()
                 .nodeId(c.getNodeId())
                 .conditionType(c.getCondition())
-                .triggerKey(c.getTriggerKey() != null && !c.getTriggerKey().isBlank()
-                        ? c.getTriggerKey() : "last_seen")
+                .triggerKey(triggerKey)
                 .deviceId(c.getDeviceId())
                 .valueType(c.getValueType())
                 .value(c.getValue())

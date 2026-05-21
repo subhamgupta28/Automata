@@ -32,6 +32,7 @@ import isEmpty from "../../utils/Helper.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
 import {Dashboard, GridView, TrendingUp} from "@mui/icons-material";
 import AppIcon from "../../../public/icon-color.png"
+import AutomationLiveInspector from "../automation/AutomationInspector.jsx";
 
 // Lazy-load heavy route components so their JS+state is only in memory when visited
 const DeviceNodes = lazy(() => import("../home/DeviceNodes.jsx"));
@@ -308,7 +309,7 @@ export default function SideDrawer() {
                                 <Route index element={<PrivateRoute element={<DashboardV2/>}/>}/>
                                 <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
                                 <Route path="automation-analytics"
-                                       element={<PrivateRoute element={<AutomationAnalyticsView/>}/>}/>
+                                       element={<PrivateRoute element={<AutomationLiveInspector/>}/>}/>
                                 <Route path="presentation" element={<PrivateRoute element={<Presentation/>}/>}/>
                                 <Route path="virtual" element={<PrivateRoute element={<VirtualDeviceForm/>}/>}/>
                                 <Route path="dashboard" element={<PrivateRoute element={<DeviceNodes/>}/>}/>
