@@ -1,6 +1,6 @@
 
 # Use the official OpenJDK image to build the application
-FROM openjdk:21-jdk-slim as builder
+FROM eclipse-temurin:21-jdk AS builder
 ENV TZ=Asia/Kolkata
 # Set the working directory
 WORKDIR /app
