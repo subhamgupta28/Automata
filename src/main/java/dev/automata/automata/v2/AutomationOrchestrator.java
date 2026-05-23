@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.ZoneId;
@@ -21,6 +22,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -75,30 +77,103 @@ public class AutomationOrchestrator {
     private final ConcurrentHashMap<String, String> nameCache = new ConcurrentHashMap<>();
 
 
-    // ─────────────────────────────────────────────────────────────────────
-    // STARTUP
-    // ─────────────────────────────────────────────────────────────────────
-
+    /**
+     * Runs every 30 minutes.
+     * Adjust fixedDelay / cron to taste — the job is idempotent.
+     */
+    @Scheduled(fixedDelay = 30 * 60 * 1_000)   // 30 min
     @PostConstruct
     public void reconcile() {
-        log.info("🔄 AutomationOrchestrator startup reconciliation...");
-        planCache.warmAll();
-        int recompiled = 0;
-        for (Automation a : automationRepository.findEnabledForExecution()) {
-            if (planCache.get(a.getId()) == null) {
-                log.warn("🔧 Auto-recompiling missing plan for '{}'", a.getName());
-                try {
-                    ExecutionPlan plan = planCompiler.compile(a);
-                    updatePlan(a.getId(), plan);
-                    stateStore.writePlan(a.getId(), plan);
-                    recompiled++;
-                } catch (Exception e) {
-                    log.error("Failed to recompile '{}'", a.getName(), e);
-                }
+
+        List<Automation> enabled = automationRepository.findEnabledForExecution();
+        if (enabled.isEmpty()) return;
+
+        AtomicInteger recompiled = new AtomicInteger();
+        AtomicInteger failed = new AtomicInteger();
+
+        for (Automation automation : enabled) {
+            try {
+                recompileIfNeeded(automation, recompiled);
+            } catch (Exception e) {
+                failed.incrementAndGet();
+                log.error("❌ [reconciler] Failed for '{}' ({}): {}",
+                        automation.getName(), automation.getId(), e.getMessage(), e);
             }
         }
-        log.info("✅ Reconciliation complete — {} plans warmed, {} auto-recompiled",
-                planCache.size(), recompiled);
+
+        if (recompiled.get() > 0 || failed.get() > 0) {
+            log.info("🔄 [reconciler] Done — {}/{} recompiled, {} failed",
+                    recompiled.get(), enabled.size(), failed.get());
+        } else {
+            log.debug("✅ [reconciler] All {} plans are fresh", enabled.size());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Core logic
+    // ─────────────────────────────────────────────────────────────────────
+
+    private void recompileIfNeeded(Automation automation, AtomicInteger counter) {
+
+        String id = automation.getId();
+        String name = automation.getName();
+
+        ExecutionPlan cached = planCache.get(id);
+
+        // ── Case 1: plan is completely absent ────────────────────────────
+        if (cached == null) {
+            log.warn("⚠️ [reconciler] Plan missing for '{}' — recompiling", name);
+            recompile(automation, "missing from cache");
+            counter.incrementAndGet();
+            return;
+        }
+
+        // ── Case 2: plan is present but stale ────────────────────────────
+        // automation.getUpdateDate() is set by your save service whenever the
+        // user edits the automation. compiledAt is stamped by the compiler.
+        Date updatedAt = automation.getUpdateDate();
+        Date compiledAt = cached.getCompiledAt();
+
+        if (isStale(updatedAt, compiledAt)) {
+            log.warn("⚠️ [reconciler] Plan stale for '{}' (DB={}, plan={}) — recompiling",
+                    name, updatedAt, compiledAt);
+            recompile(automation, "stale (DB newer than cache)");
+            counter.incrementAndGet();
+        }
+    }
+
+    /**
+     * Compiles and pushes the plan into both the in-process cache and Redis.
+     * Mirrors what AutomationService does on save — kept in one method so the
+     * write path is identical regardless of who triggers it.
+     */
+    private void recompile(Automation automation, String reason) {
+        String id = automation.getId();
+        String name = automation.getName();
+
+        ExecutionPlan plan = planCompiler.compile(automation);
+
+        // Push to in-process cache + publish Redis invalidation to all nodes
+        updatePlan(id, plan);
+
+        // Persist plan blob to Redis so other nodes can warm from it on startup
+        stateStore.writePlan(id, plan);
+
+        log.info("✅ [reconciler] '{}' recompiled — reason: {}", name, reason);
+    }
+
+    /**
+     * Returns true when the DB record is newer than the compiled plan by more
+     * than a small clock-skew buffer.
+     * <p>
+     * The buffer (2 s) prevents a harmless race where the compiler stamps
+     * compiledAt a few milliseconds before the DB write's updatedAt is
+     * committed, causing a perpetual false-positive on every reconciler cycle.
+     */
+    private boolean isStale(Date updatedAt, Date compiledAt) {
+        if (updatedAt == null || compiledAt == null) return true;
+        long SKEW_BUFFER_MS = 2_000;
+        return updatedAt.getTime() > compiledAt.getTime() + SKEW_BUFFER_MS;
     }
 
 
