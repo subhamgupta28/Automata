@@ -1,4 +1,4 @@
-import React, {createContext, useContext, useEffect, useState} from "react";
+import React, {createContext, useContext, useEffect, useMemo, useState} from "react";
 import {getDevices} from "./apis.jsx";
 import {useAuth} from "../components/auth/AuthContext.jsx";
 import isEmpty from "../utils/Helper.jsx";
@@ -46,8 +46,10 @@ export const AppCacheProvider = ({children}) => {
         };
     }, [authLoading, user]); // 👈 depends on auth state
 
+    const contextValue = useMemo(() => ({devices, loading, error}), [devices, loading, error]);
+
     return (
-        <AppCacheContext.Provider value={{devices, loading, error}}>
+        <AppCacheContext.Provider value={contextValue}>
             {children}
         </AppCacheContext.Provider>
     );

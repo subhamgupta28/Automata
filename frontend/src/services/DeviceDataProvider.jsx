@@ -1,5 +1,5 @@
 // Single unified WebSocket provider — one STOMP connection, two topic subscriptions.
-import React, {createContext, useCallback, useContext, useEffect, useRef, useState} from 'react';
+import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
 import SockJS from "sockjs-client";
 import {Client} from "@stomp/stompjs";
 
@@ -57,8 +57,13 @@ export const DeviceDataProvider = ({children}) => {
         }
     }, []);
 
+    const contextValue = useMemo(
+        () => ({messages, alertMessages, sendMessage}),
+        [messages, alertMessages, sendMessage]
+    );
+
     return (
-        <WebSocketContext.Provider value={{messages, alertMessages, sendMessage}}>
+        <WebSocketContext.Provider value={contextValue}>
             {children}
         </WebSocketContext.Provider>
     );

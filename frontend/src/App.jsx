@@ -4,10 +4,11 @@ import {ThemeProvider} from "@mui/material/styles";
 import {darkTheme} from "./Theme.jsx";
 import {BrowserRouter} from "react-router-dom";
 import SideDrawer from "./components/custom_drawer/SideDrawer.jsx";
-import {AuthProvider} from "./components/auth/AuthContext.jsx";
+import {AuthProvider, useAuth} from "./components/auth/AuthContext.jsx";
 import {DeviceDataProvider, useDeviceLiveData} from "./services/DeviceDataProvider.jsx";
 import './utils/Glow.css'
 import StarfieldBackground from "./components/integrations/StarfieldBackground.jsx";
+import isEmpty from "./utils/Helper.jsx";
 
 function getBreathingClass(alertLevel) {
     switch (alertLevel) {
@@ -55,15 +56,34 @@ function AppContent() {
     );
 }
 
+function AuthenticatedApp() {
+    const {user, loading} = useAuth();
+
+    if (loading) return null;
+
+    if (isEmpty(user)) {
+        return (
+            <main style={{position: 'relative'}}>
+                <StarfieldBackground/>
+                <SideDrawer/>
+            </main>
+        );
+    }
+
+    return (
+        <DeviceDataProvider>
+            <StarfieldBackground/>
+            <AppContent/>
+        </DeviceDataProvider>
+    );
+}
+
 function App() {
     return (
         <ThemeProvider theme={darkTheme}>
             <BrowserRouter>
                 <AuthProvider>
-                    <DeviceDataProvider>
-                        <StarfieldBackground/>
-                        <AppContent/>
-                    </DeviceDataProvider>
+                    <AuthenticatedApp/>
                 </AuthProvider>
             </BrowserRouter>
         </ThemeProvider>

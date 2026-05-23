@@ -352,7 +352,7 @@ export const WeatherCard = React.memo(({id, data, isConnectable, selected}) => {
         <Card
             ref={cardRef}
             className="card-glow-container"
-            variant="outlined"
+            variant="elevated"
             sx={{
                 background: 'transparent',
                 backgroundColor: 'rgb(0 0 0 / 0%)',

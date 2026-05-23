@@ -454,7 +454,7 @@ export const MainNode = React.memo(({data, isConnectable}) => {
                         gap: '10px', /* Space between items */
                     }}>
                         {charts && charts.map((device, index) => (
-                            <ChartDetail deviceId={device.id} name={device.name} width={1400} height={360}
+                            <ChartDetail key={device.id} deviceId={device.id} name={device.name} width={1400} height={360}
                                          deviceAttributes={device.attributes}/>
                             // <BarChartComp key={device.id} chartDevice={device}/>
                         ))}

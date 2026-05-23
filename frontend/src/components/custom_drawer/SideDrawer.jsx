@@ -33,6 +33,7 @@ import {ReactFlowProvider} from "@xyflow/react";
 import {Dashboard, GridView, TrendingUp} from "@mui/icons-material";
 import AppIcon from "../../../public/icon-color.png"
 import AutomationLiveInspector from "../automation/AutomationInspector.jsx";
+import {ConfigurationView} from "../dashboard/ConfigurationView.jsx";
 
 // Lazy-load heavy route components so their JS+state is only in memory when visited
 const DeviceNodes = lazy(() => import("../home/DeviceNodes.jsx"));
@@ -40,7 +41,7 @@ const Devices = lazy(() => import("../Devices.jsx"));
 const MobileView = lazy(() => import("../dashboard/MobileView.jsx"));
 const AnalyticsView = lazy(() => import("../dashboard/AnalyticsView.jsx"));
 const AutomationAnalyticsView = lazy(() => import("../automation/AutomationAnalyticsView.jsx"));
-const ConfigurationView = lazy(() => import("../dashboard/ConfigurationView.jsx"));
+
 const ActionBoard = lazy(() => import("../action/ActionBoard.jsx"));
 const Exp = lazy(() => import("../dashboard/Exp.jsx"));
 const Welcome = lazy(() => import("../Welcome.jsx"));
@@ -323,9 +324,11 @@ export default function SideDrawer() {
                 </AppCacheProvider>
                 {/*</div>*/}
 
-                <SnackbarProvider maxSnack={3} preventDuplicate>
-                    <Notifications/>
-                </SnackbarProvider>
+                {!isEmpty(user) && (
+                    <SnackbarProvider maxSnack={3} preventDuplicate>
+                        <Notifications/>
+                    </SnackbarProvider>
+                )}
             </Box>
         </Box>
     );

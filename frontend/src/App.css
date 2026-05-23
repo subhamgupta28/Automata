@@ -8,7 +8,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 14px;
+    border-radius: 12px;
     border: 2px solid transparent;
     background: var(--gradient);
     background-attachment: fixed;
