@@ -272,13 +272,15 @@ const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, devic
 };
 
 const ChartDetail = memo(ChartDetailComponent, (prevProps, nextProps) => {
-    return (
-        prevProps.deviceId === nextProps.deviceId &&
-        prevProps.name === nextProps.name &&
-        prevProps.height === nextProps.height &&
-        prevProps.width === nextProps.width &&
-        JSON.stringify(prevProps.deviceAttributes) === JSON.stringify(nextProps.deviceAttributes)
-    );
+    if (prevProps.deviceId !== nextProps.deviceId) return false;
+    if (prevProps.name !== nextProps.name) return false;
+    if (prevProps.height !== nextProps.height) return false;
+    if (prevProps.width !== nextProps.width) return false;
+    const pa = prevProps.deviceAttributes;
+    const na = nextProps.deviceAttributes;
+    if (pa === na) return true;
+    if (!pa || !na || pa.length !== na.length) return false;
+    return pa.every((attr, i) => attr.key === na[i].key);
 });
 
 export default ChartDetail;

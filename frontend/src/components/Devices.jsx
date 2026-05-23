@@ -40,25 +40,12 @@ const StyledTableRow = styled(TableRow)(({theme}) => ({
 
 function DevicesComponent() {
     const {devices, loading, error} = useCachedDevices();
-    const [devicesData, setDevicesData] = useState([]);
+    const [devicesData, setDevicesData] = useState(null);
     const [openRow, setOpenRow] = useState("");
-    const [showInDashboard, setShowInDashboard] = useState(false);
-    const [openBackdrop, setOpenBackdrop] = useState(false);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
     useEffect(() => {
-        setOpenBackdrop(loading)
-        const fetchData = async () => {
-            try {
-
-                setDevicesData(devices);
-                setOpenBackdrop(loading)
-            } catch (err) {
-                console.error("Failed to fetch devices:", err);
-            }
-        };
-
-        fetchData();
+        if (devices) setDevicesData(devices);
     }, [devices]);
 
     const handleChange = (device, attribute, checked) => {
@@ -305,7 +292,7 @@ function DevicesComponent() {
             </TableContainer>
             <Backdrop
                 sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
-                open={openBackdrop}
+                open={loading}
             >
                 <CircularProgress color="inherit"/>
             </Backdrop>

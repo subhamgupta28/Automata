@@ -1,25 +1,16 @@
 // WiFiSettings.tsx
-import React, { useEffect, useState } from 'react';
-import {
-    Box,
-    Button,
-    Card,
-    CardContent, Chip,
-    Grid, Switch,
-    TextField,
-    Typography,
-} from '@mui/material';
-import axios from 'axios';
+import React, {useEffect, useState} from 'react';
+import {Box, Button, Card, CardContent, Grid, Switch, TextField, Typography,} from '@mui/material';
 import {getWiFiDetails, saveWiFiList} from "../../services/apis.jsx";
 import Paper from "@mui/material/Paper";
 import {styled} from "@mui/material/styles";
-import TrafficChart from "../charts/TrafficChart.jsx";
+import {WLEDDiscovery} from "../../services/WLEDDiscovery.jsx";
 
 const WiFiSettings = () => {
     const [wifiList, setWifiList] = useState([
-        { ssid: '', password: '' },
-        { ssid: '', password: '' },
-        { ssid: '', password: '' },
+        {ssid: '', password: ''},
+        {ssid: '', password: ''},
+        {ssid: '', password: ''},
     ]);
     const [loading, setLoading] = useState(false);
 
@@ -28,9 +19,9 @@ const WiFiSettings = () => {
             const response = await getWiFiDetails();
             const data = response;
             setWifiList([
-                { ssid: data.wn1 || '', password: data.wp1 || '' },
-                { ssid: data.wn2 || '', password: data.wp2 || '' },
-                { ssid: data.wn3 || '', password: data.wp3 || '' },
+                {ssid: data.wn1 || '', password: data.wp1 || ''},
+                {ssid: data.wn2 || '', password: data.wp2 || ''},
+                {ssid: data.wn3 || '', password: data.wp3 || ''},
             ]);
         } catch (error) {
             console.error('Error fetching WiFi list:', error);
@@ -108,9 +99,9 @@ const WiFiSettings = () => {
     );
 };
 
-const SystemSetting = () =>{
+const SystemSetting = () => {
 
-    return(
+    return (
         <Card>
             <CardContent>
                 Shutdown Safely<Switch></Switch>
@@ -120,36 +111,28 @@ const SystemSetting = () =>{
     )
 }
 
-const Item = styled(Paper)(({ theme }) => ({
+const Item = styled(Paper)(({theme}) => ({
     backgroundColor: '#fff',
     ...theme.typography.body2,
     padding: theme.spacing(1),
     textAlign: 'center',
-    height:'95%',
+    height: '95%',
     color: (theme.vars ?? theme).palette.text.secondary,
     ...theme.applyStyles('dark', {
         backgroundColor: '#1A2027',
     }),
 }));
-export function ConfigurationView(){
 
-    return(
-        <div style={{paddingTop: '10px', paddingRight:'12px', paddingLeft:'12px', height:'100dvh'}}>
-            <Grid container spacing={1}>
-                <Grid size={6}>
-                    <WiFiSettings/>
-                </Grid>
-                <Grid size={6}>
-                    {/*<TrafficChart />*/}
-                </Grid>
-                <Grid size={6}>
-                    <SystemSetting/>
-                </Grid>
+export function ConfigurationView() {
 
-                <Grid size={6}>
-                    <Item></Item>
-                </Grid>
-            </Grid>
+    return (
+        <div style={{paddingTop: '10px', paddingRight: '12px', paddingLeft: '12px', height: '100dvh'}}>
+
+            <WiFiSettings/>
+            <WLEDDiscovery/>
+
+            <SystemSetting/>
+
 
         </div>
     )

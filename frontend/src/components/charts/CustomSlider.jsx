@@ -1,5 +1,5 @@
 import {debounce, Slider} from "@mui/material";
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import {sendAction} from "../../services/apis.jsx";
 import {styled} from "@mui/material/styles";
 
@@ -49,29 +49,29 @@ export const CustomSlider = React.memo(({value, deviceId, displayName, data, typ
     useEffect(() => {
         setNum(value ? value : 0);
     }, [value]);
-    const handleChange = debounce((e) => {
-        // console.log("handleChange", e.target.value);
-        const send = async () => {
-            try {
-                let act = data.key;
-                let val = e.target.value;
-                if (val) {
-
-                    setNum(val);
-                    await sendAction(deviceId, {
-                        "key": data.key,
-                        [act]: e.target.value,
-                        "device_id": deviceId,
-                        direct: true
-                    }, type);
+    const handleChange = useMemo(
+        () => debounce((e) => {
+            const send = async () => {
+                try {
+                    let act = data.key;
+                    let val = e.target.value;
+                    if (val) {
+                        setNum(val);
+                        await sendAction(deviceId, {
+                            "key": data.key,
+                            [act]: e.target.value,
+                            "device_id": deviceId,
+                            direct: true
+                        }, type);
+                    }
+                } catch (err) {
+                    console.error("Action send failed", err);
                 }
-
-            } catch (err) {
-                console.error("Action send failed", err);
-            }
-        };
-        send();
-    }, 100);
+            };
+            send();
+        }, 100),
+        [deviceId, data, type]
+    );
 
     return (
         <div className="nodrag">
