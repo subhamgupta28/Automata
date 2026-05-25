@@ -660,3 +660,8 @@ export const deleteAutomationSnooze = async (id) => {
     const response = await api.delete(`automations/${id}/snooze`);
     return response.data; // { success: boolean, message: string }
 };
+
+export const fetchOutdoorWeather = async () => {
+    const response = await api.get(`utils/currentWeather`);
+    return response.data;
+};

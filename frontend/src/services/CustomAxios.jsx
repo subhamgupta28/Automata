@@ -11,12 +11,12 @@ const api = axios.create({
     },
 });
 
-const apiV2 = axios.create({
-    baseURL: BASE_URL + "v2/",
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
+// const apiV2 = axios.create({
+//     baseURL: BASE_URL + "v2/",
+//     headers: {
+//         'Content-Type': 'application/json',
+//     },
+// });
 
 const getStoredUser = () =>
     JSON.parse(localStorage.getItem("user") || "{}");
@@ -32,13 +32,13 @@ api.interceptors.request.use(config => {
     return config;
 });
 
-apiV2.interceptors.request.use(config => {
-    const token = getToken();
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+// apiV2.interceptors.request.use(config => {
+//     const token = getToken();
+//     if (token) {
+//         config.headers.Authorization = `Bearer ${token}`;
+//     }
+//     return config;
+// });
 
 let isRefreshing = false;
 let failedQueue = [];

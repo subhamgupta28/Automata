@@ -1,4 +1,3 @@
-import {WeatherCard} from "./WeatherCard.jsx";
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {getVirtualDeviceList} from "../../services/apis.jsx";
 import {
@@ -20,11 +19,12 @@ import NodeInspector from "../home/NodeInspector.jsx";
 import {Edit} from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
 import AutomationSummaryBar from "./AutomationAnalytics.jsx";
+import {WeatherCardV2} from "./WeatherCardV2.jsx";
 
 
 const nodeTypes = {
     virtualDeviceNode: VirtualDevice,
-    weatherNode: WeatherCard,
+    weatherNode: WeatherCardV2,
     energyNode: EnergyNode,
     // energyChildNode: EnergyChildNode
 };
