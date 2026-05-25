@@ -2,6 +2,7 @@ package dev.automata.automata.controller;
 
 import dev.automata.automata.dto.WledPresets;
 import dev.automata.automata.model.Notification;
+import dev.automata.automata.modules.Utils;
 import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.NotificationService;
 import lombok.AllArgsConstructor;
@@ -19,6 +20,16 @@ public class UtilityController {
 
     private final MainService mainService;
     private final NotificationService notificationService;
+    private final Utils utils;
+
+    @GetMapping("currentWeather")
+    public ResponseEntity<?> fetchOutdoorWeather() {
+        try {
+            return ResponseEntity.ok(utils.getCurrentWeather());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @GetMapping("test/{type}")
     public ResponseEntity<?> testNotify(@PathVariable String type) {

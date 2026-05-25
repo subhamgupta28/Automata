@@ -4,13 +4,8 @@ import React from 'react';
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
 import TopBar, {StatsRow} from "./SmartHomeDashboard.jsx";
-import PeopleIcon from "@mui/icons-material/People";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
-import WindowIcon from "@mui/icons-material/Window";
-import HomeIcon from "@mui/icons-material/Home";
-import AlarmIcon from "@mui/icons-material/Alarm";
-import GridViewIcon from "@mui/icons-material/GridView";
-import NotificationsIcon from "@mui/icons-material/Notifications";
+import {WeatherCardV2} from "../v2/WeatherCardV2.jsx";
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
     let color = theme.palette.success.main;
@@ -101,15 +96,40 @@ const Exp = () => {
 
             <StatsRow
                 items={[
-                    {icon: <NotificationsIcon/>, label: "Temperature", value: "6"},
-                    {icon: <GridViewIcon/>, label: "Temperature", value: "4"},
-                    {icon: <AlarmIcon/>, label: "Temperature", value: "08:00"},
-                    {icon: <HomeIcon/>, label: "Temperature", value: "Home"},
-                    {icon: <WindowIcon/>, label: "Temperature", value: "1"},
-                    {icon: <LockOpenIcon/>, label: "Temperature", value: ""},
-                    {icon: <PeopleIcon/>, label: "Temperature", value: ""},
+                    {icon: <WbSunnyIcon sx={{fontSize: 48, color: "#f9a825"}}/>, label: "Temperature", value: "36 °C"},
+                    {icon: <OpacityIcon fontSize="large"/>, label: "Humidity", value: "40%"},
+                    {icon: <AirIcon/>, label: "AQI", value: "56"},
+                    {icon: <Co2Icon/>, label: "Co2", value: "545"},
+                    {icon: <ScienceIcon/>, label: "TVOC", value: "0.354"},
+                    {icon: <LockOpenIcon/>, label: "Home", value: "Unlocked"},
+                    {icon: <Lightbulb/>, label: "Lux", value: "20"},
                     // ...
                 ]}
+            />
+            <WeatherCardV2
+                id={id}
+                data={{
+                    value: {
+                        // ...originalNodeData,           // attributes, deviceIds, width, height, etc.
+                        topBarProps: {
+                            userName: "Subham",
+                            userRoom: "Living room",
+                            alarm: "08:00",
+                            notifications: 6,
+                            scenes: 4,
+                            occupancy: 2,
+                            location: "Home",
+                            homeStats: {
+                                lightsOn: 3,
+                                windowsOpen: 1,
+                                security: "Armed home",
+                                doorLocked: false,
+                            },
+                        },
+                        // optional: fully custom stats row from live data
+                        // statsItemsFn: (live) => [{ icon: ..., label: "CO₂", value: live.co2 }],
+                    },
+                }}
             />
             {/*<RoomsGrid/>*/}
             {/*<SmartHomeDashboard2/>*/}
