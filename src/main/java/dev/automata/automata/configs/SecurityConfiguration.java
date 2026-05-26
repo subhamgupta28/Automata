@@ -71,6 +71,9 @@ public class SecurityConfiguration {
             "/api/v1/action/sendAction/**",
             "/api/v1/utils/test/**",
             "/api/v1/main/healthCheck/**",
+            // MCP (Model Context Protocol) endpoints
+            "/sse",
+            "/mcp/**",
     };
 
     private final JwtAuthenticationFilter jwtAuthFilter;
