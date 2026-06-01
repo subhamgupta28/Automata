@@ -1,6 +1,5 @@
 package dev.automata.automata.websocket;
 
-import dev.automata.automata.model.Data;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.service.MainService;
@@ -41,7 +40,7 @@ public class WebsocketEventListener {
             map.put("deviceConfig", device.get("deviceConfig"));
             messagingTemplate.convertAndSend("/topic/data", map);
             var de = (Device) device.get("deviceConfig");
-            notificationService.sendNotification(de.getName()+" went offline", "low");
+            notificationService.sendNotification(de.getName() + " went offline", "low");
         }
 
     }
