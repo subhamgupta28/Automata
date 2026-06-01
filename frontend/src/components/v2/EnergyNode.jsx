@@ -67,7 +67,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                 ...focusDevices.map(d => [
                     d.name,
                     "System",
-                    (d["lastData"] !== null) ? parseInt(d['lastData']['power']) : 20
+                    d?.lastData?.power != null ? parseInt(d.lastData.power) : 20
                 ]),
                 ...grid,
                 ...otherDevices.map(d => [
