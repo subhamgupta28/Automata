@@ -3,12 +3,12 @@ package dev.automata.automata.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.dto.DataDto;
-import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.dto.RegisterDevice;
-import dev.automata.automata.model.*;
+import dev.automata.automata.model.AttributeType;
+import dev.automata.automata.model.Device;
+import dev.automata.automata.model.Status;
 import dev.automata.automata.service.AnalyticsService;
 import dev.automata.automata.service.MainService;
-import dev.automata.automata.service.MqttService;
 import dev.automata.automata.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -17,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.support.MessageBuilder;
@@ -26,7 +25,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RequestMapping("/api/v1/main")
 @Controller
