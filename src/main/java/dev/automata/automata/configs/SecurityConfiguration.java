@@ -83,6 +83,7 @@ public class SecurityConfiguration {
             "/api/v1/main/healthCheck/**",
             // MCP (Model Context Protocol) endpoints
             "/sse",
+            "/sse/**",
             "/mcp/**",
     };
 
