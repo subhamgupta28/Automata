@@ -4,6 +4,7 @@ import dev.automata.automata.model.Device;
 import dev.automata.automata.service.AutomationService;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeviceTools {
@@ -21,6 +23,7 @@ public class DeviceTools {
 
     @Tool(description = "List all registered IoT devices with their name, type, category, host, status and last data")
     public List<Device> listDevices() {
+        log.info("DeviceTools: listDevices");
         return mainService.getAllDevice();
     }
 
@@ -28,6 +31,7 @@ public class DeviceTools {
     public Device getDeviceById(
             @ToolParam(description = "The unique device ID") String deviceId
     ) {
+        log.info("DeviceTools: getDeviceById deviceId [{}]", deviceId);
         return mainService.getDevice(deviceId);
     }
 
@@ -35,6 +39,7 @@ public class DeviceTools {
     public Map<String, Object> getDeviceData(
             @ToolParam(description = "The unique device ID") String deviceId
     ) {
+        log.info("DeviceTools: getDeviceData deviceId [{}]", deviceId);
         return mainService.getLastData(deviceId);
     }
 
@@ -78,7 +83,7 @@ public class DeviceTools {
         payload.put(key, value);          // dispatcher expects key→value entry (e.g. "power"→"1")
         payload.put("direct", true);
         payload.put("deviceId", deviceId);
-
+        log.info("DeviceTools: sendDeviceCommand payload [{}]", payload);
         return automationService.handleAction(deviceId, payload, deviceType, "mcp");
     }
 
@@ -89,13 +94,13 @@ public class DeviceTools {
      */
     @Tool(description = """
             Send a command specifically to a WLED LED strip or ring light.
-            Common keys: 'power' (0/1), 'brightness' (0-255), 'color' (#RRGGBB),
+            Common keys: 'onOff' (false/true), 'bright' (0-255), 'color' (#RRGGBB),
             'effect' (effect index), 'preset' (preset index).
             The device type is automatically set to WLED.
             """)
     public String sendWledCommand(
             @ToolParam(description = "The unique WLED device ID") String deviceId,
-            @ToolParam(description = "The attribute key (e.g. 'power', 'brightness', 'color', 'effect', 'preset')") String key,
+            @ToolParam(description = "The attribute key (e.g. 'onOff', 'bright', 'color', 'effect', 'preset')") String key,
             @ToolParam(description = "The value to set") String value
     ) {
         Map<String, Object> payload = new HashMap<>();
@@ -103,6 +108,7 @@ public class DeviceTools {
         payload.put(key, value);
         payload.put("deviceId", deviceId);
 
+        log.info("DeviceTools: sendWledCommand payload [{}]", payload);
         // "WLED" type is intercepted at the top of handleAction() → handleWLED()
         return automationService.handleAction(deviceId, payload, "WLED", "mcp");
     }

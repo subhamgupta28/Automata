@@ -61,6 +61,7 @@ public class SecurityConfiguration {
             "/actuator/metrics/**", // for root
             "/ws/**",
             "/ws",
+            "/ws/info/**",
             "/webhook/**",
             "/exp",
 //            "/api/v1/virtual/**",
@@ -83,6 +84,7 @@ public class SecurityConfiguration {
             "/api/v1/main/healthCheck/**",
             // MCP (Model Context Protocol) endpoints
             "/sse",
+            "/sse/**",
             "/mcp/**",
     };
 
@@ -134,45 +136,53 @@ public class SecurityConfiguration {
         return http.build();
     }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        // Browser origins (with credentials)
-        CorsConfiguration browserConfig = new CorsConfiguration();
-        browserConfig.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://localhost:8010",
-                "http://192.168.1.54:8010",
-                "http://raspberry.local:8010",
-                "https://automata.realsubhamgupta.in",
-                "http://automata.realsubhamgupta.in"
-        ));
-        browserConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        browserConfig.setAllowedHeaders(List.of("*"));
-        browserConfig.setAllowCredentials(true);
-        browserConfig.setMaxAge(3600L);
-
-        // Device/ESP32 endpoints — no origin restriction
-        CorsConfiguration deviceConfig = new CorsConfiguration();
-        deviceConfig.addAllowedOriginPattern("*");
-        deviceConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        deviceConfig.setAllowedHeaders(List.of("*"));
-        deviceConfig.setAllowCredentials(false); // can't use credentials with wildcard
-        deviceConfig.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // Device endpoints first — more specific paths
-        source.registerCorsConfiguration("/api/v1/main/register/**", deviceConfig);
-        source.registerCorsConfiguration("/api/v1/main/register", deviceConfig);
-        source.registerCorsConfiguration("/api/v1/main/updateDevice", deviceConfig);
-        source.registerCorsConfiguration("/api/v1/main/serverCreds/**", deviceConfig);
-        source.registerCorsConfiguration("/api/v1/action/**", deviceConfig);
-        source.registerCorsConfiguration("/webhook/**", deviceConfig);
-        source.registerCorsConfiguration("/ws/**", deviceConfig);
-        // Browser config catches everything else
-        source.registerCorsConfiguration("/**", browserConfig);
-
-        return source;
-    }
+    //    @Bean
+//    public CorsConfigurationSource corsConfigurationSource() {
+//        // Browser origins (with credentials)
+//        CorsConfiguration browserConfig = new CorsConfiguration();
+//        browserConfig.setAllowedOrigins(List.of(
+//                "http://localhost:5173",
+//                "http://localhost:8010",
+//                "http://192.168.1.54:8010",
+//                "http://raspberry.local:8010",
+//                "https://automata.realsubhamgupta.in",
+//                "http://automata.realsubhamgupta.in"
+//        ));
+//        browserConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+//        browserConfig.setAllowedHeaders(List.of("*"));
+//        browserConfig.setAllowCredentials(true);
+//        browserConfig.setMaxAge(3600L);
+//
+//        // Device/ESP32 endpoints — no origin restriction
+//        CorsConfiguration deviceConfig = new CorsConfiguration();
+//        deviceConfig.addAllowedOriginPattern("*");
+//        deviceConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+//        deviceConfig.setAllowedHeaders(List.of("*"));
+//        deviceConfig.setAllowCredentials(false); // can't use credentials with wildcard
+//        deviceConfig.setMaxAge(3600L);
+//
+//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+//        // Device endpoints first — more specific paths
+//        source.registerCorsConfiguration("/api/v1/main/register/**", deviceConfig);
+//        source.registerCorsConfiguration("/api/v1/main/register", deviceConfig);
+//        source.registerCorsConfiguration("/api/v1/main/updateDevice", deviceConfig);
+//        source.registerCorsConfiguration("/api/v1/main/serverCreds/**", deviceConfig);
+//        source.registerCorsConfiguration("/api/v1/action/**", deviceConfig);
+//        source.registerCorsConfiguration("/webhook/**", deviceConfig);
+//        source.registerCorsConfiguration("/mcp", deviceConfig);
+//        source.registerCorsConfiguration("/sse", deviceConfig);
+//        source.registerCorsConfiguration("/mcp/**", deviceConfig);
+//        source.registerCorsConfiguration("/sse/**", deviceConfig);
+//        source.registerCorsConfiguration("/mcp/message", deviceConfig);
+//        source.registerCorsConfiguration("/mcp/message/**", deviceConfig);
+//        source.registerCorsConfiguration("/ws/**", deviceConfig);
+//        source.registerCorsConfiguration("/ws/info/**", deviceConfig);
+//        // Browser config catches everything else
+//        source.registerCorsConfiguration("/**", browserConfig);
+//        source.registerCorsConfiguration("*", browserConfig);
+//
+//        return source;
+//    }
 //    @Bean
 //    CorsConfigurationSource corsConfigurationSource() {
 //        CorsConfiguration configuration = new CorsConfiguration();
@@ -187,4 +197,14 @@ public class SecurityConfiguration {
 //
 //        return source;
 //    }
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("*"));
+        configuration.setAllowedMethods(List.of("*"));
+        configuration.setAllowedHeaders(List.of("*"));
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 }
