@@ -94,13 +94,13 @@ public class DeviceTools {
      */
     @Tool(description = """
             Send a command specifically to a WLED LED strip or ring light.
-            Common keys: 'power' (0/1), 'brightness' (0-255), 'color' (#RRGGBB),
+            Common keys: 'onOff' (false/true), 'bright' (0-255), 'color' (#RRGGBB),
             'effect' (effect index), 'preset' (preset index).
             The device type is automatically set to WLED.
             """)
     public String sendWledCommand(
             @ToolParam(description = "The unique WLED device ID") String deviceId,
-            @ToolParam(description = "The attribute key (e.g. 'power', 'brightness', 'color', 'effect', 'preset')") String key,
+            @ToolParam(description = "The attribute key (e.g. 'onOff', 'bright', 'color', 'effect', 'preset')") String key,
             @ToolParam(description = "The value to set") String value
     ) {
         Map<String, Object> payload = new HashMap<>();
