@@ -136,6 +136,7 @@ public class SecurityConfiguration {
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost:8010",
+                "http://192.168.1.54:8010",
                 "http://raspberry.local:8010",
                 "https://automata.realsubhamgupta.in",
                 "http://automata.realsubhamgupta.in"
