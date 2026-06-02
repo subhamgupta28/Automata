@@ -74,6 +74,7 @@ public class SecurityConfiguration {
             "/topic/**",
             "/queue/**",
             "/user/**",
+            "/api/v1/main/register",
             "/api/v1/main/register/**",
             "/api/v1/main/serverCreds/**",
             "/api/v1/action/sendAction/**",
@@ -112,6 +113,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(req ->
                         req.requestMatchers(WHITE_LIST_URL)
                                 .permitAll()
+                                .requestMatchers(new IpAddressMatcher("192.168.1.0/16")).permitAll()
+                                .requestMatchers(new IpAddressMatcher("127.0.0.1")).permitAll()
                                 .anyRequest()
                                 .authenticated()
 
@@ -132,8 +135,9 @@ public class SecurityConfiguration {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
+        // Browser origins (with credentials)
+        CorsConfiguration browserConfig = new CorsConfiguration();
+        browserConfig.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "http://localhost:8010",
                 "http://192.168.1.54:8010",
@@ -141,13 +145,31 @@ public class SecurityConfiguration {
                 "https://automata.realsubhamgupta.in",
                 "http://automata.realsubhamgupta.in"
         ));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
+        browserConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        browserConfig.setAllowedHeaders(List.of("*"));
+        browserConfig.setAllowCredentials(true);
+        browserConfig.setMaxAge(3600L);
+
+        // Device/ESP32 endpoints — no origin restriction
+        CorsConfiguration deviceConfig = new CorsConfiguration();
+        deviceConfig.addAllowedOriginPattern("*");
+        deviceConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        deviceConfig.setAllowedHeaders(List.of("*"));
+        deviceConfig.setAllowCredentials(false); // can't use credentials with wildcard
+        deviceConfig.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
+        // Device endpoints first — more specific paths
+        source.registerCorsConfiguration("/api/v1/main/register/**", deviceConfig);
+        source.registerCorsConfiguration("/api/v1/main/register", deviceConfig);
+        source.registerCorsConfiguration("/api/v1/main/updateDevice", deviceConfig);
+        source.registerCorsConfiguration("/api/v1/main/serverCreds/**", deviceConfig);
+        source.registerCorsConfiguration("/api/v1/action/**", deviceConfig);
+        source.registerCorsConfiguration("/webhook/**", deviceConfig);
+        source.registerCorsConfiguration("/ws/**", deviceConfig);
+        // Browser config catches everything else
+        source.registerCorsConfiguration("/**", browserConfig);
+
         return source;
     }
 //    @Bean
