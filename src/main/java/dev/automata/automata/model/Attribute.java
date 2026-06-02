@@ -1,12 +1,11 @@
 package dev.automata.automata.model;
 
-import org.bson.types.ObjectId;
-import org.springframework.data.annotation.Id;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Map;
-import java.util.UUID;
 
 @Document(collection = "attribute")
 @Getter
@@ -15,6 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Builder
 @ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Attribute {
     @Id
     private String id;
