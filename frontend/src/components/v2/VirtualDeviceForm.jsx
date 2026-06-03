@@ -1,15 +1,18 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {
+    Alert,
     Box,
-    TextField,
     Button,
+    Card,
     Chip,
-    Select,
-    MenuItem,
-    InputLabel,
+    CircularProgress,
     FormControl,
-    OutlinedInput,
-    Typography, CircularProgress, Alert, Card, Switch,
+    InputLabel,
+    MenuItem,
+    Select,
+    Switch,
+    TextField,
+    Typography,
 } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
@@ -42,7 +45,6 @@ const DashboardEditor = ({change, existingDevice}) => {
         tag: "Other",
         height: 200,
         width: 200,
-        devices: [],
         deviceIds: [],
         attributes: {},
     });
@@ -85,11 +87,11 @@ const DashboardEditor = ({change, existingDevice}) => {
 
         setSelectedDeviceIds(deviceIds);
 
-        console.log("form",{
+        console.log("form", {
             ...existingDevice,
             deviceIds,
             attributes: normalizedAttributes,
-        } )
+        })
         setForm(prev => ({
             ...prev,
             ...existingDevice,
@@ -99,17 +101,13 @@ const DashboardEditor = ({change, existingDevice}) => {
     }, [existingDevice, devices, deviceMap]);
 
 
-
-
-
-
     const handleChange = (key, value) => {
         setForm((prev) => ({...prev, [key]: value}));
 
     };
 
     const handleDeviceChange = (ids) => {
-        const newAttributes = { ...form.attributes };
+        const newAttributes = {...form.attributes};
 
         ids.forEach(id => {
             if (!newAttributes[id]) newAttributes[id] = [];
@@ -217,9 +215,9 @@ const DashboardEditor = ({change, existingDevice}) => {
                     value={selectedDeviceIds}
                     onChange={(e) => handleDeviceChange(e.target.value)}
                     renderValue={(selected) => (
-                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                        <Box sx={{display: "flex", flexWrap: "wrap", gap: 0.5}}>
                             {selected.map(id => (
-                                <Chip key={id} label={deviceMap[id]?.name} />
+                                <Chip key={id} label={deviceMap[id]?.name}/>
                             ))}
                         </Box>
                     )}
@@ -245,7 +243,7 @@ const DashboardEditor = ({change, existingDevice}) => {
                             handleAttributeChange(deviceId, e.target.value)
                         }
                         renderValue={(selected) => (
-                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                            <Box sx={{display: "flex", flexWrap: "wrap", gap: 0.5}}>
                                 {selected.map(attrId => {
                                     const attr = deviceMap[deviceId]?.attributes
                                         ?.find(a => a.id === attrId);
@@ -274,13 +272,14 @@ const DashboardEditor = ({change, existingDevice}) => {
             </Button>
             {selectedDeviceIds.length !== 0 && (
                 <div>
-                    <Button variant="contained" size="small" fullWidth onClick={handleClear} style={{marginTop: '20px'}}>
+                    <Button variant="contained" size="small" fullWidth onClick={handleClear}
+                            style={{marginTop: '20px'}}>
                         Clear Selection
                     </Button>
-                    <Typography style={{marginTop:'14px'}}>
+                    <Typography style={{marginTop: '14px'}}>
                         Show in dashboard:
                         <Switch defaultChecked size="small"
-                                checked={existingDevice.active}
+                                checked={existingDevice?.active}
                                 onChange={handleDisable}/>
                     </Typography>
 
@@ -313,7 +312,8 @@ const VirtualDeviceForm = () => {
     return (
         <Box p={3} style={{height: '100vh'}}>
 
-            <Stack direction="row" style={{height: '80%', marginTop:'20px'}} divider={<Divider orientation="vertical" flexItem/>}
+            <Stack direction="row" style={{height: '80%', marginTop: '20px'}}
+                   divider={<Divider orientation="vertical" flexItem/>}
                    spacing={2}>
 
                 <div style={{width: '30%'}}>

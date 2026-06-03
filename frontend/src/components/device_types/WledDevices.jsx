@@ -40,6 +40,7 @@ export default function WledDevices({devices, messages}) {
 const Wled = ({device, messages, lastData}) => {
     // console.log("wled", lastData)
     const [liveData, setLiveData] = useState(lastData);
+    const [slider, setSlider] = useState(null);
     const [anchorEl, setAnchorEl] = React.useState(null);
 
 
@@ -64,7 +65,9 @@ const Wled = ({device, messages, lastData}) => {
             else if (attr.type.startsWith('ACTION|SWITCH')) grouped.switchButtons.push(attr);
             else if (attr.type.startsWith('ACTION|PRESET')) grouped.presetButtons.push(attr);
         }
-        // console.log("grouped", grouped, lastData)
+        const dt = grouped.sliderData.filter(s => s.deviceId = device.id);
+        setSlider(dt[0])
+        // console.log("grouped", dt[0]);
 
         return grouped;
     }, [device.attributes, lastData]);
@@ -85,9 +88,22 @@ const Wled = ({device, messages, lastData}) => {
             />
 
             {switchButtons.map((s) => (
-                <LightBulbCard onClick={handleClick} key={s.key} data={s} lastOnline={device.lastOnline}
-                               value={liveData?.[s.key]}
-                               name={device.name} deviceId={device.id} type={device.type}/>
+                <div>
+                    <LightBulbCard onClick={handleClick} key={s.key} data={s} lastOnline={device.lastOnline}
+                                   value={liveData?.[s.key]}
+                                   name={device.name} deviceId={device.id} type={device.type}/>
+                    <div style={{paddingLeft: '8px', paddingRight: '8px'}}>
+                        <CustomSlider
+                            key={slider?.key}
+                            value={liveData?.[slider?.key]}
+                            deviceId={device.id}
+                            type={device.type}
+                            data={slider}
+                            displayName=""
+                        />
+                    </div>
+
+                </div>
             ))}
 
         </div>

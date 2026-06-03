@@ -96,13 +96,13 @@ const Exp = () => {
 
             <StatsRow
                 items={[
-                    {icon: <WbSunnyIcon sx={{fontSize: 48, color: "#f9a825"}}/>, label: "Temperature", value: "36 °C"},
-                    {icon: <OpacityIcon fontSize="large"/>, label: "Humidity", value: "40%"},
-                    {icon: <AirIcon/>, label: "AQI", value: "56"},
-                    {icon: <Co2Icon/>, label: "Co2", value: "545"},
-                    {icon: <ScienceIcon/>, label: "TVOC", value: "0.354"},
+                    // {icon: <WbSunnyIcon sx={{fontSize: 48, color: "#f9a825"}}/>, label: "Temperature", value: "36 °C"},
+                    // {icon: <OpacityIcon fontSize="large"/>, label: "Humidity", value: "40%"},
+                    // {icon: <AirIcon/>, label: "AQI", value: "56"},
+                    // {icon: <Co2Icon/>, label: "Co2", value: "545"},
+                    // {icon: <ScienceIcon/>, label: "TVOC", value: "0.354"},
                     {icon: <LockOpenIcon/>, label: "Home", value: "Unlocked"},
-                    {icon: <Lightbulb/>, label: "Lux", value: "20"},
+                    // {icon: <Lightbulb/>, label: "Lux", value: "20"},
                     // ...
                 ]}
             />
