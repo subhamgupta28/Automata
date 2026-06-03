@@ -74,7 +74,7 @@ api.interceptors.response.use(
             originalRequest._retry = true;
             isRefreshing = true;
             try {
-                const {data} = await axios.post(BASE_URL + "auth/refresh-token", {}, {
+                const {data} = await axios.post(BASE_URL + "v1/auth/refresh-token", {}, {
                     headers: {
                         'Authorization': 'Bearer ' + getRefreshToken(), // Specify the content type if necessary
                         // Add any other headers if needed, e.g., Authorization

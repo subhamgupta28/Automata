@@ -43,7 +43,7 @@ const HomeAssistantSlider = styled(Slider)({
     },
 });
 
-export const CustomSlider = React.memo(({value, deviceId, displayName, data, type})=> {
+export const CustomSlider = React.memo(({value, deviceId, displayName, data, type}) => {
     const [num, setNum] = useState(value ? value : 0)
 
     useEffect(() => {
@@ -51,12 +51,14 @@ export const CustomSlider = React.memo(({value, deviceId, displayName, data, typ
     }, [value]);
     const handleChange = useMemo(
         () => debounce((e) => {
+            let val = e.target.value;
+            setNum(val);
             const send = async () => {
                 try {
                     let act = data.key;
-                    let val = e.target.value;
+
                     if (val) {
-                        setNum(val);
+
                         await sendAction(deviceId, {
                             "key": data.key,
                             [act]: e.target.value,

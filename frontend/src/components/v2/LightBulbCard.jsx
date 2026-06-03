@@ -2,7 +2,6 @@ import * as React from "react";
 import {Box, IconButton, Typography} from "@mui/material";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import {sendAction} from "../../services/apis.jsx";
-import dayjs from "dayjs";
 
 export default function LightBulbCard({value, name, type, deviceId, data, lastOnline, onClick}) {
     const [isOn, setIsOn] = React.useState(Boolean(value));
@@ -43,9 +42,9 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
 
             style={{
                 margin: '6px',
-                width: 220,
+                width: 230,
                 borderRadius: "8px",
-                padding: "12px 16px",
+                padding: "8px 6px",
                 boxShadow: "0px 1px 4px rgba(0,0,0,0.12)"
             }}
         >
@@ -79,16 +78,13 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
                     >
                         {isOn ? "On" : "Off"}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        {dayjs(lastOnline).fromNow()}
-                    </Typography>
+                    {/*<Typography variant="body2" color="text.secondary">*/}
+                    {/*    {dayjs(lastOnline).fromNow()}*/}
+                    {/*</Typography>*/}
                 </Box>
 
             </Box>
-            <Box>
 
-
-            </Box>
         </div>
     );
 }

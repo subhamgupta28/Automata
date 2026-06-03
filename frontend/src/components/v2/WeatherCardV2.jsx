@@ -21,6 +21,7 @@ import {fetchOutdoorWeather, getRecentDeviceData} from "../../services/apis.jsx"
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import {CustomModal} from "../home/CustomModal.jsx";
 import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
+import GasMeterIcon from '@mui/icons-material/GasMeter';
 
 // ─── Design tokens (unchanged) ────────────────────────────────────────────────
 export const C = {
@@ -250,6 +251,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
         temp: null, humid: null, aqi: null,
         lux: null, co2: null, tvoc: null,
         ch2o: null, pm25: null,
+        co2Status: null, eCo2: null,
         // secondary device (outdoor sensor)
         outTemp: null, outHumid: null, outLux: null,
     });
@@ -346,6 +348,8 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
             tvoc: d.tvoc ?? prev.tvoc,
             ch2o: d.ch2o ?? prev.ch2o,
             pm25: d.pm25 ?? prev.pm25,
+            eCo2: d.co2 ?? prev.eCo2,
+            co2Status: d.co2Status ?? prev.co2Status,
         }));
     }
 
@@ -398,6 +402,8 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
             },
             {icon: <AirIcon sx={{fontSize: 36, color: C.yellow}}/>, label: "AQI", value: fmt(live.aqi),},
             {icon: <Co2Icon sx={{fontSize: 36, color: C.muted}}/>, label: "CO₂", value: fmt(live.co2),},
+            {icon: <Co2Icon sx={{fontSize: 36, color: C.muted}}/>, label: "eCO₂", value: fmt(live.eCo2),},
+            {icon: <GasMeterIcon sx={{fontSize: 36, color: C.muted}}/>, label: "Ch2o", value: fmt(live.co2Status),},
             {icon: <ScienceIcon sx={{fontSize: 36, color: C.muted}}/>, label: "TVOC", value: fmt(live.tvoc),},
             {icon: <Lightbulb sx={{fontSize: 36, color: C.muted}}/>, label: "Lux", value: fmt(live.lux),},
         ];
