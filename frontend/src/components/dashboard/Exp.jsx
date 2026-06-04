@@ -3,9 +3,7 @@ import React from 'react';
 // Dummy data following the EnergyStat Java model (one entry per day)
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
-import TopBar, {StatsRow} from "./SmartHomeDashboard.jsx";
-import LockOpenIcon from "@mui/icons-material/LockOpen";
-import {WeatherCardV2} from "../v2/WeatherCardV2.jsx";
+import {MapView} from "../charts/MapView.jsx";
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
     let color = theme.palette.success.main;
@@ -70,68 +68,28 @@ const Exp = () => {
 
 
     return (
-        <div style={{marginTop: '10px'}}>
+        <div style={{marginTop: '10px', fontSize: '32px'}}>
 
 
             {/*<AutomationSummaryBar/>*/}
             {/*<AutomationAnalyticsList/>*/}
             {/*<AutomationFlowInspector/>*/}
-            <TopBar
-                userName="Subham"
-                userRoom="Living room"
-                time="2:59"
-                weather={{label: "Partly cloudy", temp: "18.7°C"}}
-                homeStats={{
-                    lightsOn: 3,
-                    windowsOpen: 1,
-                    security: "Armed home",
-                    doorLocked: false,
-                }}
-                alarm="08:00"
-                notifications={6}
-                scenes={4}
-                occupancy={2}
-                location="Home"
-            />
+            // Single pin (existing behavior)
+            <MapView lat={17.385} lng={78.486} h="400px" w="100%"/>
 
-            <StatsRow
-                items={[
-                    // {icon: <WbSunnyIcon sx={{fontSize: 48, color: "#f9a825"}}/>, label: "Temperature", value: "36 °C"},
-                    // {icon: <OpacityIcon fontSize="large"/>, label: "Humidity", value: "40%"},
-                    // {icon: <AirIcon/>, label: "AQI", value: "56"},
-                    // {icon: <Co2Icon/>, label: "Co2", value: "545"},
-                    // {icon: <ScienceIcon/>, label: "TVOC", value: "0.354"},
-                    {icon: <LockOpenIcon/>, label: "Home", value: "Unlocked"},
-                    // {icon: <Lightbulb/>, label: "Lux", value: "20"},
-                    // ...
+            // With route
+            <MapView
+                lat={17.385}
+                lng={78.486}
+                h="400px"
+                w="100%"
+                route={[
+                    [17.385, 78.486],
+                    [17.390, 78.491],
+                    [17.395, 78.498],
+                    [17.400, 78.505],
                 ]}
             />
-            <WeatherCardV2
-                id={id}
-                data={{
-                    value: {
-                        // ...originalNodeData,           // attributes, deviceIds, width, height, etc.
-                        topBarProps: {
-                            userName: "Subham",
-                            userRoom: "Living room",
-                            alarm: "08:00",
-                            notifications: 6,
-                            scenes: 4,
-                            occupancy: 2,
-                            location: "Home",
-                            homeStats: {
-                                lightsOn: 3,
-                                windowsOpen: 1,
-                                security: "Armed home",
-                                doorLocked: false,
-                            },
-                        },
-                        // optional: fully custom stats row from live data
-                        // statsItemsFn: (live) => [{ icon: ..., label: "CO₂", value: live.co2 }],
-                    },
-                }}
-            />
-            {/*<RoomsGrid/>*/}
             {/*<SmartHomeDashboard2/>*/}
 
         </div>

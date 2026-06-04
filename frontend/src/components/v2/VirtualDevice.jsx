@@ -11,6 +11,7 @@ import {CustomModal} from "../home/CustomModal.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import '../../App.css'
+import {MapView} from "../charts/MapView.jsx";
 
 export const combineAttributes = (attributesByDevice) => {
     const map = new Map();
@@ -79,6 +80,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
         systemDevices,
         chartDevices,
         otherDevices,
+        mapDevices
     } = useMemo(() => {
         const grouped = {
             hvacDevices: [],
@@ -86,6 +88,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
             systemDevices: [],
             chartDevices: [],
             otherDevices: [],
+            mapDevices: [],
         };
 
         for (const attr of deviceList) {
@@ -93,6 +96,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
             else if (attr.type === 'WLED') grouped.wledDevices.push(attr);
             else if (attr.type === 'System') grouped.systemDevices.push(attr);
             else if (attr.type === 'CHART') grouped.chartDevices.push(attr);
+            else if (attr.category === 'SENSOR|GPS') grouped.mapDevices.push(attr);
             else grouped.otherDevices.push(attr);
         }
 
@@ -114,11 +118,13 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
             <Card
                 ref={cardRef}
                 className="card-glow-container"
-                variant="outlined" style={{
+                variant="elevated" style={{
                 background: 'transparent',
+                boxShadow: 'rgb(30 30 30) 0px 0px 36px 10px inset, 0px 4px 6px rgba(30 30 30)',
                 // backdropFilter: 'blur(4px)',
                 // backgroundColor: 'rgb(0 0 0 / 20%)',
-                minHeight: height, height: '100%', minWidth: width, borderRadius: '10px', padding: '0px',
+                minHeight: height, height: '100%', minWidth: width,
+                borderRadius: '10px', padding: '0px',
             }}>
                 <div className="card-glow"/>
                 <div
@@ -133,7 +139,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                         justifyContent: 'space-between'
                     }}>
                     <Typography
-                        variant="body2"
+                        variant="caption"
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -141,13 +147,13 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                             marginLeft: '18px',
                             // fontWeight: 'bold',
                             // fontSize: '18px',
-                            paddingTop: '12px'
+                            paddingTop: '8px'
                         }}
                     >
                         {name}
                     </Typography>
                     <IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}} size="small">
-                        <SettingsIcon style={{fontSize: '18px'}}/>
+                        <SettingsIcon style={{fontSize: '14px'}}/>
                     </IconButton>
                 </div>
                 <div
@@ -155,8 +161,8 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                         width: '100%',
                         // display:'flex',
                         alignItems: 'center',
-                        padding: '8px',
-                        paddingBottom: '10px',
+                        padding: '6px',
+                        paddingBottom: '6px',
                         justifyContent: 'center'
                     }}>
                     {actionAck?.command === 'reboot' && (
@@ -180,6 +186,9 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                             <LinearProgress color="inherit"/>
                         )}
                     </div>
+                    {mapDevices.length > 0 && (
+                        <MapView lat={17.385} lng={78.486} h={height} w={width}/>
+                    )}
                     {chartDevices.map(device => (
                         <div key={device.id}>
                             <ChartDetail deviceId={device.attributes[0].extras.id} name={""} width={900}

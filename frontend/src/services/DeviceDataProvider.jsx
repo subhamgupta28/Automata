@@ -20,7 +20,7 @@ export const DeviceDataProvider = ({children}) => {
 
     useEffect(() => {
         const client = new Client({
-            webSocketFactory: () => new SockJS(url),
+            webSocketFactory: () => new SockJS(url, null, {withCredentials: false}),
             reconnectDelay: RECONNECT_DELAY,
             debug: () => {
             },

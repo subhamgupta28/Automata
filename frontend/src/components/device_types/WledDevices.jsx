@@ -67,7 +67,7 @@ const Wled = ({device, messages, lastData}) => {
         }
         const dt = grouped.sliderData.filter(s => s.deviceId = device.id);
         setSlider(dt[0])
-        // console.log("grouped", dt[0]);
+        console.log("grouped", dt[0]);
 
         return grouped;
     }, [device.attributes, lastData]);
@@ -88,19 +88,29 @@ const Wled = ({device, messages, lastData}) => {
             />
 
             {switchButtons.map((s) => (
-                <div>
+                <div className="nodrag">
                     <LightBulbCard onClick={handleClick} key={s.key} data={s} lastOnline={device.lastOnline}
                                    value={liveData?.[s.key]}
                                    name={device.name} deviceId={device.id} type={device.type}/>
-                    <div style={{paddingLeft: '8px', paddingRight: '8px'}}>
-                        <CustomSlider
-                            key={slider?.key}
-                            value={liveData?.[slider?.key]}
-                            deviceId={device.id}
-                            type={device.type}
-                            data={slider}
-                            displayName=""
-                        />
+                    <div style={{marginLeft: '22px', marginRight: '22px'}}>
+                        {sliderData.map((s) => (
+                            <CustomSlider
+                                key={s.key}
+                                value={liveData?.[s.key]}
+                                deviceId={device.id}
+                                type={device.type}
+                                data={s}
+                                displayName={s.displayName}
+                            />
+                        ))}
+                        {/*<CustomSlider*/}
+                        {/*    key={slider?.key}*/}
+                        {/*    value={liveData?.[slider?.key]}*/}
+                        {/*    deviceId={device.id}*/}
+                        {/*    type={device.type}*/}
+                        {/*    data={slider}*/}
+                        {/*    displayName=""*/}
+                        {/*/>*/}
                     </div>
 
                 </div>
