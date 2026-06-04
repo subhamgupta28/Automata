@@ -902,7 +902,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
     // ── WebSocket lifecycle ───────────────────────────────────────────────────
     useEffect(() => {
         const client = new Client({
-            webSocketFactory: () => new SockJS(WS_URL),
+            webSocketFactory: () => new SockJS(WS_URL, null, {withCredentials: false}),
             reconnectDelay: 5000,
 
             onConnect: () => {

@@ -7,7 +7,7 @@ import {styled} from "@mui/material/styles";
 const HomeAssistantSlider = styled(Slider)({
     color: 'orange', // Blue color like Home Assistant slider
     height: 35, // Adjust the height of the slider bar
-    borderRadius: 6,
+    borderRadius: 10,
     padding: '15px 0',
     marginBottom: 1,
     '& .MuiSlider-rail': {
@@ -78,52 +78,27 @@ export const CustomSlider = React.memo(({value, deviceId, displayName, data, typ
     return (
         <div className="nodrag">
             <HomeAssistantSlider
-                // className="nodrag"
+                className="nodrag nopan nowheel"
+                onPointerDown={(e) => {
+                    console.log("pointer down");
+                    e.stopPropagation();
+                }}
+                onMouseDown={(e) => {
+                    console.log("mouse down");
+                    e.stopPropagation();
+                }}
                 onChange={handleChange}
                 value={num}
                 min={data.extras.min}
                 max={data.extras.max}
                 valueLabelDisplay="auto"
                 marks={[
-                    // {
-                    // value: data.extras.min,
-                    // label: `${data.extras.min}`,
-                    // },
                     {
                         value: data.extras.max / 2,
                         label: displayName,
                     },
-                    // {
-                    //     value: data.extras.max,
-                    //     label: `${data.extras.max}`,
-                    // }
                 ]}
             />
-            {/*<Slider*/}
-            {/*    className="nodrag"*/}
-            {/*    onChange={handleChange}*/}
-            {/*    value={num}*/}
-            {/*    aria-label="Default"*/}
-            {/*    min={data.extras.min}*/}
-            {/*    max={data.extras.max}*/}
-            {/*    valueLabelDisplay="auto"*/}
-            {/*    marks={[{*/}
-            {/*        value: data.extras.min,*/}
-            {/*        label: `${data.extras.min}`,*/}
-            {/*    },*/}
-            {/*        {*/}
-            {/*            value: data.extras.max / 2,*/}
-            {/*            label: displayName,*/}
-            {/*        },*/}
-            {/*        {*/}
-            {/*            value: data.extras.max,*/}
-            {/*            label: `${data.extras.max}`,*/}
-            {/*        }*/}
-            {/*    ]}*/}
-            {/*/>*/}
-            {/*<Typography textAlign='center'>*/}
-            {/*    {displayName}*/}
-            {/*</Typography>*/}
         </div>
     )
 });

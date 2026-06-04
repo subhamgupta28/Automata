@@ -1,5 +1,6 @@
 package dev.automata.automata.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.automata.automata.dto.NodeRef;
 import lombok.*;
@@ -16,6 +17,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AutomationDetail {
 
     @Id

@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import {Avatar, Box, Card, Chip, Typography} from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import GridViewIcon from "@mui/icons-material/GridView";
@@ -22,6 +22,7 @@ import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import {CustomModal} from "../home/CustomModal.jsx";
 import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import GasMeterIcon from '@mui/icons-material/GasMeter';
+import ShinyText from "../charts/ShinyText.jsx";
 
 // ─── Design tokens (unchanged) ────────────────────────────────────────────────
 export const C = {
@@ -39,39 +40,100 @@ export const C = {
 
 const chipSx = {backgroundColor: C.card, color: C.text};
 
-// ─── Greeting — context-aware by hour ─────────────────────────────────────────
-// Instead of a blunt 3-bucket split we use 7 natural time-of-day slots:
-//   00–04  Late night   → "Still up, {name}?"
-//   05–06  Early morning → "Rise and shine, {name}!"
-//   07–11  Morning       → "Good morning, {name}!"
-//   12–13  Midday        → "Good afternoon, {name}!"
-//   14–17  Afternoon     → "Good afternoon, {name}!"
-//   18–20  Evening       → "Good evening, {name}!"
-//   21–23  Night         → "Good night, {name}!"
+const GREETINGS = {
+    lateNight: [
+        name => `Still up, ${name}?`,
+        name => `Burning the midnight oil, ${name}?`,
+        name => `The night owl stirs… hey ${name}.`,
+        name => `Can't sleep, ${name}?`,
+    ],
+    earlyMorn: [
+        name => `Rise and shine, ${name}!`,
+        name => `You're up early, ${name}.`,
+        name => `The early bird, ${name}!`,
+        name => `Dawn's barely here — morning, ${name}.`,
+    ],
+    morning: [
+        name => `Good morning, ${name}!`,
+        name => `Morning, ${name}! ☀️`,
+        name => `Hope your coffee's ready, ${name}.`,
+        name => `A fine morning to you, ${name}.`,
+    ],
+    midday: [
+        name => `Good afternoon, ${name}!`,
+        name => `Lunchtime thoughts, ${name}?`,
+        name => `High noon, ${name}!`,
+    ],
+    afternoon: [
+        name => `Good afternoon, ${name}!`,
+        name => `Afternoon, ${name} — how's the day going?`,
+        name => `Getting through the afternoon, ${name}?`,
+    ],
+    evening: [
+        name => `Good evening, ${name}!`,
+        name => `Winding down, ${name}?`,
+        name => `Evening, ${name}. Long day?`,
+        name => `The day's end approaches, ${name}.`,
+    ],
+    night: [
+        name => `Good night, ${name}!`,
+        name => `Getting late, ${name}.`,
+        name => `Wrapping up for the night, ${name}?`,
+    ],
+};
+
 function buildGreeting(hour, name) {
-    if (hour >= 0 && hour < 4) return `Still up, ${name}?`;
-    if (hour >= 4 && hour < 6) return `Rise and shine, ${name}!`;
-    if (hour >= 6 && hour < 12) return `Good morning, ${name}!`;
-    if (hour >= 12 && hour < 14) return `Good afternoon, ${name}!`;
-    if (hour >= 14 && hour < 18) return `Good afternoon, ${name}!`;
-    if (hour >= 18 && hour < 21) return `Good evening, ${name}!`;
-    return `Good night, ${name}!`;
+    const slot =
+        hour < 4 ? 'lateNight' :
+            hour < 6 ? 'earlyMorn' :
+                hour < 12 ? 'morning' :
+                    hour < 14 ? 'midday' :
+                        hour < 18 ? 'afternoon' :
+                            hour < 21 ? 'evening' : 'night';
+
+    const pool = GREETINGS[slot];
+    return pool[Math.floor(Math.random() * pool.length)](name);
 }
 
 // ─── Summary sentence ─────────────────────────────────────────────────────────
-function buildMessage({time, weather, homeStats}) {
+function buildMessage({time, weather, homeStats, live = {}, outdoor = null}) {
     const parts = [];
+
+    // ── Outdoor weather ────────────────────────────────────────────────────
     if (weather?.conditionLabel && weather?.temperature != null) {
         parts.push(`it's ${weather.conditionLabel.toLowerCase()} outside at ${weather.temperature.toFixed(1)}°C`);
     } else if (weather?.label && weather?.temp) {
         parts.push(`the weather is ${weather.label.toLowerCase()} with ${weather.temp}`);
     }
-    if (homeStats?.lightsOn != null) {
-        parts.push(
-            `${homeStats.lightsOn === 1 ? "1 light" : `${homeStats.lightsOn} lights`} on`
-        );
+
+    // ── Indoor air quality ─────────────────────────────────────────────────
+    if (live.temp != null && live.humid != null) {
+        parts.push(`${live.temp}°C inside at ${live.humid}% humidity`);
+    } else if (live.temp != null) {
+        parts.push(`${live.temp}°C inside`);
     }
-    if (homeStats?.windowsOpen != null) {
+
+    if (live.co2 != null) {
+        const co2Label =
+            live.co2 < 800 ? "fresh" :
+                live.co2 < 1200 ? "moderate" :
+                    live.co2 < 2000 ? "stuffy" : "poor";
+        parts.push(`air quality ${co2Label} (CO₂ ${live.co2} ppm)`);
+    }
+
+    if (live.aqi != null) {
+        const aqiLabel =
+            live.aqi <= 50 ? "good" :
+                live.aqi <= 100 ? "moderate" :
+                    live.aqi <= 150 ? "unhealthy for sensitive groups" : "unhealthy";
+        parts.push(`AQI ${live.aqi} — ${aqiLabel}`);
+    }
+
+    // ── Home state ─────────────────────────────────────────────────────────
+    if (homeStats?.lightsOn != null) {
+        parts.push(`${homeStats.lightsOn === 1 ? "1 light" : `${homeStats.lightsOn} lights`} on`);
+    }
+    if (homeStats?.windowsOpen != null && homeStats.windowsOpen > 0) {
         parts.push(`${homeStats.windowsOpen} window${homeStats.windowsOpen !== 1 ? "s" : ""} open`);
     }
     if (homeStats?.security) {
@@ -80,6 +142,10 @@ function buildMessage({time, weather, homeStats}) {
     if (homeStats?.doorLocked != null) {
         parts.push(`door ${homeStats.doorLocked ? "locked" : "unlocked"}`);
     }
+    if (homeStats?.occupancy != null && homeStats.occupancy > 0) {
+        parts.push(`${homeStats.occupancy} ${homeStats.occupancy === 1 ? "person" : "people"} home`);
+    }
+
     const timeStr = time ?? new Date().toTimeString().slice(0, 5);
     return parts.length > 0
         ? `It's ${timeStr} — ${parts.join(", ")}.`
@@ -146,11 +212,12 @@ export function TopBar({
                            scenes,
                            occupancy,
                            location = "Home",
+                           live, outdoor
                        }) {
     const hour = time ? parseInt(time.split(":")[0], 10) : new Date().getHours();
     // ↓ new: context-aware greeting includes the name
-    const greeting = buildGreeting(hour, userName);
-    const message = buildMessage({time, weather, homeStats, alarm});
+    const greeting = useMemo(() => buildGreeting(hour, userName), [hour, userName]);
+    const message = buildMessage({time, weather, homeStats, alarm, live, outdoor});
     const chips = chipsProp ?? buildChips({
         notifications, scenes, alarm, location,
         windowsOpen: homeStats?.windowsOpen,
@@ -162,7 +229,20 @@ export function TopBar({
         <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", px: 2.5, py: 1.5}}>
             <Box style={{display: "flex", flexDirection: "column"}}>
                 {/* greeting no longer needs ", {userName}!" appended — it's inside buildGreeting */}
-                <Typography variant="h1">{greeting}</Typography>
+                <Typography variant="h1">
+                    <ShinyText
+                        text={greeting}
+                        speed={2}
+                        delay={0}
+                        color="#ffffff"
+                        shineColor="#EAB308"
+                        spread={120}
+                        direction="left"
+                        yoyo={false}
+                        pauseOnHover={false}
+                        disabled={false}
+                    />
+                </Typography>
                 <Typography variant="title" style={{marginTop: "10px", width: "75%"}}>
                     {message}
                 </Typography>
@@ -449,6 +529,8 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
                 scenes={topBarProps.scenes}
                 occupancy={topBarProps.occupancy}
                 location={topBarProps.location}
+                live={live}
+                outdoor={outdoor}
             />
 
             <StatsRow items={liveStatsItems}/>

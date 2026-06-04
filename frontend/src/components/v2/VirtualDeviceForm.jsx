@@ -204,6 +204,7 @@ const DashboardEditor = ({change, existingDevice}) => {
                     <MenuItem key={'Sensors'} value={'Sensors'}> Sensors </MenuItem>
                     <MenuItem key={'Lights'} value={'Lights'}> Lights </MenuItem>
                     <MenuItem key={'Actions'} value={'Actions'}> Actions </MenuItem>
+                    <MenuItem key={'Map'} value={'Map'}> Map </MenuItem>
                     <MenuItem key={'Other'} value={'Other'}> Other </MenuItem>
                 </Select>
             </FormControl>
