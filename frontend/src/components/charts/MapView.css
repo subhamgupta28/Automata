@@ -1,0 +1,4 @@
+.dark-tiles {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+    box-shadow: rgb(30 30 30) 0px 0px 36px 10px inset, 0px 4px 6px rgba(30 30 30);
+}
