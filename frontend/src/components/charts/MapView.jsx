@@ -2,6 +2,7 @@ import {MapContainer, Marker, Polyline, TileLayer, useMap} from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import React, {useEffect} from "react";
+import './MapView.css'
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -44,11 +45,11 @@ export const MapView = React.memo(({lat, lng, h, w, route}) => {
             style={{height: h, width: w, borderRadius: '8px'}}
             className="nodrag"
         >
-            {/* Dark mode tile layer — Stadia AlidadeSmoothDark, no API key needed */}
             <TileLayer
-                url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+                url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
                 maxZoom={20}
-                attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
+                subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+                className="dark-tiles"
             />
 
             {hasRoute ? (
