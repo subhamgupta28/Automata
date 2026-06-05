@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
 import { styled } from '@mui/material/styles';
+import Alert from '@mui/material/Alert';
 import ForgotPassword from './ForgotPassword';
 import { signInReq } from '../../services/apis.jsx';
 import { useAuth } from './AuthContext.jsx';
@@ -68,8 +69,10 @@ export default function SignIn(props) {
     const [emailErrorMessage, setEmailErrorMessage] = React.useState('');
     const [passwordError, setPasswordError] = React.useState(false);
     const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
+    const [guestError, setGuestError] = React.useState(false);
+    const [guestErrorMessage, setGuestErrorMessage] = React.useState('');
     const [open, setOpen] = React.useState(false);
-    const { login } = useAuth();
+    const { login, loginAsGuest } = useAuth();
     const navigate = useNavigate();
     const handleClickOpen = () => {
         setOpen(true);
@@ -122,6 +125,19 @@ export default function SignIn(props) {
         };
 
         req();
+    };
+
+    const handleGuestLogin = async () => {
+        try {
+            setGuestError(false);
+            setGuestErrorMessage('');
+            await loginAsGuest();
+            navigate("/");
+        } catch (error) {
+            console.error('Guest login failed:', error);
+            setGuestError(true);
+            setGuestErrorMessage('Guest login unavailable. Please try again later or sign up.');
+        }
     };
 
     return (
@@ -205,6 +221,21 @@ export default function SignIn(props) {
                         <ForgotPassword open={open} handleClose={handleClose} />
                         <Button type="submit" fullWidth variant="contained">
                             Sign in
+                        </Button>
+                        <Divider>OR</Divider>
+                        {guestError && (
+                            <Alert severity="error">
+                                {guestErrorMessage}
+                            </Alert>
+                        )}
+                        <Button 
+                            type="button" 
+                            fullWidth 
+                            variant="outlined"
+                            onClick={handleGuestLogin}
+                            sx={{ textTransform: 'none' }}
+                        >
+                            Continue as Guest (Read-Only)
                         </Button>
                         <Typography sx={{ textAlign: 'center' }}>
                             Don&apos;t have an account?{' '}

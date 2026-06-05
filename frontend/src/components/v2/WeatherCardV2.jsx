@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import {Avatar, Box, Card, Chip, Typography} from "@mui/material";
+import {Avatar, Box, Card, Typography} from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import GridViewIcon from "@mui/icons-material/GridView";
 import AlarmIcon from "@mui/icons-material/Alarm";
@@ -10,19 +10,26 @@ import LockIcon from "@mui/icons-material/Lock";
 import PeopleIcon from "@mui/icons-material/People";
 import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import OpacityIcon from "@mui/icons-material/Opacity";
-import {Lightbulb} from "@mui/icons-material";
+import {
+    CheckCircleOutline,
+    ErrorOutline,
+    Lightbulb,
+    SignalWifiStatusbarConnectedNoInternet4,
+    WarningAmberOutlined
+} from "@mui/icons-material";
 import AirIcon from '@mui/icons-material/Air';
 import Co2Icon from '@mui/icons-material/Co2';
 import ScienceIcon from '@mui/icons-material/Science';
 import dayjs from "dayjs";
 import '/src/App.css'
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
-import {fetchOutdoorWeather, getRecentDeviceData} from "../../services/apis.jsx";
+import {fetchOutdoorWeather, getAutomationAnalyticsSummary, getRecentDeviceData} from "../../services/apis.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import {CustomModal} from "../home/CustomModal.jsx";
 import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import GasMeterIcon from '@mui/icons-material/GasMeter';
 import ShinyText from "../charts/ShinyText.jsx";
+import Tooltip from "@mui/material/Tooltip";
 
 // ─── Design tokens (unchanged) ────────────────────────────────────────────────
 export const C = {
@@ -152,6 +159,95 @@ function buildMessage({time, weather, homeStats, live = {}, outdoor = null}) {
         : `It's ${timeStr}.`;
 }
 
+// ─── Automation Pill ──────────────────────────────────────────────────────────
+function AutomationPill({icon, value, label, color, tooltip}) {
+    return (
+        <Tooltip title={tooltip ?? ""} placement="bottom" arrow>
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                    px: 1,
+                    py: 0.4,
+                    borderRadius: "999px",
+                    backgroundColor: C.card,
+                    border: `1px solid ${C.border}`,
+                    cursor: "default",
+                    fontSize: 11,
+                    lineHeight: 1,
+                    color,
+                    whiteSpace: "nowrap",
+                    userSelect: "none",
+                }}
+            >
+                <Box sx={{fontSize: 13, display: "flex", alignItems: "center"}}>{icon}</Box>
+                <Typography sx={{fontSize: 11, fontWeight: 700, color}}>
+                    {value}
+                </Typography>
+                <Typography sx={{fontSize: 11, color: C.muted}}>
+                    {label}
+                </Typography>
+            </Box>
+        </Tooltip>
+    );
+}
+
+// ─── Automation Summary Chips (inline, no fetch — data is passed in) ──────────
+function AutomationSummaryChips({summary}) {
+    console.log("summary", summary)
+    if (!summary) return null;
+    const {total, healthy, warnings, errors, totalUndelivered, totalSlowEvals} = summary;
+
+    return (
+        <>
+            <AutomationPill
+                icon={<CheckCircleOutline sx={{fontSize: 13}}/>}
+                value={`${healthy}/${total}`}
+                label="healthy"
+                color="#22c55e"
+                tooltip="Automations with no errors or delivery failures"
+            />
+            {warnings > 0 && (
+                <AutomationPill
+                    icon={<WarningAmberOutlined sx={{fontSize: 13}}/>}
+                    value={warnings}
+                    label="warn"
+                    color="#f59e0b"
+                    tooltip="Automations with slow evaluations or minor issues"
+                />
+            )}
+            {errors > 0 && (
+                <AutomationPill
+                    icon={<ErrorOutline sx={{fontSize: 13}}/>}
+                    value={errors}
+                    label="err"
+                    color="#ef4444"
+                    tooltip="Automations with dispatch errors or evaluation exceptions"
+                />
+            )}
+            {totalUndelivered > 0 && (
+                <AutomationPill
+                    icon={<SignalWifiStatusbarConnectedNoInternet4 sx={{fontSize: 13}}/>}
+                    value={totalUndelivered}
+                    label="undelivered"
+                    color="#f59e0b"
+                    tooltip="Total actions with no device ACK"
+                />
+            )}
+            {totalSlowEvals > 0 && (
+                <AutomationPill
+                    icon={<WarningAmberOutlined sx={{fontSize: 13}}/>}
+                    value={totalSlowEvals}
+                    label="slow"
+                    color="#60a5fa"
+                    tooltip="Evaluations exceeding the 200ms threshold"
+                />
+            )}
+        </>
+    );
+}
+
 // ─── Chips ────────────────────────────────────────────────────────────────────
 function buildChips({notifications, scenes, alarm, location, windowsOpen, doorLocked, occupancy}) {
     return [
@@ -212,7 +308,8 @@ export function TopBar({
                            scenes,
                            occupancy,
                            location = "Home",
-                           live, outdoor
+                           live, outdoor,
+                           automationSummary
                        }) {
     const hour = time ? parseInt(time.split(":")[0], 10) : new Date().getHours();
     // ↓ new: context-aware greeting includes the name
@@ -254,11 +351,15 @@ export function TopBar({
             </Box>
 
             <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1}}>
-                {chips.length > 0 && (
-                    <Box sx={{display: "flex", gap: 0.8}}>
-                        {chips.map((c, i) => (
-                            <Chip key={i} icon={c.icon} label={c.label} sx={chipSx}/>
-                        ))}
+                {(chips.length > 0 || automationSummary) && (
+                    <Box sx={{display: "flex", gap: 0.8, flexWrap: "wrap", justifyContent: "flex-end"}}>
+                        {/* Automation pills first — most operationally important */}
+                        <AutomationSummaryChips summary={automationSummary}/>
+
+                        {/* Original icon chips */}
+                        {/*{chips.map((c, i) => (*/}
+                        {/*    <Chip key={i} icon={c.icon} label={c.label} sx={chipSx}/>*/}
+                        {/*))}*/}
                     </Box>
                 )}
                 <Box sx={{display: "flex", alignItems: "center", gap: 1}}>
@@ -324,7 +425,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
     const [otherDevice, setOtherDevice] = useState("");
     const [deviceList, setDeviceList] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-
+    const [automationSummary, setAutomationSummary] = useState(null);
     // Indoor sensor live data
     const [live, setLive] = useState({
         time: dayjs().format("HH:mm"),
@@ -447,7 +548,11 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
             setDeviceList(devices.filter(d => deviceIds.includes(d.id)));
         }
     }, [devices, deviceIds]);
-
+    useEffect(() => {
+        getAutomationAnalyticsSummary()
+            .then(setAutomationSummary)
+            .catch(() => setAutomationSummary(null));
+    }, []);
     // ── Build weather prop for TopBar ──────────────────────────────────────
     // Prefer the Open-Meteo outdoor data; fall back to live indoor sensor
     const weatherForTopBar = outdoor
@@ -531,6 +636,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
                 location={topBarProps.location}
                 live={live}
                 outdoor={outdoor}
+                automationSummary={automationSummary}
             />
 
             <StatsRow items={liveStatsItems}/>

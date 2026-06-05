@@ -473,6 +473,24 @@ export const signInReq = async (payload) => {
     });
     return response.data;
 }
+
+/**
+ * Guest login - authenticates using the guest user account
+ * Guest user has read-only access to specific routes
+ * @returns {Promise} User object with role: 'guest'
+ */
+export const guestLoginReq = async () => {
+    const response = await api.post("auth/authenticate", {
+        email: 'user@automata.local',
+        password: '12345678'
+    }, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+    return response.data;
+}
+
 export const registerDevice = async (payload) => {
     const response = await api.post("main/register", payload, {
         headers: {

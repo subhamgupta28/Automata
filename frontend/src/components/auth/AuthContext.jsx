@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import isEmpty from "../../utils/Helper.jsx";
+import { guestLoginReq } from '../../services/apis.jsx';
 
 const AuthContext = createContext();
 
@@ -31,8 +32,22 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('user');
     };
 
+    const loginAsGuest = async () => {
+        try {
+            const guestUser = await guestLoginReq();
+            login(guestUser);
+            return guestUser;
+        } catch (error) {
+            console.error("Guest login failed:", error);
+            throw error;
+        }
+    };
+
+    // Check if user has guest role
+    const isGuest = user?.role?.toLowerCase() === 'guest';
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, loading, loginAsGuest, isGuest }}>
             {children}
         </AuthContext.Provider>
     );

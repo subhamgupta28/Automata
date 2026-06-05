@@ -2,6 +2,7 @@ package dev.automata.automata.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.model.Users;
+import dev.automata.automata.model.Role;
 import dev.automata.automata.repository.UsersRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -29,6 +30,7 @@ public class AuthenticationService {
                 .lastName(request.getLastName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .role(Role.USER)
                 .build();
         System.err.println(user);
         var alreadyExists = repository.findByEmail(request.getEmail());
@@ -68,6 +70,7 @@ public class AuthenticationService {
                 .lastName(user.getLastName())
                 .email(user.getEmail())
                 .userId(user.getId())
+                .role(user.getRole())
                 .refreshToken(refreshToken)
                 .build();
     }

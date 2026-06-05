@@ -15,6 +15,7 @@ import Avatar from "@mui/material/Avatar";
 import {useAuth} from "../auth/AuthContext.jsx";
 import isEmpty from "../../utils/Helper.jsx";
 import Typography from "@mui/material/Typography";
+import Chip from "@mui/material/Chip";
 
 const MenuItem = styled(MuiMenuItem)({
     margin: '2px 0',
@@ -23,7 +24,7 @@ const MenuItem = styled(MuiMenuItem)({
 export default function OptionsMenu({drawerOpen}) {
     const [anchorEl, setAnchorEl] = React.useState(null);
     const open = Boolean(anchorEl);
-    const { user, logout } = useAuth();
+    const { user, logout, isGuest } = useAuth();
     const handleClick = (event) => {
         setAnchorEl(event.currentTarget);
     };
@@ -47,12 +48,21 @@ export default function OptionsMenu({drawerOpen}) {
                     display: 'flex',
                 }}
             >
-                <Avatar>{!isEmpty(user) && user?.firstName[0]?.toUpperCase()}</Avatar>
+                <Avatar sx={{ 
+                    backgroundColor: isGuest ? '#ff9800' : 'primary.main'
+                }}>
+                    {!isEmpty(user) && (isGuest ? 'G' : user?.firstName?.[0]?.toUpperCase())}
+                </Avatar>
             </MenuButton>
             {drawerOpen && (
-                <Typography style={{width:'100%', marginLeft:'10px'}}>
-                    {user?.firstName}
-                </Typography>
+                <Box sx={{width:'100%', marginLeft:'10px', display: 'flex', alignItems: 'center', gap: 1}}>
+                    <Typography>
+                        {isGuest ? 'Guest User' : user?.firstName}
+                    </Typography>
+                    {isGuest && (
+                        <Chip label="Read-Only" size="small" variant="outlined" />
+                    )}
+                </Box>
             )}
             <Menu
                 anchorEl={anchorEl}
