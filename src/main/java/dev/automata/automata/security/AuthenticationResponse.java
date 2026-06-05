@@ -1,6 +1,7 @@
 package dev.automata.automata.security;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.automata.automata.model.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,5 +21,6 @@ public class AuthenticationResponse {
     private String lastName = "";
     private String email;
     private String userId;
+    private Role role;
     private String message = "";
 }

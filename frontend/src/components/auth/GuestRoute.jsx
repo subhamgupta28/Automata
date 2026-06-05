@@ -6,21 +6,25 @@ import isEmpty from '../../utils/Helper.jsx';
 // Routes allowed for guest users
 const GUEST_ALLOWED_ROUTES = ['/', '/actions', '/analytics'];
 
-export default function PrivateRoute({ element, path }) {
-    const { user, loading, isGuest } = useAuth();
+export default function GuestRoute({ element, path }) {
+    const { user, loading } = useAuth();
     const location = useLocation();
 
     if (loading) {
-        // You can replace this with a spinner, skeleton, or splash screen
         return <div style={{ color: '#fff', textAlign: 'center' }}>Loading...</div>;
     }
 
-    if (isEmpty(user)) {
+    // Check if current path is allowed for guests
+    const isGuestAllowedRoute = GUEST_ALLOWED_ROUTES.includes(path);
+    const isGuest = user?.isGuest === true;
+    const isLoggedIn = !isEmpty(user);
+
+    if (!isLoggedIn && !isGuest) {
         return <Navigate to="/signin" replace state={{ from: location }} />;
     }
 
-    // Allow guests on specific routes only
-    if (isGuest && path && !GUEST_ALLOWED_ROUTES.includes(path)) {
+    // If guest tries to access non-guest routes, redirect to home
+    if (isGuest && !isGuestAllowedRoute) {
         return <Navigate to="/" replace />;
     }
 

@@ -118,7 +118,7 @@ const Drawer = styled(Card, {shouldForwardProp: (prop) => prop !== 'open'})(
 export default function SideDrawer() {
     const [open, setOpen] = React.useState(false);
     const [selectedIndex, setSelectedIndex] = React.useState("/");
-    const {user, logout} = useAuth();
+    const {user, logout, isGuest} = useAuth();
     const location = useLocation();
 
     // Auto redirect to /mobile if mobile and not already there
@@ -142,15 +142,20 @@ export default function SideDrawer() {
         // {name: 'Presentation', url: '/presentation', icon: <PlayCircleFilled/>},
     ];
 
+    // Guest mode - only allow home, automations, and analytics
+    const guestItems = [
+        {name: 'Home', url: '/', icon: <HomeIcon/>},
+        {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
+        {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
+    ];
+
     const authActions = isEmpty(user)
         ? [
             {name: 'Welcome', url: '/welcome', icon: <HomeIcon/>},
             {name: 'Sign In', url: '/signin', icon: <LoginIcon/>},
             {name: 'Sign Up', url: '/signup', icon: <PersonAddIcon/>},
         ]
-        : [
-            // { name: 'Logout', action: () => logout(), icon: <LogoutIcon /> },
-        ];
+        : [];
 
     const renderListItem = (item) => (
         <ListItem key={item.name} disablePadding sx={{display: 'block'}}>
@@ -242,7 +247,7 @@ export default function SideDrawer() {
                         </DrawerHeader>
 
                         <List sx={{flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
-                            {[...publicItems, ...(isEmpty(user) ? [] : authItems), ...authActions].map(renderListItem)}
+                            {[...publicItems, ...(isEmpty(user) ? [] : (isGuest ? guestItems : authItems)), ...authActions].map(renderListItem)}
                         </List>
 
                         {/* Avatar at the bottom */}
@@ -307,17 +312,17 @@ export default function SideDrawer() {
                                 <Route path="signin" element={<SignIn/>}/>
                                 {/*protected*/}
 
-                                <Route index element={<PrivateRoute element={<DashboardV2/>}/>}/>
-                                <Route path="analytics" element={<PrivateRoute element={<AnalyticsView/>}/>}/>
+                                <Route index element={<PrivateRoute path="/" element={<DashboardV2/>}/>}/>
+                                <Route path="analytics" element={<PrivateRoute path="/analytics" element={<AnalyticsView/>}/>}/>
                                 <Route path="automation-analytics"
-                                       element={<PrivateRoute element={<AutomationLiveInspector/>}/>}/>
-                                <Route path="presentation" element={<PrivateRoute element={<Presentation/>}/>}/>
-                                <Route path="virtual" element={<PrivateRoute element={<VirtualDeviceForm/>}/>}/>
-                                <Route path="dashboard" element={<PrivateRoute element={<DeviceNodes/>}/>}/>
-                                <Route path="actions" element={<PrivateRoute element={<ActionBoard/>}/>}/>
-                                <Route path="exp" element={<PrivateRoute element={<Exp/>}/>}/>
-                                <Route path="devices" element={<PrivateRoute element={<Devices/>}/>}/>
-                                <Route path="configure" element={<PrivateRoute element={<ConfigurationView/>}/>}/>
+                                       element={<PrivateRoute path="/automation-analytics" element={<AutomationLiveInspector/>}/>}/>
+                                <Route path="presentation" element={<PrivateRoute path="/presentation" element={<Presentation/>}/>}/>
+                                <Route path="virtual" element={<PrivateRoute path="/virtual" element={<VirtualDeviceForm/>}/>}/>
+                                <Route path="dashboard" element={<PrivateRoute path="/dashboard" element={<DeviceNodes/>}/>}/>
+                                <Route path="actions" element={<PrivateRoute path="/actions" element={<ActionBoard/>}/>}/>
+                                <Route path="exp" element={<PrivateRoute path="/exp" element={<Exp/>}/>}/>
+                                <Route path="devices" element={<PrivateRoute path="/devices" element={<Devices/>}/>}/>
+                                <Route path="configure" element={<PrivateRoute path="/configure" element={<ConfigurationView/>}/>}/>
                             </Routes>
                         </Suspense>
                     </ReactFlowProvider>
