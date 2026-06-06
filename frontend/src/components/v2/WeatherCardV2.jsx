@@ -329,8 +329,8 @@ export function TopBar({
                 <Typography variant="h1">
                     <ShinyText
                         text={greeting}
-                        speed={2}
-                        delay={0}
+                        speed={10}
+                        delay={1}
                         color="#ffffff"
                         shineColor="#EAB308"
                         spread={120}
@@ -439,7 +439,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
 
     // Outdoor weather from Open-Meteo via Spring Boot
     const [outdoor, setOutdoor] = useState(null); // WeatherResponse shape
-
+    const user = useMemo(() => JSON.parse(localStorage.getItem('user')), []);
     const {
         attributes,
         deviceIds,
@@ -448,7 +448,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
         apiBase = "",
         weatherRefreshMs = 30 * 60 * 1000, // 10 min
         topBarProps = {
-            userName: "Subham",
+            userName: user?.firstName,
             userRoom: "Living room",
             alarm: "08:00",
             notifications: 6,

@@ -146,7 +146,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
                 className="card-glow-container"
                 variant="elevated" style={{
                 background: 'transparent',
-                boxShadow: 'rgb(40 40 40) 0px 0px 36px 10px inset, 0px 4px 6px rgba(30 30 30)',
+                boxShadow: 'rgb(40 40 40) 0px 0px 66px 6px inset, rgba(30 30 30) 0px 0px 6px 3px',
                 // backdropFilter: 'blur(4px)',
                 backgroundColor: 'rgb(0 0 0 / 0%)',
                 minHeight: height, height: '100%', minWidth: width, padding: '10px', borderRadius: '12px'
