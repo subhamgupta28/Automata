@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import {Card, LinearProgress} from "@mui/material";
+import {Card, LinearProgress, Skeleton} from "@mui/material";
 import Typography from "@mui/material/Typography";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -120,7 +120,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                 className="card-glow-container"
                 variant="elevated" style={{
                 background: 'transparent',
-                boxShadow: 'rgb(30 30 30) 0px 0px 36px 10px inset, 0px 4px 6px rgba(30 30 30)',
+                boxShadow: 'rgb(30 30 30) 0px 0px 86px 10px inset',
                 // backdropFilter: 'blur(4px)',
                 // backgroundColor: 'rgb(0 0 0 / 20%)',
                 minHeight: height, height: '100%', minWidth: width,
@@ -183,7 +183,9 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                                 {/*    <SystemDevice devices={systemDevices} messages={messages}/>}*/}
                             </div>
                         ) : (
-                            <LinearProgress color="inherit"/>
+                            <Skeleton style={{background: 'transparent'}} animation="wave" variant="rectangular"
+                                      width={width} height={height}/>
+                            // <LinearProgress color="inherit"/>
                         )}
                     </div>
                     {mapDevices.length > 0 && (
