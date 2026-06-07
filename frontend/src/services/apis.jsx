@@ -683,3 +683,14 @@ export const fetchOutdoorWeather = async () => {
     const response = await api.get(`utils/currentWeather`);
     return response.data;
 };
+
+// ─── Admin: Login Analytics ───────────────────────────────────────────────────
+
+/**
+ * Fetch login analytics for admin dashboard
+ * @param {string} endpoint - 'stats', 'summary', 'recent', or 'user/{email}'
+ */
+export const getLoginAnalytics = async (endpoint) => {
+    const response = await api.get(`admin/login-analytics/${endpoint}`);
+    return response;
+};

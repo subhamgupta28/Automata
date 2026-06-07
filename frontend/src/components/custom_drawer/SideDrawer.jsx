@@ -28,6 +28,7 @@ import {useAuth} from "../auth/AuthContext.jsx";
 import LoginIcon from '@mui/icons-material/Login';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import OptionsMenu from "./OptionsMenu.jsx";
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import isEmpty from "../../utils/Helper.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
 import {Dashboard, GridView, TrendingUp} from "@mui/icons-material";
@@ -49,6 +50,7 @@ const SpotifyPlayer = lazy(() => import("../integrations/SpotifyPlayer.jsx"));
 const VirtualDeviceForm = lazy(() => import("../v2/VirtualDeviceForm.jsx"));
 const DashboardV2 = lazy(() => import("../v2/DashboardV2.jsx"));
 const Presentation = lazy(() => import("../demo/Presentation.jsx"));
+const AdminLoginDashboard = lazy(() => import("../admin/AdminLoginDashboard.jsx"));
 
 const PageLoader = () => (
     <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%'}}>
@@ -139,6 +141,7 @@ export default function SideDrawer() {
         {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
         {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
         {name: 'Configure', url: '/configure', icon: <SettingsIcon/>},
+        ...(user?.role?.toUpperCase() === 'ADMIN' ? [{name: 'Admin Panel', url: '/admin/login-analytics', icon: <AdminPanelSettingsIcon/>}] : []),
         // {name: 'Presentation', url: '/presentation', icon: <PlayCircleFilled/>},
     ];
 
@@ -323,6 +326,7 @@ export default function SideDrawer() {
                                 <Route path="exp" element={<PrivateRoute path="/exp" element={<Exp/>}/>}/>
                                 <Route path="devices" element={<PrivateRoute path="/devices" element={<Devices/>}/>}/>
                                 <Route path="configure" element={<PrivateRoute path="/configure" element={<ConfigurationView/>}/>}/>
+                                <Route path="admin/login-analytics" element={<PrivateRoute path="/admin/login-analytics" element={<AdminLoginDashboard/>} requiredRole="ADMIN"/>}/>
                             </Routes>
                         </Suspense>
                     </ReactFlowProvider>
