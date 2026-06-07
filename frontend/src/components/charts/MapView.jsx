@@ -1,4 +1,4 @@
-import {MapContainer, Marker, Polyline, TileLayer, useMap} from 'react-leaflet';
+import {MapContainer, Marker, Polyline, Popup, TileLayer, useMap} from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import React, {useEffect} from "react";
@@ -33,7 +33,17 @@ const FitBounds = ({route}) => {
     }, [route, map]);
     return null;
 };
+const RecenterMap = ({position}) => {
+    const map = useMap();
 
+    useEffect(() => {
+        map.setView(position, map.getZoom(), {
+            animate: true,
+        });
+    }, [position, map]);
+
+    return null;
+};
 export const MapView = React.memo(({lat, lng, h, w, route}) => {
     const position = [lat || 0, lng || 0];
     const hasRoute = route && route.length > 1;
@@ -41,10 +51,17 @@ export const MapView = React.memo(({lat, lng, h, w, route}) => {
     return (
         <MapContainer
             center={position}
-            zoom={18}
-            style={{height: h, width: w, borderRadius: '8px'}}
+            zoom={16}
+            style={{
+                height: h, width: w, borderRadius: '8px',
+                // boxShadow: 'rgb(30 30 30) 0px 0px 6px 10px',
+                overflow: 'hidden',
+                background: 'transparent',
+                border: 'none'
+            }}
             className="nodrag"
         >
+            <RecenterMap position={position}/>
             <TileLayer
                 url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
                 maxZoom={20}
@@ -65,7 +82,11 @@ export const MapView = React.memo(({lat, lng, h, w, route}) => {
                     <Marker position={route[route.length - 1]} icon={customIcon('#f87171')}/>
                 </>
             ) : (
-                <Marker position={position}/>
+                <Marker position={position}>
+                    <Popup>
+                        Current Position
+                    </Popup>
+                </Marker>
             )}
         </MapContainer>
     );

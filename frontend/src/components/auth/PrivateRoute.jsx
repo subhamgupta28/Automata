@@ -6,7 +6,7 @@ import isEmpty from '../../utils/Helper.jsx';
 // Routes allowed for guest users
 const GUEST_ALLOWED_ROUTES = ['/', '/actions', '/analytics'];
 
-export default function PrivateRoute({ element, path }) {
+export default function PrivateRoute({ element, path, requiredRole }) {
     const { user, loading, isGuest } = useAuth();
     const location = useLocation();
 
@@ -17,6 +17,11 @@ export default function PrivateRoute({ element, path }) {
 
     if (isEmpty(user)) {
         return <Navigate to="/signin" replace state={{ from: location }} />;
+    }
+
+    // Check if user has required role
+    if (requiredRole && user?.role?.toUpperCase() !== requiredRole.toUpperCase()) {
+        return <Navigate to="/" replace />;
     }
 
     // Allow guests on specific routes only
