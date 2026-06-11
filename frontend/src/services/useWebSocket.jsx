@@ -20,7 +20,7 @@ const useWebSocket = (topic) => {
             },
             onConnect: () => {
                 console.log("WebSocket connected");
-                setMessages({message: "Connected to server.", severity: "High"});
+                // setMessages({message: "Connected to server.", severity: "High"});
                 client.subscribe(topic, (message) => {
                     setMessages(JSON.parse(message.body));
                 });

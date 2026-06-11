@@ -1,19 +1,11 @@
-import React, {useEffect, useState, memo, useMemo} from "react";
+import React, {memo, useEffect, useMemo, useState} from "react";
 
 import ChartDetail from "../charts/ChartDetail.jsx";
-import {
-    Box,
-    Typography,
-    Card,
-    CardContent,
-    Grid,
-    CircularProgress,
-    useTheme, Backdrop, Tabs, Tab,
-} from "@mui/material";
+import {Backdrop, Box, CircularProgress, Tab, Tabs, useTheme,} from "@mui/material";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 
 const CustomTabPanel = memo(function CustomTabPanel(props) {
-    const { children, value, index, ...other } = props;
+    const {children, value, index, ...other} = props;
 
     return (
         <div
@@ -23,12 +15,13 @@ const CustomTabPanel = memo(function CustomTabPanel(props) {
             aria-labelledby={`simple-tab-${index}`}
             {...other}
         >
-            {value === index && <Box sx={{ p: 1 }}>{children}</Box>}
+            {value === index && <Box sx={{p: 1}}>{children}</Box>}
         </div>
     );
 });
 
-export { CustomTabPanel };
+export {CustomTabPanel};
+
 function AnalyticsViewComponent() {
     const [devicesList, setDevices] = useState([]);
     const {devices, loading, error} = useCachedDevices();
@@ -63,25 +56,26 @@ function AnalyticsViewComponent() {
                 color: theme.palette.text.primary,
             }}
         >
-            <Box sx={{paddingTop:'50px'}}>
+            <Box sx={{paddingTop: '50px'}}>
                 <Box style={{
                     background: 'transparent',
                     backdropFilter: 'blur(4px)',
                     marginRight: '10px',
-                    marginLeft:'10px',
-                    borderRadius:'8px',
+                    marginLeft: '10px',
+                    borderRadius: '8px',
                     backgroundColor: 'rgb(255 255 255 / 8%)',
                 }}>
                     <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
                         {devicesList.map((device) => (
-                            <Tab key={device.id} label={device.name}  />
+                            <Tab key={device.id} label={device.name}/>
                         ))}
                     </Tabs>
                 </Box>
                 {devicesList.map((device, i) => (
                     <CustomTabPanel key={device.id} value={value} index={i}>
                         {value === i && (
-                            <ChartDetail deviceId={device.id} name={device.name} width={1000} height={600} deviceAttributes={device.attributes}/>
+                            <ChartDetail deviceId={device.id} name={device.name} width={1000} height={550}
+                                         deviceAttributes={device.attributes}/>
                         )}
                     </CustomTabPanel>
                 ))}

@@ -3,7 +3,7 @@ import React from 'react';
 // Dummy data following the EnergyStat Java model (one entry per day)
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
-import {MapView} from "../charts/MapView.jsx";
+
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
     let color = theme.palette.success.main;
@@ -74,22 +74,24 @@ const Exp = () => {
             {/*<AutomationSummaryBar/>*/}
             {/*<AutomationAnalyticsList/>*/}
             {/*<AutomationFlowInspector/>*/}
-            // Single pin (existing behavior)
-            <MapView lat={17.385} lng={78.486} h="400px" w="100%"/>
+            {/*// Single pin (existing behavior)*/}
+            {/*<MapView lat={17.385} lng={78.486} h="400px" w="100%"/>*/}
 
-            // With route
-            <MapView
-                lat={17.385}
-                lng={78.486}
-                h="400px"
-                w="100%"
-                route={[
-                    [17.385, 78.486],
-                    [17.390, 78.491],
-                    [17.395, 78.498],
-                    [17.400, 78.505],
-                ]}
-            />
+            {/*// With route*/}
+            {/*<MapView*/}
+            {/*    lat={17.385}*/}
+            {/*    lng={78.486}*/}
+            {/*    h="400px"*/}
+            {/*    w="100%"*/}
+            {/*    route={[*/}
+            {/*        [17.385, 78.486],*/}
+            {/*        [17.390, 78.491],*/}
+            {/*        [17.395, 78.498],*/}
+            {/*        [17.400, 78.505],*/}
+            {/*    ]}*/}
+            {/*/>*/}
+
+         
             {/*<SmartHomeDashboard2/>*/}
 
         </div>

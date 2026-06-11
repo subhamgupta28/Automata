@@ -26,7 +26,7 @@ export const DeviceDataProvider = ({children}) => {
             },
             onConnect: () => {
                 console.log("WebSocket connected");
-                setAlertMessages({message: "Connected to server.", severity: "High"});
+                // setAlertMessages({message: "Connected to server.", severity: "High"});
                 client.subscribe("/topic/data", (message) => {
                     setMessages(JSON.parse(message.body));
                 });

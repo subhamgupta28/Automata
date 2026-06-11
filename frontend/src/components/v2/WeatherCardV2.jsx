@@ -8,10 +8,10 @@ import WindowIcon from "@mui/icons-material/Window";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import LockIcon from "@mui/icons-material/Lock";
 import PeopleIcon from "@mui/icons-material/People";
-import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import OpacityIcon from "@mui/icons-material/Opacity";
 import {
     CheckCircleOutline,
+    DeviceThermostat,
     ErrorOutline,
     Lightbulb,
     SignalWifiStatusbarConnectedNoInternet4,
@@ -30,7 +30,6 @@ import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import GasMeterIcon from '@mui/icons-material/GasMeter';
 import ShinyText from "../charts/ShinyText.jsx";
 import Tooltip from "@mui/material/Tooltip";
-
 // ─── Design tokens (unchanged) ────────────────────────────────────────────────
 export const C = {
     bg: "#111111",
@@ -292,6 +291,82 @@ function getDevicesWithCO2(attributes) {
         .map(([deviceId]) => deviceId);
 }
 
+// ─── Weather icon mapper ───────────────────────────────────────────────────────
+function getWeatherIconFile(conditionLabel = "", isNight = false) {
+    const c = conditionLabel.toLowerCase();
+
+    if (c.includes("thunder") || c.includes("storm")) return "thunder.svg";
+    if (c.includes("snow") || c.includes("blizzard")) return "snowy-4.svg";
+    if (c.includes("sleet") || c.includes("freezing rain")) return "snowy-6.svg";
+    if (c.includes("heavy rain") || c.includes("shower")) return isNight ? "rainy-6.svg" : "rainy-5.svg";
+    if (c.includes("rain") || c.includes("drizzle")) return isNight ? "rainy-4.svg" : "rainy-3.svg";
+    if (c.includes("overcast") || c.includes("fog") || c.includes("mist")) return "cloudy.svg";
+    if (c.includes("mostly cloudy") || c.includes("broken"))
+        return isNight ? "cloudy-night-3.svg" : "cloudy-day-3.svg";
+    if (c.includes("partly cloudy") || c.includes("few clouds"))
+        return isNight ? "cloudy-night-1.svg" : "cloudy-day-1.svg";
+    if (c.includes("cloudy"))
+        return isNight ? "cloudy-night-2.svg" : "cloudy-day-2.svg";
+    if (c.includes("clear") || c.includes("sunny"))
+        return isNight ? "night.svg" : "day.svg";
+
+    // fallback
+    return isNight ? "night.svg" : "day.svg";
+}
+
+// ─── Inline weather widget ────────────────────────────────────────────────────
+function WeatherInline({weather, live, hour, iconBasePath = "/icons/weather/"}) {
+    const isNight = hour < 6 || hour >= 21;
+
+    const conditionLabel =
+        weather?.conditionLabel ??
+        weather?.label ??
+        (live?.temp != null
+            ? live.temp >= 30 ? "Sunny" : live.temp >= 20 ? "Partly cloudy" : "Cloudy"
+            : null);
+
+    const temperature =
+        weather?.temperature ??
+        (weather?.temp ? parseFloat(weather.temp) : null) ??
+        live?.outTemp ??
+        live?.temp;
+
+    if (!conditionLabel && temperature == null) return null;
+
+    const iconFile = getWeatherIconFile(conditionLabel ?? "", isNight);
+    const iconSrc = `${iconBasePath}${iconFile}`;
+
+    return (
+        <Box
+            sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                mt: 0.5,
+            }}
+        >
+            <Box
+                component="img"
+                src={iconSrc}
+                alt={conditionLabel ?? "weather"}
+                sx={{width: 86, height: 86, flexShrink: 0}}
+            />
+            <Box>
+                {temperature != null && (
+                    <Typography sx={{fontSize: 36, fontWeight: 700, lineHeight: 1, color: C.text}}>
+                        {typeof temperature === "number" ? temperature.toFixed(1) : temperature}°C
+                    </Typography>
+                )}
+                {conditionLabel && (
+                    <Typography sx={{fontSize: 18, color: C.muted, lineHeight: 1.2}}>
+                        {conditionLabel}
+                    </Typography>
+                )}
+            </Box>
+
+        </Box>
+    );
+}
 
 // ─── TopBar — UI unchanged ────────────────────────────────────────────────────
 export function TopBar({
@@ -309,10 +384,10 @@ export function TopBar({
                            occupancy,
                            location = "Home",
                            live, outdoor,
-                           automationSummary
+                           automationSummary,
+                           weatherIconBasePath = "/icons/weather/",   // ← new prop; adjust to your asset path
                        }) {
     const hour = time ? parseInt(time.split(":")[0], 10) : new Date().getHours();
-    // ↓ new: context-aware greeting includes the name
     const greeting = useMemo(() => buildGreeting(hour, userName), [hour, userName]);
     const message = buildMessage({time, weather, homeStats, alarm, live, outdoor});
     const chips = chipsProp ?? buildChips({
@@ -324,8 +399,11 @@ export function TopBar({
 
     return (
         <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", px: 2.5, py: 1.5}}>
-            <Box style={{display: "flex", flexDirection: "column"}}>
-                {/* greeting no longer needs ", {userName}!" appended — it's inside buildGreeting */}
+
+            {/* ── Left column ─────────────────────────────────────────── */}
+            <Box sx={{display: "flex", flexDirection: "column", flex: 1}}>
+
+                {/* Row 1 — Greeting */}
                 <Typography variant="h1">
                     <ShinyText
                         text={greeting}
@@ -340,26 +418,40 @@ export function TopBar({
                         disabled={false}
                     />
                 </Typography>
-                <Typography variant="title" style={{marginTop: "10px", width: "75%"}}>
-                    {message}
-                </Typography>
-                {alarm && (
-                    <Typography variant="body" sx={{color: C.muted}}>
-                        Your alarm is set to {alarm}.
+
+                {/* Row 2 — Weather icon + message side by side */}
+                <Box sx={{display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap"}}>
+                    <WeatherInline
+                        weather={weather}
+                        live={live}
+                        hour={hour}
+                        iconBasePath={weatherIconBasePath}
+                    />
+
+                    {/* Thin divider */}
+                    <Box sx={{width: "1px", height: 28, backgroundColor: C.border, flexShrink: 0}}/>
+
+                    <Typography
+                        variant="title"
+                        sx={{color: C.muted, fontSize: 12, lineHeight: 1.4, maxWidth: 420}}
+                    >
+                        {message}
                     </Typography>
-                )}
+                </Box>
+
+                {/*/!* Alarm line (unchanged) *!/*/}
+                {/*{alarm && (*/}
+                {/*    <Typography variant="body" sx={{color: C.muted, mt: 0.5}}>*/}
+                {/*        Your alarm is set to {alarm}.*/}
+                {/*    </Typography>*/}
+                {/*)}*/}
             </Box>
 
-            <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1}}>
+            {/* ── Right column (avatar + automation pills — unchanged) ── */}
+            <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, width: "30%"}}>
                 {(chips.length > 0 || automationSummary) && (
                     <Box sx={{display: "flex", gap: 0.8, flexWrap: "wrap", justifyContent: "flex-end"}}>
-                        {/* Automation pills first — most operationally important */}
                         <AutomationSummaryChips summary={automationSummary}/>
-
-                        {/* Original icon chips */}
-                        {/*{chips.map((c, i) => (*/}
-                        {/*    <Chip key={i} icon={c.icon} label={c.label} sx={chipSx}/>*/}
-                        {/*))}*/}
                     </Box>
                 )}
                 <Box sx={{display: "flex", alignItems: "center", gap: 1}}>
@@ -576,7 +668,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
         ? statsItemsFn(live, outdoor)
         : [
             {
-                icon: <WbSunnyIcon sx={{fontSize: 36, color: C.yellow}}/>,
+                icon: <DeviceThermostat sx={{fontSize: 36, color: C.yellow}}/>,
                 label: "Temperature",
                 value: fmt(live.outTemp, " °C"),
             },

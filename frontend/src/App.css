@@ -9,7 +9,7 @@
     position: absolute;
     inset: 0;
     border-radius: 12px;
-    border: 2px solid transparent;
+    border: 3px solid transparent;
     background: var(--gradient);
     background-attachment: fixed;
     mask: linear-gradient(#0000, #0000),
@@ -43,13 +43,7 @@
 :root {
     --gradient: conic-gradient(
             from 90deg at 50% 50%,
-            rgb(255 46 46),
-            rgb(251 212 54),
-            rgb(255 216 33),
-            rgb(255, 255, 255),
-            rgb(48 92 248),
-            rgb(48 92 248),
-            rgb(255 0 0)
+            rgb(255 216 33)
     );
 }
 

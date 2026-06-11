@@ -1,22 +1,8 @@
-import {
-    LineChart,
-    lineElementClasses,
-    BarChart,
-} from "@mui/x-charts";
-import React, {useEffect, useState, useRef, useMemo, memo} from "react";
+import {BarChart, LineChart, lineElementClasses,} from "@mui/x-charts";
+import React, {memo, useEffect, useMemo, useRef, useState} from "react";
 import {getDetailChartData} from "../../services/apis.jsx";
-import {
-    Card,
-    CardContent,
-    Typography,
-    Box,
-    ToggleButton,
-    ToggleButtonGroup,
-} from "@mui/material";
+import {Box, Card, CardContent, Chip, ToggleButton, ToggleButtonGroup, Typography,} from "@mui/material";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import {LocalizationProvider} from "@mui/x-date-pickers";
-import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 
 const gradientColors = [
@@ -28,16 +14,16 @@ const gradientColors = [
     ['#b13b3b', '#ffffff'],
     ['#7f7f7f', '#ffffff'],
     ['#17becf', '#ffffff'],
-    ['#1f77b4', '#ffffff'], // blue
-    ['#9467bd', '#ffffff'], // purple
-    ['#e377c2', '#ffffff'], // pink
-    ['#8c564b', '#ffffff'], // brown
-    ['#aec7e8', '#ffffff'], // light blue
-    ['#98df8a', '#ffffff'], // light green
-    ['#ffbb78', '#ffffff'], // light orange
-    ['#c5b0d5', '#ffffff'], // lavender
-    ['#f7b6d2', '#ffffff'], // light pink
-    ['#c49c94', '#ffffff'], // muted brown
+    ['#1f77b4', '#ffffff'],
+    ['#9467bd', '#ffffff'],
+    ['#e377c2', '#ffffff'],
+    ['#8c564b', '#ffffff'],
+    ['#aec7e8', '#ffffff'],
+    ['#98df8a', '#ffffff'],
+    ['#ffbb78', '#ffffff'],
+    ['#c5b0d5', '#ffffff'],
+    ['#f7b6d2', '#ffffff'],
+    ['#c49c94', '#ffffff'],
 ];
 const solidColors = [
     '#42a5f5',
@@ -48,16 +34,16 @@ const solidColors = [
     '#935050',
     '#7f7f7f',
     '#9467bd',
-    '#17becf', // teal
-    '#1f77b4', // blue
-    '#e377c2', // pink
-    '#8c564b', // brown
-    '#aec7e8', // light blue
-    '#98df8a', // light green
-    '#ffbb78', // light orange
-    '#c5b0d5', // lavender
-    '#f7b6d2', // light pink
-    '#c49c94', // muted brown
+    '#17becf',
+    '#1f77b4',
+    '#e377c2',
+    '#8c564b',
+    '#aec7e8',
+    '#98df8a',
+    '#ffbb78',
+    '#c5b0d5',
+    '#f7b6d2',
+    '#c49c94',
 ];
 
 const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, deviceAttributes, props}) => {
@@ -65,12 +51,11 @@ const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, devic
     const [attributes, setAttributes] = useState([]);
     const [range, setRange] = useState("day");
     const [chartType, setChartType] = useState("bar");
+    const [selectedAttrs, setSelectedAttrs] = useState(null); // null = awaiting first load
     const {messages} = useDeviceLiveData();
     const dataRef = useRef([]);
     const [selectedMonth, setSelectedMonth] = useState(dayjs());
-    const unitsMap
-        = useMemo(() => new Map(deviceAttributes.map(obj => [obj.key, obj.units])), []);
-
+    const unitsMap = useMemo(() => new Map(deviceAttributes.map(obj => [obj.key, obj.units])), []);
 
     useEffect(() => {
         const fetchChartData = async () => {
@@ -79,13 +64,13 @@ const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, devic
                 const start = selectedMonth.startOf('month').toISOString();
                 const end = selectedMonth.endOf('month').toISOString();
 
-                getDetailChartData(deviceId, "history", { start, end })
+                getDetailChartData(deviceId, "history", {start, end})
                     .then((d) => {
                         setData(d.data);
                         setAttributes(d.attributes);
                         dataRef.current = d.data;
                     });
-            }else if (range!=="live"){
+            } else if (range !== "live") {
                 getDetailChartData(deviceId, range, {})
                     .then((d) => {
                         setData(d.data);
@@ -104,8 +89,13 @@ const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, devic
         fetchChartData();
     }, [deviceId, range, selectedMonth]);
 
+    // Initialize selectedAttrs to only the first attribute on first load
+    useEffect(() => {
+        if (attributes.length > 0 && selectedAttrs === null) {
+            setSelectedAttrs([attributes[0]]);
+        }
+    }, [attributes]);
 
-    // Listen for live updates
     useEffect(() => {
         if (range === "live") {
             if (messages.deviceId === deviceId && messages.data) {
@@ -126,6 +116,17 @@ const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, devic
         }
     }, [messages, deviceId]);
 
+    const toggleAttr = (attr) => {
+        setSelectedAttrs(prev => {
+            if (!prev) return [attr];
+            if (prev.includes(attr)) {
+                // Prevent deselecting the last remaining attribute
+                return prev.length === 1 ? prev : prev.filter(a => a !== attr);
+            }
+            return [...prev, attr];
+        });
+    };
+
     const xLabels = useMemo(() => data.map((item) => item.dateDay), [data]);
 
     const series = useMemo(() => attributes.map((attr, index) => ({
@@ -136,42 +137,46 @@ const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, devic
         color: chartType === "line"
             ? `url(#Gradient${index})`
             : solidColors[index % solidColors.length],
-        stack: chartType === "bar" ? "total" : undefined, // stack all bar series together
+        stack: chartType === "bar" ? "total" : undefined,
         valueFormatter: (value) => `${value} ${unitsMap.get(attr) || ''}`,
+        _attr: attr, // internal key for filtering
+        _colorIndex: index,
     })), [attributes, data, chartType, unitsMap]);
+
+    // Filter series to only selected attributes
+    const visibleSeries = useMemo(() => {
+        const active = selectedAttrs ?? (attributes.length > 0 ? [attributes[0]] : []);
+        return series
+            .filter(s => active.includes(s._attr))
+            .map(({_attr, _colorIndex, ...rest}) => rest); // strip internal keys
+    }, [series, selectedAttrs, attributes]);
 
     const gradients = useMemo(() => attributes.map((_, index) => {
         const [start, end] = gradientColors[index % gradientColors.length];
-        return {
-            index,
-            start,
-            end,
-        };
+        return {index, start, end};
     }), [attributes]);
 
     return (
         <Card elevation={0} style={{
             background: 'transparent',
             borderRadius: '12px',
-            // backdropFilter: 'blur(8px)',
             backgroundColor: 'rgb(0 0 0 / 20%)',
             ...props,
         }}>
             <CardContent>
+                {/* Header row */}
                 <Box
                     display="flex"
                     justifyContent="space-between"
                     alignItems="center"
                     flexWrap="wrap"
+                    gap={1}
+                    mb={1.5}
                 >
-                    <Typography
-                        variant="h6"
-                        sx={{fontWeight: 600}}
-                    >
+                    <Typography variant="h6" sx={{fontWeight: 600}}>
                         {name}
                     </Typography>
 
-                    {/* Range toggle */}
                     <ToggleButtonGroup
                         color="primary"
                         size="small"
@@ -183,22 +188,9 @@ const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, devic
                         <ToggleButton value="hour">Hour</ToggleButton>
                         <ToggleButton value="day">Day</ToggleButton>
                         <ToggleButton value="week">Week</ToggleButton>
-                        {/*<ToggleButton value="history">History</ToggleButton>*/}
                         <ToggleButton value="live">Live</ToggleButton>
-                        {/*<LocalizationProvider dateAdapter={AdapterDayjs}>*/}
-                        {/*    {range === "history" && (*/}
-                        {/*        <DatePicker*/}
-                        {/*            views={['year', 'month', 'day']}*/}
-                        {/*            label="Select Month"*/}
-                        {/*            value={selectedMonth}*/}
-                        {/*            maxDate={dayjs()}*/}
-                        {/*            onChange={(newValue) => setSelectedMonth(newValue)}*/}
-                        {/*        />*/}
-                        {/*    )}*/}
-                        {/*</LocalizationProvider>*/}
                     </ToggleButtonGroup>
 
-                    {/* Chart type toggle */}
                     <ToggleButtonGroup
                         color="primary"
                         size="small"
@@ -206,18 +198,49 @@ const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, devic
                         exclusive
                         onChange={(e) => setChartType(e.target.value)}
                         aria-label="chart type"
-                        sx={{ml: 2}}
                     >
                         <ToggleButton value="line">Line</ToggleButton>
                         <ToggleButton value="bar">Bar</ToggleButton>
                     </ToggleButtonGroup>
                 </Box>
 
+                {/* Attribute selector chips */}
+                {attributes.length > 0 && (
+                    <Box display="flex" flexWrap="wrap" gap={1} mb={2}>
+                        {attributes.map((attr, index) => {
+                            const isSelected = (selectedAttrs ?? [attributes[0]]).includes(attr);
+                            const color = solidColors[index % solidColors.length];
+                            return (
+                                <Chip
+                                    key={attr}
+                                    label={attr.charAt(0).toUpperCase() + attr.slice(1)}
+                                    size="small"
+                                    onClick={() => toggleAttr(attr)}
+                                    sx={{
+                                        cursor: 'pointer',
+                                        fontWeight: isSelected ? 600 : 400,
+                                        backgroundColor: isSelected ? color : 'transparent',
+                                        color: isSelected ? '#fff' : 'text.secondary',
+                                        border: `1.5px solid ${color}`,
+                                        transition: 'all 0.18s ease',
+                                        '&:hover': {
+                                            backgroundColor: isSelected
+                                                ? color
+                                                : `${color}22`,
+                                            opacity: 0.9,
+                                        },
+                                    }}
+                                />
+                            );
+                        })}
+                    </Box>
+                )}
 
+                {/* Chart */}
                 {chartType === "line" ? (
                     <LineChart
                         height={height}
-                        series={series}
+                        series={visibleSeries}
                         yAxis={[{position: 'none'}]}
                         xAxis={[{scaleType: "band", data: xLabels}]}
                         sx={{
@@ -233,10 +256,7 @@ const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, devic
                                 <linearGradient
                                     key={index}
                                     id={`Gradient${index}`}
-                                    x1="0%"
-                                    y1="0%"
-                                    x2="0%"
-                                    y2="100%"
+                                    x1="0%" y1="0%" x2="0%" y2="100%"
                                 >
                                     <stop offset="0%" stopColor={start} stopOpacity="0.8"/>
                                     <stop offset="100%" stopColor={end} stopOpacity="0"/>
@@ -247,23 +267,12 @@ const ChartDetailComponent = ({deviceId, name, height = 450, width = 1000, devic
                 ) : (
                     <BarChart
                         height={height}
-                        series={series}
+                        series={visibleSeries}
                         xAxis={[{scaleType: "band", data: xLabels}]}
-                        // yAxis={[{ position: 'left' }]}
                         sx={{
-                            '& rect': {
-                                rx: 2,   // horizontal radius
-                                ry: 2,   // vertical radius
-                            },
+                            '& rect': {rx: 2, ry: 2},
                         }}
-                        // sx={{
-                        //     '& .MuiChartsAxis-tickLabel': {
-                        //         transform: 'rotate(-40deg)',
-                        //         textAnchor: 'end',
-                        //     },
-                        // }}
                         borderRadius={4}
-
                     />
                 )}
             </CardContent>

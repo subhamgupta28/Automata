@@ -9,6 +9,7 @@ import {DeviceDataProvider, useDeviceLiveData} from "./services/DeviceDataProvid
 import './utils/Glow.css'
 import StarfieldBackground from "./components/integrations/StarfieldBackground.jsx";
 import isEmpty from "./utils/Helper.jsx";
+import {Card} from "@mui/material";
 
 function getBreathingClass(alertLevel) {
     switch (alertLevel) {
@@ -18,6 +19,19 @@ function getBreathingClass(alertLevel) {
             return 'breathing-yellow';
         case 'normal':
             return 'breathing-green';
+        default:
+            return '';
+    }
+}
+
+function getBorderColor(alertLevel) {
+    switch (alertLevel) {
+        case 'critical':
+            return 'red';
+        case 'warning':
+            return 'yellow';
+        case 'normal':
+            return 'green';
         default:
             return '';
     }
@@ -51,6 +65,18 @@ function AppContent() {
 
     return (
         <main className={getBreathingClass(alertLevel)} style={{position: 'relative'}}>
+            {alertLevel && (
+                <Card variant='outlined' style={{
+                    position: 'absolute',
+                    left: '50%',
+                    padding: '4px 16px',
+                    borderRadius: '0px 0px 12px 12px',
+                    borderColor: getBorderColor(alertLevel)
+                }}>
+                    {alertMessages.message}
+                </Card>
+            )}
+
             <SideDrawer/>
         </main>
     );
