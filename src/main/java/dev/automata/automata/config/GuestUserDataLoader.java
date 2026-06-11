@@ -1,7 +1,7 @@
 package dev.automata.automata.config;
 
-import dev.automata.automata.model.Users;
 import dev.automata.automata.model.Role;
+import dev.automata.automata.model.Users;
 import dev.automata.automata.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -24,12 +24,12 @@ public class GuestUserDataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        createGuestUserIfNotExists();
+//        createGuestUserIfNotExists();
     }
 
     private void createGuestUserIfNotExists() {
         Optional<Users> existingGuest = usersRepository.findByEmail("guest@automata.local");
-        
+
         if (existingGuest.isPresent()) {
             System.out.println("Guest user already exists");
             return;
