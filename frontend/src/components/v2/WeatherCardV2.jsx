@@ -349,7 +349,7 @@ function WeatherInline({weather, live, hour, iconBasePath = "/icons/weather/"}) 
                 component="img"
                 src={iconSrc}
                 alt={conditionLabel ?? "weather"}
-                sx={{width: 86, height: 86, flexShrink: 0}}
+                sx={{width: 100, flexShrink: 0, scale: 1.5}}
             />
             <Box>
                 {temperature != null && (
@@ -404,7 +404,7 @@ export function TopBar({
             <Box sx={{display: "flex", flexDirection: "column", flex: 1}}>
 
                 {/* Row 1 — Greeting */}
-                <Typography variant="h1">
+                <Typography variant="h2">
                     <ShinyText
                         text={greeting}
                         speed={10}
@@ -538,7 +538,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
         height,
         width,
         apiBase = "",
-        weatherRefreshMs = 30 * 60 * 1000, // 10 min
+        weatherRefreshMs = 12 * 60 * 1000, // 12 min
         topBarProps = {
             userName: user?.firstName,
             userRoom: "Living room",
