@@ -62,7 +62,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
     } = data.value;
 
     const showGlow = false;
-    const glowColor = '#ffd821';
+    const glowColor = '#a2292a';
     const cardRef = useRef(null);
     useCardGlowEffect(cardRef, true, glowColor);
 
