@@ -610,20 +610,19 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
     }, [messages, attributes, deviceIds, mainDevice]);
 
     function applyMainData(_, d) {
-        setLive(prev => ({
-            ...prev,
+        setLive({
             time: dayjs().format("HH:mm"),
-            temp: d.temp ?? prev.temp,
-            humid: d.humid ?? prev.humid,
-            aqi: d.aqi ?? prev.aqi,
-            lux: d.lux ?? prev.lux,
-            co2: d.s_co2 ?? prev.co2,
-            tvoc: d.tvoc ?? prev.tvoc,
-            ch2o: d.ch2o ?? prev.ch2o,
-            pm25: d.pm25 ?? prev.pm25,
-            eCo2: d.co2 ?? prev.eCo2,
-            co2Status: d.co2Status ?? prev.co2Status,
-        }));
+            temp: d.temp ?? 0,
+            humid: d.humid ?? 0,
+            aqi: d.aqi ?? 0,
+            lux: d.lux ?? 0,
+            co2: d.s_co2 ?? 0,
+            tvoc: d.tvoc ?? 0,
+            ch2o: d.ch2o ?? 0,
+            pm25: d.pm25 ?? 0,
+            eCo2: d.co2 ?? 0,
+            ch2oStatus: d.ch2oStatus ?? "",
+        });
     }
 
     function applyOutdoorSensor(_, d) {
@@ -670,17 +669,17 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
             {
                 icon: <DeviceThermostat sx={{fontSize: 36, color: C.yellow}}/>,
                 label: "Temperature",
-                value: fmt(live.outTemp, " °C"),
+                value: fmt(live.temp, " °C"),
             },
             {
                 icon: <OpacityIcon sx={{fontSize: 36, color: C.muted}}/>,
                 label: "Humidity",
-                value: fmt(live.outHumid, "%"),
+                value: fmt(live.humid, "%"),
             },
             {icon: <AirIcon sx={{fontSize: 36, color: C.yellow}}/>, label: "AQI", value: fmt(live.aqi),},
             {icon: <Co2Icon sx={{fontSize: 36, color: C.muted}}/>, label: "CO₂", value: fmt(live.co2),},
             {icon: <Co2Icon sx={{fontSize: 36, color: C.muted}}/>, label: "eCO₂", value: fmt(live.eCo2),},
-            {icon: <GasMeterIcon sx={{fontSize: 36, color: C.muted}}/>, label: "Ch2o", value: fmt(live.co2Status),},
+            {icon: <GasMeterIcon sx={{fontSize: 36, color: C.muted}}/>, label: "Ch2o", value: fmt(live.ch2oStatus),},
             {icon: <ScienceIcon sx={{fontSize: 36, color: C.muted}}/>, label: "TVOC", value: fmt(live.tvoc),},
             {icon: <Lightbulb sx={{fontSize: 36, color: C.muted}}/>, label: "Lux", value: fmt(live.lux),},
         ];

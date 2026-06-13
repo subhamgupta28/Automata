@@ -6,7 +6,7 @@ import {Card} from "@mui/material";
 
 const METRIC_DEFS = [
     {
-        key: "SAT",
+        key: "SATS",
         label: "Satellites",
         icon: "satellite",
         unit: "",
@@ -44,7 +44,7 @@ const METRIC_DEFS = [
         colorFn: (v) => (v <= 1.5 ? "success" : v <= 3 ? "warning" : "danger"),
     },
     {
-        key: "SPD",
+        key: "SPEED",
         label: "Speed",
         icon: "speedometer",
         unit: "km/h",
@@ -60,7 +60,7 @@ const METRIC_DEFS = [
         colorFn: () => "info",
     },
     {
-        key: "COG",
+        key: "COURSE",
         label: "Heading",
         icon: "compass",
         unit: "°",
@@ -91,7 +91,6 @@ function MetricChip({def, value}) {
                 display: "flex",
                 flexDirection: "column",
                 gap: 2,
-                background: "var(--color-background-secondary)",
                 border: "0.5px solid var(--color-border-tertiary)",
                 borderRadius: 10,
                 padding: "10px 14px",
@@ -220,11 +219,14 @@ export const MapDevices = React.memo(() => {
     }
 
     return (
-        <Card style={{
+        <Card variant="outlined" style={{
             display: "flex",
             flexDirection: "column",
             gap: 0,
+            maxHeight: '95dvh',
             margin: "20px",
+            background: 'transparent',
+            backdropFilter: 'blur(4)',
             padding: "20px",
             borderRadius: "12px"
         }}>
@@ -345,7 +347,7 @@ export const MapDevices = React.memo(() => {
                     margin: 10,
                 }}
             >
-                <MapView lat={lat} lng={lng} h="70dvh" w="100%"/>
+                <MapView lat={lat} lng={lng} h="100dvh" w="100%"/>
             </div>
 
             {/* Coordinate badge */}
