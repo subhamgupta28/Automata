@@ -1,9 +1,18 @@
 import {useEffect} from "react";
 
-export const useCardGlowEffect = (cardRef, autoAnimate = false) => {
+export const useCardGlowEffect = (
+    cardRef,
+    autoAnimate = false,
+    glowColor = null
+) => {
     useEffect(() => {
         const card = cardRef.current;
         if (!card) return;
+
+        if (glowColor) {
+            card.style.setProperty('--glow-color', glowColor);
+        }
+
         let animationFrame;
 
         // AUTO ANIMATION
@@ -32,5 +41,5 @@ export const useCardGlowEffect = (cardRef, autoAnimate = false) => {
         return () => {
             card.removeEventListener('mousemove', handleMouseMove);
         };
-    }, [cardRef, autoAnimate]);
+    }, [cardRef, autoAnimate, glowColor]);
 };

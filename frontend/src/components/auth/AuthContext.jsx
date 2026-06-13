@@ -1,12 +1,21 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, {createContext, useContext, useEffect, useState} from 'react';
 import isEmpty from "../../utils/Helper.jsx";
-import { guestLoginReq } from '../../services/apis.jsx';
+import {guestLoginReq} from '../../services/apis.jsx';
+import {registerLogoutCallback} from "../../services/CustomAxios.jsx"; // ← import registration fn
 
 const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({children}) => {
     const [user, setUser] = useState({});
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // ─── FIX 2 (continued): register so the interceptor can clear React state ──
+        // This runs once on mount, before any API call can possibly 401.
+        registerLogoutCallback(() => {
+            setUser({});
+        });
+    }, []);
 
     useEffect(() => {
         try {
@@ -47,7 +56,7 @@ export const AuthProvider = ({ children }) => {
     const isGuest = user?.role?.toLowerCase() === 'guest';
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading, loginAsGuest, isGuest }}>
+        <AuthContext.Provider value={{user, login, logout, loading, loginAsGuest, isGuest}}>
             {children}
         </AuthContext.Provider>
     );

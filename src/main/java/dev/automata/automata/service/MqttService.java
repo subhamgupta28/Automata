@@ -27,6 +27,7 @@ public class MqttService {
     private final AutomationService actionService;
     private final ApplicationEventPublisher publisher;
     private final ActionDeliveryTracker deliveryTracker;
+    private final RecordingRoutingService recordingRoutingService;
 
 
     @ServiceActivator(inputChannel = "sendData")
@@ -45,6 +46,8 @@ public class MqttService {
         map.put("data", payload);
 //        map.put("deviceConfig", device.get("deviceConfig"));
         messagingTemplate.convertAndSend("/topic/data", map);
+
+        recordingRoutingService.route(deviceId, payload);
     }
 
     @ServiceActivator(inputChannel = "ackAction")
@@ -81,7 +84,7 @@ public class MqttService {
         event.setPayload(payload);
         publisher.publishEvent(event);
         messagingTemplate.convertAndSend("/topic/data", getStringObjectMap(payload, deviceId));
-
+        recordingRoutingService.route(deviceId, payload);
     }
 
     private Map<String, Object> getStringObjectMap(@Payload Map<String, Object> payload, String deviceId) {

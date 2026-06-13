@@ -694,3 +694,145 @@ export const getLoginAnalytics = async (endpoint) => {
     const response = await api.get(`admin/login-analytics/${endpoint}`);
     return response;
 };
+/**
+ * The backend stores bucketStart as a Date (ISO string from MongoDB).
+ * BucketRow expects a short "HH:mm" label in bucket.bucketStart.
+ * We also normalise the deviceId field which may come back as a raw string.
+ */
+const formatBucket = (bucket) => ({
+    ...bucket,
+    bucketStart: bucket.bucketStart
+        ? new Date(bucket.bucketStart).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+        : '—',
+    bucketEnd: bucket.bucketEnd
+        ? new Date(bucket.bucketEnd).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+        : '—',
+});
+
+// ── Session list ──────────────────────────────────────────────────────────────
+
+export const getSessions = async () => {
+    const {data} = await api.get('recordings/sessions');
+    return data;
+};
+
+// ── Create ────────────────────────────────────────────────────────────────────
+
+export const createSession = async (payload) => {
+    const {data} = await api.post('recordings/sessions', payload);
+    return data;
+};
+
+// ── Start / stop ──────────────────────────────────────────────────────────────
+
+export const startSession = async (id) => {
+    const {data} = await api.post(`recordings/sessions/${id}/start`);
+    return data;
+};
+
+export const stopSession = async (id) => {
+    const {data} = await api.post(`recordings/sessions/${id}/stop`);
+    return data;
+};
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+
+export const deleteSession = async (id) => {
+    const {data} = await api.delete(`recordings/sessions/${id}`);
+    return data;
+};
+
+// ── Session detail + buckets (used by Replay tab) ─────────────────────────────
+
+/**
+ * Fetches session metadata AND all its data buckets in parallel.
+ * Returns a single object shaped like a RecordingSession with an extra
+ * `buckets` array, matching what SessionDetail / BucketRow expect.
+ *
+ * Controller endpoints:
+ *   GET /api/v1/recordings/{sessionId}          → session metadata
+ *   GET /api/v1/recordings/{sessionId}/data     → RecordingBucket[]
+ */
+export const getSessionBuckets = async (sessionId) => {
+    const [sessionRes, bucketsRes] = await Promise.all([
+        api.get(`recordings/${sessionId}`),
+        api.get(`recordings/${sessionId}/data`),
+    ]);
+
+    return {
+        ...sessionRes.data,
+        buckets: (bucketsRes.data ?? []).map(formatBucket),
+    };
+};
+
+// ── Per-device buckets (paginated) ────────────────────────────────────────────
+
+export const getDeviceBuckets = async (sessionId, deviceId, page = 0, size = 100) => {
+    const {data} = await api.get(`recordings/${sessionId}/data/${deviceId}`, {
+        params: {page, size},
+    });
+    return (data ?? []).map(formatBucket);
+};
+
+// ── Summary ───────────────────────────────────────────────────────────────────
+
+export const getSessionSummary = async (sessionId) => {
+    const {data} = await api.get(`recordings/${sessionId}/summary`);
+    return data;
+};
+
+// ── CSV export ────────────────────────────────────────────────────────────────
+
+/**
+ * The backend doesn't have a dedicated CSV endpoint yet — we build the CSV
+ * client-side from the bucket data so the Export button works immediately.
+ *
+ * Each row in the CSV is one individual reading (unwrapped from its bucket).
+ * Columns: sessionId, deviceId, bucketStart, ts, + every field in the reading.
+ */
+export const exportSessionCsv = async (sessionId, sessionName = 'recording') => {
+    const buckets = await api
+        .get(`recordings/${sessionId}/data`)
+        .then((r) => r.data ?? []);
+
+    if (!buckets.length) return null;
+
+    // Collect all field keys across every reading (order: ts first, then rest)
+    const extraKeys = new Set();
+    buckets.forEach((b) =>
+        (b.readings ?? []).forEach((r) =>
+            Object.keys(r).forEach((k) => k !== 'ts' && extraKeys.add(k))
+        )
+    );
+    const columns = ['sessionId', 'deviceId', 'bucketStart', 'ts', ...extraKeys];
+
+    const rows = [columns.join(',')];
+    buckets.forEach((b) => {
+        const bucketStart = b.bucketStart
+            ? new Date(b.bucketStart).toISOString()
+            : '';
+        (b.readings ?? []).forEach((reading) => {
+            const cells = columns.map((col) => {
+                if (col === 'sessionId') return sessionId;
+                if (col === 'deviceId') return b.deviceId ?? '';
+                if (col === 'bucketStart') return bucketStart;
+                const v = reading[col] ?? '';
+                // Wrap in quotes if value contains comma or quote
+                return String(v).includes(',') || String(v).includes('"')
+                    ? `"${String(v).replace(/"/g, '""')}"`
+                    : v;
+            });
+            rows.push(cells.join(','));
+        });
+    });
+
+    const blob = new Blob([rows.join('\n')], {type: 'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${sessionName.replace(/\s+/g, '_')}_${sessionId.slice(0, 8)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    return blob;
+};
