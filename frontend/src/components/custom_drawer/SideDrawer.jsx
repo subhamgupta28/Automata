@@ -35,6 +35,9 @@ import {Dashboard, GridView, TrendingUp} from "@mui/icons-material";
 import AppIcon from "../../../public/icon-color.png"
 import AutomationLiveInspector from "../automation/AutomationInspector.jsx";
 import {ConfigurationView} from "../dashboard/ConfigurationView.jsx";
+import Recordings from "../integrations/AutomataRecordings.jsx";
+import {Map} from "lucide-react";
+import {MapDevices} from "../device_types/MapDevices.jsx";
 
 // Lazy-load heavy route components so their JS+state is only in memory when visited
 const DeviceNodes = lazy(() => import("../home/DeviceNodes.jsx"));
@@ -140,8 +143,13 @@ export default function SideDrawer() {
         {name: 'Virtual Device', url: '/virtual', icon: <Dashboard/>},
         {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
         {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
+        {name: 'Map', url: '/map', icon: <Map/>},
         {name: 'Configure', url: '/configure', icon: <SettingsIcon/>},
-        ...(user?.role?.toUpperCase() === 'ADMIN' ? [{name: 'Admin Panel', url: '/admin/login-analytics', icon: <AdminPanelSettingsIcon/>}] : []),
+        ...(user?.role?.toUpperCase() === 'ADMIN' ? [{
+            name: 'Admin Panel',
+            url: '/admin/login-analytics',
+            icon: <AdminPanelSettingsIcon/>
+        }] : []),
         // {name: 'Presentation', url: '/presentation', icon: <PlayCircleFilled/>},
     ];
 
@@ -266,40 +274,6 @@ export default function SideDrawer() {
 
             <Box component="main" sx={{flexGrow: 1, height: '100dvh'}}>
 
-                {/*<Card*/}
-                {/*    elevation={10}*/}
-                {/*    sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}*/}
-                {/*    style={{*/}
-                {/*        marginLeft: "10px",*/}
-                {/*        position: 'absolute',*/}
-                {/*        display: 'flex',*/}
-                {/*        justifyContent: 'center',*/}
-                {/*        alignItems: 'center',*/}
-                {/*        padding: '1px 2px 2px 1px',*/}
-                {/*        backgroundColor: 'rgba(200, 200, 200, 0.0)',*/}
-                {/*        backdropFilter: 'blur(4px)',*/}
-                {/*        borderRadius: '0px 0px 10px 10px'*/}
-                {/*    }}*/}
-                {/*>*/}
-                {/*    <AdbIcon sx={{display: {md: 'flex'}}}/>*/}
-                {/*    <Typography*/}
-                {/*        variant="h6"*/}
-                {/*        noWrap*/}
-                {/*        component="a"*/}
-                {/*        href="/"*/}
-                {/*        sx={{*/}
-
-                {/*            display: {md: 'flex'},*/}
-                {/*            fontFamily: 'monospace',*/}
-                {/*            fontWeight: 700,*/}
-                {/*            letterSpacing: '.3rem',*/}
-                {/*            color: 'inherit',*/}
-                {/*            textDecoration: 'none',*/}
-                {/*        }}*/}
-                {/*    >*/}
-                {/*        Automata*/}
-                {/*    </Typography>*/}
-                {/*</Card>*/}
 
                 {/*<div style={{position: 'relative', zIndex: 2}}>*/}
                 <AppCacheProvider>
@@ -316,17 +290,30 @@ export default function SideDrawer() {
                                 {/*protected*/}
 
                                 <Route index element={<PrivateRoute path="/" element={<DashboardV2/>}/>}/>
-                                <Route path="analytics" element={<PrivateRoute path="/analytics" element={<AnalyticsView/>}/>}/>
+                                <Route path="analytics"
+                                       element={<PrivateRoute path="/analytics" element={<AnalyticsView/>}/>}/>
                                 <Route path="automation-analytics"
-                                       element={<PrivateRoute path="/automation-analytics" element={<AutomationLiveInspector/>}/>}/>
-                                <Route path="presentation" element={<PrivateRoute path="/presentation" element={<Presentation/>}/>}/>
-                                <Route path="virtual" element={<PrivateRoute path="/virtual" element={<VirtualDeviceForm/>}/>}/>
-                                <Route path="dashboard" element={<PrivateRoute path="/dashboard" element={<DeviceNodes/>}/>}/>
-                                <Route path="actions" element={<PrivateRoute path="/actions" element={<ActionBoard/>}/>}/>
+                                       element={<PrivateRoute path="/automation-analytics"
+                                                              element={<AutomationLiveInspector/>}/>}/>
+                                <Route path="presentation"
+                                       element={<PrivateRoute path="/presentation" element={<Presentation/>}/>}/>
+                                <Route path="virtual"
+                                       element={<PrivateRoute path="/virtual" element={<VirtualDeviceForm/>}/>}/>
+                                <Route path="dashboard"
+                                       element={<PrivateRoute path="/dashboard" element={<DeviceNodes/>}/>}/>
+                                <Route path="actions"
+                                       element={<PrivateRoute path="/actions" element={<ActionBoard/>}/>}/>
                                 <Route path="exp" element={<PrivateRoute path="/exp" element={<Exp/>}/>}/>
                                 <Route path="devices" element={<PrivateRoute path="/devices" element={<Devices/>}/>}/>
-                                <Route path="configure" element={<PrivateRoute path="/configure" element={<ConfigurationView/>}/>}/>
-                                <Route path="admin/login-analytics" element={<PrivateRoute path="/admin/login-analytics" element={<AdminLoginDashboard/>} requiredRole="ADMIN"/>}/>
+                                <Route path="recording"
+                                       element={<PrivateRoute path="/recording" element={<Recordings/>}/>}/>
+                                <Route path="map" element={<PrivateRoute path="/map" element={<MapDevices/>}/>}/>
+                                <Route path="configure"
+                                       element={<PrivateRoute path="/configure" element={<ConfigurationView/>}/>}/>
+                                <Route path="admin/login-analytics" element={<PrivateRoute path="/admin/login-analytics"
+                                                                                           element={
+                                                                                               <AdminLoginDashboard/>}
+                                                                                           requiredRole="ADMIN"/>}/>
                             </Routes>
                         </Suspense>
                     </ReactFlowProvider>

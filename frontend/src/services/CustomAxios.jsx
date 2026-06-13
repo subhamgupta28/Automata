@@ -22,8 +22,7 @@ const getStoredUser = () => {
 const getToken = () => getStoredUser()?.access_token || "";
 const getRefreshToken = () => getStoredUser()?.refresh_token || "";
 
-// ─── FIX 3: logout callback ───────────────────────────────────────────────────
-// AuthContext calls this once on mount so the interceptor can drive React state.
+// ── Logout callback (set by AuthContext on mount) ─────────────────────────────
 let _logoutCallback = null;
 export const registerLogoutCallback = (fn) => {
     _logoutCallback = fn;
@@ -32,21 +31,24 @@ export const registerLogoutCallback = (fn) => {
 const forceLogout = () => {
     localStorage.removeItem("user");
     if (_logoutCallback) {
-        _logoutCallback();          // updates React state → UI reflects logout
+        _logoutCallback();
     } else {
-        window.location.href = "/signin"; // fallback if context not yet wired
+        window.location.href = "/signin";
     }
 };
-// ─────────────────────────────────────────────────────────────────────────────
 
-api.interceptors.request.use(config => {
-    const token = getToken();
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+// ── JWT decode (no library needed — just read the payload) ────────────────────
+const isTokenExpired = (token) => {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        // exp is in seconds, Date.now() is in ms
+        return payload.exp * 1000 < Date.now();
+    } catch {
+        return true; // treat unreadable token as expired
     }
-    return config;
-});
+};
 
+// ── Shared refresh state ──────────────────────────────────────────────────────
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -58,22 +60,75 @@ const processQueue = (error, token = null) => {
     failedQueue = [];
 };
 
+const refreshAccessToken = async () => {
+    const {data} = await axios.post(
+        BASE_URL + "v1/auth/refresh-token",
+        {},
+        {headers: {Authorization: `Bearer ${getRefreshToken()}`}}
+    );
+    const updatedUser = {...getStoredUser(), ...data};
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+    api.defaults.headers.Authorization = `Bearer ${data.access_token}`;
+    return data.access_token;
+};
+
+// ── Request interceptor: proactively refresh BEFORE sending if token is expired
+api.interceptors.request.use(async config => {
+    const token = getToken();
+
+    if (!token) return config;
+
+    if (isTokenExpired(token)) {
+        // Token already expired client-side — refresh before the request goes out.
+        // This prevents the server from ever seeing the stale token.
+        if (isRefreshing) {
+            const newToken = await new Promise((resolve, reject) => {
+                failedQueue.push({resolve, reject});
+            });
+            config.headers.Authorization = `Bearer ${newToken}`;
+            return config;
+        }
+
+        isRefreshing = true;
+        try {
+            const newToken = await refreshAccessToken();
+            processQueue(null, newToken);
+            config.headers.Authorization = `Bearer ${newToken}`;
+        } catch (err) {
+            processQueue(err, null);
+            forceLogout();
+            return Promise.reject(err);
+        } finally {
+            isRefreshing = false;
+        }
+    } else {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+});
+
+// ── Response interceptor: handle 401 AND 500 (unpatched Spring backends) ──────
 api.interceptors.response.use(
     response => response,
     async error => {
         const originalRequest = error.config;
+        const status = error.response?.status;
 
-        // ─── FIX 1: 401 is the correct "token expired" status, not 403 ────────
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // 401 = correct status after backend fix
+        // 500 = what Spring throws before the fix (contains 'expired' in the trace)
+        const isExpiredTokenError =
+            status === 401 ||
+            (status === 500 && JSON.stringify(error.response?.data ?? '').toLowerCase().includes('expired'));
+
+        if (isExpiredTokenError && !originalRequest._retry) {
 
             if (isRefreshing) {
-                // ─── FIX 5: .catch(Promise.reject) → .catch(err => Promise.reject(err))
                 return new Promise((resolve, reject) => {
                     failedQueue.push({resolve, reject});
                 })
                     .then(token => {
                         originalRequest.headers.Authorization = `Bearer ${token}`;
-                        // ─── FIX 4: use `api` instance, not bare `axios` ────
                         return api(originalRequest);
                     })
                     .catch(err => Promise.reject(err));
@@ -83,29 +138,12 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                const {data} = await axios.post(
-                    BASE_URL + "v1/auth/refresh-token",
-                    {},
-                    {
-                        headers: {
-                            Authorization: `Bearer ${getRefreshToken()}`,
-                        },
-                    }
-                );
-
-                const updatedUser = {...getStoredUser(), ...data};
-                localStorage.setItem("user", JSON.stringify(updatedUser));
-
-                api.defaults.headers.Authorization = `Bearer ${data.access_token}`;
-                processQueue(null, data.access_token);
-
-                originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
-                // ─── FIX 4 (continued): use `api`, not `axios` ─────────────
+                const newToken = await refreshAccessToken();
+                processQueue(null, newToken);
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
                 return api(originalRequest);
-
             } catch (refreshError) {
                 processQueue(refreshError, null);
-                // ─── FIX 2: drives React state via callback, not just localStorage ──
                 forceLogout();
                 return Promise.reject(refreshError);
             } finally {
