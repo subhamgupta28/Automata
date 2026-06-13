@@ -3,7 +3,6 @@ import React from 'react';
 // Dummy data following the EnergyStat Java model (one entry per day)
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
-import Recordings from "../integrations/AutomataRecordings.jsx";
 
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
@@ -67,17 +66,15 @@ const Exp = () => {
         aqi: 358,
     };
 
-
     return (
         <div style={{marginTop: '10px', fontSize: '32px'}}>
 
 
-            <Recordings/>
             {/*<AutomationSummaryBar/>*/}
             {/*<AutomationAnalyticsList/>*/}
             {/*<AutomationFlowInspector/>*/}
             {/*// Single pin (existing behavior)*/}
-            {/*<MapView lat={17.385} lng={78.486} h="400px" w="100%"/>*/}
+
 
             {/*// With route*/}
             {/*<MapView*/}
