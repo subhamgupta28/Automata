@@ -12,6 +12,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +52,10 @@ public class Utils {
                         "cloud_cover",
                         "is_day"
                 ))
+                .queryParam("hourly", String.join(",",
+                        "weather_code", "precipitation_probability"
+                ))
+                .queryParam("forecast_days", 2)
                 .queryParam("wind_speed_unit", "kmh")
                 .queryParam("timezone", "auto")   // Open-Meteo infers TZ from lat/lon
                 .build()
@@ -80,7 +85,16 @@ public class Utils {
         int cloudCover = current.path("cloud_cover").asInt();
         boolean isDay = current.path("is_day").asInt() == 1;
         String timezone = root.path("timezone").asText();
-
+        JsonNode hTimes = root.path("hourly").path("time");
+        JsonNode hCodes = root.path("hourly").path("weather_code");
+        JsonNode hPrecipP = root.path("hourly").path("precipitation_probability");
+        String todayDate = hTimes.get(0).asText().substring(0, 10); // "2025-06-15"
+        String todayAlert = buildHourlyAlert(todayDate, hTimes, hCodes, hPrecipP, timezone);
+        System.err.println("TODAY " + todayAlert);
+        System.err.println("TZ: " + timezone);
+        System.err.println("First hourly time: " + hTimes.get(0).asText());
+        System.err.println("Hourly count: " + hTimes.size());
+        System.err.println("Current local hour: " + LocalDateTime.now(ZoneId.of(timezone)).getHour());
         return new WeatherResponse(
                 temp,
                 humidity,
@@ -91,7 +105,8 @@ public class Utils {
                 precip,
                 cloudCover,
                 isDay,
-                timezone
+                timezone,
+                todayAlert
         );
     }
 
@@ -166,6 +181,67 @@ public class Utils {
     }
 
     // ── Response DTO ─────────────────────────────────────────────────────────
+    private String buildHourlyAlert(String date, JsonNode times, JsonNode codes,
+                                    JsonNode precipProbs, String timezone) {
+        ZoneId zone = ZoneId.of(timezone);
+        LocalDateTime now = LocalDateTime.now(zone);
+        LocalDateTime cutoff = now.plusHours(24);
+
+        int worstSeverity = 0;
+        String worstLabel = null;
+        LocalDateTime worstTime = null;
+
+        for (int h = 0; h < times.size(); h++) {
+            String t = times.get(h).asText(); // "2026-06-14T19:00"
+            LocalDateTime slotTime = LocalDateTime.parse(t); // ISO format, no zone needed
+
+            if (!slotTime.isAfter(now)) continue;       // skip past/current hour
+            if (!slotTime.isBefore(cutoff)) continue;   // skip beyond 24h window
+
+            int wCode = codes.get(h).asInt();
+            int precipP = precipProbs.get(h).asInt();
+
+            int severity = 0;
+            String label = null;
+
+            if (wCode >= 95) {
+                severity = 5;
+                label = "Thunderstorm";
+            } else if (wCode >= 80) {
+                severity = 4;
+                label = "Rain showers";
+            } else if (wCode >= 71) {
+                severity = 4;
+                label = "Snow";
+            } else if (wCode >= 61) {
+                severity = 3;
+                label = "Rain";
+            } else if (wCode >= 51) {
+                severity = 2;
+                label = "Drizzle";
+            } else if (precipP >= 60) {
+                severity = 1;
+                label = "Possible rain";
+            }
+
+            if (severity > worstSeverity) {
+                worstSeverity = severity;
+                worstLabel = label;
+                worstTime = slotTime;
+            }
+        }
+
+        if (worstLabel == null) return null;
+
+        // Format: "6 PM" if today, "Mon 6 PM" if tomorrow
+        boolean isTomorrow = worstTime.toLocalDate().isAfter(now.toLocalDate());
+        int hour = worstTime.getHour();
+        String amPm = hour >= 12 ? "PM" : "AM";
+        int display = hour % 12 == 0 ? 12 : hour % 12;
+        String timeStr = (isTomorrow ? "Tomorrow " : "~") + display + " " + amPm;
+
+        return "Expect " + worstLabel.toLowerCase() + " " + timeStr;
+    }
 
     public record WeatherResponse(
             double temperature,    // °C
@@ -177,7 +253,8 @@ public class Utils {
             double precipitation,  // mm
             int cloudCover,     // %
             boolean isDay,
-            String timezone        // e.g. "Asia/Kolkata"
+            String timezone,        // e.g. "Asia/Kolkata"
+            String todayAlert
     ) {
     }
 }

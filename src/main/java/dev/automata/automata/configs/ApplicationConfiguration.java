@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.automata.automata.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -14,6 +16,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -27,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @RequiredArgsConstructor
 @Configuration
+@Slf4j
 public class ApplicationConfiguration {
     private final UsersRepository userRepository;
 
@@ -108,13 +112,38 @@ public class ApplicationConfiguration {
 //        return executor;
 //    }
 
-//    @Bean
+    //    @Bean
 //    public RedisTemplate<String, Map<String, Object>> dataRedisTemplate(RedisConnectionFactory factory) {
 //        RedisTemplate<String, Map<String, Object>> template = new RedisTemplate<>();
 //        template.setConnectionFactory(factory);
 //        template.setKeySerializer(new StringRedisSerializer());
 //        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
 //        return template;
+//    }
+    @Bean
+    @Qualifier("mqttErrorChannel")
+    public MessageChannel mqttErrorChannel() {
+        // DirectChannel: runs on the thread that sent to it (no extra executor needed)
+        return new org.springframework.integration.channel.DirectChannel();
+    }
+
+//    @Bean
+//    @ServiceActivator(inputChannel = "mqttErrorChannel")
+//    public MessageHandler mqttErrorHandler() {
+//        log.info("mqttErrorHandler registered");
+//        return message -> {
+//            Throwable cause = null;
+//            if (message.getPayload() instanceof org.springframework.messaging.MessagingException me) {
+//                cause = me.getCause() != null ? me.getCause() : me;
+//            } else if (message.getPayload() instanceof Throwable t) {
+//                cause = t;
+//            }
+//            String topic = message.getHeaders().containsKey("mqtt_receivedTopic")
+//                    ? message.getHeaders().get("mqtt_receivedTopic", String.class)
+//                    : "unknown";
+//            log.error("MQTT pipeline error on topic '{}' (connection preserved): {}",
+//                    topic, cause != null ? cause.getMessage() : message.getPayload());
+//        };
 //    }
 
     @Bean

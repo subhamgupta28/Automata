@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import {Avatar, Box, Card, Typography} from "@mui/material";
+import {Avatar, Box, Card, Chip, Typography} from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import GridViewIcon from "@mui/icons-material/GridView";
 import AlarmIcon from "@mui/icons-material/Alarm";
@@ -178,18 +178,18 @@ function AutomationPill({icon, value, label, color, tooltip}) {
                     backgroundColor: C.card,
                     border: `1px solid ${C.border}`,
                     cursor: "default",
-                    fontSize: 11,
+                    fontSize: 14,
                     lineHeight: 1,
                     color,
                     whiteSpace: "nowrap",
                     userSelect: "none",
                 }}
             >
-                <Box sx={{fontSize: 13, display: "flex", alignItems: "center"}}>{icon}</Box>
-                <Typography sx={{fontSize: 11, fontWeight: 700, color}}>
+                <Box sx={{fontSize: 15, display: "flex", alignItems: "center"}}>{icon}</Box>
+                <Typography sx={{fontSize: 14, fontWeight: 700, color}}>
                     {value}
                 </Typography>
-                <Typography sx={{fontSize: 11, color: C.muted}}>
+                <Typography sx={{fontSize: 14, color: C.muted}}>
                     {label}
                 </Typography>
             </Box>
@@ -398,9 +398,9 @@ function ForecastStrip({days = []}) {
                         key={i}
                         sx={{
                             display: "flex",
-                            flexDirection: "column",
+                            flexDirection: "row",
                             alignItems: "center",
-                            gap: 0.3,
+                            gap: 1.5,
                             px: 1.8,
                             py: 0.8,
                             borderRadius: "10px",
@@ -409,24 +409,29 @@ function ForecastStrip({days = []}) {
                             minWidth: 52,
                         }}
                     >
-                        <Typography sx={{
-                            fontSize: 14,
-                            color: C.muted,
-                            fontWeight: 600,
-                            letterSpacing: "0.05em",
-                            textTransform: "uppercase"
-                        }}>
-                            {dayName}
-                        </Typography>
-                        <Typography sx={{fontSize: 16, lineHeight: 1}}>
+                        <Typography sx={{fontSize: 28, lineHeight: 1}}>
                             {getForecastIcon(d.conditionLabel)}
                         </Typography>
-                        <Typography sx={{fontSize: 18, fontWeight: 200, color: C.text}}>
-                            {Math.round(d.tempMax)}°
-                        </Typography>
-                        <Typography sx={{fontSize: 12, color: C.dim}}>
-                            {Math.round(d.tempMin)}°
-                        </Typography>
+                        <Box>
+                            <Typography sx={{
+                                fontSize: 14,
+                                color: C.muted,
+                                fontWeight: 600,
+                                letterSpacing: "0.05em",
+                                textTransform: "uppercase"
+                            }}>
+                                {dayName}
+                            </Typography>
+                            <Box style={{display: 'flex', flexDirection: 'row', gap: "10px"}}>
+                                <Typography sx={{fontSize: 18, fontWeight: 200, color: C.text}}>
+                                    {Math.round(d.tempMax)}°
+                                </Typography>
+                                <Typography sx={{fontSize: 14, color: C.dim}}>
+                                    {Math.round(d.tempMin)}°
+                                </Typography>
+                            </Box>
+                        </Box>
+
                     </Box>
                 );
             })}
@@ -463,9 +468,21 @@ export function TopBar({
         doorLocked: homeStats?.doorLocked,
         occupancy,
     });
+    const alert = weather?.todayAlert ?? null;
 
+    const ALERT_COLORS = {
+        thunderstorm: "#f59e0b",
+        "rain showers": "#60a5fa",
+        snow: "#a5b4fc",
+        rain: "#60a5fa",
+        drizzle: "#93c5fd",
+        "possible rain": "#8a8a8e",
+    };
+    const alertColor = alert
+        ? Object.entries(ALERT_COLORS).find(([k]) => alert.toLowerCase().includes(k))?.[1] ?? "#8a8a8e"
+        : null;
     return (
-        <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", px: 2.5, py: 1.5}}>
+        <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", px: 2.5, py: 1}}>
 
             {/* ── Left column ─────────────────────────────────────────── */}
             <Box sx={{display: "flex", flexDirection: "column", flex: 1}}>
@@ -487,7 +504,7 @@ export function TopBar({
                 </Typography>
 
                 {/* Row 2 — Weather icon + message side by side */}
-                <Box sx={{display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap"}}>
+                <Box sx={{display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap"}}>
                     <WeatherInline
                         weather={weather}
                         live={live}
@@ -496,12 +513,12 @@ export function TopBar({
                     />
                     {forecast?.length > 0 && (
                         <>
-                            <Box sx={{width: "1px", height: 56, backgroundColor: C.border, flexShrink: 0}}/>
+                            <Box sx={{width: "1px", height: 46, backgroundColor: C.muted, flexShrink: 0}}/>
                             <ForecastStrip days={forecast}/>
                         </>
                     )}
                     {/* Thin divider */}
-                    <Box sx={{width: "1px", height: 28, backgroundColor: C.border, flexShrink: 0}}/>
+                    <Box sx={{width: "1px", height: 46, backgroundColor: C.muted, flexShrink: 0}}/>
 
                     <Typography
                         variant="title"
@@ -525,6 +542,17 @@ export function TopBar({
                     <Box sx={{display: "flex", gap: 0.8, flexWrap: "wrap", justifyContent: "flex-end"}}>
                         <AutomationSummaryChips summary={automationSummary}/>
                     </Box>
+                )}
+                {alert && (
+                    <Chip variant="outlined" label={"⚠ " + alert} sx={{
+                        fontSize: 14,
+                        color: alertColor,
+                        ml: 3.4,
+                        fontWeight: 500,
+                        letterSpacing: "0.01em",
+                    }}>
+
+                    </Chip>
                 )}
                 <Box sx={{display: "flex", alignItems: "center", gap: 1}}>
                     <Avatar sx={{
@@ -551,9 +579,13 @@ export function TopBar({
 export function StatsRow({items}) {
 
     return (
-        <Box sx={{display: "flex", alignItems: "center", gap: 3, px: 2.5, py: 1, overflowX: "auto"}}>
+        <Box sx={{display: "flex", alignItems: "center", gap: 1, px: 2.5, py: 1, overflowX: "auto"}}>
             {items.map((s, i) => (
-                <Box key={i} sx={{display: "flex", alignItems: "center", gap: 3}}>
+                <Box key={i} sx={{
+                    display: "flex", alignItems: "center", gap: 3, padding: 1, borderRadius: "10px",
+                    // backgroundColor: C.card,
+                    border: `1px solid ${C.border}`,
+                }}>
                     <Box sx={{display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap"}}>
                         <Box sx={{color: C.muted}}>{s.icon}</Box>
                         <Box>
@@ -723,6 +755,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
     // Prefer the Open-Meteo outdoor data; fall back to live indoor sensor
     const weatherForTopBar = outdoor
         ? {
+            ...outdoor,
             label: outdoor.conditionLabel,
             temp: `${outdoor.temperature.toFixed(1)}°C`,
             // keep the richer shape too so buildMessage can use it

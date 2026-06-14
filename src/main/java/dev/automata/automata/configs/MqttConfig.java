@@ -19,6 +19,7 @@ import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
+import org.springframework.messaging.MessagingException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.UUID;
@@ -50,6 +51,8 @@ public class MqttConfig {
     private final String wledDeviceTopic = "automata-wled/#";
     private final String wledGroupTopic = "automata-wled/all";
 
+    private final MessageChannel mqttErrorChannel;
+
     // ─────────────────────────────────────────────────────────────────────────
     // MQTT CLIENT FACTORIES
     // ─────────────────────────────────────────────────────────────────────────
@@ -62,7 +65,7 @@ public class MqttConfig {
         options.setAutomaticReconnect(true);
         options.setKeepAliveInterval(60);
         options.setCleanSession(true);
-        options.setMaxInflight(10000);
+        options.setMaxInflight(100);
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
         factory.setConnectionOptions(options);
         return factory;
@@ -176,6 +179,7 @@ public class MqttConfig {
         return new ExecutorChannel(actionExecutor());
     }
 
+    @Bean
     public ExecutorChannel ackAction() {
         return new ExecutorChannel(ackActionExecutor());
     }
@@ -215,7 +219,7 @@ public class MqttConfig {
         adapter.setConverter(new DefaultPahoMessageConverter());
         adapter.setQos(1);
         // Errors go to errorChannel — never propagate back to Paho callback thread
-        adapter.setErrorChannel(mqttErrorChannel());
+        adapter.setErrorChannel(mqttErrorChannel);
         return adapter;
     }
 
@@ -231,7 +235,7 @@ public class MqttConfig {
         adapter.setConverter(new DefaultPahoMessageConverter());
         adapter.setQos(1);
         adapter.setOutputChannel(mqttInputChannel());
-        adapter.setErrorChannel(mqttErrorChannel());
+        adapter.setErrorChannel(mqttErrorChannel);
         return adapter;
     }
 
@@ -267,29 +271,21 @@ public class MqttConfig {
     // ─────────────────────────────────────────────────────────────────────────
     // ERROR CHANNEL — prevents any handler exception from reaching Paho
     // ─────────────────────────────────────────────────────────────────────────
-
-    @Bean
-    public MessageChannel mqttErrorChannel() {
-        // DirectChannel: runs on the thread that sent to it (no extra executor needed)
-        return new org.springframework.integration.channel.DirectChannel();
-    }
-
-    @Bean
     @ServiceActivator(inputChannel = "mqttErrorChannel")
-    public MessageHandler mqttErrorHandler() {
-        return message -> {
-            Throwable cause = null;
-            if (message.getPayload() instanceof org.springframework.messaging.MessagingException me) {
-                cause = me.getCause() != null ? me.getCause() : me;
-            } else if (message.getPayload() instanceof Throwable t) {
-                cause = t;
-            }
-            String topic = message.getHeaders().containsKey("mqtt_receivedTopic")
-                    ? message.getHeaders().get("mqtt_receivedTopic", String.class)
-                    : "unknown";
-            log.error("MQTT pipeline error on topic '{}' (connection preserved): {}",
-                    topic, cause != null ? cause.getMessage() : message.getPayload());
-        };
+    public void mqttErrorHandler(Message<?> message) {
+
+        Throwable cause = null;
+
+        if (message.getPayload() instanceof MessagingException me) {
+            cause = me.getCause() != null ? me.getCause() : me;
+        } else if (message.getPayload() instanceof Throwable t) {
+            cause = t;
+        }
+
+        log.error(
+                "MQTT pipeline error: {}",
+                cause != null ? cause.getMessage() : message.getPayload()
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
