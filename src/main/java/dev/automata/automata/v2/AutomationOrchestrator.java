@@ -7,7 +7,6 @@ import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationLog;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.service.NotificationService;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -82,7 +81,6 @@ public class AutomationOrchestrator {
      * Adjust fixedDelay / cron to taste — the job is idempotent.
      */
     @Scheduled(fixedDelay = 30 * 60 * 1_000)   // 30 min
-    @PostConstruct
     public void reconcile() {
 
         List<Automation> enabled = automationRepository.findEnabledForExecution();

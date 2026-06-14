@@ -10,7 +10,11 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Tooltip from '@mui/material/Tooltip';
-import {NavLink, Route, Routes, useLocation} from "react-router-dom";
+import Collapse from '@mui/material/Collapse';
+import Typography from '@mui/material/Typography';
+import Link from '@mui/material/Link';
+import Divider from '@mui/material/Divider';
+import {Link as RouterLink, NavLink, Route, Routes, useLocation} from "react-router-dom";
 import {AppCacheProvider} from "../../services/AppCacheContext.jsx";
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HomeIcon from '@mui/icons-material/Home';
@@ -18,6 +22,8 @@ import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ExpandLess from '@mui/icons-material/ExpandLess';
+import ExpandMore from '@mui/icons-material/ExpandMore';
 import Notifications from "../Notifications.jsx";
 import {SnackbarProvider} from "notistack";
 import {Card, CircularProgress} from "@mui/material";
@@ -31,7 +37,7 @@ import OptionsMenu from "./OptionsMenu.jsx";
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import isEmpty from "../../utils/Helper.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
-import {Dashboard, GridView, TrendingUp} from "@mui/icons-material";
+import {Dashboard, GridView, Replay, TrendingUp} from "@mui/icons-material";
 import AppIcon from "../../../public/icon-color.png"
 import AutomationLiveInspector from "../automation/AutomationInspector.jsx";
 import {ConfigurationView} from "../dashboard/ConfigurationView.jsx";
@@ -39,13 +45,12 @@ import Recordings from "../integrations/AutomataRecordings.jsx";
 import {Map} from "lucide-react";
 import {MapDevices} from "../device_types/MapDevices.jsx";
 
-// Lazy-load heavy route components so their JS+state is only in memory when visited
+// Lazy-load heavy route components
 const DeviceNodes = lazy(() => import("../home/DeviceNodes.jsx"));
 const Devices = lazy(() => import("../Devices.jsx"));
 const MobileView = lazy(() => import("../dashboard/MobileView.jsx"));
 const AnalyticsView = lazy(() => import("../dashboard/AnalyticsView.jsx"));
 const AutomationAnalyticsView = lazy(() => import("../automation/AutomationAnalyticsView.jsx"));
-
 const ActionBoard = lazy(() => import("../action/ActionBoard.jsx"));
 const Exp = lazy(() => import("../dashboard/Exp.jsx"));
 const Welcome = lazy(() => import("../Welcome.jsx"));
@@ -61,7 +66,7 @@ const PageLoader = () => (
     </Box>
 );
 
-const drawerWidth = 200;
+const drawerWidth = 220;
 
 const openedMixin = (theme) => ({
     width: drawerWidth,
@@ -89,10 +94,8 @@ const DrawerHeader = styled('div')(({theme}) => ({
     alignItems: 'center',
     justifyContent: 'flex-end',
     padding: theme.spacing(0, 1.5),
-    // necessary for content to be below app bar
     ...theme.mixins.toolbar,
 }));
-
 
 const Drawer = styled(Card, {shouldForwardProp: (prop) => prop !== 'open'})(
     ({theme}) => ({
@@ -119,206 +122,347 @@ const Drawer = styled(Card, {shouldForwardProp: (prop) => prop !== 'open'})(
     }),
 );
 
+// ─── Breadcrumb bar shown above the main content ────────────────────────────
 
-export default function SideDrawer() {
-    const [open, setOpen] = React.useState(false);
-    const [selectedIndex, setSelectedIndex] = React.useState("/");
-    const {user, logout, isGuest} = useAuth();
-    const location = useLocation();
+const breadcrumbNameMap = {
+    '/': 'Home',
+    '/actions': 'Automations',
+    '/automation-analytics': 'Automation Analytics',
+    '/analytics': 'Analytics',
+    '/virtual': 'Virtual Device',
+    '/dashboard': 'Dashboard',
+    '/devices': 'Devices',
+    '/map': 'Map',
+    '/recording': 'Recording',
+    '/configure': 'Configure',
+    '/admin/login-analytics': 'Admin Panel',
+};
 
-    // Auto redirect to /mobile if mobile and not already there
-    // if (isMobile && location.pathname !== '/mob') {
-    //     return <Navigate to="/mob" replace />;
-    // }
-    const publicItems = [
-        // {name: 'Welcome', url: '/welcome', icon: <HomeIcon/>},
+function LinkRouter(props) {
+    return <Link {...props} component={RouterLink}/>;
+}
 
-    ];
 
-    const authItems = [
-        {name: 'Home', url: '/', icon: <HomeIcon/>},
-        {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
-        {name: 'Automation Analytics', url: '/automation-analytics', icon: <TrendingUp/>},
-        {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
-        {name: 'Virtual Device', url: '/virtual', icon: <Dashboard/>},
-        {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
-        {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
-        {name: 'Map', url: '/map', icon: <Map/>},
-        {name: 'Configure', url: '/configure', icon: <SettingsIcon/>},
-        ...(user?.role?.toUpperCase() === 'ADMIN' ? [{
-            name: 'Admin Panel',
-            url: '/admin/login-analytics',
-            icon: <AdminPanelSettingsIcon/>
-        }] : []),
-        // {name: 'Presentation', url: '/presentation', icon: <PlayCircleFilled/>},
-    ];
+// ─── Nav group label (only shown when drawer is open) ───────────────────────
 
-    // Guest mode - only allow home, automations, and analytics
-    const guestItems = [
-        {name: 'Home', url: '/', icon: <HomeIcon/>},
-        {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
-        {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
-    ];
+function GroupLabel({label, open}) {
+    if (!open) return (
+        <Divider sx={{my: 0.5, mx: 1, borderColor: 'rgba(255,255,255,0.08)'}}/>
+    );
+    return (
+        <Box sx={{px: 2.5, pt: 1.5, pb: 0.25}}>
+            <Typography variant="caption"
+                        sx={{
+                            color: 'rgba(255,255,255,0.35)',
+                            fontWeight: 700,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            fontSize: '0.65rem'
+                        }}>
+                {label}
+            </Typography>
+        </Box>
+    );
+}
 
-    const authActions = isEmpty(user)
-        ? [
-            {name: 'Welcome', url: '/welcome', icon: <HomeIcon/>},
-            {name: 'Sign In', url: '/signin', icon: <LoginIcon/>},
-            {name: 'Sign Up', url: '/signup', icon: <PersonAddIcon/>},
-        ]
-        : [];
+// ─── Collapsible group component ────────────────────────────────────────────
 
-    const renderListItem = (item) => (
+function NavGroup({group, drawerOpen, location}) {
+    const [expanded, setExpanded] = React.useState(true);
+
+    // Auto-expand group if a child is active
+    const hasActiveChild = group.children.some(item => location.pathname === item.url);
+
+    React.useEffect(() => {
+        if (hasActiveChild) setExpanded(true);
+    }, [hasActiveChild]);
+
+    const renderItem = (item, nested = false) => (
         <ListItem key={item.name} disablePadding sx={{display: 'block'}}>
             <Tooltip
-                title={item.name} placement="right"
-                disableHoverListener={open} slotProps={{
-                tooltip: {
-                    sx: {
-                        fontSize: '1rem',
-                        color: '#ffd821',
-                        backgroundColor: 'rgb(255 255 255 / 10%)',
-                        backdropFilter: 'blur(3px)'
+                title={item.name}
+                placement="right"
+                disableHoverListener={drawerOpen}
+                slotProps={{
+                    tooltip: {
+                        sx: {
+                            fontSize: '1rem',
+                            color: '#ffd821',
+                            backgroundColor: 'rgb(255 255 255 / 10%)',
+                            backdropFilter: 'blur(3px)'
+                        }
                     }
-                }
-            }}>
-                {item.url ? (
-                    <ListItemButton
-                        selected={location.pathname === item.url}
-                        component={NavLink}
-                        to={item.url}
+                }}
+            >
+                <ListItemButton
+                    selected={location.pathname === item.url}
+                    component={NavLink}
+                    to={item.url}
+                    sx={{
+                        borderRadius: 2,
+                        mx: 1,
+                        my: 0.25,
+                        px: nested && drawerOpen ? 3.5 : 2.5,
+                        justifyContent: drawerOpen ? 'initial' : 'center',
+                        minHeight: 40,
+                        '&.active, &.Mui-selected': {
+                            backgroundColor: 'rgba(255, 216, 33, 0.12)',
+                            '& .MuiListItemIcon-root': {color: '#ffd821'},
+                            '& .MuiListItemText-primary': {color: '#ffd821', fontWeight: 600},
+                        },
+                    }}
+                >
+                    <ListItemIcon
+                        sx={{minWidth: 0, justifyContent: 'center', mr: drawerOpen ? 2 : 'auto', fontSize: 20}}>
+                        {item.icon}
+                    </ListItemIcon>
+                    <ListItemText
+                        primary={item.name}
                         sx={{
-                            borderRadius: 2,
-                            margin: 1,
-                            px: 2.5,
-                            justifyContent: open ? 'initial' : 'center',
+                            opacity: drawerOpen ? 1 : 0,
+                            '& .MuiListItemText-primary': {fontSize: '0.85rem'}
                         }}
-                    >
-                        <ListItemIcon sx={{minWidth: 0, justifyContent: 'center', mr: open ? 3 : 'auto'}}>
-                            {item.icon}
-                        </ListItemIcon>
-                        <ListItemText primary={item.name} sx={{opacity: open ? 1 : 0}}/>
-                    </ListItemButton>
-                ) : (
-                    <ListItemButton
-                        onClick={item.action}
-                        sx={{
-                            borderRadius: 2,
-                            margin: 1,
-                            px: 2.5,
-                            justifyContent: open ? 'initial' : 'center',
-                        }}
-                    >
-                        <ListItemIcon sx={{minWidth: 0, justifyContent: 'center', mr: open ? 3 : 'auto'}}>
-                            {item.icon}
-                        </ListItemIcon>
-                        <ListItemText primary={item.name} sx={{opacity: open ? 1 : 0}}/>
-                    </ListItemButton>
-                )}
+                    />
+                </ListItemButton>
             </Tooltip>
         </ListItem>
     );
 
+    // If the group has no label it's a flat section, just render children
+    if (!group.label) {
+        return <>{group.children.map(item => renderItem(item))}</>;
+    }
 
-    const handleListItemClick = (event, index) => {
-        // setSelectedIndex(index);
-    };
-    const handleDrawerOpen = () => {
-        setOpen(true);
-    };
+    return (
+        <>
+            <GroupLabel label={group.label} open={drawerOpen}/>
 
-    const handleDrawerClose = () => {
-        setOpen(s => !s);
-    };
+            {/* Group header button (acts as toggle when drawer is open) */}
+            {group.headerItem && drawerOpen && (
+                <ListItem disablePadding sx={{display: 'block'}}>
+                    <ListItemButton
+                        onClick={() => setExpanded(s => !s)}
+                        sx={{
+                            borderRadius: 2,
+                            mx: 1,
+                            my: 0.25,
+                            px: 2.5,
+                            minHeight: 40,
+                            justifyContent: 'initial',
+                        }}
+                    >
+                        <ListItemIcon sx={{minWidth: 0, mr: 2, justifyContent: 'center'}}>
+                            {group.headerItem.icon}
+                        </ListItemIcon>
+                        <ListItemText
+                            primary={group.headerItem.name}
+                            sx={{'& .MuiListItemText-primary': {fontSize: '0.85rem', fontWeight: 600}}}
+                        />
+                        {expanded ? <ExpandLess sx={{fontSize: 16, color: 'rgba(255,255,255,0.4)'}}/> :
+                            <ExpandMore sx={{fontSize: 16, color: 'rgba(255,255,255,0.4)'}}/>}
+                    </ListItemButton>
+                </ListItem>
+            )}
+
+            {/* Collapsible children */}
+            {drawerOpen ? (
+                <Collapse in={expanded} timeout="auto" unmountOnExit component="li"
+                          style={{listStyle: 'none', padding: 0}}>
+                    <List disablePadding>
+                        {group.children.map(item => renderItem(item, true))}
+                    </List>
+                </Collapse>
+            ) : (
+                // When drawer is closed, always show icons (no collapse)
+                <>{group.children.map(item => renderItem(item))}</>
+            )}
+        </>
+    );
+}
+
+// ─── Main SideDrawer ─────────────────────────────────────────────────────────
+
+export default function SideDrawer() {
+    const [open, setOpen] = React.useState(false);
+    const {user, logout, isGuest} = useAuth();
+    const location = useLocation();
+
+    // ── Nav group definitions ──────────────────────────────────────────────
+    const authGroups = [
+        {
+            label: null,        // no label = flat, no collapse
+            children: [
+                {name: 'Home', url: '/', icon: <HomeIcon/>},
+            ]
+        },
+        {
+            label: 'Automation',
+            headerItem: {name: 'Automations', icon: <AutoAwesomeIcon/>},
+            children: [
+                {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
+                {name: 'Live Inspector', url: '/automation-analytics', icon: <TrendingUp/>},
+            ]
+        },
+        {
+            label: 'Analytics',
+            headerItem: {name: 'Analytics', icon: <AssessmentIcon/>},
+            children: [
+                {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
+            ]
+        },
+        {
+            label: 'Devices',
+            headerItem: {name: 'Devices', icon: <DeveloperBoardIcon/>},
+            children: [
+                {name: 'Virtual Device', url: '/virtual', icon: <Dashboard/>},
+                {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
+                {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
+                {name: 'Map', url: '/map', icon: <Map/>},
+                {name: 'Recording', url: '/recording', icon: <Replay/>},
+            ]
+        },
+        {
+            label: 'System',
+            children: [
+                {name: 'Configure', url: '/configure', icon: <SettingsIcon/>},
+                ...(user?.role?.toUpperCase() === 'ADMIN' ? [{
+                    name: 'Admin Panel',
+                    url: '/admin/login-analytics',
+                    icon: <AdminPanelSettingsIcon/>
+                }] : []),
+            ]
+        },
+    ];
+
+    const guestGroups = [
+        {
+            label: null,
+            children: [
+                {name: 'Home', url: '/', icon: <HomeIcon/>},
+                {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
+                {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
+            ]
+        }
+    ];
+
+    const authActions = isEmpty(user)
+        ? [
+            {
+                label: null,
+                children: [
+                    {name: 'Welcome', url: '/welcome', icon: <HomeIcon/>},
+                    {name: 'Sign In', url: '/signin', icon: <LoginIcon/>},
+                    {name: 'Sign Up', url: '/signup', icon: <PersonAddIcon/>},
+                ]
+            }
+        ]
+        : [];
+
+    const activeGroups = isEmpty(user)
+        ? authActions
+        : (isGuest ? guestGroups : authGroups);
+
+    const handleDrawerClose = () => setOpen(s => !s);
 
     return (
         <Box sx={{display: 'flex', height: '100dvh', width: '100%', background: 'transparent'}}>
             <CssBaseline/>
 
-
-            {!isEmpty(user) &&
-                <Drawer variant="permanent" open={open} elevation={4}
-                        style={{
-                            // backgroundColor: 'rgba(0, 0, 0, 100%)',
-                            backdropFilter: 'blur(7px)',
-                            background: 'transparent',
-                            // background: "linear-gradient(135deg, rgb(255 224 43 / 10%), rgb(169 104 241 / 10%), rgb(90 200 250 / 10%))",
-                            // boxShadow: "0 0 30px rgb(211 244 122 / 40%)",
-                            // height: '96dvh',
-                            position: 'relative',
-                            zIndex: 10,
-                            margin: '10px',
-                            borderRadius: '10px'
-                        }}>
+            {!isEmpty(user) && (
+                <Drawer
+                    variant="permanent"
+                    open={open}
+                    elevation={4}
+                    style={{
+                        backdropFilter: 'blur(7px)',
+                        background: 'transparent',
+                        position: 'relative',
+                        zIndex: 10,
+                        margin: '10px',
+                        borderRadius: '10px'
+                    }}
+                >
                     <Box sx={{display: 'flex', flexDirection: 'column', height: '100%'}}>
+                        {/* Header / logo toggle */}
                         <DrawerHeader>
                             <IconButton onClick={handleDrawerClose}>
-                                {open ? <ChevronLeftIcon/> : <img src={AppIcon} alt="home" style={{height: '28px'}}/>}
+                                {open
+                                    ? <ChevronLeftIcon/>
+                                    : <img src={AppIcon} alt="home" style={{height: '28px'}}/>
+                                }
                             </IconButton>
                         </DrawerHeader>
 
-                        <List sx={{flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
-                            {[...publicItems, ...(isEmpty(user) ? [] : (isGuest ? guestItems : authItems)), ...authActions].map(renderListItem)}
+                        {/* Nav groups */}
+                        <List
+                            component="nav"
+                            disablePadding
+                            sx={{flexGrow: 1, overflowY: 'auto', overflowX: 'hidden', py: 1}}
+                        >
+                            {activeGroups.map((group, i) => (
+                                <NavGroup
+                                    key={i}
+                                    group={group}
+                                    drawerOpen={open}
+                                    location={location}
+                                />
+                            ))}
                         </List>
 
-                        {/* Avatar at the bottom */}
-                        {!isEmpty(user) && (
-                            <OptionsMenu drawerOpen={open}/>
-                        )}
-
+                        {/* User avatar / options at the bottom */}
+                        {!isEmpty(user) && <OptionsMenu drawerOpen={open}/>}
                     </Box>
-
-                    {/*<Divider/>*/}
                 </Drawer>
-            }
+            )}
 
-            <Box component="main" sx={{flexGrow: 1, height: '100dvh'}}>
+            <Box component="main" sx={{flexGrow: 1, height: '100dvh', display: 'flex', flexDirection: 'column'}}>
+                {/* Breadcrumb bar */}
+                {/*{!isEmpty(user) && <AppBreadcrumbs/>}*/}
 
-
-                {/*<div style={{position: 'relative', zIndex: 2}}>*/}
-                <AppCacheProvider>
-                    <ReactFlowProvider>
-                        <Suspense fallback={<PageLoader/>}>
-                            <Routes location={location} key={location.pathname}>
-                                {/*open*/}
-                                <Route path="/welcome" element={<Welcome/>}/>
-                                <Route path="/mob" element={<MobileView/>}/>
-                                <Route path="/exp" element={<Exp/>}/>
-                                <Route path="spotify" element={<SpotifyPlayer/>}/>
-                                <Route path="signup" element={<SignUp/>}/>
-                                <Route path="signin" element={<SignIn/>}/>
-                                {/*protected*/}
-
-                                <Route index element={<PrivateRoute path="/" element={<DashboardV2/>}/>}/>
-                                <Route path="analytics"
-                                       element={<PrivateRoute path="/analytics" element={<AnalyticsView/>}/>}/>
-                                <Route path="automation-analytics"
-                                       element={<PrivateRoute path="/automation-analytics"
-                                                              element={<AutomationLiveInspector/>}/>}/>
-                                <Route path="presentation"
-                                       element={<PrivateRoute path="/presentation" element={<Presentation/>}/>}/>
-                                <Route path="virtual"
-                                       element={<PrivateRoute path="/virtual" element={<VirtualDeviceForm/>}/>}/>
-                                <Route path="dashboard"
-                                       element={<PrivateRoute path="/dashboard" element={<DeviceNodes/>}/>}/>
-                                <Route path="actions"
-                                       element={<PrivateRoute path="/actions" element={<ActionBoard/>}/>}/>
-                                <Route path="exp" element={<PrivateRoute path="/exp" element={<Exp/>}/>}/>
-                                <Route path="devices" element={<PrivateRoute path="/devices" element={<Devices/>}/>}/>
-                                <Route path="recording"
-                                       element={<PrivateRoute path="/recording" element={<Recordings/>}/>}/>
-                                <Route path="map" element={<PrivateRoute path="/map" element={<MapDevices/>}/>}/>
-                                <Route path="configure"
-                                       element={<PrivateRoute path="/configure" element={<ConfigurationView/>}/>}/>
-                                <Route path="admin/login-analytics" element={<PrivateRoute path="/admin/login-analytics"
-                                                                                           element={
-                                                                                               <AdminLoginDashboard/>}
-                                                                                           requiredRole="ADMIN"/>}/>
-                            </Routes>
-                        </Suspense>
-                    </ReactFlowProvider>
-                </AppCacheProvider>
-                {/*</div>*/}
+                <Box sx={{flexGrow: 1, overflow: 'hidden'}}>
+                    <AppCacheProvider>
+                        <ReactFlowProvider>
+                            <Suspense fallback={<PageLoader/>}>
+                                <Routes location={location} key={location.pathname}>
+                                    {/* Public */}
+                                    <Route path="/welcome" element={<Welcome/>}/>
+                                    <Route path="/mob" element={<MobileView/>}/>
+                                    <Route path="/exp" element={<Exp/>}/>
+                                    <Route path="spotify" element={<SpotifyPlayer/>}/>
+                                    <Route path="signup" element={<SignUp/>}/>
+                                    <Route path="signin" element={<SignIn/>}/>
+                                    {/* Protected */}
+                                    <Route index element={<PrivateRoute path="/" element={<DashboardV2/>}/>}/>
+                                    <Route path="analytics"
+                                           element={<PrivateRoute path="/analytics" element={<AnalyticsView/>}/>}/>
+                                    <Route path="automation-analytics"
+                                           element={<PrivateRoute path="/automation-analytics"
+                                                                  element={<AutomationLiveInspector/>}/>}/>
+                                    <Route path="presentation"
+                                           element={<PrivateRoute path="/presentation" element={<Presentation/>}/>}/>
+                                    <Route path="virtual"
+                                           element={<PrivateRoute path="/virtual" element={<VirtualDeviceForm/>}/>}/>
+                                    <Route path="dashboard"
+                                           element={<PrivateRoute path="/dashboard" element={<DeviceNodes/>}/>}/>
+                                    <Route path="actions"
+                                           element={<PrivateRoute path="/actions" element={<ActionBoard/>}/>}/>
+                                    <Route path="exp" element={<PrivateRoute path="/exp" element={<Exp/>}/>}/>
+                                    <Route path="devices"
+                                           element={<PrivateRoute path="/devices" element={<Devices/>}/>}/>
+                                    <Route path="recording"
+                                           element={<PrivateRoute path="/recording" element={<Recordings/>}/>}/>
+                                    <Route path="map" element={<PrivateRoute path="/map" element={<MapDevices/>}/>}/>
+                                    <Route path="configure"
+                                           element={<PrivateRoute path="/configure" element={<ConfigurationView/>}/>}/>
+                                    <Route path="admin/login-analytics"
+                                           element={<PrivateRoute path="/admin/login-analytics"
+                                                                  element={<AdminLoginDashboard/>}
+                                                                  requiredRole="ADMIN"/>}/>
+                                </Routes>
+                            </Suspense>
+                        </ReactFlowProvider>
+                    </AppCacheProvider>
+                </Box>
 
                 {!isEmpty(user) && (
                     <SnackbarProvider maxSnack={3} preventDuplicate>
