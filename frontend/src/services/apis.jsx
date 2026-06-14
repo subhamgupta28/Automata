@@ -683,7 +683,10 @@ export const fetchOutdoorWeather = async () => {
     const response = await api.get(`utils/currentWeather`);
     return response.data;
 };
-
+export const fetchWeatherForecast = async () => {
+    const res = await api.get(`utils/forecast`);
+    return res.data; // ForecastDay[]
+};
 // ─── Admin: Login Analytics ───────────────────────────────────────────────────
 
 /**

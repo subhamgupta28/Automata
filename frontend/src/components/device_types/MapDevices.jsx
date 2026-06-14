@@ -3,6 +3,7 @@ import {MapView} from "../charts/MapView.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import {Card} from "@mui/material";
+import {getLastData} from "../../services/apis.jsx";
 
 const METRIC_DEFS = [
     {
@@ -172,7 +173,12 @@ export const MapDevices = React.memo(() => {
 
     useEffect(() => {
         if (gpsDevices.length > 0 && activeDeviceId == null) {
-            setActiveDeviceId(gpsDevices[0]._id ?? gpsDevices[0].id);
+            const id = gpsDevices[0]._id ?? gpsDevices[0].id
+            setActiveDeviceId(id);
+            getLastData(id).then((data) => {
+                setLiveDataMap({[id]: data})
+            })
+
         }
     }, [gpsDevices.length]);
 

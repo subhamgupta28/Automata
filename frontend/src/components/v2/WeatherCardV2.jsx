@@ -23,7 +23,12 @@ import ScienceIcon from '@mui/icons-material/Science';
 import dayjs from "dayjs";
 import '/src/App.css'
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
-import {fetchOutdoorWeather, getAutomationAnalyticsSummary, getRecentDeviceData} from "../../services/apis.jsx";
+import {
+    fetchOutdoorWeather,
+    fetchWeatherForecast,
+    getAutomationAnalyticsSummary,
+    getRecentDeviceData
+} from "../../services/apis.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import {CustomModal} from "../home/CustomModal.jsx";
 import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
@@ -368,6 +373,67 @@ function WeatherInline({weather, live, hour, iconBasePath = "/icons/weather/"}) 
     );
 }
 
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function getForecastIcon(conditionLabel = "") {
+    const c = conditionLabel.toLowerCase();
+    if (c.includes("thunder") || c.includes("storm")) return "⛈";
+    if (c.includes("snow")) return "❄️";
+    if (c.includes("heavy rain") || c.includes("shower")) return "🌧";
+    if (c.includes("rain") || c.includes("drizzle")) return "🌦";
+    if (c.includes("overcast") || c.includes("fog")) return "☁️";
+    if (c.includes("partly cloudy") || c.includes("cloudy")) return "🌤";
+    if (c.includes("clear") || c.includes("sunny")) return "☀️";
+    return "🌡";
+}
+
+function ForecastStrip({days = []}) {
+    if (!days.length) return null;
+    return (
+        <Box sx={{display: "flex", gap: 0.8}}>
+            {days.map((d, i) => {
+                const dayName = DAY_NAMES[new Date(d.date).getDay()];
+                return (
+                    <Box
+                        key={i}
+                        sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 0.3,
+                            px: 1.8,
+                            py: 0.8,
+                            borderRadius: "10px",
+                            backgroundColor: C.card,
+                            border: `1px solid ${C.border}`,
+                            minWidth: 52,
+                        }}
+                    >
+                        <Typography sx={{
+                            fontSize: 14,
+                            color: C.muted,
+                            fontWeight: 600,
+                            letterSpacing: "0.05em",
+                            textTransform: "uppercase"
+                        }}>
+                            {dayName}
+                        </Typography>
+                        <Typography sx={{fontSize: 16, lineHeight: 1}}>
+                            {getForecastIcon(d.conditionLabel)}
+                        </Typography>
+                        <Typography sx={{fontSize: 18, fontWeight: 200, color: C.text}}>
+                            {Math.round(d.tempMax)}°
+                        </Typography>
+                        <Typography sx={{fontSize: 12, color: C.dim}}>
+                            {Math.round(d.tempMin)}°
+                        </Typography>
+                    </Box>
+                );
+            })}
+        </Box>
+    );
+}
+
 // ─── TopBar — UI unchanged ────────────────────────────────────────────────────
 export function TopBar({
                            userName = "Subham",
@@ -386,6 +452,7 @@ export function TopBar({
                            live, outdoor,
                            automationSummary,
                            weatherIconBasePath = "/icons/weather/",   // ← new prop; adjust to your asset path
+                           forecast = [],
                        }) {
     const hour = time ? parseInt(time.split(":")[0], 10) : new Date().getHours();
     const greeting = useMemo(() => buildGreeting(hour, userName), [hour, userName]);
@@ -427,7 +494,12 @@ export function TopBar({
                         hour={hour}
                         iconBasePath={weatherIconBasePath}
                     />
-
+                    {forecast?.length > 0 && (
+                        <>
+                            <Box sx={{width: "1px", height: 56, backgroundColor: C.border, flexShrink: 0}}/>
+                            <ForecastStrip days={forecast}/>
+                        </>
+                    )}
                     {/* Thin divider */}
                     <Box sx={{width: "1px", height: 28, backgroundColor: C.border, flexShrink: 0}}/>
 
@@ -531,6 +603,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
 
     // Outdoor weather from Open-Meteo via Spring Boot
     const [outdoor, setOutdoor] = useState(null); // WeatherResponse shape
+    const [forecast, setForecast] = useState([]);
     const user = useMemo(() => JSON.parse(localStorage.getItem('user')), []);
     const {
         attributes,
@@ -559,7 +632,9 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
 
     // ── Fetch outdoor weather on mount + on interval ───────────────────────
     useEffect(() => {
-
+        fetchWeatherForecast()
+            .then(setForecast)
+            .catch(() => setForecast([]));
         const fetch_ = () => {
             fetchOutdoorWeather()
                 .then(setOutdoor)
@@ -728,6 +803,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
                 live={live}
                 outdoor={outdoor}
                 automationSummary={automationSummary}
+                forecast={forecast}
             />
 
             <StatsRow items={liveStatsItems}/>

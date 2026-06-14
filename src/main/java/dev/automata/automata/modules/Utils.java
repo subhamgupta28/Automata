@@ -13,6 +13,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -91,6 +93,53 @@ public class Utils {
                 isDay,
                 timezone
         );
+    }
+
+    public List<ForecastDay> getForecast(int days) throws Exception {
+        URI uri = UriComponentsBuilder.fromHttpUrl(OPEN_METEO_URL)
+                .queryParam("latitude", LOCATION_LAT)
+                .queryParam("longitude", LOCATION_LONG)
+                .queryParam("daily", String.join(",",
+                        "weather_code",
+                        "temperature_2m_max",
+                        "temperature_2m_min"
+                ))
+                .queryParam("forecast_days", days)
+                .queryParam("timezone", "auto")
+                .build().toUri();
+
+        HttpRequest request = HttpRequest.newBuilder(uri)
+                .GET().header("Accept", "application/json").build();
+
+        HttpResponse<String> response =
+                httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        JsonNode daily = mapper.readTree(response.body()).path("daily");
+        JsonNode codes = daily.path("weather_code");
+        JsonNode maxTemps = daily.path("temperature_2m_max");
+        JsonNode minTemps = daily.path("temperature_2m_min");
+        JsonNode dates = daily.path("time");
+
+        List<ForecastDay> result = new ArrayList<>();
+        for (int i = 1; i <= Math.min(days, codes.size() - 1); i++) { // skip today (index 0)
+            result.add(new ForecastDay(
+                    dates.get(i).asText(),
+                    codes.get(i).asInt(),
+                    maxTemps.get(i).asDouble(),
+                    minTemps.get(i).asDouble(),
+                    resolveConditionLabel(codes.get(i).asInt(), 50, true)
+            ));
+        }
+        return result;
+    }
+
+    public record ForecastDay(
+            String date,
+            int weatherCode,
+            double tempMax,
+            double tempMin,
+            String conditionLabel
+    ) {
     }
 
     /**

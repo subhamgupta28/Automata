@@ -31,6 +31,15 @@ public class UtilityController {
         }
     }
 
+    @GetMapping("/forecast")
+    public ResponseEntity<List<?>> getForecast() {
+        try {
+            return ResponseEntity.ok(utils.getForecast(4)); // 4 = today + 3
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
     @GetMapping("test/{type}")
     public ResponseEntity<?> testNotify(@PathVariable String type) {
         return ResponseEntity.ok(notificationService.test(type));
