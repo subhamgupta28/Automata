@@ -341,6 +341,8 @@ export default function SideDrawer() {
                 {name: 'Home', url: '/', icon: <HomeIcon/>},
                 {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
                 {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
+                {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
+                {name: 'Live Inspector', url: '/automation-analytics', icon: <TrendingUp/>},
             ]
         }
     ];
@@ -419,7 +421,7 @@ export default function SideDrawer() {
                 {/* Breadcrumb bar */}
                 {/*{!isEmpty(user) && <AppBreadcrumbs/>}*/}
 
-                <Box sx={{flexGrow: 1, overflow: 'hidden'}}>
+                <Box sx={{flexGrow: 1, overflow: 'auto'}}>
                     <AppCacheProvider>
                         <ReactFlowProvider>
                             <Suspense fallback={<PageLoader/>}>
