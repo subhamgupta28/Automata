@@ -68,15 +68,23 @@ pipeline {
 
         stage('Run Docker Container') {
             steps {
-                // Run the Docker container with a restart policy and connect it to both networks
-                sh '''
-                docker run -d --name ${CONTAINER_NAME} \
-                --restart unless-stopped \
-                --network ${NETWORK_NAME} \
-                --add-host=host.docker.internal:host-gateway \
-                -p 8010:8010 myapp
-                '''
-                // Connect the running container to the second network
+                withCredentials([
+                    string(credentialsId: 'spotify-client-id', variable: 'SPOTIFY_CLIENT_ID'),
+                    string(credentialsId: 'spotify-client-secret', variable: 'SPOTIFY_CLIENT_SECRET')
+                ]) {
+                    sh '''
+                    docker run -d --name ${CONTAINER_NAME} \
+                    --restart unless-stopped \
+                    --network ${NETWORK_NAME} \
+                    --add-host=host.docker.internal:host-gateway \
+                    -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILE} \
+                    -e SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID}" \
+                    -e SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET}" \
+                    -p 8010:8010 \
+                    myapp
+                    '''
+                }
+
                 sh 'docker network connect ${SECOND_NETWORK_NAME} ${CONTAINER_NAME}'
             }
         }
