@@ -1,5 +1,6 @@
 package dev.automata.automata.security;
 
+import dev.automata.automata.model.Users;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -34,7 +35,15 @@ public class JwtService {
     }
 
     public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+        Users user = (Users) userDetails;
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getId());   // embed userId
+        claims.put("role", user.getRole().name());
+        return generateToken(claims, userDetails);
+    }
+
+    public String extractUserId(String token) {
+        return extractClaim(token, claims -> claims.get("userId", String.class));
     }
 
     public String generateToken(

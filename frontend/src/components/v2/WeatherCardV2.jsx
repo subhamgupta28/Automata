@@ -141,21 +141,21 @@ function buildMessage({time, weather, homeStats, live = {}, outdoor = null}) {
     }
 
     // ── Home state ─────────────────────────────────────────────────────────
-    if (homeStats?.lightsOn != null) {
-        parts.push(`${homeStats.lightsOn === 1 ? "1 light" : `${homeStats.lightsOn} lights`} on`);
-    }
-    if (homeStats?.windowsOpen != null && homeStats.windowsOpen > 0) {
-        parts.push(`${homeStats.windowsOpen} window${homeStats.windowsOpen !== 1 ? "s" : ""} open`);
-    }
-    if (homeStats?.security) {
-        parts.push(`security ${homeStats.security.toLowerCase()}`);
-    }
-    if (homeStats?.doorLocked != null) {
-        parts.push(`door ${homeStats.doorLocked ? "locked" : "unlocked"}`);
-    }
-    if (homeStats?.occupancy != null && homeStats.occupancy > 0) {
-        parts.push(`${homeStats.occupancy} ${homeStats.occupancy === 1 ? "person" : "people"} home`);
-    }
+    // if (homeStats?.lightsOn != null) {
+    //     parts.push(`${homeStats.lightsOn === 1 ? "1 light" : `${homeStats.lightsOn} lights`} on`);
+    // }
+    // if (homeStats?.windowsOpen != null && homeStats.windowsOpen > 0) {
+    //     parts.push(`${homeStats.windowsOpen} window${homeStats.windowsOpen !== 1 ? "s" : ""} open`);
+    // }
+    // if (homeStats?.security) {
+    //     parts.push(`security ${homeStats.security.toLowerCase()}`);
+    // }
+    // if (homeStats?.doorLocked != null) {
+    //     parts.push(`door ${homeStats.doorLocked ? "locked" : "unlocked"}`);
+    // }
+    // if (homeStats?.occupancy != null && homeStats.occupancy > 0) {
+    //     parts.push(`${homeStats.occupancy} ${homeStats.occupancy === 1 ? "person" : "people"} home`);
+    // }
 
     const timeStr = time ?? new Date().toTimeString().slice(0, 5);
     return parts.length > 0
@@ -582,11 +582,15 @@ export function StatsRow({items}) {
         <Box sx={{display: "flex", alignItems: "center", gap: 1, px: 2.5, py: 1, overflowX: "auto"}}>
             {items.map((s, i) => (
                 <Box key={i} sx={{
-                    display: "flex", alignItems: "center", gap: 3, padding: 1, borderRadius: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    padding: "10px 15px 5px 15px",
+                    borderRadius: "10px",
                     // backgroundColor: C.card,
                     border: `1px solid ${C.border}`,
                 }}>
-                    <Box sx={{display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap"}}>
+                    <Box sx={{display: "flex", alignItems: "center", gap: 1, whiteSpace: "nowrap"}}>
                         <Box sx={{color: C.muted}}>{s.icon}</Box>
                         <Box>
                             <Typography sx={{color: C.muted, lineHeight: 1}}>{s.label}</Typography>

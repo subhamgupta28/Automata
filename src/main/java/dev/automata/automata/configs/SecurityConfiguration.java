@@ -36,6 +36,8 @@ public class SecurityConfiguration {
 
     private static final String[] WHITE_LIST_URL = {
             "/error",
+            "/api/v1/spotify/login/**",
+            "/api/v1/spotify/login",
             "/api/v1/auth/**",
             "/icons/weather/**",
             "/api/v1/auth/register/**",

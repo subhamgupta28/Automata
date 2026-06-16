@@ -28,7 +28,7 @@ public class VirtualDevice {
     private Date lastModified;
     private String tag;
     private boolean active = true;
-
+    private String homeId;
     @Indexed
     private List<String> deviceIds;
     private Map<String, List<Attribute>> attributes;

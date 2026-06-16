@@ -3,6 +3,7 @@ import React from 'react';
 // Dummy data following the EnergyStat Java model (one entry per day)
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
+import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
 
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
@@ -90,7 +91,7 @@ const Exp = () => {
             {/*    ]}*/}
             {/*/>*/}
 
-
+            <SpotifyPlayer/>
             {/*<SmartHomeDashboard2/>*/}
 
         </div>

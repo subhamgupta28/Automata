@@ -2,12 +2,9 @@ package dev.automata.automata.model;
 
 
 import lombok.*;
-import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -42,9 +39,12 @@ public class Device {
     private double x;
     private double y;
     private List<Attribute> attributes = new ArrayList<>();
+    private String createdBy;
+    private String homeId;
+    private String mqttTopic;
 }
 
 /*
-* This data will be saved on the device it's representing
-*
-* */
+ * This data will be saved on the device it's representing
+ *
+ * */

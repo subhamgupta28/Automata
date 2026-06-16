@@ -23,4 +23,5 @@ public class Dashboard {
     private boolean showCharts;
     private boolean analytics;
     private boolean showInDashboard;
+    private String homeId;
 }
