@@ -1,44 +1,64 @@
 package dev.automata.automata.modules;
 
-
+import dev.automata.automata.model.SpotifyToken;
+import dev.automata.automata.repository.SpotifyTokenRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 
-/**
- * Simple in-memory token store. For multi-user apps, key this by userId/session.
- * Replace with Redis or DB persistence as needed.
- */
 @Component
+@RequiredArgsConstructor
 public class SpotifyTokenStore {
 
-    private String accessToken;
-    private String refreshToken;
-    private Instant expiresAt;
+    private static final String TOKEN_ID = "default";
 
-    public boolean hasValidToken() {
-        return accessToken != null && Instant.now().isBefore(expiresAt != null ? expiresAt : Instant.MIN);
-    }
-
-    public void store(String accessToken, String refreshToken, long expiresInSeconds) {
-        this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
-        this.expiresAt = Instant.now().plusSeconds(expiresInSeconds - 30); // 30s buffer
-    }
+    private final SpotifyTokenRepository repository;
 
     public String getAccessToken() {
-        return accessToken;
+        return getToken().getAccessToken();
     }
 
     public String getRefreshToken() {
-        return refreshToken;
+        return getToken().getRefreshToken();
     }
 
     public Instant getExpiresAt() {
-        return expiresAt;
+        return getToken().getExpiresAt();
+    }
+
+    public boolean hasValidToken() {
+        SpotifyToken token = getToken();
+
+        return token.getAccessToken() != null
+                && token.getExpiresAt() != null
+                && Instant.now().isBefore(token.getExpiresAt());
     }
 
     public boolean hasRefreshToken() {
-        return refreshToken != null;
+        return getToken().getRefreshToken() != null;
+    }
+
+    public void store(String accessToken, String refreshToken, long expiresInSeconds) {
+
+        SpotifyToken token = SpotifyToken.builder()
+                .id(TOKEN_ID)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .expiresAt(Instant.now().plusSeconds(expiresInSeconds - 30))
+                .build();
+
+        repository.save(token);
+    }
+
+    private SpotifyToken getToken() {
+        return repository.findById(TOKEN_ID)
+                .orElseGet(() -> {
+                    SpotifyToken token = SpotifyToken.builder()
+                            .id(TOKEN_ID)
+                            .build();
+
+                    return repository.save(token);
+                });
     }
 }
