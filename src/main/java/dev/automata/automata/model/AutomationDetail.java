@@ -28,7 +28,7 @@ public class AutomationDetail {
     private List<Node> nodes;
     @JsonProperty("viewport")
     private Viewport viewport;
-
+    private String homeId;
     private Date updateDate;
 
     @Getter

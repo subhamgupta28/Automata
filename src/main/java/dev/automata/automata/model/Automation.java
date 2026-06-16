@@ -32,6 +32,7 @@ public class Automation {
     private String triggerDeviceType;
     private Date updateDate;
     private List<String> subscriberDeviceIds;
+    private String homeId;
 
     private List<String> targetDeviceIds;
 

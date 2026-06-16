@@ -24,7 +24,7 @@ public class VirtualDashboard {
     private String screen;
     private int height;
     private int width;
-
+    private String homeId;
     private List<Vids> vids;
 
 

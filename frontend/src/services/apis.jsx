@@ -839,3 +839,68 @@ export const exportSessionCsv = async (sessionId, sessionName = 'recording') => 
 
     return blob;
 };
+
+
+export const getSpotifyStatus = async () => {
+    const response = await api.get(`spotify/status`);
+    return response.data;
+};
+
+export const getSpotifyPlayer = async () => {
+    const response = await api.get(`spotify/player`);
+    return response.data;
+};
+
+export const getSpotifyDevices = async () => {
+    const response = await api.get(`spotify/devices`);
+    return response.data;
+};
+
+export const spotifyPlay = async (deviceId) => {
+    const response = await api.put(`spotify/play`, {}, {
+        params: {deviceId},
+    });
+    return response.data;
+};
+
+export const spotifyPause = async (deviceId) => {
+    const response = await api.put(`spotify/pause`, {}, {
+        params: {deviceId},
+    });
+    return response.data;
+};
+
+export const spotifyNext = async (deviceId) => {
+    const response = await api.post(`spotify/next`, {}, {
+        params: {deviceId},
+    });
+    return response.data;
+};
+
+export const spotifyPrevious = async (deviceId) => {
+    const response = await api.post(`spotify/previous`, {}, {
+        params: {deviceId},
+    });
+    return response.data;
+};
+
+export const spotifyTransfer = async (deviceId) => {
+    const response = await api.put(`spotify/transfer`, {}, {
+        params: {deviceId},
+    });
+    return response.data;
+};
+
+export const spotifySeek = async (positionMs) => {
+    const response = await api.put(`spotify/seek`, {}, {
+        params: {positionMs},
+    });
+    return response.data;
+};
+
+export const spotifySetVolume = async (percent) => {
+    const response = await api.put(`spotify/volume`, {}, {
+        params: {percent},
+    });
+    return response.data;
+};

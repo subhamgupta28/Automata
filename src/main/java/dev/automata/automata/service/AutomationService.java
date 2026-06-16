@@ -494,6 +494,7 @@ public class AutomationService {
                                 c.getPreviousNodeRef(), c.getNodeId(), c.getPriority()))
                         .collect(Collectors.toList()));
 
+        automationBuilder.homeId(detail.getHomeId());
         Automation automation = automationBuilder.build();
         List<String> subscribers = automation.getTrigger().getSources().stream()
                 .filter(s -> "primary".equals(s.getRole()))
