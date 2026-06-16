@@ -4,6 +4,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 /src/main/resources/static/assets
+.env
 
 ### STS ###
 .apt_generated
