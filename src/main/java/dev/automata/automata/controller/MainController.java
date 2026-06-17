@@ -3,6 +3,7 @@ package dev.automata.automata.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.ChartDataDto;
 import dev.automata.automata.dto.DataDto;
+import dev.automata.automata.dto.DeviceLoginRequest;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.AttributeType;
 import dev.automata.automata.model.Device;
@@ -15,7 +16,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -154,6 +154,13 @@ public class MainController {
         return ResponseEntity.ok(mainService.getAllDevice());
     }
 
+    @PostMapping("/device/login")
+    public ResponseEntity<?> login(
+            @RequestBody DeviceLoginRequest req
+    ) {
+        return ResponseEntity.ok(mainService.deviceLogin(req));
+    }
+
     @GetMapping(value = "/time")
     public ResponseEntity<String> getServerTime() {
         LocalDateTime localDate = LocalDateTime.now();
@@ -235,8 +242,8 @@ public class MainController {
     }
 
     // for saving data from devices
-    @PostMapping("sendData")
-    @MessageMapping("/sendData")
+//    @PostMapping("sendData")
+//    @MessageMapping("/sendData")
     public Map<String, Object> addUser(
             @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
     ) {
@@ -273,7 +280,7 @@ public class MainController {
     }
 
     // for getting live data from devices
-    @PostMapping("sendLiveData")
+//    @PostMapping("sendLiveData")
     public ResponseEntity<Map<String, Object>> httpSendLiveData(
             @RequestBody Map<String, Object> payload
     ) {
@@ -285,7 +292,7 @@ public class MainController {
         return ResponseEntity.ok(getStringObjectMap(payload, deviceId));
     }
 
-    @MessageMapping("/sendLiveData")
+    //    @MessageMapping("/sendLiveData")
 //    @SendTo("/topic/data")
     public Map<String, Object> sendLiveData(
             @Payload Map<String, Object> payload

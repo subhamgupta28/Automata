@@ -1,5 +1,6 @@
 package dev.automata.automata.security;
 
+import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Users;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -10,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.time.Duration;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +42,27 @@ public class JwtService {
         claims.put("userId", user.getId());   // embed userId
         claims.put("role", user.getRole().name());
         return generateToken(claims, userDetails);
+    }
+
+    public String generateDeviceToken(Device device) {
+
+        Map<String, Object> claims = new HashMap<>();
+
+        claims.put("deviceId", device.getId());
+        claims.put("type", "DEVICE");
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject(device.getMacAddr())
+                .issuedAt(new Date())
+                .expiration(
+                        new Date(
+                                System.currentTimeMillis()
+                                        + Duration.ofDays(90).toMillis()
+                        )
+                )
+                .signWith(getSignInKey())
+                .compact();
     }
 
     public String extractUserId(String token) {

@@ -1,25 +1,8 @@
 import {useEffect, useState} from 'react';
-import {
-    alpha,
-    Box,
-    Card,
-    CardMedia,
-    Chip,
-    IconButton,
-    ListItemIcon,
-    ListItemText,
-    Menu,
-    MenuItem,
-    Skeleton,
-    Slider,
-    Stack,
-    Tooltip,
-    Typography,
-} from '@mui/material';
+import {alpha, Box, IconButton, Slider, Stack, Tooltip, Typography,} from '@mui/material';
 import {
     DevicesOther,
     MusicNote,
-    OpenInNew,
     Pause,
     PlayArrow,
     SkipNext,
@@ -27,7 +10,7 @@ import {
     VolumeOff,
     VolumeUp,
 } from '@mui/icons-material';
-import {useSpotify} from "./useSpotify.jsx";
+import {useSpotify} from './useSpotify.jsx';
 
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -45,13 +28,14 @@ function deviceIcon(type) {
     return icons[type] ?? '🎵';
 }
 
+
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function ConnectPrompt({onLogin}) {
     return (
-        <Card
+        <Box
             sx={{
-                width: 360,
+                width: 300,
                 p: 4,
                 display: 'flex',
                 flexDirection: 'column',
@@ -62,18 +46,11 @@ function ConnectPrompt({onLogin}) {
                 borderRadius: 3,
             }}
         >
-            <Box
-                sx={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: '50%',
-                    background: '#1DB954',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}
-            >
-                <MusicNote sx={{color: '#000', fontSize: 32}}/>
+            <Box sx={{
+                width: 56, height: 56, borderRadius: '50%', background: '#1DB954',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+                <MusicNote sx={{color: '#000', fontSize: 28}}/>
             </Box>
             <Typography variant="h6" sx={{color: '#fff', fontWeight: 700}}>
                 Connect Spotify
@@ -85,50 +62,40 @@ function ConnectPrompt({onLogin}) {
                 component="button"
                 onClick={onLogin}
                 sx={{
-                    mt: 1,
-                    px: 3,
-                    py: 1.5,
-                    borderRadius: 50,
-                    border: 'none',
-                    background: '#1DB954',
-                    color: '#000',
-                    fontWeight: 700,
-                    fontSize: 14,
-                    cursor: 'pointer',
+                    mt: 1, px: 3, py: 1.5, borderRadius: 50, border: 'none',
+                    background: '#1DB954', color: '#000', fontWeight: 700,
+                    fontSize: 14, cursor: 'pointer',
                     '&:hover': {background: '#1ed760'},
                     transition: 'background 0.15s',
                 }}
             >
                 Connect with Spotify
             </Box>
-        </Card>
+        </Box>
     );
 }
 
 function LoadingSkeleton() {
     return (
-        <Card sx={{width: 360, p: 3, background: '#111', borderRadius: 3}}>
-            <Skeleton variant="rectangular" height={220} sx={{borderRadius: 2, mb: 2}}/>
-            <Skeleton width="70%" height={28} sx={{mb: 0.5}}/>
-            <Skeleton width="50%" height={20} sx={{mb: 2}}/>
-            <Skeleton height={8} sx={{borderRadius: 4, mb: 2}}/>
-            <Stack direction="row" justifyContent="center" spacing={1}>
-                {[...Array(5)].map((_, i) => <Skeleton key={i} variant="circular" width={40} height={40}/>)}
-            </Stack>
-        </Card>
+        <Box sx={{
+            width: 300, height: 200, borderRadius: 3,
+            background: 'linear-gradient(135deg, #1a1a1a, #111)',
+            border: '1px solid rgba(255,255,255,0.06)',
+        }}/>
     );
 }
 
 function NothingPlaying() {
     return (
-        <Box sx={{textAlign: 'center', py: 3}}>
-            <MusicNote sx={{fontSize: 48, color: 'rgba(255,255,255,0.15)', mb: 1}}/>
-            <Typography variant="body2" sx={{color: 'rgba(255,255,255,0.4)'}}>
+        <Box sx={{textAlign: 'center', py: 2}}>
+            <MusicNote sx={{fontSize: 36, color: 'rgba(255,255,255,0.15)', mb: 0.5}}/>
+            <Typography variant="caption" sx={{color: 'rgba(255,255,255,0.35)', display: 'block'}}>
                 Nothing playing right now
             </Typography>
         </Box>
     );
 }
+
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
@@ -138,23 +105,24 @@ export default function SpotifyPlayer() {
         login, play, pause, next, previous, seek, setVolume, transferTo,
     } = useSpotify();
 
-    // Local optimistic progress bar state
     const [progress, setProgress] = useState(0);
     const [volume, setVolumeState] = useState(50);
     const [muted, setMuted] = useState(false);
-    const [deviceAnchor, setDeviceAnchor] = useState(null);
+    const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
 
     const isPlaying = player?.is_playing ?? false;
     const track = player?.item;
     const duration = track?.duration_ms ?? 0;
     const device = player?.device;
+    const albumArt = track?.album?.images?.[0]?.url;
+    const artists = track?.artists?.map(a => a.name).join(', ');
 
-    // Sync progress from server state
+    // Sync progress from server
     useEffect(() => {
         if (player?.progress_ms != null) setProgress(player.progress_ms);
     }, [player?.progress_ms]);
 
-    // Tick progress forward locally while playing
+    // Tick progress locally while playing
     useEffect(() => {
         if (!isPlaying) return;
         const id = setInterval(() => setProgress(p => Math.min(p + 1000, duration)), 1000);
@@ -184,131 +152,202 @@ export default function SpotifyPlayer() {
         setVolume(next);
     };
 
-    const albumArt = track?.album?.images?.[0]?.url;
-    const artists = track?.artists?.map(a => a.name).join(', ');
-    const trackName = track?.name;
-    const albumName = track?.album?.name;
-    const spotifyUrl = track?.external_urls?.spotify;
-
     // ── Render ───────────────────────────────────────────────────────────────
 
     if (loading) return <LoadingSkeleton/>;
     if (!authenticated) return <ConnectPrompt onLogin={login}/>;
 
     return (
-        <Card
+        <Box
             sx={{
-                width: 360,
-                background: 'linear-gradient(160deg, #141414 0%, #0d0d0d 100%)',
-                border: '1px solid rgba(255,255,255,0.07)',
-                borderRadius: 3,
+                width: "100%",
+                height: 200,
+                borderRadius: "12px",
                 overflow: 'hidden',
-                boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+                position: 'relative',
+                // boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+                flexShrink: 0,
             }}
         >
-            {/* Album art */}
-            <Box sx={{position: 'relative'}}>
-                {albumArt ? (
-                    <CardMedia
-                        component="img"
-                        image={albumArt}
-                        alt={albumName}
-                        sx={{height: 220, objectFit: 'cover'}}
-                    />
-                ) : (
-                    <Box
-                        sx={{
-                            height: 220,
-                            background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <MusicNote sx={{fontSize: 80, color: 'rgba(255,255,255,0.1)'}}/>
-                    </Box>
-                )}
+            {/* ── Full-bleed blurred album art background ── */}
+            <Box
+                sx={{
+                    position: 'absolute',
+                    inset: -10,
+                    backgroundImage: albumArt ? `url(${albumArt})` : undefined,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundColor: albumArt ? undefined : '#1a1a1a',
+                    filter: 'blur(18px)',
+                    transform: 'scale(1.15)',
+                    transition: 'background-image 0.4s ease',
+                }}
+            />
 
-                {/* Playing badge */}
-                {isPlaying && (
-                    <Chip
-                        label="● PLAYING"
-                        size="small"
-                        sx={{
-                            position: 'absolute',
-                            top: 10,
-                            left: 10,
-                            background: alpha('#1DB954', 0.9),
-                            color: '#000',
-                            fontWeight: 800,
-                            fontSize: 10,
-                            letterSpacing: 1,
-                            height: 22,
-                        }}
-                    />
-                )}
+            {/* ── Gradient overlay ── */}
+            <Box sx={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.65) 50%, rgba(0,0,0,0.88) 100%)',
+            }}/>
 
-                {/* Open in Spotify */}
-                {spotifyUrl && (
-                    <Tooltip title="Open in Spotify">
-                        <IconButton
-                            size="small"
-                            component="a"
-                            href={spotifyUrl}
-                            target="_blank"
-                            sx={{
-                                position: 'absolute',
-                                top: 8,
-                                right: 8,
-                                background: 'rgba(0,0,0,0.5)',
-                                color: 'rgba(255,255,255,0.7)',
-                                '&:hover': {background: 'rgba(0,0,0,0.8)', color: '#fff'},
-                            }}
-                        >
-                            <OpenInNew sx={{fontSize: 16}}/>
-                        </IconButton>
-                    </Tooltip>
-                )}
-            </Box>
-
-            <Box sx={{p: 2.5}}>
+            {/* ── Foreground content ── */}
+            <Stack
+                sx={{
+                    position: 'relative',
+                    zIndex: 2,
+                    height: '100%',
+                    p: '12px 14px 10px',
+                }}
+            >
                 {!track ? (
                     <NothingPlaying/>
                 ) : (
                     <>
-                        {/* Track info */}
-                        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" mb={0.5}>
+                        {/* Top row: art thumbnail + track info + device icon */}
+                        <Stack direction="row" alignItems="center" gap="10px" sx={{flex: 1, minHeight: 0}}>
+
+                            {/* Album art thumbnail */}
+                            <Box
+                                sx={{
+                                    width: 52, height: 52, flexShrink: 0,
+                                    borderRadius: 1.5, overflow: 'hidden',
+                                    boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+                                    background: '#111',
+                                }}
+                            >
+                                {albumArt
+                                    ? <Box component="img" src={albumArt} alt={track.album?.name}
+                                           sx={{width: '100%', height: '100%', objectFit: 'cover'}}/>
+                                    : <Box sx={{
+                                        width: '100%',
+                                        height: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <MusicNote sx={{fontSize: 20, color: 'rgba(255,255,255,0.2)'}}/>
+                                    </Box>
+                                }
+                            </Box>
+
+                            {/* Track name + artist */}
                             <Box sx={{flex: 1, minWidth: 0}}>
+                                <Stack direction="row" alignItems="center" gap="5px" mb="1px">
+                                    {isPlaying && (
+                                        <Box sx={{
+                                            width: 5, height: 5, borderRadius: '50%',
+                                            background: '#1DB954', flexShrink: 0,
+                                            '@keyframes pulse': {
+                                                '0%, 100%': {opacity: 1},
+                                                '50%': {opacity: 0.3},
+                                            },
+                                            animation: 'pulse 1.5s ease-in-out infinite',
+                                        }}/>
+                                    )}
+                                    <Typography
+                                        sx={{
+                                            fontSize: 13, fontWeight: 500, color: '#fff',
+                                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                        }}
+                                    >
+                                        {track.name}
+                                    </Typography>
+                                </Stack>
                                 <Typography
-                                    variant="subtitle1"
                                     sx={{
-                                        color: '#fff',
-                                        fontWeight: 700,
-                                        fontSize: 16,
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                    }}
-                                >
-                                    {trackName}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    sx={{
-                                        color: 'rgba(255,255,255,0.55)',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        fontSize: 13,
+                                        fontSize: 11, color: 'rgba(255,255,255,0.5)',
+                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                                     }}
                                 >
                                     {artists}
                                 </Typography>
                             </Box>
+
+                            {/* Device switcher icon */}
+                            <Tooltip title={deviceMenuOpen ? '' : 'Switch device'}>
+                                <IconButton
+                                    size="small"
+                                    onClick={() => setDeviceMenuOpen(v => !v)}
+                                    sx={{
+                                        color: device ? '#1DB954' : 'rgba(255,255,255,0.4)',
+                                        p: 0, flexShrink: 0,
+                                        '&:hover': {color: '#fff'},
+                                    }}
+                                >
+                                    <DevicesOther sx={{fontSize: 16}}/>
+                                </IconButton>
+                            </Tooltip>
                         </Stack>
 
-                        {/* Progress bar */}
-                        <Box sx={{mt: 1.5, mb: 0.5}}>
+                        {/* Device list (inline, no Menu/Portal) */}
+                        {deviceMenuOpen && (
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    top: 8, right: 8,
+                                    zIndex: 10,
+                                    background: '#1e1e1e',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    borderRadius: 2,
+                                    minWidth: 180,
+                                    py: 0.5,
+                                    boxShadow: '0 4px 24px rgba(0,0,0,0.6)',
+                                }}
+                            >
+                                <Typography sx={{
+                                    px: 1.5, py: 0.5, fontSize: 9, fontWeight: 700,
+                                    letterSpacing: 1, color: 'rgba(255,255,255,0.35)',
+                                }}>
+                                    SELECT A DEVICE
+                                </Typography>
+                                {devices.length === 0 && (
+                                    <Typography sx={{px: 1.5, py: 0.5, fontSize: 12, color: 'rgba(255,255,255,0.35)'}}>
+                                        No devices found
+                                    </Typography>
+                                )}
+                                {devices.map(d => (
+                                    <Stack
+                                        key={d.id}
+                                        direction="row"
+                                        alignItems="center"
+                                        gap={1}
+                                        onClick={() => {
+                                            transferTo(d.id);
+                                            setDeviceMenuOpen(false);
+                                        }}
+                                        sx={{
+                                            px: 1.5, py: 0.75, cursor: 'pointer',
+                                            background: d.id === device?.id ? alpha('#1DB954', 0.12) : 'transparent',
+                                            '&:hover': {background: 'rgba(255,255,255,0.06)'},
+                                        }}
+                                    >
+                                        <Box sx={{fontSize: 14}}>{deviceIcon(d.type)}</Box>
+                                        <Box sx={{flex: 1, minWidth: 0}}>
+                                            <Typography sx={{
+                                                fontSize: 12,
+                                                color: d.id === device?.id ? '#1DB954' : '#fff',
+                                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                            }}>
+                                                {d.name}
+                                            </Typography>
+                                        </Box>
+                                        {d.id === device?.id && (
+                                            <Box sx={{
+                                                width: 6,
+                                                height: 6,
+                                                borderRadius: '50%',
+                                                background: '#1DB954',
+                                                flexShrink: 0
+                                            }}/>
+                                        )}
+                                    </Stack>
+                                ))}
+                            </Box>
+                        )}
+
+                        {/* Seekbar */}
+                        <Box sx={{my: '6px'}}>
                             <Slider
                                 size="small"
                                 value={progress}
@@ -317,69 +356,46 @@ export default function SpotifyPlayer() {
                                 onChange={handleSeek}
                                 sx={{
                                     color: '#1DB954',
-                                    height: 4,
-                                    padding: '10px 0',
+                                    height: 3,
+                                    p: '8px 0',
                                     '& .MuiSlider-thumb': {
-                                        width: 12,
-                                        height: 12,
+                                        width: 9, height: 9,
                                         opacity: 0,
                                         transition: 'opacity 0.15s',
                                         '&:hover, &.Mui-active': {opacity: 1},
                                     },
-                                    '& .MuiSlider-rail': {background: 'rgba(255,255,255,0.15)'},
                                     '&:hover .MuiSlider-thumb': {opacity: 1},
+                                    '& .MuiSlider-rail': {background: 'rgba(255,255,255,0.15)'},
                                 }}
                             />
-                            <Stack direction="row" justifyContent="space-between" mt={-0.5}>
-                                <Typography variant="caption" sx={{color: 'rgba(255,255,255,0.4)', fontSize: 11}}>
+                            <Stack direction="row" justifyContent="space-between" mt="-4px">
+                                <Typography sx={{fontSize: 9, color: 'rgba(255,255,255,0.35)'}}>
                                     {msToTime(progress)}
                                 </Typography>
-                                <Typography variant="caption" sx={{color: 'rgba(255,255,255,0.4)', fontSize: 11}}>
+                                <Typography sx={{fontSize: 9, color: 'rgba(255,255,255,0.35)'}}>
                                     {msToTime(duration)}
                                 </Typography>
                             </Stack>
                         </Box>
 
-                        {/* Playback controls */}
-                        <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} mt={0.5}>
-                            <Tooltip title="Previous">
-                                <IconButton onClick={previous}
-                                            sx={{color: 'rgba(255,255,255,0.7)', '&:hover': {color: '#fff'}}}>
-                                    <SkipPrevious/>
-                                </IconButton>
-                            </Tooltip>
+                        {/* Controls row: mute + vol · prev/play/next · device label */}
+                        <Stack direction="row" alignItems="center" justifyContent="center" gap="6px">
 
-                            <IconButton
-                                onClick={isPlaying ? pause : play}
-                                sx={{
-                                    width: 48,
-                                    height: 48,
-                                    background: '#1DB954',
-                                    color: '#000',
-                                    '&:hover': {background: '#1ed760', transform: 'scale(1.05)'},
-                                    transition: 'all 0.15s',
-                                }}
-                            >
-                                {isPlaying ? <Pause sx={{fontSize: 24}}/> : <PlayArrow sx={{fontSize: 24}}/>}
-                            </IconButton>
-
-                            <Tooltip title="Next">
-                                <IconButton onClick={next}
-                                            sx={{color: 'rgba(255,255,255,0.7)', '&:hover': {color: '#fff'}}}>
-                                    <SkipNext/>
-                                </IconButton>
-                            </Tooltip>
-                        </Stack>
-
-                        {/* Volume + device switcher */}
-                        <Stack direction="row" alignItems="center" spacing={1} mt={1.5}>
+                            {/* Mute */}
                             <Tooltip title={muted ? 'Unmute' : 'Mute'}>
-                                <IconButton size="small" onClick={toggleMute} sx={{color: 'rgba(255,255,255,0.5)'}}>
-                                    {muted || volume === 0 ? <VolumeOff fontSize="small"/> :
-                                        <VolumeUp fontSize="small"/>}
+                                <IconButton
+                                    size="small"
+                                    onClick={toggleMute}
+                                    sx={{color: 'rgba(255,255,255,0.4)', p: 0, '&:hover': {color: '#fff'}}}
+                                >
+                                    {muted || volume === 0
+                                        ? <VolumeOff sx={{fontSize: 14}}/>
+                                        : <VolumeUp sx={{fontSize: 14}}/>
+                                    }
                                 </IconButton>
                             </Tooltip>
 
+                            {/* Volume slider */}
                             <Slider
                                 size="small"
                                 value={muted ? 0 : volume}
@@ -387,116 +403,81 @@ export default function SpotifyPlayer() {
                                 max={100}
                                 onChange={handleVolume}
                                 sx={{
-                                    flex: 1,
-                                    color: 'rgba(255,255,255,0.6)',
+                                    width: 54,
+                                    color: 'rgba(255,255,255,0.4)',
                                     height: 3,
-                                    '& .MuiSlider-thumb': {width: 10, height: 10},
+                                    p: '8px 0',
+                                    '& .MuiSlider-thumb': {width: 8, height: 8},
                                     '& .MuiSlider-rail': {background: 'rgba(255,255,255,0.15)'},
                                 }}
                             />
 
-                            {/* Device switcher */}
-                            <Tooltip title="Switch device">
+                            {/* Prev / Play / Next */}
+                            <Stack direction="row" alignItems="center" gap="2px" mx="8px">
+                                <Tooltip title="Previous">
+                                    <IconButton
+                                        onClick={previous}
+                                        sx={{
+                                            width: 28, height: 28,
+                                            background: 'rgba(255,255,255,0.08)',
+                                            color: 'rgba(255,255,255,0.75)',
+                                            '&:hover': {background: 'rgba(255,255,255,0.18)', color: '#fff'},
+                                        }}
+                                    >
+                                        <SkipPrevious sx={{fontSize: 14}}/>
+                                    </IconButton>
+                                </Tooltip>
+
                                 <IconButton
-                                    size="small"
-                                    onClick={e => setDeviceAnchor(e.currentTarget)}
+                                    onClick={isPlaying ? pause : play}
                                     sx={{
-                                        color: device ? '#1DB954' : 'rgba(255,255,255,0.5)',
-                                        '&:hover': {color: '#1DB954'},
+                                        width: 34, height: 34, mx: '2px',
+                                        background: '#1DB954',
+                                        color: '#000',
+                                        '&:hover': {background: '#1ed760', transform: 'scale(1.07)'},
+                                        transition: 'all 0.15s',
                                     }}
                                 >
-                                    <DevicesOther fontSize="small"/>
+                                    {isPlaying
+                                        ? <Pause sx={{fontSize: 16}}/>
+                                        : <PlayArrow sx={{fontSize: 16}}/>
+                                    }
                                 </IconButton>
-                            </Tooltip>
-                        </Stack>
 
-                        {/* Active device label */}
-                        {device && (
+                                <Tooltip title="Next">
+                                    <IconButton
+                                        onClick={next}
+                                        sx={{
+                                            width: 28, height: 28,
+                                            background: 'rgba(255,255,255,0.08)',
+                                            color: 'rgba(255,255,255,0.75)',
+                                            '&:hover': {background: 'rgba(255,255,255,0.18)', color: '#fff'},
+                                        }}
+                                    >
+                                        <SkipNext sx={{fontSize: 14}}/>
+                                    </IconButton>
+                                </Tooltip>
+                            </Stack>
+
+                            {/* Active device label */}
                             <Typography
-                                variant="caption"
                                 sx={{
-                                    display: 'block',
-                                    textAlign: 'center',
-                                    color: 'rgba(255,255,255,0.35)',
-                                    mt: 1,
-                                    fontSize: 11,
+                                    fontSize: 9,
+                                    color: 'rgba(255,255,255,0.3)',
+                                    maxWidth: 54,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    textAlign: 'right',
                                 }}
                             >
-                                {deviceIcon(device.type)} {device.name}
+                                {device ? `${deviceIcon(device.type)} ${device.name}` : ''}
                             </Typography>
-                        )}
+
+                        </Stack>
                     </>
                 )}
-            </Box>
-
-            {/* Device Menu */}
-            <Menu
-                anchorEl={deviceAnchor}
-                open={Boolean(deviceAnchor)}
-                onClose={() => setDeviceAnchor(null)}
-                PaperProps={{
-                    sx: {
-                        background: '#282828',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 2,
-                        minWidth: 220,
-                    },
-                }}
-            >
-                <Typography
-                    variant="caption"
-                    sx={{
-                        px: 2,
-                        py: 0.75,
-                        display: 'block',
-                        color: 'rgba(255,255,255,0.4)',
-                        fontWeight: 700,
-                        letterSpacing: 1
-                    }}
-                >
-                    SELECT A DEVICE
-                </Typography>
-
-                {devices.length === 0 && (
-                    <MenuItem disabled>
-                        <ListItemText primary="No devices found"
-                                      sx={{'& span': {color: 'rgba(255,255,255,0.4)', fontSize: 13}}}/>
-                    </MenuItem>
-                )}
-
-                {devices.map(d => (
-                    <MenuItem
-                        key={d.id}
-                        selected={d.id === device?.id}
-                        onClick={() => {
-                            transferTo(d.id);
-                            setDeviceAnchor(null);
-                        }}
-                        sx={{
-                            '&.Mui-selected': {background: 'rgba(29,185,84,0.15)'},
-                            '&:hover': {background: 'rgba(255,255,255,0.05)'},
-                        }}
-                    >
-                        <ListItemIcon sx={{minWidth: 36, fontSize: 18}}>
-                            {deviceIcon(d.type)}
-                        </ListItemIcon>
-                        <ListItemText
-                            primary={d.name}
-                            secondary={d.type}
-                            sx={{
-                                '& .MuiListItemText-primary': {
-                                    color: d.id === device?.id ? '#1DB954' : '#fff',
-                                    fontSize: 14
-                                },
-                                '& .MuiListItemText-secondary': {color: 'rgba(255,255,255,0.4)', fontSize: 12},
-                            }}
-                        />
-                        {d.id === device?.id && (
-                            <Typography variant="caption" sx={{color: '#1DB954', fontWeight: 700}}>●</Typography>
-                        )}
-                    </MenuItem>
-                ))}
-            </Menu>
-        </Card>
+            </Stack>
+        </Box>
     );
 }
