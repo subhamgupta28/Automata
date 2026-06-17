@@ -55,10 +55,6 @@ public class MqttConfig {
 
     private final MessageChannel mqttErrorChannel;
 
-    private final String inboundClientId = "springboot-sub-" + env;
-    private final String outboundClientId = "springboot-pub-" + env;
-    private final String publicSubClientId = "springboot-pub-sub-" + env;
-    private final String publicPubClientId = "springboot-pub-pub-" + env;
     // ─────────────────────────────────────────────────────────────────────────
     // MQTT CLIENT FACTORIES
     // ─────────────────────────────────────────────────────────────────────────
@@ -210,9 +206,10 @@ public class MqttConfig {
 
     @Bean
     public MqttPahoMessageDrivenChannelAdapter inbound() {
+        String inboundClientId = "springboot-sub-";
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter(
-                        inboundClientId,
+                        inboundClientId + env,
                         mqttClientFactory(),
                         topicSendLiveData,
                         topicSendData,
@@ -231,9 +228,10 @@ public class MqttConfig {
 
     @Bean
     public MqttPahoMessageDrivenChannelAdapter publicInbound() {
+        String publicSubClientId = "springboot-pub-sub-";
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter(
-                        publicSubClientId,
+                        publicSubClientId + env,
                         mqttClientFactoryPublic(),
                         wledDeviceTopic,
                         wledGroupTopic
@@ -257,8 +255,9 @@ public class MqttConfig {
     @Bean
     @ServiceActivator(inputChannel = "mqttOutboundChannel")
     public MessageHandler mqttOutbound() {
+        String outboundClientId = "springboot-pub-";
         MqttPahoMessageHandler handler =
-                new MqttPahoMessageHandler(outboundClientId, mqttClientFactory());
+                new MqttPahoMessageHandler(outboundClientId + env, mqttClientFactory());
         handler.setAsync(true);
         handler.setDefaultTopic(wledDeviceTopic);
         return handler;
@@ -267,8 +266,9 @@ public class MqttConfig {
     @Bean
     @ServiceActivator(inputChannel = "mqttOutboundChannel")
     public MessageHandler mqttOutboundPublic() {
+        String publicPubClientId = "springboot-pub-pub-";
         MqttPahoMessageHandler handler =
-                new MqttPahoMessageHandler(publicPubClientId, mqttClientFactoryPublic());
+                new MqttPahoMessageHandler(publicPubClientId + env, mqttClientFactoryPublic());
         handler.setAsync(true);
         handler.setDefaultTopic(topicDefault);
         return handler;
