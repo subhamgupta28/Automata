@@ -40,6 +40,8 @@ public class MqttConfig {
     private String user;
     @Value("${application.mqtt.password}")
     private String password;
+    @Value("${application.env}")
+    private String env;
 
     private final String clientId = "springboot-client-" + UUID.randomUUID();
     private final String topicDefault = "status";
@@ -53,6 +55,10 @@ public class MqttConfig {
 
     private final MessageChannel mqttErrorChannel;
 
+    private final String inboundClientId = "springboot-sub-" + env;
+    private final String outboundClientId = "springboot-pub-" + env;
+    private final String publicSubClientId = "springboot-pub-sub-" + env;
+    private final String publicPubClientId = "springboot-pub-pub-" + env;
     // ─────────────────────────────────────────────────────────────────────────
     // MQTT CLIENT FACTORIES
     // ─────────────────────────────────────────────────────────────────────────
@@ -206,7 +212,7 @@ public class MqttConfig {
     public MqttPahoMessageDrivenChannelAdapter inbound() {
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter(
-                        clientId + System.currentTimeMillis() + "-sub",
+                        inboundClientId,
                         mqttClientFactory(),
                         topicSendLiveData,
                         topicSendData,
@@ -227,14 +233,14 @@ public class MqttConfig {
     public MqttPahoMessageDrivenChannelAdapter publicInbound() {
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter(
-                        clientId + "-public-sub",
+                        publicSubClientId,
                         mqttClientFactoryPublic(),
                         wledDeviceTopic,
                         wledGroupTopic
                 );
         adapter.setConverter(new DefaultPahoMessageConverter());
         adapter.setQos(1);
-        adapter.setOutputChannel(mqttInputChannel());
+//        adapter.setOutputChannel(mqttInputChannel());
         adapter.setErrorChannel(mqttErrorChannel);
         return adapter;
     }
@@ -252,7 +258,7 @@ public class MqttConfig {
     @ServiceActivator(inputChannel = "mqttOutboundChannel")
     public MessageHandler mqttOutbound() {
         MqttPahoMessageHandler handler =
-                new MqttPahoMessageHandler(clientId + "-pub", mqttClientFactory());
+                new MqttPahoMessageHandler(outboundClientId, mqttClientFactory());
         handler.setAsync(true);
         handler.setDefaultTopic(wledDeviceTopic);
         return handler;
@@ -262,7 +268,7 @@ public class MqttConfig {
     @ServiceActivator(inputChannel = "mqttOutboundChannel")
     public MessageHandler mqttOutboundPublic() {
         MqttPahoMessageHandler handler =
-                new MqttPahoMessageHandler(clientId + "-pub-public", mqttClientFactoryPublic());
+                new MqttPahoMessageHandler(publicPubClientId, mqttClientFactoryPublic());
         handler.setAsync(true);
         handler.setDefaultTopic(topicDefault);
         return handler;
@@ -322,7 +328,12 @@ public class MqttConfig {
                         "device",
                         m -> {
                             String topic = (String) m.getHeaders().get("mqtt_receivedTopic");
-                            return topic != null ? topic.substring(13) : null;
+                            // "automata-wled/" is 14 chars, not 13
+                            if (topic != null && topic.startsWith("automata-wled/")) {
+                                String devicePart = topic.substring(14); // e.g. "some-device-id" or "all"
+                                return devicePart.isEmpty() ? null : devicePart;
+                            }
+                            return null;
                         }
                 ))
                 .channel("wledChannel")

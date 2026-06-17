@@ -11,12 +11,19 @@ const RECONNECT_DELAY = 5000;
 const useWebSocket = (topic) => {
     const [messages, setMessages] = useState({device_id: ""});
     const clientRef = useRef(null);
-
+    const token = JSON.parse(localStorage.getItem("user"))?.access_token;
+    if (!token) {
+        console.warn("No auth token found — WebSocket connection aborted.");
+        return;
+    }
     useEffect(() => {
         const client = new Client({
             webSocketFactory: () => new SockJS(url, null, {withCredentials: false}),
             reconnectDelay: RECONNECT_DELAY,
             debug: () => {
+            },
+            connectHeaders: {
+                Authorization: `Bearer ${token}`,
             },
             onConnect: () => {
                 console.log("WebSocket connected");
@@ -26,7 +33,18 @@ const useWebSocket = (topic) => {
                 });
             },
             onStompError: (frame) => {
-                console.warn("STOMP error:", frame.headers?.message);
+                const errMsg = frame.headers?.message ?? "";
+                console.warn("STOMP error:", errMsg);
+                const isAuthError =
+                    errMsg.toLowerCase().includes("unauthorized") ||
+                    errMsg.toLowerCase().includes("forbidden") ||
+                    frame.headers?.["receipt-id"] === "auth-error";
+
+                if (isAuthError) {
+                    console.error("WebSocket auth failed — deactivating client.");
+                    client.deactivate();
+                    return;
+                }
                 setMessages({message: "Cannot reach server, retrying connection", severity: "High"});
             },
             onWebSocketClose: () => console.warn("WebSocket closed"),

@@ -1,10 +1,8 @@
 package dev.automata.automata.dto;
 
 import dev.automata.automata.model.Device;
-import lombok.RequiredArgsConstructor;
-import java.util.function.Function;
 
-import java.lang.reflect.Method;
+import java.util.function.Function;
 
 
 public class DeviceMapper implements Function<Device, DeviceDto> {
@@ -19,6 +17,7 @@ public class DeviceMapper implements Function<Device, DeviceDto> {
                 .host(device.getHost())
                 .accessUrl(device.getAccessUrl())
                 .macAddr(device.getMacAddr())
+                .deviceSecret(device.getDeviceSecretHash())
                 .build();
     }
 }

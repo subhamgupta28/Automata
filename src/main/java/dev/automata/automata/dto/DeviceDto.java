@@ -1,6 +1,5 @@
 package dev.automata.automata.dto;
 
-import dev.automata.automata.model.Status;
 import lombok.*;
 
 @Getter
@@ -17,4 +16,5 @@ public class DeviceDto {
     private Long updateInterval;
     private String accessUrl;
     private String macAddr;
+    private String deviceSecret;
 }

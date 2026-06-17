@@ -19,10 +19,19 @@ export const DeviceDataProvider = ({children}) => {
     const clientRef = useRef(null);
 
     useEffect(() => {
+        const token = JSON.parse(localStorage.getItem("user"))?.access_token;
+        if (!token) {
+            console.warn("No auth token found — WebSocket connection aborted.");
+            return;
+        }
+
         const client = new Client({
             webSocketFactory: () => new SockJS(url, null, {withCredentials: false}),
             reconnectDelay: RECONNECT_DELAY,
             debug: () => {
+            },
+            connectHeaders: {
+                Authorization: `Bearer ${token}`,
             },
             onConnect: () => {
                 console.log("WebSocket connected");
@@ -35,7 +44,19 @@ export const DeviceDataProvider = ({children}) => {
                 });
             },
             onStompError: (frame) => {
-                console.warn("STOMP error:", frame.headers?.message);
+                const errMsg = frame.headers?.message ?? "";
+                console.warn("STOMP error:", errMsg);
+                const isAuthError =
+                    errMsg.toLowerCase().includes("unauthorized") ||
+                    errMsg.toLowerCase().includes("forbidden") ||
+                    frame.headers?.["receipt-id"] === "auth-error";
+
+                if (isAuthError) {
+                    console.error("WebSocket auth failed — deactivating client.");
+                    client.deactivate();
+                    return;
+                }
+
                 setAlertMessages({message: "Cannot reach server, retrying connection", severity: "High"});
             },
             onWebSocketClose: () => console.warn("WebSocket closed"),

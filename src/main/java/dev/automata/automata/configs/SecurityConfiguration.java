@@ -65,12 +65,11 @@ public class SecurityConfiguration {
             "/spotify/**", // for root
             "/actuator/metrics/**", // for root
             "/ws/**",
-            "/ws",
             "/ws/info/**",
             "/webhook/**",
             "/exp",
 //            "/api/v1/virtual/**",
-            "/api/v1/main/updateDevice",
+//            "/api/v1/main/updateDevice",
 //            "/api/v1/main/automations/**",
             "/api/v2/automations/**",
             "/api/v1/action/**",
@@ -78,9 +77,9 @@ public class SecurityConfiguration {
             "/api/v1/action/send/**",
             "/audio",
             "/app/**",
-            "/topic/**",
-            "/queue/**",
-            "/user/**",
+//            "/topic/**",
+//            "/queue/**",
+//            "/user/**",
             "/api/v1/main/register",
             "/api/v1/main/register/**",
             "/api/v1/main/serverCreds/**",
@@ -123,6 +122,7 @@ public class SecurityConfiguration {
                                 .permitAll()
                                 .requestMatchers(new IpAddressMatcher("192.168.1.0/16")).permitAll()
                                 .requestMatchers(new IpAddressMatcher("127.0.0.1")).permitAll()
+                                .requestMatchers("/ws/**").authenticated()
                                 .anyRequest()
                                 .authenticated()
 

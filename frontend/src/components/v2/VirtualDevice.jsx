@@ -13,6 +13,7 @@ import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import '../../App.css'
 import {MapView} from "../charts/MapView.jsx";
 import {C} from "./WeatherCardV2.jsx";
+import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
 
 export const combineAttributes = (attributesByDevice) => {
     const map = new Map();
@@ -85,7 +86,8 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
         systemDevices,
         chartDevices,
         otherDevices,
-        mapDevices
+        mapDevices,
+        mediaDevices
     } = useMemo(() => {
         const grouped = {
             hvacDevices: [],
@@ -94,6 +96,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
             chartDevices: [],
             otherDevices: [],
             mapDevices: [],
+            mediaDevices: []
         };
 
         for (const attr of deviceList) {
@@ -102,6 +105,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
             else if (attr.type === 'System') grouped.systemDevices.push(attr);
             else if (attr.type === 'CHART') grouped.chartDevices.push(attr);
             else if (attr.category === 'SENSOR|GPS') grouped.mapDevices.push(attr);
+            else if (attr.category === 'MEDIA') grouped.mediaDevices.push(attr);
             else grouped.otherDevices.push(attr);
         }
 
@@ -216,6 +220,9 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                                          }}
                                          deviceAttributes={devices.filter(d => d.id === device.attributes[0].extras.id)[0].attributes}/>
                         </div>
+                    ))}
+                    {mediaDevices.map(device => (
+                        <SpotifyPlayer device={device}/>
                     ))}
                     {isModalOpen && (
                         <CustomModal

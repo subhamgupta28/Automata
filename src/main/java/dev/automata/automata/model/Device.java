@@ -42,6 +42,7 @@ public class Device {
     private String createdBy;
     private String homeId;
     private String mqttTopic;
+    private String deviceSecretHash;
 }
 
 /*

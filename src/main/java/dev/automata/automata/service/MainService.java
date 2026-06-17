@@ -4,9 +4,12 @@ import dev.automata.automata.dto.*;
 import dev.automata.automata.model.*;
 import dev.automata.automata.modules.SystemMetrics;
 import dev.automata.automata.repository.*;
+import dev.automata.automata.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -33,8 +36,8 @@ public class MainService {
     private final MasterOptionRepository masterOptionRepository;
     private final NotificationService notificationService;
     private final MongoTemplate mongoTemplate;
-
-
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
     /*
      * Device: name = battery
      *         type = sensor
@@ -92,6 +95,10 @@ public class MainService {
                 .displayName("Last Seen")
                 .build();
 
+        String rawSecret = UUID.randomUUID().toString();
+        String encodedSecret = passwordEncoder.encode(rawSecret);
+
+        device.setDeviceSecretHash(encodedSecret);
 //        var isAlreadyRegistered = deviceRepository.findById(registerDevice.getDeviceId()).orElse(null);
         var attributes = new ArrayList<Attribute>();
         attributes.add(timestampAttr);
@@ -638,5 +645,27 @@ public class MainService {
 
     public void setRecentDeviceData(String id, Map<String, Object> payload) {
 
+    }
+
+    public DeviceAuthResponse deviceLogin(DeviceLoginRequest req) {
+        List<Device> device = deviceRepository
+                .findByMacAddr(req.getMacAddr());
+
+        if (device == null)
+            throw new BadCredentialsException("Invalid device");
+
+        if (device.isEmpty())
+            throw new BadCredentialsException("Invalid device");
+        if (!passwordEncoder.matches(
+                req.getDeviceSecret(),
+                device.getFirst().getDeviceSecretHash())) {
+
+            throw new BadCredentialsException("Invalid device");
+        }
+
+        String token =
+                jwtService.generateDeviceToken(device.getFirst());
+
+        return new DeviceAuthResponse(token);
     }
 }
