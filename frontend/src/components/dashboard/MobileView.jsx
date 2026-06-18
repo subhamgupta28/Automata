@@ -16,7 +16,7 @@ export default function MobileView() {
                 const dev = devices.filter((d) => d.showInDashboard === true);
                 const n = createNodes(dev, [], pos.x, pos.y);
                 setNodes(n);
-                console.log(n)
+                // console.log(n)
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
             }
@@ -39,10 +39,10 @@ export default function MobileView() {
                             <div key={index} style={{
                                 breakInside: 'avoid',
                                 marginBottom: '12px',
-                                marginRight:'16px',
-                                marginLeft:'16px'
+                                marginRight: '16px',
+                                marginLeft: '16px'
                             }}>
-                                <Device id={node.id} data={node.data} isConnectable={false} />
+                                <Device id={node.id} data={node.data} isConnectable={false}/>
                             </div>
                         )
                     ))}

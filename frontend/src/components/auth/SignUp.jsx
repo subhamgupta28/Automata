@@ -1,23 +1,11 @@
 import * as React from 'react';
-import {
-    Box,
-    Button,
-    Checkbox,
-    CssBaseline,
-    FormControl,
-    FormControlLabel,
-    FormLabel,
-    Link,
-    TextField,
-    Typography,
-    Stack,
-} from '@mui/material';
+import {Box, Button, CssBaseline, FormControl, FormLabel, Link, Stack, TextField, Typography,} from '@mui/material';
 import MuiCard from '@mui/material/Card';
-import { styled } from '@mui/material/styles';
-import { signUpReq } from '../../services/apis.jsx';
-import {Navigate, useNavigate} from "react-router-dom";
+import {styled} from '@mui/material/styles';
+import {signUpReq} from '../../services/apis.jsx';
+import {useNavigate} from "react-router-dom";
 
-const Card = styled(MuiCard)(({ theme }) => ({
+const Card = styled(MuiCard)(({theme}) => ({
     display: 'flex',
     flexDirection: 'column',
     alignSelf: 'center',
@@ -37,7 +25,7 @@ const Card = styled(MuiCard)(({ theme }) => ({
     }),
 }));
 
-const SignUpContainer = styled(Stack)(({ theme }) => ({
+const SignUpContainer = styled(Stack)(({theme}) => ({
     height: 'calc((1 - var(--template-frame-height, 0)) * 100dvh)',
     minHeight: '100%',
     padding: theme.spacing(2),
@@ -110,8 +98,8 @@ export default function SignUp(props) {
 
         try {
 
-            const res = await signUpReq({ firstName, lastName, email, password });
-            console.log('Signup successful', res);
+            const res = await signUpReq({firstName, lastName, email, password});
+            // console.log('Signup successful', res);
             navigate("/signin")
             // Optionally redirect or show success message here
         } catch (err) {
@@ -122,20 +110,20 @@ export default function SignUp(props) {
 
     return (
         <div {...props}>
-            <CssBaseline enableColorScheme />
+            <CssBaseline enableColorScheme/>
             <SignUpContainer direction="column" justifyContent="space-between">
                 <Card>
                     <Typography
                         component="h1"
                         variant="h4"
-                        sx={{ width: '100%', fontSize: 'clamp(2rem, 10vw, 2.15rem)' }}
+                        sx={{width: '100%', fontSize: 'clamp(2rem, 10vw, 2.15rem)'}}
                     >
                         Sign up
                     </Typography>
                     <Box
                         component="form"
                         onSubmit={handleSubmit}
-                        sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+                        sx={{display: 'flex', flexDirection: 'column', gap: 2}}
                     >
                         <FormControl>
                             <FormLabel htmlFor="name">First name</FormLabel>
@@ -205,7 +193,7 @@ export default function SignUp(props) {
                         <Button type="submit" fullWidth variant="contained">
                             Sign up
                         </Button>
-                        <Typography sx={{ textAlign: 'center' }}>
+                        <Typography sx={{textAlign: 'center'}}>
                             Already have an account?{' '}
                             <Link href="/signin" variant="body2">
                                 Sign in

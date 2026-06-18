@@ -24,7 +24,7 @@ public class DeviceTools {
     @Tool(description = "List all registered IoT devices with their name, type, category, host, status and last data")
     public List<Device> listDevices() {
         log.info("DeviceTools: listDevices");
-        return mainService.getAllDevice();
+        return mainService.getAllDevice(null, null);
     }
 
     @Tool(description = "Get a specific IoT device by its ID including all attributes and last known data")
@@ -32,7 +32,7 @@ public class DeviceTools {
             @ToolParam(description = "The unique device ID") String deviceId
     ) {
         log.info("DeviceTools: getDeviceById deviceId [{}]", deviceId);
-        return mainService.getDevice(deviceId);
+        return mainService.getDeviceAPI(deviceId, null);
     }
 
     @Tool(description = "Get the current sensor data and attribute values for a device")
@@ -40,7 +40,7 @@ public class DeviceTools {
             @ToolParam(description = "The unique device ID") String deviceId
     ) {
         log.info("DeviceTools: getDeviceData deviceId [{}]", deviceId);
-        return mainService.getLastData(deviceId);
+        return mainService.getLastData(deviceId, null);
     }
 
     /**

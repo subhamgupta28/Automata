@@ -1,7 +1,7 @@
-// Single unified WebSocket provider — one STOMP connection, two topic subscriptions.
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
 import SockJS from "sockjs-client";
 import {Client} from "@stomp/stompjs";
+import {useHome} from '../components/home/HomeContext'; // Import useHome
 
 const url = __API_MODE__ === 'serve'
     ? 'http://localhost:8010/ws'
@@ -17,6 +17,34 @@ export const DeviceDataProvider = ({children}) => {
     const [messages, setMessages] = useState({device_id: "", deviceConfig: {}});
     const [alertMessages, setAlertMessages] = useState({device_id: ""});
     const clientRef = useRef(null);
+    const {selectedHomeId} = useHome(); // Get selectedHomeId from HomeContext
+    const subscriptionsRef = useRef({}); // To hold current subscriptions
+
+    const subscribeToHome = useCallback((client, homeId) => {
+        if (!client || !client.connected || !homeId) return;
+
+        // Unsubscribe from previous home's topics
+        Object.values(subscriptionsRef.current).forEach(sub => sub.unsubscribe());
+        subscriptionsRef.current = {};
+
+        // console.log(`Subscribing to topics for home: ${homeId}`);
+
+        const topics = ["data", "live", "action", "ack", "events", "status"];
+        topics.forEach(topic => {
+            const destination = `/topic/home/${homeId}/${topic}`;
+            subscriptionsRef.current[topic] = client.subscribe(destination, (message) => {
+                const parsed = JSON.parse(message.body);
+                // You might want to handle different topics differently here
+                setMessages(parsed);
+            });
+        });
+
+        // Legacy alert topic
+        subscriptionsRef.current.alert = client.subscribe("/topic/alert", (message) => {
+            setAlertMessages(JSON.parse(message.body));
+        });
+
+    }, []);
 
     useEffect(() => {
         const token = JSON.parse(localStorage.getItem("user"))?.access_token;
@@ -34,30 +62,19 @@ export const DeviceDataProvider = ({children}) => {
                 Authorization: `Bearer ${token}`,
             },
             onConnect: () => {
-                console.log("WebSocket connected");
-                // setAlertMessages({message: "Connected to server.", severity: "High"});
-                client.subscribe("/topic/data", (message) => {
-                    setMessages(JSON.parse(message.body));
-                });
-                client.subscribe("/topic/alert", (message) => {
-                    setAlertMessages(JSON.parse(message.body));
-                });
+                // console.log("WebSocket connected. Waiting for home selection to subscribe...");
+                // Note: We intentionally do NOT subscribe here.
+                subscribeToHome(clientRef.current, selectedHomeId);
+                // The 'selectedHomeId' captured in this closure is stale (likely null).
+                // Subscriptions are handled entirely by the effect below.
             },
             onStompError: (frame) => {
                 const errMsg = frame.headers?.message ?? "";
                 console.warn("STOMP error:", errMsg);
-                const isAuthError =
-                    errMsg.toLowerCase().includes("unauthorized") ||
-                    errMsg.toLowerCase().includes("forbidden") ||
-                    frame.headers?.["receipt-id"] === "auth-error";
-
-                if (isAuthError) {
+                if (errMsg.toLowerCase().includes("unauthorized") || errMsg.toLowerCase().includes("forbidden")) {
                     console.error("WebSocket auth failed — deactivating client.");
                     client.deactivate();
-                    return;
                 }
-
-                setAlertMessages({message: "Cannot reach server, retrying connection", severity: "High"});
             },
             onWebSocketClose: () => console.warn("WebSocket closed"),
         });
@@ -68,7 +85,17 @@ export const DeviceDataProvider = ({children}) => {
         return () => {
             client.deactivate();
         };
-    }, []);
+    }, []); // This effect runs only once on mount to establish the connection
+
+    // Effect to handle subscriptions based on home changes OR initial connection
+    useEffect(() => {
+        // If connected AND we have a home selected, subscribe.
+        // This will fire when selectedHomeId goes from null -> ID, and when it changes ID -> ID.
+        if (clientRef.current?.connected && selectedHomeId) {
+            subscribeToHome(clientRef.current, selectedHomeId);
+        }
+    }, [selectedHomeId, subscribeToHome]);
+
 
     const sendMessage = useCallback((destination, message) => {
         if (clientRef.current?.connected) {

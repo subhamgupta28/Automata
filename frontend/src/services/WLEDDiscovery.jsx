@@ -58,7 +58,7 @@ export const WLEDDiscovery = () => {
     const sendToServer = async (data) => {
         try {
             await saveWLEDDevices(data);
-            console.log("Sent to Spring Boot");
+            // console.log("Sent to Spring Boot");
         } catch (err) {
             console.error("Error sending data", err);
         }

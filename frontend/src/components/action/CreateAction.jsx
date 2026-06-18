@@ -1,14 +1,16 @@
 import React, {useEffect, useState} from 'react';
 import {
-    TextField,
-    Button,
     Box,
+    Button,
+    Dialog,
+    DialogContent,
+    DialogTitle,
     FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
     Grid,
-    DialogTitle, DialogContent, Dialog
+    InputLabel,
+    MenuItem,
+    Select,
+    TextField
 } from '@mui/material';
 import {getDevices} from "../../services/apis.jsx";
 
@@ -25,7 +27,7 @@ function Actions({action, devices, triggerDevice}) {
 
         updatedData[index][name] = value;
 
-        console.log("act", actions);
+        // console.log("act", actions);
 
         setActions(updatedData);
     };
@@ -34,7 +36,7 @@ function Actions({action, devices, triggerDevice}) {
         const {name, value} = e.target;
 
         let dev = devices.filter((d) => d.id === value)[0];
-        console.log(name, value, dev)
+        // console.log(name, value, dev)
         setSelectedDevice(dev);
     }
     const handleAddAction = () => {
@@ -147,7 +149,7 @@ export default function CreateAction({isOpen, onClose, automations}) {
         const fetchDevices = async () => {
             try {
                 const devices = await getDevices();
-                console.log("devices", devices);
+                // console.log("devices", devices);
                 setDevices(devices);
             } catch (err) {
                 console.error("Failed to fetch devices:", err);
@@ -172,14 +174,14 @@ export default function CreateAction({isOpen, onClose, automations}) {
     const selectTriggerDevice = (e) => {
         const {name, value} = e.target;
         let dev = devices.filter((d) => d.id === value)[0];
-        console.log(name, value, dev)
+        // console.log(name, value, dev)
         setTriggerDevice(dev);
     }
     const handleTriggerData = (e) => {
         const {name, value} = e.target;
         const updatedData = {...triggerData};
         updatedData[name] = value;
-        console.log(name, value)
+        // console.log(name, value)
     }
 
 
@@ -234,7 +236,7 @@ export default function CreateAction({isOpen, onClose, automations}) {
                                     size='small'
                                     value={triggerDevice.key}
                                     label="Trigger Key"
-                                    onChange={(e) => handleTriggerData(e )}
+                                    onChange={(e) => handleTriggerData(e)}
                                     name="key"
                                 >
                                     {triggerDevice.attributes && triggerDevice.attributes.map((actionOption) => (

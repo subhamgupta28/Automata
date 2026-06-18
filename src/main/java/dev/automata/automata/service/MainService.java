@@ -7,10 +7,12 @@ import dev.automata.automata.repository.*;
 import dev.automata.automata.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.http.HttpStatus;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -38,27 +40,9 @@ public class MainService {
     private final MongoTemplate mongoTemplate;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    /*
-     * Device: name = battery
-     *         type = sensor
-     *         updateInterval = 1000ms
-     *         accessUrl = http://192.168.29.127
-     *         id = 123
-     * Attributes:
-     *         deviceId = 123
-     *         key = current
-     *         value = 2
-     *         id = 123_1
-     *         uuid = random
-     *         timestamp = 1234567890
-     *
-     *         deviceId = 123
-     *         key = power
-     *         value = 2
-     *         id = 123_2
-     *         uuid = random
-     *         timestamp = 1234567890
-     * */
+    private final HomeAuthzService authzService; // Injected HomeAuthzService
+    private final HomeService homeService;
+    private final DeviceHomeCache deviceHomeCache;
 
     public AttributeType createAttributeType(AttributeType attributeType) {
         return attributeTypeRepository.save(attributeType);
@@ -107,6 +91,8 @@ public class MainService {
         if (!isMacAddrPresent.isEmpty()) {
             var dev = isMacAddrPresent.getFirst();
             device.setId(dev.getId());
+            device.setHomeId(dev.getHomeId()); // Preserve existing homeId if device re-registers
+            device.setCreatedBy(dev.getCreatedBy());
             var attr = attributeRepository.findByDeviceId(dev.getId());
             if (!attr.isEmpty()) {
 //                System.err.print("Attributes: ");
@@ -128,7 +114,8 @@ public class MainService {
             notificationService.sendNotification("New device registered: " + device.getName(), "low");
         }
 
-
+        device.setStatus(Status.UNCLAIMED);
+        device.setHomeId(null);
         var savedDevice = deviceRepository.save(device);
 
         var dashboard = deviceDashboardRepository.findByDeviceId(device.getId());
@@ -158,6 +145,30 @@ public class MainService {
         deviceRepository.save(device);
 
         return deviceMapper.apply(device);
+    }
+
+    /**
+     * Owner claims an unclaimed device into their home.
+     * Called from HomeController — OWNER/ADMIN only.
+     */
+    public Device claimDevice(String deviceId, String homeId, String claimedByUserId) {
+        Device device = deviceRepository.findById(deviceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+        if (device.getStatus() != Status.UNCLAIMED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Device already belongs to a home");
+        }
+
+        device.setHomeId(homeId);
+        device.setStatus(Status.ACTIVE);
+        Device saved = deviceRepository.save(device);
+
+        // Warm the cache immediately so next MQTT message routes correctly
+        deviceHomeCache.put(deviceId, homeId);
+
+        notificationService.sendNotification("Device " + device.getName() + " claimed into home", "HIGH");
+        return saved;
     }
 
     public void saveAttributes(List<Attribute> attributes) {
@@ -192,7 +203,11 @@ public class MainService {
         return deviceRepository.findById(deviceId).orElseThrow();
     }
 
-    public DataDto getData(String deviceId) {
+    public Device getDeviceAPI(String deviceId, String id) {
+        return deviceRepository.findById(deviceId).orElseThrow();
+    }
+
+    public DataDto getData(String deviceId, String id) {
 
         var device = getDevice(deviceId);
         var attributes = attributeRepository.findAllByDeviceId(deviceId);
@@ -241,44 +256,12 @@ public class MainService {
 
     }
 
-//    @KafkaListener(topics = "${kafka.topic}", groupId = "group_id")
-//    public void consume(String message) {
-//        System.out.println("Message consumed from Kafka: " + message);
-//    }
 
-    @Async
-    public void triggerBackgroundTask() {
-        // Your logic for the background task
-        System.out.println("Background task started...");
-        try {
-            // Simulating some time-consuming task
-            Thread.sleep(15000); // 5 seconds delay
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        System.out.println("Background task completed!");
-    }
-
-    public List<Device> getAllDevice() {
-        var devices = deviceRepository.findAll();
+    public List<Device> getAllDevice(String homeId, String id) {
+        var devices = deviceRepository.findAllByHomeId(homeId);
         var chartAttr = dashboardChartsRepository.findAll();
-        var dashboardDevice = deviceDashboardRepository.findAll();
-        var dashboardMap = dashboardDevice.stream().collect(Collectors.toMap(Dashboard::getDeviceId, Function.identity()));
-
-        var deviceList = new ArrayList<Device>();
-        devices.forEach(device -> {
-            var dashboard = dashboardMap.get(device.getId());
-            if (dashboard != null) {
-                device.setX(dashboard.getX());
-                device.setY(dashboard.getY());
-                device.setAnalytics(dashboard.isAnalytics());
-                device.setShowCharts(dashboard.isShowCharts());
-                device.setShowInDashboard(dashboard.isShowInDashboard());
-            }
-            getDeviceAttributes(chartAttr, deviceList, device);
-        });
-        deviceList.sort(Comparator.comparingDouble(Device::getY).thenComparingDouble(Device::getX));
-        return deviceList;
+        var dashboardDevice = deviceDashboardRepository.findAllByHomeId(homeId);
+        return getDevices(devices, chartAttr, dashboardDevice);
     }
 
     private void getDeviceAttributes(List<DeviceCharts> chartAttr, ArrayList<Device> deviceList, Device device) {
@@ -295,8 +278,8 @@ public class MainService {
         deviceList.add(device);
     }
 
-    public List<Device> getDashboardDevices() {
-        var dashboardDevice = deviceDashboardRepository.findByShowInDashboardTrue();
+    public List<Device> getDashboardDevices(String homeId, String id) {
+        var dashboardDevice = deviceDashboardRepository.findByShowInDashboardTrueAndHomeId(homeId);
         var devices = deviceRepository.findByIdIn(dashboardDevice.stream().map(Dashboard::getDeviceId).toList());
 
         var dashboardMap = dashboardDevice.stream().collect(Collectors.toMap(Dashboard::getDeviceId, Function.identity()));
@@ -321,6 +304,10 @@ public class MainService {
         return deviceList;
     }
 
+    public Map<String, Object> setStatus(String deviceId, Status status, String id) {
+        return setStatus(deviceId, status);
+    }
+
     public Map<String, Object> setStatus(String deviceId, Status status) {
         var device = deviceRepository.findById(deviceId).orElse(null);
         if (device == null) {
@@ -340,7 +327,7 @@ public class MainService {
         return map;
     }
 
-    public Map<String, Object> getLastData(String deviceId) {
+    public Map<String, Object> getLastData(String deviceId, String id) {
         var data = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId).orElse(new Data());
         return data.getData();
     }
@@ -365,7 +352,7 @@ public class MainService {
         return "success";
     }
 
-    public String updateAttrCharts(String deviceId, String attribute, String isVisible) {
+    public String updateAttrCharts(String deviceId, String attribute, String isVisible, String id) {
         var isShow = Boolean.parseBoolean(isVisible);
         var attr = attributeRepository.findByKeyAndDeviceId(attribute, deviceId);
         System.err.println(attr);
@@ -393,7 +380,7 @@ public class MainService {
         return "success";
     }
 
-    public String showInDashboard(String deviceId, String isVisible) {
+    public String showInDashboard(String deviceId, String isVisible, String requestingUserId) {
         var isShow = Boolean.parseBoolean(isVisible);
         var device = deviceDashboardRepository.findByDeviceId(deviceId).orElse(null);
         if (device != null) {
@@ -432,7 +419,7 @@ public class MainService {
         return deviceRepository.findByName(name);
     }
 
-    public String showCharts(String deviceId, String isVisible) {
+    public String showCharts(String deviceId, String isVisible, String id) {
         var isShow = Boolean.parseBoolean(isVisible);
         var device = deviceDashboardRepository.findByDeviceId(deviceId).orElse(null);
         if (device != null) {
@@ -495,7 +482,7 @@ public class MainService {
         return "N";
     }
 
-    public Object updateAttribute(String deviceId, String attribute, String isShow) {
+    public Object updateAttribute(String deviceId, String attribute, String isShow, String id) {
         var dashboardOptional = deviceDashboardRepository.findByDeviceId(deviceId);
         var cond = Boolean.parseBoolean(isShow);
         if (dashboardOptional.isPresent()) {
@@ -606,7 +593,7 @@ public class MainService {
         var devices = deviceRepository.findAllByMacAddr(address);
         if (devices == null)
             return "error";
-        devices.forEach(d -> setStatus(d.getId(), status));
+        devices.forEach(d -> setStatus(d.getId(), status, null));
         return "success";
     }
 
@@ -667,5 +654,32 @@ public class MainService {
                 jwtService.generateDeviceToken(device.getFirst());
 
         return new DeviceAuthResponse(token);
+    }
+
+    public List<Device> getAllDevice() {
+        var devices = deviceRepository.findAll();
+        var chartAttr = dashboardChartsRepository.findAll();
+        var dashboardDevice = deviceDashboardRepository.findAll();
+        return getDevices(devices, chartAttr, dashboardDevice);
+    }
+
+    @NonNull
+    private List<Device> getDevices(List<Device> devices, List<DeviceCharts> chartAttr, List<Dashboard> dashboardDevice) {
+        var dashboardMap = dashboardDevice.stream().collect(Collectors.toMap(Dashboard::getDeviceId, Function.identity()));
+
+        var deviceList = new ArrayList<Device>();
+        devices.forEach(device -> {
+            var dashboard = dashboardMap.get(device.getId());
+            if (dashboard != null) {
+                device.setX(dashboard.getX());
+                device.setY(dashboard.getY());
+                device.setAnalytics(dashboard.isAnalytics());
+                device.setShowCharts(dashboard.isShowCharts());
+                device.setShowInDashboard(dashboard.isShowInDashboard());
+            }
+            getDeviceAttributes(chartAttr, deviceList, device);
+        });
+        deviceList.sort(Comparator.comparingDouble(Device::getY).thenComparingDouble(Device::getX));
+        return deviceList;
     }
 }

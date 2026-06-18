@@ -1,16 +1,17 @@
-import React, {useCallback, useEffect, useState, useMemo, useRef, memo} from 'react';
+import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Panel,
+    applyNodeChanges,
+    Panel,
     ReactFlow,
     useEdgesState,
-    useNodesState, useReactFlow
+    useNodesState,
+    useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {getMainNodePos, rebootAllDevices} from "../../services/apis.jsx";
 // import useWebSocket from "../../services/useWebSocket.jsx";
-
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {AlertNode, Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
@@ -68,7 +69,7 @@ const DeviceNodesComponent = () => {
         alert("hello")
         if (rfInstance) {
             const flow = rfInstance.toObject();
-            console.log("detail", JSON.stringify(flow))
+            // console.log("detail", JSON.stringify(flow))
         }
 
     }
@@ -90,7 +91,7 @@ const DeviceNodesComponent = () => {
         };
 
         if (devices)
-        fetchData();
+            fetchData();
     }, [setNodes, setEdges, devices, loading]);
 
     const onNodesChange = useCallback(
@@ -198,7 +199,7 @@ const Dashboard = () => {
     return (
         // <DeviceDataProvider>
         // <ReactFlowProvider>
-            <DeviceNodes/>
+        <DeviceNodes/>
         // </ReactFlowProvider>
         // </DeviceDataProvider>
 

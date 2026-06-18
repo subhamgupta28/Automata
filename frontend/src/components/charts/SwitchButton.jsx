@@ -1,7 +1,5 @@
-
 import {Switch} from "@mui/material";
 import {sendAction} from "../../services/apis.jsx";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import React from "react";
 import IconButton from "@mui/material/IconButton";
 import BrightnessHighIcon from "@mui/icons-material/BrightnessHigh";
@@ -19,7 +17,7 @@ export const SwitchButton = React.memo(({value, deviceId, displayName, data, typ
     const send = async (e) => {
         try {
             let act = data.key;
-            console.log("send", e.target.checked);
+            // console.log("send", e.target.checked);
             setOn(e.target.checked);
             await sendAction(deviceId, {
                 "key": data.key,
@@ -32,21 +30,21 @@ export const SwitchButton = React.memo(({value, deviceId, displayName, data, typ
         }
     };
     const handleIcon = (key, value) => {
-        console.log("keyv", key, value)
+        // console.log("keyv", key, value)
         if (key.includes("Light"))
             return value ? <BrightnessHighIcon/> : <BrightnessLowIcon/>
         if (key.includes("power"))
             return value ? <BoltIcon/> : <FlashOffIcon/>
     }
-    return(
-        <div style={{display:'flex', flexDirection:'column',justifyContent: 'space-between', alignItems: 'center'}}>
-            <div style={{display:'flex', flexDirection:'row',justifyContent: 'space-between', alignItems: 'center'}}>
-                <IconButton onClick={send} aria-label="delete" color={on? "primary":"secondary"}>
+    return (
+        <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center'}}>
+            <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                <IconButton onClick={send} aria-label="delete" color={on ? "primary" : "secondary"}>
                     {handleIcon(displayName, value)}
                 </IconButton>
                 <Switch onChange={send} checked={on}/>
             </div>
-            <span style={{fontSize:'small'}} >{displayName}</span>
+            <span style={{fontSize: 'small'}}>{displayName}</span>
         </div>
     )
 });

@@ -10,4 +10,6 @@ public interface VirtualDeviceRepository extends MongoRepository<VirtualDevice, 
     List<VirtualDevice> findAllByTag(String tag);
 
     List<VirtualDevice> findAllByActive(boolean active);
+
+    List<VirtualDevice> findAllByHomeId(String homeId);
 }

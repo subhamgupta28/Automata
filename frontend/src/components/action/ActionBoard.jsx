@@ -64,6 +64,7 @@ import {
     SceneManagerDialog,
     VersionHistoryDialog
 } from "./AutomationFeatures.jsx";
+import {useHome} from "../home/HomeContext.jsx";
 
 // ─── Node palette styles ──────────────────────────────────────────────────────
 const triggerStyle = {padding: '10px', borderRadius: '5px', width: '100%', border: '2px solid #6DBF6D', cursor: 'grab'};
@@ -1025,7 +1026,7 @@ function ActionBoardDetailComponent() {
     const [sceneOpen, setSceneOpen] = useState(false);
     const [abTestOpen, setAbTestOpen] = useState(false);
     const [versionOpen, setVersionOpen] = useState(false);
-
+    const {selectedHomeId} = useHome();
     const fetchData = async () => {
         try {
             setAutomations(await getActions());
@@ -1054,7 +1055,13 @@ function ActionBoardDetailComponent() {
             seenE.add(e.id);
             return true;
         });
-        const cleanFlow = {...flow, nodes: uniqueNodes, edges: uniqueEdges, id: automationDetail.id || ''};
+        const cleanFlow = {
+            ...flow,
+            nodes: uniqueNodes,
+            edges: uniqueEdges,
+            id: automationDetail.id || '',
+            homeId: selectedHomeId
+        };
         saveAutomationDetail(cleanFlow).then(fetchData);
         localStorage.setItem('flow', JSON.stringify(cleanFlow));
     }, [rfInstance, automationDetail]);

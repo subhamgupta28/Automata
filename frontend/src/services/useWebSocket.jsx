@@ -26,7 +26,7 @@ const useWebSocket = (topic) => {
                 Authorization: `Bearer ${token}`,
             },
             onConnect: () => {
-                console.log("WebSocket connected");
+                // console.log("WebSocket connected");
                 // setMessages({message: "Connected to server.", severity: "High"});
                 client.subscribe(topic, (message) => {
                     setMessages(JSON.parse(message.body));

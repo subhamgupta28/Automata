@@ -9,6 +9,7 @@ import {DeviceDataProvider, useDeviceLiveData} from "./services/DeviceDataProvid
 import './utils/Glow.css'
 import StarfieldBackground from "./components/integrations/StarfieldBackground.jsx";
 import isEmpty from "./utils/Helper.jsx";
+import {HomeProvider} from "./components/home/HomeContext.jsx";
 
 function getBreathingClass(alertLevel) {
     switch (alertLevel) {
@@ -96,10 +97,12 @@ function AuthenticatedApp() {
     }
 
     return (
-        <DeviceDataProvider>
-            <StarfieldBackground/>
-            <AppContent/>
-        </DeviceDataProvider>
+        <HomeProvider>
+            <DeviceDataProvider>
+                <StarfieldBackground/>
+                <AppContent/>
+            </DeviceDataProvider>
+        </HomeProvider>
     );
 }
 

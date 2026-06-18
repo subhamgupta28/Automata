@@ -12,9 +12,14 @@ import java.util.Optional;
 public interface DashboardRepository extends MongoRepository<Dashboard, String> {
 
     Optional<Dashboard> findByDeviceId(String id);
+
     List<Dashboard> findByDeviceIdIn(List<String> ids);
 
     List<Dashboard> findByShowInDashboardTrue();
 
     List<Dashboard> findByAnalyticsTrue();
+
+    List<Dashboard> findAllByHomeId(String homeId);
+
+    List<Dashboard> findByShowInDashboardTrueAndHomeId(String homeId);
 }

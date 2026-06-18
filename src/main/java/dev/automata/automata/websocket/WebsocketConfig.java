@@ -26,6 +26,7 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final HomeTopicSubscriptionInterceptor homeTopicSubscriptionInterceptor;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -105,6 +106,6 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
 
                 return message;
             }
-        });
+        }, homeTopicSubscriptionInterceptor);
     }
 }

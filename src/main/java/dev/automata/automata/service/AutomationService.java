@@ -1,7 +1,6 @@
 package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.automata.automata.automation.AutomationAbTestService;
 import dev.automata.automata.automation.AutomationValidationService;
 import dev.automata.automata.automation.AutomationVersionService;
 import dev.automata.automata.automation.ScheduledAutomationManager;
@@ -56,7 +55,6 @@ public class AutomationService {
     private final AutomationDetailRepository automationDetailRepository;
     private final AutomationVersionService automationVersionService;
     private final AutomationValidationService validationService;
-    private final AutomationAbTestService abTestService;
     private final ExecutionPlanCompiler planCompiler;
     private final ExecutionPlanRepository planRepository;
     private final AutomationOrchestrator orchestrator;
@@ -74,6 +72,7 @@ public class AutomationService {
     private final DeviceRepository deviceRepository;
     private final RedisService redisService;
     private final ObjectMapper objectMapper;
+    private final HomeAuthzService authzService;
 
     private static final String TOPIC_ACTION = "action/";
 
@@ -82,20 +81,32 @@ public class AutomationService {
     // CRUD API
     // ═════════════════════════════════════════════════════════════════════
 
+    public List<Automation> findAll(String homeId, String requestingUserId) {
+        authzService.requireAccess(homeId, requestingUserId);
+        return automationRepository.findAllByHomeId(homeId);
+    }
+
     public List<Automation> findAll() {
         return automationRepository.findAll();
     }
 
-    public Automation create(Automation a) {
+
+    public Automation create(Automation a, String requestingUserId) {
+        authzService.requireAccess(a.getHomeId(), requestingUserId);
         return automationRepository.save(a);
     }
 
-    public List<Automation> getActions() {
-        return automationRepository.findAll();
+    public List<Automation> getActions(String homeId, String requestingUserId) {
+        authzService.requireAccess(homeId, requestingUserId);
+        return automationRepository.findAllByHomeId(homeId);
     }
 
-    public AutomationDetail getAutomationDetail(String id) {
-        return automationDetailRepository.findById(id).orElse(null);
+    public AutomationDetail getAutomationDetail(String id, String requestingUserId) {
+        AutomationDetail detail = automationDetailRepository.findById(id).orElse(null);
+        if (detail != null) {
+            authzService.requireAccess(detail.getHomeId(), requestingUserId);
+        }
+        return detail;
     }
 
     public String disableAutomation(String id, Boolean enabled) {
@@ -115,6 +126,13 @@ public class AutomationService {
 
     public String handleAction(String deviceId, Map<String, Object> payload,
                                String deviceType, String user) {
+
+//        Device device = deviceRepository.findById(deviceId)
+//                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found"));
+//
+//        if (user != null && !user.isEmpty()) {
+//            authzService.requireAccess(device.getHomeId(), user);
+//        }
 
         if ("WLED".equals(deviceType)) {
             return handleWLED(deviceId, payload, user);
@@ -297,7 +315,10 @@ public class AutomationService {
      */
     @Scheduled(fixedRate = 12_000)
     public void triggerPeriodicAutomations() {
-        if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) return;
+        if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) {
+            log.info("Automations are disabled. Enable it from the feature flags table");
+            return;
+        }
 
         automationRepository.findEnabledForExecution().stream()
                 // Fix Bug 3: was !hasOnlyScheduledConditions (inverted / wrong semantics)
@@ -413,7 +434,8 @@ public class AutomationService {
     // SAVE AUTOMATION
     // ═════════════════════════════════════════════════════════════════════
 
-    public String saveAutomationDetailWithValidation(AutomationDetail detail) {
+    public String saveAutomationDetailWithValidation(AutomationDetail detail, String requestingUserId) {
+        authzService.requireAccess(detail.getHomeId(), requestingUserId);
         List<String> errors = validationService.validate(detail);
         if (!errors.isEmpty()) {
             notificationService.sendNotification(
@@ -423,7 +445,8 @@ public class AutomationService {
         return saveAutomationDetailInternal(detail);
     }
 
-    public String saveAutomationDetail(AutomationDetail detail) {
+    public String saveAutomationDetail(AutomationDetail detail, String requestingUserId) {
+        authzService.requireAccess(detail.getHomeId(), requestingUserId);
         return saveAutomationDetailInternal(detail);
     }
 

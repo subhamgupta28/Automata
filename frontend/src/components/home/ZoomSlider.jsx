@@ -1,11 +1,6 @@
-import React, {forwardRef} from "react";
+import React from "react";
 
-import {
-    Panel,
-    useViewport,
-    useStore,
-    useReactFlow,
-} from "@xyflow/react";
+import {Panel, useReactFlow, useStore, useViewport,} from "@xyflow/react";
 import {Button, Slider} from "@mui/material";
 import AddTwoToneIcon from '@mui/icons-material/AddTwoTone';
 import RemoveTwoToneIcon from '@mui/icons-material/RemoveTwoTone';
@@ -24,7 +19,7 @@ export const ZoomSlider = (({...props}) => {
         (a, b) => a.minZoom !== b.minZoom || a.maxZoom !== b.maxZoom,
     );
     const handleChange = (event, newValue) => {
-        console.log(newValue)
+        // console.log(newValue)
         zoomTo(newValue)
     };
     return (
@@ -35,8 +30,8 @@ export const ZoomSlider = (({...props}) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: 'rgb(200 200 200 / 16%)',
-                padding:'2px',
-                borderRadius:'6px'
+                padding: '2px',
+                borderRadius: '6px'
             }}
             {...props}
         >

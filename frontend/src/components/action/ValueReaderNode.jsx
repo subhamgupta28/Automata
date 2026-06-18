@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Button, Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
+import {Card, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
 import Typography from "@mui/material/Typography";
 import {Handle, Position, useReactFlow} from "@xyflow/react";
 import IconButton from "@mui/material/IconButton";
@@ -17,7 +17,7 @@ export const ValueReaderNode = ({id, data, isConnectable}) => {
 
     useEffect(() => {
         const dt = data.valueReaderData;
-        console.log("dt", dt)
+        // console.log("dt", dt)
         if (dt) {
             setSelectedKey(dt?.key);
             setValueName(dt?.name);
@@ -29,8 +29,8 @@ export const ValueReaderNode = ({id, data, isConnectable}) => {
     }, [devices, data.valueReaderData]);
 
     useEffect(() => {
-        console.log("key", selectedKey);
-        console.log("name", valueName)
+        // console.log("key", selectedKey);
+        // console.log("name", valueName)
         updateNodeData(id, {
             valueReaderData: {
                 deviceId: selectedDevice.id,

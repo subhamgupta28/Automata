@@ -258,7 +258,7 @@ export const WeatherCard = React.memo(({id, data, isConnectable, selected}) => {
 
         }
 
-        console.log("CO2 devices:", co2DeviceIds);
+        // console.log("CO2 devices:", co2DeviceIds);
 
     }, [attributes, deviceIds]);
 
@@ -341,7 +341,7 @@ export const WeatherCard = React.memo(({id, data, isConnectable, selected}) => {
     useEffect(() => {
         if (deviceIds && devices) {
             const res = devices.filter(d => deviceIds.includes(d.id));
-            console.log("res", res)
+            // console.log("res", res)
             setDeviceList(res);
 
 

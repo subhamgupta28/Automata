@@ -67,7 +67,7 @@ const Wled = ({device, messages, lastData}) => {
         }
         const dt = grouped.sliderData.filter(s => s.deviceId = device.id);
         setSlider(dt[0])
-        console.log("grouped", dt[0]);
+        // console.log("grouped", dt[0]);
 
         return grouped;
     }, [device.attributes, lastData]);

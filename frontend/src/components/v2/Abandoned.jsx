@@ -1,4 +1,4 @@
-import {NodeResizer, useEdges, useNodes, useReactFlow} from "@xyflow/react";
+import {useEdges, useNodes, useReactFlow} from "@xyflow/react";
 import React, {useEffect, useMemo, useState} from "react";
 import {Card, CardContent} from "@mui/material";
 import Typography from "@mui/material/Typography";
@@ -98,7 +98,7 @@ const initialEdges = [
 const createNodes = (parentId, deviceIds, attributes) => {
     let nodes = [];
     deviceIds.map((device) => {
-        console.log("attrib", )
+        // console.log("attrib", )
         nodes.push({
             id: device,
             type: 'energyChildNode',

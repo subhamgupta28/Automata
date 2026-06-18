@@ -18,4 +18,6 @@ public interface AutomationRepository extends MongoRepository<Automation, String
 
     @Query("{ 'trigger.sources.deviceId': ?0, 'isEnabled': true }")
     List<Automation> findByCoalitionMemberDeviceId(String deviceId);
+
+    List<Automation> findAllByHomeId(String homeId);
 }

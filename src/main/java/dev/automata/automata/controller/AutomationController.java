@@ -1,9 +1,13 @@
 package dev.automata.automata.controller;
 
 
-import dev.automata.automata.automation.*;
+import dev.automata.automata.automation.AutomationAnalytics;
+import dev.automata.automata.automation.AutomationAnalyticsService;
+import dev.automata.automata.automation.AutomationValidationService;
+import dev.automata.automata.automation.MultiTimezoneAutomationService;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationDetail;
+import dev.automata.automata.model.Users;
 import dev.automata.automata.security.AuthenticationService;
 import dev.automata.automata.service.AutomationService;
 import dev.automata.automata.service.AutomationUtils;
@@ -16,6 +20,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,7 +37,6 @@ public class AutomationController {
     private final SimpMessagingTemplate messagingTemplate;
     private final MultiTimezoneAutomationService timezoneService;
     private final AutomationValidationService validationService;
-    private final AutomationSimulationService simulationService;
     private final AutomationAnalyticsService analyticsService;
     private final AutomationUtils automationUtils;
     private final AuthenticationService authenticationService;
@@ -43,64 +47,13 @@ public class AutomationController {
     }
 
     //    @GetMapping
-    public ResponseEntity<Automation> createAction() {
-        var trigger = new Automation.Trigger();
-        trigger.setType("periodic");
-        trigger.setKey("percent");
-        trigger.setDeviceId("6713fd6118af335020f90f73");
-        trigger.setValue("25");
-
-        var action1 = new Automation.Action();
-        action1.setData("0");
-        action1.setKey("pwm");
-        action1.setDeviceId("6713fd6118af335020f90f73");
-
-        var action2 = new Automation.Action();
-        action2.setData("4");
-        action2.setKey("preset");
-        action2.setDeviceId("67571bf46f2d631aa77cc632");
-
-        var action3 = new Automation.Action();
-        action3.setData("0");
-        action3.setKey("speed");
-        action3.setDeviceId("673b8250da1ad94ac1d28280");
-
-        var action4 = new Automation.Action();
-        action4.setData("0");
-        action4.setKey("pwm1");
-        action4.setDeviceId("67438bbee4015a53b43788cc");
-
-        var action5 = new Automation.Action();
-        action5.setData("10");
-        action5.setKey("bright");
-        action5.setDeviceId("67571bf46f2d631aa77cc632");
-
-        var action6 = new Automation.Action();
-        action6.setData("10");
-        action6.setKey("buzzer");
-        action6.setDeviceId("67571bf46f2d631aa77cc632");
-
-        var condition = new Automation.Condition();
-        condition.setCondition("numeric");
-        condition.setBelow("60");
-        condition.setAbove("0");
-        condition.setValueType("int");
-        condition.setValue("1");
-        condition.setIsExact(false);
-
-        var action = Automation.builder()
-                .trigger(trigger)
-                .name("When battery is below 25% turn off everything and alert")
-                .actions(List.of(action1, action2, action3, action4, action5))
-                .conditions(List.of(condition))
-                .build();
-
-        return ResponseEntity.ok(automationService.create(action));
+    public ResponseEntity<Automation> createAction(@RequestBody Automation action, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(automationService.create(action, user.getId()));
     }
 
     @GetMapping("/getAction")
-    public ResponseEntity<List<Automation>> getActions() {
-        return ResponseEntity.ok(automationService.getActions());
+    public ResponseEntity<List<Automation>> getActions(@RequestHeader("X-Home-Id") String homeId, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(automationService.getActions(homeId, user.getId()));
     }
 
     // for getting action data from devices
@@ -139,13 +92,13 @@ public class AutomationController {
     }
 
     @PostMapping("/saveAutomationDetail")
-    public ResponseEntity<String> saveAutomationDetail(@RequestBody AutomationDetail automation) {
-        return ResponseEntity.ok(automationService.saveAutomationDetail(automation));
+    public ResponseEntity<String> saveAutomationDetail(@RequestBody AutomationDetail automation, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(automationService.saveAutomationDetail(automation, user.getId()));
     }
 
     @GetMapping("/getAutomationDetail/{id}")
-    public ResponseEntity<AutomationDetail> getAutomationDetail(@PathVariable("id") String id) {
-        return ResponseEntity.ok(automationService.getAutomationDetail(id));
+    public ResponseEntity<AutomationDetail> getAutomationDetail(@PathVariable String id, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(automationService.getAutomationDetail(id, user.getId()));
     }
 
     @GetMapping("/disable/{id}/{enabled}")
@@ -157,10 +110,11 @@ public class AutomationController {
     public ResponseEntity<String> handleAction(
             @RequestBody Map<String, Object> payload,
             @PathVariable String deviceId,
-            @PathVariable String deviceType
+            @PathVariable String deviceType,
+            @AuthenticationPrincipal Users user
     ) {
         System.err.println("got action message: " + payload);
-        return ResponseEntity.ok(automationService.handleAction(deviceId, payload, deviceType, "user"));
+        return ResponseEntity.ok(automationService.handleAction(deviceId, payload, deviceType, user.getId()));
     }
 
     // HIGH PRIORITY ENDPOINTS
@@ -169,7 +123,7 @@ public class AutomationController {
      * Save automation with validation (HIGH PRIORITY 5)
      */
     @PostMapping("/save-validated")
-    public ResponseEntity<?> saveAutomationWithValidation(@RequestBody AutomationDetail detail) {
+    public ResponseEntity<?> saveAutomationWithValidation(@RequestBody AutomationDetail detail, @AuthenticationPrincipal Users user) {
         log.info("Saving automation with validation: {}", detail.getId());
 
         List<String> errors = validationService.validate(detail);
@@ -181,7 +135,7 @@ public class AutomationController {
             ));
         }
 
-        String result = automationService.saveAutomationDetailWithValidation(detail);
+        String result = automationService.saveAutomationDetailWithValidation(detail, user.getId());
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
@@ -217,44 +171,6 @@ public class AutomationController {
 
     // LOW PRIORITY ENDPOINTS
 
-    /**
-     * Dry-run simulation (LOW PRIORITY)
-     */
-    @PostMapping("/{automationId}/simulate")
-    public ResponseEntity<AutomationSimulationResult> simulateAutomation(
-            @PathVariable String automationId,
-            @RequestBody(required = false) Map<String, Object> testPayload) {
-
-        log.info("Simulating automation: {}", automationId);
-
-        AutomationSimulationResult result;
-        if (testPayload == null || testPayload.isEmpty()) {
-            result = simulationService.simulateWithCurrentState(automationId);
-        } else {
-            result = simulationService.simulateAutomation(automationId, testPayload);
-        }
-
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * Batch simulation - test multiple payloads
-     */
-    @PostMapping("/{automationId}/simulate-batch")
-    public ResponseEntity<List<AutomationSimulationResult>> batchSimulate(
-            @PathVariable String automationId,
-            @RequestBody List<Map<String, Object>> testPayloads) {
-
-        log.info("Batch simulating automation: {} with {} payloads",
-                automationId, testPayloads.size());
-
-        List<AutomationSimulationResult> results = simulationService.batchSimulate(
-                automationId,
-                testPayloads
-        );
-
-        return ResponseEntity.ok(results);
-    }
 
     /**
      * Get analytics for specific automation (LOW PRIORITY)
@@ -484,8 +400,8 @@ public class AutomationController {
     @PostMapping("/{id}/copy")
     public ResponseEntity<Map<String, Object>> copy(
             @PathVariable String id,
-            @RequestParam(defaultValue = "api") String user) {
-        return ResponseEntity.ok(automationService.copyAutomation(id, user));
+            @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(automationService.copyAutomation(id, user.getId()));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -504,8 +420,8 @@ public class AutomationController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> delete(
             @PathVariable String id,
-            @RequestParam(defaultValue = "api") String user) {
+            @AuthenticationPrincipal Users user) {
 
-        return ResponseEntity.ok(automationService.deleteAutomation(id, user));
+        return ResponseEntity.ok(automationService.deleteAutomation(id, user.getId()));
     }
 }

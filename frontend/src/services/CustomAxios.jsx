@@ -21,6 +21,7 @@ const getStoredUser = () => {
 
 const getToken = () => getStoredUser()?.access_token || "";
 const getRefreshToken = () => getStoredUser()?.refresh_token || "";
+const getSelectedHomeId = () => localStorage.getItem("selectedHomeId");
 
 // ── Logout callback (set by AuthContext on mount) ─────────────────────────────
 let _logoutCallback = null;
@@ -75,6 +76,11 @@ const refreshAccessToken = async () => {
 // ── Request interceptor: proactively refresh BEFORE sending if token is expired
 api.interceptors.request.use(async config => {
     const token = getToken();
+    const homeId = getSelectedHomeId();
+
+    if (homeId) {
+        config.headers['X-Home-Id'] = homeId;
+    }
 
     if (!token) return config;
 

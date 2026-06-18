@@ -8,12 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -21,132 +18,135 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MqttService {
 
-
-    private final SimpMessagingTemplate messagingTemplate;
     private final MainService mainService;
     private final AutomationService actionService;
     private final ApplicationEventPublisher publisher;
     private final ActionDeliveryTracker deliveryTracker;
     private final RecordingRoutingService recordingRoutingService;
+    private final HomeRoutingService homeRoutingService;   // ← NEW, replaces direct ws calls
 
-
+    // ── sendData ─────────────────────────────────────────────────────────────
+    // Topic:     "sendData"
+    // Published: ESP32 sensor readings (temperature, humidity, etc.)
+    // No topic change needed on device — we resolve homeId here.
     @ServiceActivator(inputChannel = "sendData")
     public void sendData(Map<String, Object> payload) {
-//        System.out.println("📡 Data: " + payload);
-        String deviceId = payload.get("device_id").toString();
-        if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("No device found");
-        }
-        payload.put("last_seen", System.currentTimeMillis());
-        if (payload.size() > 1)
-            mainService.saveData(deviceId, payload);
-//        var device = mainService.setStatus(deviceId, Status.ONLINE);
-        var map = new HashMap<String, Object>();
-        map.put("deviceId", deviceId);
-        map.put("data", payload);
-//        map.put("deviceConfig", device.get("deviceConfig"));
-        messagingTemplate.convertAndSend("/topic/data", map);
+        String deviceId = extractDeviceId(payload);
+        if (deviceId == null) return;
 
+        payload.put("last_seen", System.currentTimeMillis());
+        mainService.saveData(deviceId, payload);
+
+        // Single call — resolves homeId internally, broadcasts to /topic/home/{homeId}/data
+        homeRoutingService.routeToHome(deviceId, "data", payload);
         recordingRoutingService.route(deviceId, payload);
     }
 
-    @ServiceActivator(inputChannel = "ackAction")
-    public void ackAction(Map<String, Object> payload) {
-        System.err.println("📡 Ack Action: " + payload);
-        System.err.println("got action message: " + payload);
-        String deviceId = payload.get("device_id").toString();
-        if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("Device Id not found");
-        }
-        actionService.ackAction(deviceId, payload);
-    }
-
-    @ServiceActivator(inputChannel = "action")
-    public void action(Map<String, Object> payload) {
-        System.out.println("📡 Action: " + payload);
-        System.err.println("got action message: " + payload);
-        String deviceId = payload.get("device_id").toString();
-        if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("Device Id not found");
-        }
-        actionService.handleAction(deviceId, payload, "", "device");
-    }
-
+    // ── sendLiveData ──────────────────────────────────────────────────────────
+    // Topic:     "sendLiveData"
+    // Published: high-frequency live sensor stream (charts, gauges)
     @ServiceActivator(inputChannel = "sendLiveData")
     public void sendLiveData(Map<String, Object> payload) {
-        String deviceId = payload.get("device_id").toString();
-//        System.err.println("sendLiveData: " + payload);
-        if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("No device found");
-        }
+        String deviceId = extractDeviceId(payload);
+        if (deviceId == null) return;
+
         payload.put("last_seen", new Date());
-        var event = new LiveEvent();
+
+        // Spring ApplicationEvent — internal use (AutomationService listeners etc.)
+        // Nothing changes here, automations don't care about homeId yet
+        LiveEvent event = new LiveEvent();
         event.setPayload(payload);
         publisher.publishEvent(event);
-        messagingTemplate.convertAndSend("/topic/data", getStringObjectMap(payload, deviceId));
+
+        // Route to home-scoped "live" topic — separate from "data" so frontend
+        // can subscribe to high-frequency live without getting persisted snapshots
+        homeRoutingService.routeToHome(deviceId, "live", payload);
         recordingRoutingService.route(deviceId, payload);
     }
 
-    private Map<String, Object> getStringObjectMap(@Payload Map<String, Object> payload, String deviceId) {
-        var map = new HashMap<String, Object>();
-        map.put("deviceId", deviceId);
-        map.put("data", payload);
-        return map;
+    // ── action ────────────────────────────────────────────────────────────────
+    // Topic:     "action"
+    // Published: device-initiated actions (button press, trigger, etc.)
+    @ServiceActivator(inputChannel = "action")
+    public void action(Map<String, Object> payload) {
+        String deviceId = extractDeviceId(payload);
+        if (deviceId == null) return;
+
+        // Existing logic untouched — actionService handles the business logic
+        actionService.handleAction(deviceId, payload, "", "device");
+
+        // Also broadcast to home so the dashboard can show "Device triggered X"
+        homeRoutingService.routeToHome(deviceId, "action", payload);
     }
 
+    // ── ackAction ─────────────────────────────────────────────────────────────
+    // Topic:     "ackAction"
+    // Published: device confirms it executed a command
+    @ServiceActivator(inputChannel = "ackAction")
+    public void ackAction(Map<String, Object> payload) {
+        String deviceId = extractDeviceId(payload);
+        if (deviceId == null) return;
+
+        actionService.ackAction(deviceId, payload);
+
+        // Route ack to home so frontend can show confirmation (e.g. "Light turned on ✓")
+        homeRoutingService.routeToHome(deviceId, "ack", payload);
+    }
+
+    // ── mqttInputChannel (status / misc) ──────────────────────────────────────
+    // Topic:     "status" + wled fallback
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public void handleAck(Map<String, Object> payload) {
-//        System.out.println("✅ Status: " + payload);
+        // Most messages here are internal acks — only route if device_id present
+        Object rawId = payload.get("device_id");
+        if (rawId != null && !rawId.toString().isBlank()) {
+            homeRoutingService.routeToHome(rawId.toString(), "status", payload);
+        }
     }
 
+    // ── sysData ───────────────────────────────────────────────────────────────
+    // Topic:     "broker/status/#" (commented out in your config, keeping parity)
     @ServiceActivator(inputChannel = "sysData")
     public void sysData(Message<?> message) {
-//        String topic = (String) message.getHeaders().get("mqtt_receivedTopic");
-//        String time = message.getPayload().toString();
-//        if (topic == null) return;
-//        String[] macAddresses = topic.split("-");
-//        var status = Status.INACTIVE;
-//        if (topic.contains("/connected")) {
-//            status = Status.ONLINE;
-//        } else if (topic.contains("/disconnected")) {
-//            status = Status.OFFLINE;
-//        }
-//        var address = macAddresses[macAddresses.length - 1];
-//        var res = mainService.setStatusOfDeviceByMacAddress(address, status);
+        // Uncomment and adapt if you re-enable broker/status subscription
+        // String topic = (String) message.getHeaders().get("mqtt_receivedTopic");
+        // Parse MAC, resolve to deviceId, then homeRoutingService.routeEvent(...)
     }
 
+    // ── wledChannel ───────────────────────────────────────────────────────────
+    // Topic:     "automata-wled/#"
+    // Device name comes from topic header, not from payload.device_id
     @ServiceActivator(inputChannel = "wledChannel")
     public void handleWled(Message<?> message) {
-
         String deviceName = (String) message.getHeaders().get("device");
-        String payload = message.getPayload().toString();
-        if (deviceName == null) {
-            return;
+        String payloadStr = message.getPayload().toString();
+        if (deviceName == null) return;
+
+        if (!deviceName.endsWith("/v")) return;
+
+        deviceName = deviceName.replace("/v", "").replaceAll("/", "");
+        var device = mainService.getDeviceByCategory(deviceName);
+        if (device == null) return;
+
+        var wled = new Wled(null, device);
+        WledResponse response = wled.parseWledXml(payloadStr);
+        var data = wled.convertToMap(response, device.getId());
+        mainService.saveData(device.getId(), data);
+
+        // Route via homeRoutingService instead of direct convertAndSend
+        homeRoutingService.routeToHome(device.getId(), "data", data);
+
+        deliveryTracker.confirmWled(device.getId(), deviceName);
+        log.info("WLED Response for [{}] data: [{}]", device.getName(), response);
+    }
+
+    // ── Shared helper ─────────────────────────────────────────────────────────
+    private String extractDeviceId(Map<String, Object> payload) {
+        Object id = payload.get("device_id");
+        if (id == null || id.toString().isBlank() || id.toString().equals("null")) {
+            log.error("Missing device_id in payload: {}", payload);
+            return null;
         }
-        if (deviceName.endsWith("/v")) {
-            deviceName = deviceName.replace("/v", "");
-            deviceName = deviceName.replaceAll("/", "");
-            var device = mainService.getDeviceByCategory(deviceName);
-
-            if (device == null)
-                return;
-
-            var wled = new Wled(null, device);
-
-            WledResponse response = wled.parseWledXml(payload);
-            var data = wled.convertToMap(response, device.getId());
-            mainService.saveData(device.getId(), data);
-            messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", data));
-            // ── Confirm WLED delivery ─────────────────────────────────────
-            // WLED publishes /v only after successfully processing a command,
-            // so this message IS the ACK. confirmWled() resolves the pending
-            // delivery entry registered in ActionDeliveryTracker.registerWled().
-            // If no pending entry exists (spontaneous publish), confirmWled()
-            // is a no-op.
-            deliveryTracker.confirmWled(device.getId(), deviceName);   // ← NEW
-            log.info("WLED Response for [{}]  data: [{}]", device.getName(), response);
-        }
-
-
+        return id.toString();
     }
 }

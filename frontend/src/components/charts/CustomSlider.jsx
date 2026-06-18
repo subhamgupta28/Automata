@@ -80,11 +80,11 @@ export const CustomSlider = React.memo(({value, deviceId, displayName, data, typ
             <HomeAssistantSlider
                 className="nodrag nopan nowheel"
                 onPointerDown={(e) => {
-                    console.log("pointer down");
+                    // console.log("pointer down");
                     e.stopPropagation();
                 }}
                 onMouseDown={(e) => {
-                    console.log("mouse down");
+                    // console.log("mouse down");
                     e.stopPropagation();
                 }}
                 onChange={handleChange}

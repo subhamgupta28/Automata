@@ -24,7 +24,7 @@ export const Presets = React.memo(({data, type, value, deviceId, displayName}) =
         name,
         id
     }));
-    console.log("preset", extrasArray)
+    // console.log("preset", extrasArray)
     return (
         <div style={{display: 'flex', alignItems: 'center', flexDirection: 'column', marginTop: '4px'}}>
             <div

@@ -21,6 +21,8 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -44,26 +46,18 @@ public class VirtualDeviceService {
     private final MongoTemplate mongoTemplate;
     private final EnergyStatRepository energyStatRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final HomeAuthzService authzService;
 
-    public VirtualDevice getVirtualDevice(String vid) {
-        return virtualDeviceRepository.findById(vid).orElse(null);
+    public VirtualDevice getVirtualDevice(String vid, String requestingUserId) {
+        VirtualDevice vDevice = virtualDeviceRepository.findById(vid)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        authzService.requireAccess(vDevice.getHomeId(), requestingUserId);
+        return vDevice;
     }
 
-    public List<VirtualDevice> getVirtualDeviceList() {
-//        var list = virtualDeviceRepository.findAll();
-//        var finalList = new ArrayList<VirtualDevice>();
-//        ObjectMapper mapper = new ObjectMapper();
-//        for (var device : list){
-//            if (device.getTag().equals("Energy")){
-//                var energy = getLastEnergyStat(device);
-//                device.setRecentData(mapper.convertValue(energy, Map.class));
-//            }
-//            if (device.getTag().equals("Weather")){
-//                device.setRecentData(getRecentDeviceData(device.getDeviceIds()));
-//            }
-//            finalList.add(device);
-//        }
-        return virtualDeviceRepository.findAll();
+    public List<VirtualDevice> getVirtualDeviceList(String homeId, String requestingUserId) {
+        authzService.requireAccess(homeId, requestingUserId);
+        return virtualDeviceRepository.findAllByHomeId(homeId);
     }
 
     private double extractParamValue(EnergyStat stat, String param) {
@@ -94,8 +88,8 @@ public class VirtualDeviceService {
         };
     }
 
-    public Map<String, Object> getEnergyAnalyticsChart(String vid, String param) {
-
+    public Map<String, Object> getEnergyAnalyticsChart(String homeId, String vid, String param, String requestingUserId) {
+        authzService.requireAccess(homeId, requestingUserId);
         var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
         ZoneId zone = ZoneId.of("Asia/Kolkata");
 
@@ -219,9 +213,8 @@ public class VirtualDeviceService {
     /* =====================================================
        DEVICE LEVEL TREND + AQI DIRECTION
        ===================================================== */
-    public List<DeviceTrendDTO> getDeviceTrend(
-            String deviceId
-    ) {
+    public List<DeviceTrendDTO> getDeviceTrend(String homeId, String deviceId, String requestingUserId) {
+        authzService.requireAccess(homeId, requestingUserId);
         ZoneId zone = ZoneId.of("Asia/Kolkata");
         LocalDate today = LocalDate.now(zone);
         var to = Instant.now();
@@ -282,8 +275,8 @@ public class VirtualDeviceService {
     /* =====================================================
        HOURLY TIME-SERIES (CHART READY)
        ===================================================== */
-    public List<TimeSeriesTrendDTO> hourlyTrend(String deviceId) {
-
+    public List<TimeSeriesTrendDTO> hourlyTrend(String homeId, String deviceId, String requestingUserId) {
+        authzService.requireAccess(homeId, requestingUserId);
         Aggregation agg = Aggregation.newAggregation(
 
                 Aggregation.match(Criteria.where("deviceId").is(deviceId)),
@@ -346,7 +339,8 @@ public class VirtualDeviceService {
         return map;
     }
 
-    public VirtualDevice createVirtualDevice(VirtualDevice virtualDevice) {
+    public VirtualDevice createVirtualDevice(VirtualDevice virtualDevice, String requestingUserId) {
+        authzService.requireAccess(virtualDevice.getHomeId(), requestingUserId);
         return virtualDeviceRepository.save(virtualDevice);
     }
 

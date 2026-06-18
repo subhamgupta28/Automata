@@ -56,7 +56,7 @@ const DashboardEditor = ({change, existingDevice}) => {
 
     useEffect(() => {
         if (!existingDevice || !devices?.length) return;
-        console.log("exist", existingDevice)
+        // console.log("exist", existingDevice)
         const deviceIds = existingDevice.deviceIds || [];
         const normalizedAttributes = {};
         let ready = true;
@@ -87,11 +87,11 @@ const DashboardEditor = ({change, existingDevice}) => {
 
         setSelectedDeviceIds(deviceIds);
 
-        console.log("form", {
-            ...existingDevice,
-            deviceIds,
-            attributes: normalizedAttributes,
-        })
+        // console.log("form", {
+        //     ...existingDevice,
+        //     deviceIds,
+        //     attributes: normalizedAttributes,
+        // })
         setForm(prev => ({
             ...prev,
             ...existingDevice,
@@ -151,7 +151,7 @@ const DashboardEditor = ({change, existingDevice}) => {
             attributes: expandedAttributes,
             lastModified: new Date().toISOString(),
         };
-        console.log("save", data)
+        // console.log("save", data)
         saveVirtualDevice(data).then(() => change());
     };
     const handleClear = () => {

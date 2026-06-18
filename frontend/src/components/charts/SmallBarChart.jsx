@@ -1,7 +1,7 @@
 // components/SmallBarChart.jsx
 import React, {useEffect, useRef, useState} from 'react';
-import {BarChart, BarPlot} from '@mui/x-charts/BarChart';
-import {ChartContainer, LineChart, lineElementClasses, LinePlot, markElementClasses, MarkPlot} from "@mui/x-charts";
+import {LineChart, lineElementClasses} from "@mui/x-charts";
+
 const gradientColors = [
     ['#42a5f5', '#ffffff'],
     ['#2ca02c', '#ffffff'],
@@ -12,35 +12,34 @@ const gradientColors = [
     ['#7f7f7f', '#ffffff'],
     ['#17becf', '#ffffff'],
 ];
-export default function SmallBarChart({ messages, deviceId, attributes }) {
+export default function SmallBarChart({messages, deviceId, attributes}) {
     const [data, setData] = useState([]);
     // const [attributes, setAttributes] = useState([]);
     const xLabels = data.map((item) => item.dateDay);
     const dataRef = useRef([]);
-    console.log(messages)
-
+    // console.log(messages)
 
 
     useEffect(() => {
-            if (messages && messages.device_id === deviceId) {
-                const now = new Date();
-                const dd = String(now.getDate()).padStart(2, '0');
-                const hh = String(now.getHours()).padStart(2, '0');
-                const mm = String(now.getMinutes()).padStart(2, '0');
-                const ss = String(now.getSeconds()).padStart(2, '0');
+        if (messages && messages.device_id === deviceId) {
+            const now = new Date();
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
 
-                const formattedTimestamp = `${mm}:${ss}`;
+            const formattedTimestamp = `${mm}:${ss}`;
 
-                const newEntry = {
-                    dateDay: formattedTimestamp,
-                    ...messages
-                };
+            const newEntry = {
+                dateDay: formattedTimestamp,
+                ...messages
+            };
 
 
-                const updatedData = [...dataRef.current, newEntry].slice(-10); // Keep last 50 points
-                dataRef.current = updatedData;
-                setData(updatedData);
-            }
+            const updatedData = [...dataRef.current, newEntry].slice(-10); // Keep last 50 points
+            dataRef.current = updatedData;
+            setData(updatedData);
+        }
     }, [messages, deviceId]);
 
     const series = attributes.map((attr, index) => ({
@@ -55,7 +54,7 @@ export default function SmallBarChart({ messages, deviceId, attributes }) {
             height={160}
             series={series}
             yAxis={[{position: 'none'}]}
-            xAxis={[{scaleType: "point", data: xLabels, position: 'none' }]}
+            xAxis={[{scaleType: "point", data: xLabels, position: 'none'}]}
             sx={{
                 [`& .${lineElementClasses.root}`]: {
                     strokeWidth: 2,

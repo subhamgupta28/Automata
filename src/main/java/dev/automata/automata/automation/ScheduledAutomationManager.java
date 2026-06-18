@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -278,7 +279,7 @@ public class ScheduledAutomationManager {
         Set<String> operatorIds = automation.getOperators() == null ? Set.of() :
                 automation.getOperators().stream()
                 .map(Automation.Operator::getNodeId)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
 
         List<Automation.Condition> triggerConditions = automation.getConditions().stream()
                 .filter(Automation.Condition::isEnabled)
@@ -305,7 +306,7 @@ public class ScheduledAutomationManager {
         if (days == null || days.isEmpty() || days.contains("Everyday")) return "*";
         return days.stream()
                 .map(String::toUpperCase)
-                .collect(java.util.stream.Collectors.joining(","));
+                .collect(Collectors.joining(","));
     }
 
     private LocalTime parseTime(String raw) {

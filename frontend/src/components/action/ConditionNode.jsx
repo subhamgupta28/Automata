@@ -249,7 +249,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
     const handleChange = (e, select) => {
         let value = e?.target?.value ?? e;
-        console.log("value", e)
+        // console.log("value", e)
         if (select === 'value') {
             setConditionValue(value);
         } else if (select === 'condition') {

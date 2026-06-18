@@ -8,6 +8,7 @@ import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.AttributeType;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
+import dev.automata.automata.model.Users;
 import dev.automata.automata.service.AnalyticsService;
 import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.NotificationService;
@@ -16,10 +17,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,18 +41,14 @@ public class MainController {
     private final MessageChannel mqttOutboundChannel;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-//    private final KafkaTemplate<String, String> kafkaTemplate;
-
     @GetMapping("healthCheck")
     public ResponseEntity<?> healthCheck() {
-//        mqttService.sendToTopic("automata/action/68c355de653e5d47410e878c", Map.of("key", "val"));
         return ResponseEntity.ok("ok");
     }
 
     @GetMapping("updateDevice")
     public ResponseEntity<?> updateDevice() {
         mainService.saveDevice();
-
         return ResponseEntity.ok("ok");
     }
 
@@ -69,12 +64,11 @@ public class MainController {
 
     @PostMapping("saveWiFiList")
     public ResponseEntity<?> saveWiFiList(@RequestBody Map<String, String> body) {
-
         return ResponseEntity.ok(mainService.saveWiFiList(body));
     }
 
     @GetMapping("chart/{deviceId}/{attribute}")
-    public ResponseEntity<ChartDataDto> getChartData(@PathVariable String deviceId, @PathVariable String attribute) {
+    public ResponseEntity<ChartDataDto> getChartData(@PathVariable String deviceId, @PathVariable String attribute, @AuthenticationPrincipal Users user) {
         return ResponseEntity.ok(analyticsService.getChartData2(deviceId, attribute, "day"));
     }
 
@@ -83,7 +77,8 @@ public class MainController {
             @PathVariable String deviceId,
             @PathVariable String range,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            @AuthenticationPrincipal Users user
     ) {
         return ResponseEntity.ok(
                 analyticsService.getChartDetail(deviceId, range, start, end)
@@ -91,7 +86,7 @@ public class MainController {
     }
 
     @GetMapping("pieChart/{deviceId}")
-    public ResponseEntity<ChartDataDto> getPieChartData(@PathVariable String deviceId) {
+    public ResponseEntity<ChartDataDto> getPieChartData(@PathVariable String deviceId, @AuthenticationPrincipal Users user) {
         return ResponseEntity.ok(analyticsService.getPieChartData(deviceId, "day"));
     }
 
@@ -112,46 +107,32 @@ public class MainController {
     }
 
     @GetMapping("/updatePosition/{deviceId}/{x}/{y}")
-    public ResponseEntity<String> updatePosition(@PathVariable String deviceId, @PathVariable String x, @PathVariable String y) {
-
+    public ResponseEntity<String> updatePosition(@PathVariable String deviceId, @PathVariable String x, @PathVariable String y, @AuthenticationPrincipal Users user) {
         return ResponseEntity.ok(mainService.updateDevicePosition(deviceId, x, y));
-    }
-
-    @GetMapping("sendAction/{action}/{value}")
-    public ResponseEntity<String> sendActionToDevice(
-            @PathVariable String action, @PathVariable String value
-    ) {
-        var map = new HashMap<String, Object>();
-        map.put("key", action);
-        map.put("value", value);
-        messagingTemplate.convertAndSend("/topic/action", map);
-
-        return ResponseEntity.ok("sent");
     }
 
     @PostMapping("/save/{deviceId}")
     public ResponseEntity<String> save(
             @PathVariable String deviceId,
-            @RequestBody Map<String, Object> payload
+            @RequestBody Map<String, Object> payload,
+            @AuthenticationPrincipal Users user
     ) {
         return ResponseEntity.ok(mainService.saveData(deviceId, payload));
     }
 
     @GetMapping("/showInDashboard/{deviceId}/{isVisible}")
-    public ResponseEntity<String> showInDashboard(@PathVariable String deviceId, @PathVariable String isVisible) {
-        return ResponseEntity.ok(mainService.showInDashboard(deviceId, isVisible));
+    public ResponseEntity<String> showInDashboard(@PathVariable String deviceId, @PathVariable String isVisible, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(mainService.showInDashboard(deviceId, isVisible, user.getId()));
     }
 
     @GetMapping(value = "/dashboard")
-    public ResponseEntity<List<Device>> getDashboardDevices() {
-
-        return ResponseEntity.ok(mainService.getDashboardDevices());
+    public ResponseEntity<List<Device>> getDashboardDevices(@RequestHeader("X-Home-Id") String homeId, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(mainService.getDashboardDevices(homeId, user.getId()));
     }
 
     @GetMapping(value = "/devices")
-    public ResponseEntity<List<Device>> getAllDevices() {
-
-        return ResponseEntity.ok(mainService.getAllDevice());
+    public ResponseEntity<List<Device>> getAllDevices(@RequestHeader("X-Home-Id") String homeId, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(mainService.getAllDevice(homeId, user.getId()));
     }
 
     @PostMapping("/device/login")
@@ -168,23 +149,23 @@ public class MainController {
     }
 
     @GetMapping(value = "/device/{deviceId}")
-    public ResponseEntity<Device> getDeviceById(@PathVariable String deviceId) {
-        return ResponseEntity.ok(mainService.getDevice(deviceId));
+    public ResponseEntity<Device> getDeviceById(@PathVariable String deviceId, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(mainService.getDeviceAPI(deviceId, user.getId()));
     }
 
     @GetMapping(value = "/data/{deviceId}")
-    public ResponseEntity<DataDto> getDataByDeviceId(@PathVariable String deviceId) {
-        return ResponseEntity.ok(mainService.getData(deviceId));
+    public ResponseEntity<DataDto> getDataByDeviceId(@PathVariable String deviceId, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(mainService.getData(deviceId, user.getId()));
     }
 
     @GetMapping(value = "/lastData/{deviceId}")
-    public ResponseEntity<Map<String, Object>> getLastDataByDeviceId(@PathVariable String deviceId) {
-        return ResponseEntity.ok(mainService.getLastData(deviceId));
+    public ResponseEntity<Map<String, Object>> getLastDataByDeviceId(@PathVariable String deviceId, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(mainService.getLastData(deviceId, user.getId()));
     }
 
     @GetMapping("/showCharts/{deviceId}/{isVisible}")
-    public ResponseEntity<String> showCharts(@PathVariable String deviceId, @PathVariable String isVisible) {
-        return ResponseEntity.ok(mainService.showCharts(deviceId, isVisible));
+    public ResponseEntity<String> showCharts(@PathVariable String deviceId, @PathVariable String isVisible, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(mainService.showCharts(deviceId, isVisible, user.getId()));
     }
 
     @PostMapping("/register")
@@ -202,130 +183,36 @@ public class MainController {
     }
 
     @GetMapping("/attrCharts/{deviceId}/{attribute}/{isVisible}")
-    public ResponseEntity<String> updateAttrCharts(@PathVariable String deviceId, @PathVariable String attribute, @PathVariable String isVisible) {
-
-        return ResponseEntity.ok(mainService.updateAttrCharts(deviceId, attribute, isVisible));
+    public ResponseEntity<String> updateAttrCharts(@PathVariable String deviceId, @PathVariable String attribute, @PathVariable String isVisible, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(mainService.updateAttrCharts(deviceId, attribute, isVisible, user.getId()));
     }
 
     @PostMapping("/masterList")
     public ResponseEntity<?> getMasterList() {
-
         return ResponseEntity.ok(mainService.getMasterList());
     }
 
     @PostMapping("/automations")
     public ResponseEntity<String> getAutomations() {
-
         return ResponseEntity.ok(mainService.getAutomations());
     }
 
     @GetMapping("/update/{deviceId}")
-    public ResponseEntity<String> updateDevice(@PathVariable String deviceId) {
-        System.err.println(deviceId);
-        Device deviceData = mainService.getDevice(deviceId);
-        System.err.println(deviceData);
+    public ResponseEntity<String> updateDevice(@PathVariable String deviceId, @AuthenticationPrincipal Users user) {
+        Device deviceData = mainService.getDeviceAPI(deviceId, user.getId());
         messagingTemplate.convertAndSend("/topic/update/" + deviceId, deviceData);
         return ResponseEntity.ok("Success");
     }
 
-
     @GetMapping("/updateDevice/{deviceId}")
-    public ResponseEntity<String> devicesWs(@PathVariable String deviceId) {
-        var device = mainService.setStatus(deviceId, Status.ONLINE);
+    public ResponseEntity<String> devicesWs(@PathVariable String deviceId, @AuthenticationPrincipal Users user) {
+        var device = mainService.setStatus(deviceId, Status.ONLINE, user.getId());
         messagingTemplate.convertAndSend("/topic/data", device);
         return ResponseEntity.ok("Success");
     }
 
     @GetMapping("/updateAttribute/{deviceId}/{attribute}/{isShow}")
-    public ResponseEntity<?> updateAttribute(@PathVariable String deviceId, @PathVariable String attribute, @PathVariable String isShow) {
-        return ResponseEntity.ok(mainService.updateAttribute(deviceId, attribute, isShow));
-    }
-
-    // for saving data from devices
-//    @PostMapping("sendData")
-//    @MessageMapping("/sendData")
-    public Map<String, Object> addUser(
-            @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
-    ) {
-        System.err.println("got message: " + payload);
-        String deviceId = payload.get("device_id").toString();
-        if (deviceId.isEmpty() || deviceId.equals("null")) {
-            return payload;
-        }
-        if (payload.size() > 1)
-            mainService.saveData(deviceId, payload);
-        var device = mainService.setStatus(deviceId, Status.ONLINE);
-        headerAccessor.getSessionAttributes().put("deviceId", deviceId);
-        var map = new HashMap<String, Object>();
-        map.put("deviceId", deviceId);
-        map.put("data", payload);
-        map.put("deviceConfig", device.get("deviceConfig"));
-//        messagingTemplate.convertAndSend("/topic/data", map);
-        sendToTopic("automata/sendData", payload);
-        return map;
-    }
-
-    private void sendToTopic(String topic, Map<String, Object> payload) {
-        try {
-            String json = objectMapper.writeValueAsString(payload);
-            mqttOutboundChannel.send(
-                    MessageBuilder.withPayload(json)
-                            .setHeader("mqtt_topic", topic)
-                            .build()
-            );
-//            System.out.println("📤 Sent to " + topic + " => " + json);
-        } catch (Exception e) {
-            System.err.println(e);
-        }
-    }
-
-    // for getting live data from devices
-//    @PostMapping("sendLiveData")
-    public ResponseEntity<Map<String, Object>> httpSendLiveData(
-            @RequestBody Map<String, Object> payload
-    ) {
-        System.err.println("got live data via http" + payload);
-        String deviceId = payload.get("device_id").toString();
-        if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("No device found");
-        }
-        return ResponseEntity.ok(getStringObjectMap(payload, deviceId));
-    }
-
-    //    @MessageMapping("/sendLiveData")
-//    @SendTo("/topic/data")
-    public Map<String, Object> sendLiveData(
-            @Payload Map<String, Object> payload
-    ) {
-//        System.err.println("got live message: " + payload);
-        String deviceId = payload.get("device_id").toString();
-        if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("No device found");
-        }
-//        var event = new LiveEvent();
-//        event.setPayload(payload);
-//        publisher.publishEvent(event);
-        sendToTopic("automata/sendLiveData", payload);
-        return getStringObjectMap(payload, deviceId);
-    }
-
-//    @Value("${kafka.topic}")
-//    private String topic;
-
-//    @PostMapping("/send")
-//    public String sendMessage(String message) {
-//        kafkaTemplate.send(topic, message);
-//        return "Message sent to Kafka: " + message;
-//    }
-
-
-    private Map<String, Object> getStringObjectMap(@Payload Map<String, Object> payload, String deviceId) {
-        var map = new HashMap<String, Object>();
-        map.put("deviceId", deviceId);
-        map.put("data", payload);
-
-//        messagingTemplate.convertAndSend("/topic/data", map);
-//        headerAccessor.getSessionAttributes().put("deviceId", deviceId);
-        return map;
+    public ResponseEntity<?> updateAttribute(@PathVariable String deviceId, @PathVariable String attribute, @PathVariable String isShow, @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(mainService.updateAttribute(deviceId, attribute, isShow, user.getId()));
     }
 }

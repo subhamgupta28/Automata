@@ -1,5 +1,5 @@
 import React, {useState} from "react";
-import {Card, Stack, TextField, Typography} from "@mui/material";
+import {Card, Stack, TextField} from "@mui/material";
 import {sendAction} from "../../services/apis.jsx";
 
 export default function ColorPicker({
@@ -20,7 +20,7 @@ export default function ColorPicker({
     const send = async (e) => {
         try {
             let act = "color";
-            console.log(keyName)
+            // console.log(keyName)
             await sendAction(deviceId, {
                 "key": keyName,
                 [keyName]: e,

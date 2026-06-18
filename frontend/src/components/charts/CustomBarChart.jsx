@@ -1,11 +1,11 @@
 import React, {useMemo} from "react";
 import {axisClasses} from "@mui/x-charts/ChartsAxis";
-import {BarChart, lineElementClasses} from "@mui/x-charts";
+import {BarChart} from "@mui/x-charts";
 
 
-export default function CustomBarChart ({chartData}){
+export default function CustomBarChart({chartData}) {
 
-    console.log("chartdata",chartData)
+    // console.log("chartdata",chartData)
     const valueFormatter = (value) => {
         return `${value} ${chartData.unit}`;
     };
@@ -29,14 +29,14 @@ export default function CustomBarChart ({chartData}){
             },
         },
     }), [chartData]);
-    return(
+    return (
         <BarChart className="nodrag"
                   dataset={chartData.data}
             // barLabel={(item, context) => {
             //     return item.value?.toString();
             // }}
                   colors={['#e5e5e5']}
-                  xAxis={[{ scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps, zoom: true }]}
+                  xAxis={[{scaleType: 'band', dataKey: chartData.dataKey, data: chartData.timestamps, zoom: true}]}
                   borderRadius={6}
                   {...chartSetting}
         >

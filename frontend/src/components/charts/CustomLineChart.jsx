@@ -28,7 +28,7 @@ export default function CustomLineChart({vid, status = "DISCHARGE"}) {
     useEffect(() => {
         const fetch = async () => {
             const res = await getEnergyAnalytics(vid, status === "DISCHARGE" ? "totalWh" : "chargeTotalWh");
-            console.log("data", res)
+            // console.log("data", res)
             const {labels, data} = res;
             setLabels(labels);
             setSeries(data);
@@ -57,7 +57,7 @@ export default function CustomLineChart({vid, status = "DISCHARGE"}) {
 }
 
 function CustomMark({x, y, color, dataIndex, id, seriesData}) {
-    console.log(id, dataIndex, seriesData)
+    // console.log(id, dataIndex, seriesData)
     const seriesIndex = Number(id.split('-').pop());
     const value = seriesData.filter(s => s.id === id)[0].data[dataIndex];
 
