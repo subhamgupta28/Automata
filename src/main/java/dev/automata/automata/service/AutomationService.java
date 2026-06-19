@@ -297,7 +297,10 @@ public class AutomationService {
      */
     @Scheduled(fixedRate = 12_000)
     public void triggerPeriodicAutomations() {
-        if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) return;
+        if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) {
+            log.warn("Automations are disabled, enable it from feature flags");
+            return;
+        }
 
         automationRepository.findEnabledForExecution().stream()
                 // Fix Bug 3: was !hasOnlyScheduledConditions (inverted / wrong semantics)
