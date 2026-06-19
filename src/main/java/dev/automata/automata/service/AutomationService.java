@@ -113,7 +113,7 @@ public class AutomationService {
         automationRepository.findById(id).ifPresent(a -> {
             a.setIsEnabled(enabled);
             automationRepository.save(a);
-            notificationService.sendNotification("Automation updated", "success");
+            notificationService.sendNotification("Automation updated", "success", a.getHomeId());
             orchestrator.invalidatePlan(id);
         });
         return "success";
@@ -141,7 +141,7 @@ public class AutomationService {
         if ("System".equals(deviceType)) {
             String key = payload.get("key").toString();
             String data = payload.get(key).toString();
-            if ("alert".equals(key)) notificationService.sendNotification("", data);
+            if ("alert".equals(key)) notificationService.sendNotification("", data, "");
             if ("app_notify".equals(key)) notificationService.sendNotify("Automation", data, "low");
             return "success";
         }
@@ -242,7 +242,7 @@ public class AutomationService {
     public String ackAction(String deviceId, Map<String, Object> payload) {
         if (payload.containsKey("actionAck")) {
             if (payload.containsKey("actionType"))
-                notificationService.sendNotification("Action sent to device", "success");
+                notificationService.sendNotification("Action sent to device", "success", "");
             if (payload.containsKey("_cid"))
                 deliveryTracker.confirm(payload.get("_cid").toString());
         }
@@ -250,9 +250,9 @@ public class AutomationService {
     }
 
     public String rebootAllDevices() {
-        notificationService.sendNotification("Rebooting All Devices", "success");
+        notificationService.sendNotification("Rebooting All Devices", "success", "");
         deviceRepository.findAll().forEach(this::rebootDevice);
-        notificationService.sendNotification("Reboot Complete", "success");
+        notificationService.sendNotification("Reboot Complete", "success", "");
         return "success";
     }
 
@@ -439,7 +439,7 @@ public class AutomationService {
         List<String> errors = validationService.validate(detail);
         if (!errors.isEmpty()) {
             notificationService.sendNotification(
-                    "Validation failed: " + String.join(", ", errors), "error");
+                    "Validation failed: " + String.join(", ", errors), "error", detail.getHomeId());
             return "validation_failed: " + String.join("; ", errors);
         }
         return saveAutomationDetailInternal(detail);
@@ -541,7 +541,7 @@ public class AutomationService {
         } catch (Exception e) {
             log.error("❌ Plan compilation failed for '{}': {}", saved.getName(), e.getMessage(), e);
             notificationService.sendNotification(
-                    "Plan compilation failed for " + saved.getName(), "error");
+                    "Plan compilation failed for " + saved.getName(), "error", detail.getHomeId());
         }
 
         // ── Reset runtime state (clears condition memories and coalition state too) ──
@@ -553,7 +553,7 @@ public class AutomationService {
                     stateStore.deleteIntervalAndRunningKeys(saved.getId(), c.getNodeId()));
 
         automationVersionService.snapshot(saved, detail, "system", null);
-        notificationService.sendNotification("Automation saved successfully", "success");
+        notificationService.sendNotification("Automation saved successfully", "success", detail.getHomeId());
         return "success";
     }
 
@@ -581,12 +581,12 @@ public class AutomationService {
             log.info("🗑️ Automation '{}' (id={}) deleted by '{}'",
                     automation.getName(), id, user);
             notificationService.sendNotification(
-                    "'" + automation.getName() + "' deleted", "success");
+                    "'" + automation.getName() + "' deleted", "success", automation.getHomeId());
             return Map.of("status", "success", "deletedId", id);
 
         } catch (Exception e) {
             log.error("Delete failed for automation '{}': {}", id, e.getMessage(), e);
-            notificationService.sendNotification("Delete failed: " + e.getMessage(), "error");
+            notificationService.sendNotification("Delete failed: " + e.getMessage(), "error", automation.getHomeId());
             return Map.of("status", "error", "reason", e.getMessage());
         }
     }
@@ -630,7 +630,7 @@ public class AutomationService {
 
         stateStore.forceWrite(saved.getId(), AutomationRuntimeState.idle());
         log.info("📋 '{}' copied to '{}' by {}", original.getName(), saved.getName(), user);
-        notificationService.sendNotification("'" + original.getName() + "' copied", "success");
+        notificationService.sendNotification("'" + original.getName() + "' copied", "success", saved.getHomeId());
         return Map.of("status", "success", "newId", saved.getId(), "newName", saved.getName());
     }
 
@@ -646,12 +646,15 @@ public class AutomationService {
                         automationVersionService.snapshot(a, detail, user,
                                 "Rolled back to version " + targetVersion));
                 notificationService.sendNotification(
-                        "Rolled back to version " + targetVersion, "success");
+                        "Rolled back to version " + targetVersion, "success", detail.getHomeId());
             }
             return result;
         } catch (Exception e) {
             log.error("Rollback failed for '{}': {}", automationId, e.getMessage(), e);
-            notificationService.sendNotification("Rollback failed: " + e.getMessage(), "error");
+            var homes = authzService.getUserHomeIds(user);
+            homes.forEach(homeId -> {
+                notificationService.sendNotification("Rollback failed: " + e.getMessage(), "error", homeId);
+            });
             return "error: " + e.getMessage();
         }
     }
@@ -684,7 +687,7 @@ public class AutomationService {
                         c -> c.getOrder() != 0 ? c.getOrder() : Integer.MAX_VALUE))
                 .toList();
         String traceId = "evt-" + automation.getId() + "-" + System.currentTimeMillis();
-        dispatcher.dispatch(compiled, payload, user, automation.getId(), automation.getName(), traceId);
+        dispatcher.dispatch(compiled, payload, user, automation.getId(), automation.getName(), traceId, automation.getHomeId());
     }
 
 
@@ -734,7 +737,7 @@ public class AutomationService {
         try {
             new RestTemplate().getForObject(device.getAccessUrl() + "/restart", String.class);
         } catch (Exception e) {
-            notificationService.sendNotification("Reboot failed: " + device.getName(), "error");
+            notificationService.sendNotification("Reboot failed: " + device.getName(), "error", device.getHomeId());
         }
         return "Rebooting device";
     }

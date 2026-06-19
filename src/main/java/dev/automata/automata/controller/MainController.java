@@ -97,7 +97,7 @@ public class MainController {
 
     @GetMapping
     public ResponseEntity<String> status() {
-        notificationService.sendNotification("hello", "medium");
+//        notificationService.sendNotification("hello", "medium");
         return ResponseEntity.ok("success");
     }
 

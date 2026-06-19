@@ -582,11 +582,13 @@ public class AutomationOrchestrator {
                                 AutomationRuntimeState prevState) {
         String name = resolveAutomationName(automationId);
         String traceId = result.getTraceId();
+        Optional<Automation> automation = automationRepository.findById(automationId);
+        String homeId = automation.get().getHomeId();
 
         switch (result.getOutcome()) {
 
             case STATELESS_FIRE, FALLBACK -> dispatcher.dispatch(result.getActionsToFire(), payload, user,
-                            automationId, name, traceId)
+                            automationId, name, traceId, homeId)
                     .thenRun(() -> publishLog(automationId, plan, user, payload, result));
 
             case TRIGGERED -> {
@@ -596,9 +598,9 @@ public class AutomationOrchestrator {
                                     ? result.getActionsToFire()
                                     : (plan.getTopLevelPositiveActions() != null
                                        ? plan.getTopLevelPositiveActions() : List.of());
-                    dispatcher.dispatch(actions, payload, user, automationId, name, traceId)
+                    dispatcher.dispatch(actions, payload, user, automationId, name, traceId, homeId)
                             .thenRun(() -> {
-                                dispatcher.notifyTriggered(name);
+                                dispatcher.notifyTriggered(name, homeId);
                                 publishLog(automationId, plan, user, payload, result);
                             });
                 } else {
@@ -629,10 +631,10 @@ public class AutomationOrchestrator {
                             });
                 }
 
-                dispatcher.dispatch(toFire, payload, user, automationId, name, traceId)
+                dispatcher.dispatch(toFire, payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
                             notificationService.sendNotification(
-                                    name + " — trigger condition lost", "info");
+                                    name + " — trigger condition lost", "info", homeId);
                             publishLog(automationId, plan, user, payload, result);
                         });
             }
@@ -650,6 +652,8 @@ public class AutomationOrchestrator {
         if (result.getBranchDecisions() == null) return;
 
         List<CompletableFuture<Void>> allFutures = new ArrayList<>();
+        Optional<Automation> automation = automationRepository.findById(automationId);
+        String homeId = automation.get().getHomeId();
 
         for (BranchDecision decision : result.getBranchDecisions()) {
             ExecutionPlan.CompiledBranch branch = decision.getBranch();
@@ -661,7 +665,7 @@ public class AutomationOrchestrator {
                 case TRIGGER -> {
                     CompletableFuture<Void> f =
                             dispatcher.dispatch(branch.getPositiveActions(), payload,
-                                            user, automationId, automationName, result.getTraceId())
+                                            user, automationId, automationName, result.getTraceId(), homeId)
                                     .thenAccept(ok -> {
                                         if (!ok) {
                                             log.warn("⚠️ [{}] '{}' positive dispatch failed",
@@ -676,7 +680,7 @@ public class AutomationOrchestrator {
                                                     automationName, branchDesc,
                                                     branch.getGateCondition().getDurationMinutes());
                                         }
-                                        dispatcher.notifyTriggered(automationName);
+                                        dispatcher.notifyTriggered(automationName, homeId);
                                         log.info("🚀 [{}] '{}' triggered (priority {})",
                                                 automationName, branchDesc, branch.getPriority());
                                     });
@@ -687,11 +691,11 @@ public class AutomationOrchestrator {
                     String reason = decision.getReason();
                     CompletableFuture<Void> f =
                             dispatcher.dispatch(branch.getNegativeActions(), payload,
-                                            user, automationId, automationName, result.getTraceId())
+                                            user, automationId, automationName, result.getTraceId(), homeId)
                                     .thenAccept(ok -> {
                                         if (ok) {
                                             stateStore.deleteRunningKey(automationId, gateNodeId);
-                                            dispatcher.notifyReverted(automationName, branchDesc);
+                                            dispatcher.notifyReverted(automationName, branchDesc, homeId);
                                             log.info("⏹️ [{}] '{}' → IDLE — {}",
                                                     automationName, branchDesc, reason);
                                         }

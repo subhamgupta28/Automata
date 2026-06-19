@@ -953,3 +953,13 @@ export const getHomes = async () => {
     });
     return response.data;
 };
+
+export const getOrphanDevices = async () => {
+    const {data} = await api.get('devices/orphan');
+    return data;
+};
+
+export const claimDevice = async (deviceId, homeId) => {
+    const {data} = await api.post(`devices/${deviceId}/claim`, {homeId});
+    return data;
+};

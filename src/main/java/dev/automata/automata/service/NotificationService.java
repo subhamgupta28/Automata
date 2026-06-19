@@ -32,26 +32,37 @@ public class NotificationService {
     private String NTFY_URL;
 //    private final AutomationService automationService;
 
-    public void sendAlert(String message, String severity) {
+    public void sendAlert(String message, String severity, String homeId) {
         Notification notification = Notification.builder()
                 .message(message)
                 .severity(severity)
+                .homeId(homeId)
                 .timestamp(new Date())
                 .build();
 //        var notify = notificationRepository.save(notification);
-        messagingTemplate.convertAndSend("/topic/alert", notification);
+        if (homeId != null) {
+            messagingTemplate.convertAndSend("/topic/home/" + homeId + "/alert", notification);
+        } else {
+            messagingTemplate.convertAndSend("/topic/alert", notification);
+        }
     }
 
-    public void sendNotification(String message, String severity) {
+    public void sendNotification(String message, String severity, String homeId) {
         Notification notification = Notification.builder()
                 .message(message)
                 .severity(severity)
+                .homeId(homeId)
                 .timestamp(new Date())
                 .build();
 //        var notify = notificationRepository.save(notification);
         if (severity.equals("high"))
             sendNotify("Automata", message, severity);
-        messagingTemplate.convertAndSend("/topic/notification", notification);
+
+        if (homeId != null) {
+            messagingTemplate.convertAndSend("/topic/home/" + homeId + "/notification", notification);
+        } else {
+            messagingTemplate.convertAndSend("/topic/notification", notification);
+        }
     }
 
     public String notificationAction(String action, Map<String, Object> payload) {
@@ -73,7 +84,7 @@ public class NotificationService {
     }
 
     public String test(String type) {
-        sendAlert("Test", type);
+        sendAlert("Test", type, null);
         return "success";
     }
 

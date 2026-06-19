@@ -1,7 +1,6 @@
 package dev.automata.automata.model;
 
 import lombok.*;
-import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -20,6 +19,7 @@ public class Notification {
     private String id;
     private String message;
     private String severity;
+    private String homeId;
 
     @Indexed
     private Date timestamp;

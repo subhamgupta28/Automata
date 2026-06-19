@@ -18,11 +18,11 @@ import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -404,7 +404,7 @@ public class VirtualDeviceService {
         device.setHeight(Math.floor(Double.parseDouble(height)));
 
         virtualDeviceRepository.save(device);
-        notificationService.sendNotification("Devices positions updated", "success");
+        notificationService.sendNotification("Devices positions updated", "success", device.getHomeId());
         return "success";
     }
 
@@ -524,7 +524,7 @@ public class VirtualDeviceService {
         if (device != null) {
             device.setActive(isShow);
             virtualDeviceRepository.save(device);
-            notificationService.sendNotification("Device is" + (isShow ? " visible " : " not visible ") + "in dashboard", "success");
+            notificationService.sendNotification("Device is" + (isShow ? " visible " : " not visible ") + "in dashboard", "success", device.getHomeId());
             return "success";
         }
 

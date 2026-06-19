@@ -51,7 +51,7 @@ public class AutomationUtils {
             }
 
             notificationService.sendNotification(
-                    "⏸️ " + a.getName() + " snoozed for " + durationMinutes + " min", "info");
+                    "⏸️ " + a.getName() + " snoozed for " + durationMinutes + " min", "info", a.getHomeId());
 
             log.info("⏸️ Snoozed automation '{}' for {} minutes", a.getName(), durationMinutes);
 
@@ -72,7 +72,7 @@ public class AutomationUtils {
                 automationRepository.save(a);
                 refreshCacheForAutomation(a);
                 notificationService.sendNotification(
-                        "🚫 " + a.getName() + " disabled", "info");
+                        "🚫 " + a.getName() + " disabled", "info", a.getHomeId());
                 broadcastSnoozeState(automationId, "DISABLED", 0);
                 return;
             }
@@ -95,7 +95,7 @@ public class AutomationUtils {
             }
 
             notificationService.sendNotification(
-                    "🚫 " + a.getName() + " disabled for " + durationMinutes + " min", "info");
+                    "🚫 " + a.getName() + " disabled for " + durationMinutes + " min", "info", a.getHomeId());
 
             log.info("🚫 Timed-disabled automation '{}' for {} minutes", a.getName(), durationMinutes);
             broadcastSnoozeState(automationId, "TIMED_DISABLED", durationMinutes);
@@ -120,7 +120,7 @@ public class AutomationUtils {
             }
 
             notificationService.sendNotification(
-                    "▶️ " + a.getName() + " resumed", "success");
+                    "▶️ " + a.getName() + " resumed", "success", a.getHomeId());
 
             log.info("▶️ Resumed automation '{}'", a.getName());
             broadcastSnoozeState(automationId, "ACTIVE", 0);

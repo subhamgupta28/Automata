@@ -108,10 +108,10 @@ public class MainService {
             device.setAttributes(atr);
             dev = deviceRepository.save(device);
             System.err.println("Already registered device: " + deviceMapper.apply(device));
-            notificationService.sendNotification("Device: " + device.getName() + "  is back online", "low");
+            notificationService.sendNotification("Device: " + device.getName() + "  is back online", "low", device.getHomeId());
             return deviceMapper.apply(device);
         } else {
-            notificationService.sendNotification("New device registered: " + device.getName(), "low");
+            notificationService.sendNotification("New device registered: " + device.getName(), "low", device.getHomeId());
         }
 
         device.setStatus(Status.UNCLAIMED);
@@ -167,7 +167,7 @@ public class MainService {
         // Warm the cache immediately so next MQTT message routes correctly
         deviceHomeCache.put(deviceId, homeId);
 
-        notificationService.sendNotification("Device " + device.getName() + " claimed into home", "HIGH");
+        notificationService.sendNotification("Device " + device.getName() + " claimed into home", "HIGH", homeId);
         return saved;
     }
 
@@ -348,7 +348,7 @@ public class MainService {
 //        device.setShowCharts(false);
 
         deviceDashboardRepository.save(device);
-        notificationService.sendNotification("Devices positions updated", "success");
+        notificationService.sendNotification("Devices positions updated", "success", device.getHomeId());
         return "success";
     }
 
@@ -376,7 +376,7 @@ public class MainService {
 //        System.err.println(attr);
 //        attr.setVisible(!Boolean.parseBoolean(isVisible));
 //        attributeRepository.save(attr);
-        notificationService.sendNotification("Attribute updated and now " + (isShow ? " visible in charts" : " not visible in charts"), "success");
+        notificationService.sendNotification("Attribute updated and now " + (isShow ? " visible in charts" : " not visible in charts"), "success", "");
         return "success";
     }
 
@@ -386,7 +386,7 @@ public class MainService {
         if (device != null) {
             device.setShowInDashboard(isShow);
             deviceDashboardRepository.save(device);
-            notificationService.sendNotification("Device is " + (isShow ? " visible " : " not visible ") + "in dashboard", "success");
+            notificationService.sendNotification("Device is " + (isShow ? " visible " : " not visible ") + "in dashboard", "success", device.getHomeId());
         } else {
             var dashboard = Dashboard.builder()
                     .showInDashboard(isShow)
@@ -396,7 +396,7 @@ public class MainService {
                     .showCharts(false)
                     .build();
             deviceDashboardRepository.save(dashboard);
-            notificationService.sendNotification("New device set", "success");
+            notificationService.sendNotification("New device set", "success", "");
         }
         return "success";
 
@@ -425,7 +425,7 @@ public class MainService {
         if (device != null) {
             device.setShowCharts(isShow);
             deviceDashboardRepository.save(device);
-            notificationService.sendNotification("Device is " + (isShow ? " visible " : " not visible ") + "in charts", "success");
+            notificationService.sendNotification("Device is " + (isShow ? " visible " : " not visible ") + "in charts", "success", device.getHomeId());
             return "success";
         }
 
@@ -507,7 +507,7 @@ public class MainService {
                 case "showInDashboard" -> dashboard.setShowInDashboard(cond);
             }
             deviceDashboardRepository.save(dashboard);
-            notificationService.sendNotification("New device set", "success");
+            notificationService.sendNotification("New device set", "success", dashboard.getHomeId());
         }
         return "null";
     }

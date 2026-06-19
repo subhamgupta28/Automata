@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {alpha, Box, IconButton, Slider, Stack, Tooltip, Typography,} from '@mui/material';
 import {
     DevicesOther,
@@ -110,16 +110,30 @@ export default function SpotifyPlayer() {
     const [muted, setMuted] = useState(false);
     const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
 
+    // Persist the last known track so we can show it when playback stops
+    const lastTrackRef = useRef(null);
+    const lastProgressRef = useRef(0);
+
     const isPlaying = player?.is_playing ?? false;
     const track = player?.item;
-    const duration = track?.duration_ms ?? 0;
+    const duration = track?.duration_ms ?? lastTrackRef.current?.duration_ms ?? 0;
     const device = player?.device;
-    const albumArt = track?.album?.images?.[0]?.url;
-    const artists = track?.artists?.map(a => a.name).join(', ');
+    const albumArt = track?.album?.images?.[0]?.url ?? lastTrackRef.current?.album?.images?.[0]?.url;
+    const artists = (track ?? lastTrackRef.current)?.artists?.map(a => a.name).join(', ');
+
+    // Keep lastTrack up to date whenever we have a real track
+    useEffect(() => {
+        if (track) {
+            lastTrackRef.current = track;
+        }
+    }, [track]);
 
     // Sync progress from server
     useEffect(() => {
-        if (player?.progress_ms != null) setProgress(player.progress_ms);
+        if (player?.progress_ms != null) {
+            setProgress(player.progress_ms);
+            lastProgressRef.current = player.progress_ms;
+        }
     }, [player?.progress_ms]);
 
     // Tick progress locally while playing
@@ -152,6 +166,10 @@ export default function SpotifyPlayer() {
         setVolume(next);
     };
 
+    // The track to render — live or last known
+    const displayTrack = track ?? lastTrackRef.current;
+    const isPaused = !isPlaying && !!displayTrack;
+
     // ── Render ───────────────────────────────────────────────────────────────
 
     if (loading) return <LoadingSkeleton/>;
@@ -165,7 +183,6 @@ export default function SpotifyPlayer() {
                 borderRadius: "12px",
                 overflow: 'hidden',
                 position: 'relative',
-                // boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
                 flexShrink: 0,
             }}
         >
@@ -181,6 +198,8 @@ export default function SpotifyPlayer() {
                     filter: 'blur(18px)',
                     transform: 'scale(1.15)',
                     transition: 'background-image 0.4s ease',
+                    // Dim the background when paused
+                    opacity: isPaused ? 0.45 : 1,
                 }}
             />
 
@@ -198,9 +217,12 @@ export default function SpotifyPlayer() {
                     zIndex: 2,
                     height: '100%',
                     p: '12px 14px 10px',
+                    // Slightly fade content too when paused
+                    opacity: isPaused ? 0.75 : 1,
+                    transition: 'opacity 0.3s ease',
                 }}
             >
-                {!track ? (
+                {!displayTrack ? (
                     <NothingPlaying/>
                 ) : (
                     <>
@@ -214,17 +236,17 @@ export default function SpotifyPlayer() {
                                     borderRadius: 1.5, overflow: 'hidden',
                                     boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
                                     background: '#111',
+                                    // Greyscale when paused
+                                    filter: isPaused ? 'grayscale(60%)' : 'none',
+                                    transition: 'filter 0.3s ease',
                                 }}
                             >
                                 {albumArt
-                                    ? <Box component="img" src={albumArt} alt={track.album?.name}
+                                    ? <Box component="img" src={albumArt} alt={displayTrack.album?.name}
                                            sx={{width: '100%', height: '100%', objectFit: 'cover'}}/>
                                     : <Box sx={{
-                                        width: '100%',
-                                        height: '100%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
+                                        width: '100%', height: '100%',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     }}>
                                         <MusicNote sx={{fontSize: 20, color: 'rgba(255,255,255,0.2)'}}/>
                                     </Box>
@@ -234,7 +256,8 @@ export default function SpotifyPlayer() {
                             {/* Track name + artist */}
                             <Box sx={{flex: 1, minWidth: 0}}>
                                 <Stack direction="row" alignItems="center" gap="5px" mb="1px">
-                                    {isPlaying && (
+                                    {isPlaying ? (
+                                        /* Green pulsing dot — playing */
                                         <Box sx={{
                                             width: 5, height: 5, borderRadius: '50%',
                                             background: '#1DB954', flexShrink: 0,
@@ -244,16 +267,31 @@ export default function SpotifyPlayer() {
                                             },
                                             animation: 'pulse 1.5s ease-in-out infinite',
                                         }}/>
+                                    ) : (
+                                        /* Grey static dot + "Last played" label — paused */
+                                        <Stack direction="row" alignItems="center" gap="4px" flexShrink={0}>
+                                            <Box sx={{
+                                                width: 5, height: 5, borderRadius: '50%',
+                                                background: 'rgba(255,255,255,0.25)', flexShrink: 0,
+                                            }}/>
+                                            <Typography sx={{
+                                                fontSize: 9, fontWeight: 600, letterSpacing: 0.6,
+                                                color: 'rgba(255,255,255,0.3)',
+                                                textTransform: 'uppercase',
+                                            }}>
+                                                Last played
+                                            </Typography>
+                                        </Stack>
                                     )}
-                                    <Typography
-                                        sx={{
-                                            fontSize: 13, fontWeight: 500, color: '#fff',
-                                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                        }}
-                                    >
-                                        {track.name}
-                                    </Typography>
                                 </Stack>
+                                <Typography
+                                    sx={{
+                                        fontSize: 13, fontWeight: 500, color: '#fff',
+                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                    }}
+                                >
+                                    {displayTrack.name}
+                                </Typography>
                                 <Typography
                                     sx={{
                                         fontSize: 11, color: 'rgba(255,255,255,0.5)',
@@ -334,11 +372,8 @@ export default function SpotifyPlayer() {
                                         </Box>
                                         {d.id === device?.id && (
                                             <Box sx={{
-                                                width: 6,
-                                                height: 6,
-                                                borderRadius: '50%',
-                                                background: '#1DB954',
-                                                flexShrink: 0
+                                                width: 6, height: 6, borderRadius: '50%',
+                                                background: '#1DB954', flexShrink: 0,
                                             }}/>
                                         )}
                                     </Stack>
@@ -354,17 +389,19 @@ export default function SpotifyPlayer() {
                                 min={0}
                                 max={duration || 1}
                                 onChange={handleSeek}
+                                disabled={isPaused}
                                 sx={{
-                                    color: '#1DB954',
+                                    color: isPaused ? 'rgba(255,255,255,0.25)' : '#1DB954',
                                     height: 3,
                                     p: '8px 0',
+                                    transition: 'color 0.3s ease',
                                     '& .MuiSlider-thumb': {
                                         width: 9, height: 9,
                                         opacity: 0,
                                         transition: 'opacity 0.15s',
-                                        '&:hover, &.Mui-active': {opacity: 1},
+                                        '&:hover, &.Mui-active': {opacity: isPaused ? 0 : 1},
                                     },
-                                    '&:hover .MuiSlider-thumb': {opacity: 1},
+                                    '&:hover .MuiSlider-thumb': {opacity: isPaused ? 0 : 1},
                                     '& .MuiSlider-rail': {background: 'rgba(255,255,255,0.15)'},
                                 }}
                             />
@@ -432,10 +469,13 @@ export default function SpotifyPlayer() {
                                     onClick={isPlaying ? pause : play}
                                     sx={{
                                         width: 34, height: 34, mx: '2px',
-                                        background: '#1DB954',
-                                        color: '#000',
-                                        '&:hover': {background: '#1ed760', transform: 'scale(1.07)'},
-                                        transition: 'all 0.15s',
+                                        background: isPaused ? 'rgba(255,255,255,0.15)' : '#1DB954',
+                                        color: isPaused ? 'rgba(255,255,255,0.7)' : '#000',
+                                        '&:hover': {
+                                            background: isPaused ? 'rgba(255,255,255,0.22)' : '#1ed760',
+                                            transform: 'scale(1.07)',
+                                        },
+                                        transition: 'all 0.2s ease',
                                     }}
                                 >
                                     {isPlaying
