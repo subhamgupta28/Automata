@@ -1,6 +1,4 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {Client} from "@stomp/stompjs";
-import SockJS from "sockjs-client";
 import {
     Alert,
     Badge,
@@ -64,17 +62,16 @@ import {
     postAutomationOverride,
     postAutomationSnooze,
 } from "../../services/apis.jsx";
+import {useAutomationWebSocket} from "./useAutomationWebSocket.jsx";
+
+const getAccessToken = () => JSON.parse(localStorage.getItem("user"))?.access_token ?? "";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const WS_URL = __API_MODE__ === 'serve'
-    ? 'http://localhost:8010/ws'
-    : `${window.location.protocol}//${window.location.host}/ws`;
 const MAX_LOG = 50;
 const MAX_ACTIONS = 100;
 const DRAWER_WIDTH = 320;
 
 const T = {
-    mono: '"JetBrains Mono", "Fira Code", monospace',
     surface: "rgba(255,255,255,0.03)",
     border: "rgba(255,255,255,0.08)",
 };
@@ -99,27 +96,17 @@ function parseMemProgress(summary) {
 }
 
 const OUTCOME_COLOR = {
-    TRIGGERED: "success",
-    RESTORED: "warning",
-    SKIPPED: "default",
-    NOT_MET: "default",
-    C1_NEGATIVE: "error",
-    STATELESS_FIRE: "info",
-    FALLBACK: "info",
+    TRIGGERED: "success", RESTORED: "warning", SKIPPED: "default",
+    NOT_MET: "default", C1_NEGATIVE: "error", STATELESS_FIRE: "info", FALLBACK: "info",
 };
 const OUTCOME_ICON = {
-    TRIGGERED: "🚀",
-    RESTORED: "⏹",
-    SKIPPED: "⏭",
-    NOT_MET: "💤",
-    C1_NEGATIVE: "⛔",
-    STATELESS_FIRE: "⚡",
-    FALLBACK: "↩",
+    TRIGGERED: "🚀", RESTORED: "⏹", SKIPPED: "⏭",
+    NOT_MET: "💤", C1_NEGATIVE: "⛔", STATELESS_FIRE: "⚡", FALLBACK: "↩",
 };
 
 // ─── Shared small components ──────────────────────────────────────────────────
 function Mono({children, sx = {}}) {
-    return <Typography sx={{fontFamily: T.mono, fontSize: 12, ...sx}}>{children}</Typography>;
+    return <Typography sx={{fontSize: 12, ...sx}}>{children}</Typography>;
 }
 
 function SLabel({children}) {
@@ -127,9 +114,7 @@ function SLabel({children}) {
         <Typography sx={{
             fontSize: 10, fontWeight: 600, letterSpacing: "1px",
             textTransform: "uppercase", color: "text.disabled", mb: 1,
-        }}>
-            {children}
-        </Typography>
+        }}>{children}</Typography>
     );
 }
 
@@ -157,14 +142,15 @@ function ConnPill({status}) {
     );
 }
 
-// ─── Node card ────────────────────────────────────────────────────────────────
+// ─── NodeCard / BranchCard / LogRow / ActionFiredRow / ActionsTab / OverrideTab
+// (unchanged — copied verbatim from original)
+
 function NodeCard({node, prevNode, flash}) {
     const [open, setOpen] = useState(true);
     const prog = parseMemProgress(node.memorySummary);
     const changed = prevNode && prevNode.lastRawResult !== node.lastRawResult;
     const borderColor = node.lastRawResult === true ? "success.main"
-        : node.lastRawResult === false ? "error.main"
-            : "divider";
+        : node.lastRawResult === false ? "error.main" : "divider";
     return (
         <Card elevation={0} sx={{
             mb: 1, borderRadius: 2, background: T.surface,
@@ -184,9 +170,8 @@ function NodeCard({node, prevNode, flash}) {
                         </Box>
                     </Stack>
                     <Stack direction="row" spacing={0.5} alignItems="center">
-                        {node.stateful && (
-                            <Chip label="stateful" size="small" variant="outlined" sx={{fontSize: 10, height: 20}}/>
-                        )}
+                        {node.stateful &&
+                            <Chip label="stateful" size="small" variant="outlined" sx={{fontSize: 10, height: 20}}/>}
                         {node.wasActive
                             ? <Chip label="active" size="small" color="success" sx={{fontSize: 10, height: 20}}/>
                             : <Chip label="inactive" size="small" sx={{fontSize: 10, height: 20}}/>}
@@ -200,8 +185,11 @@ function NodeCard({node, prevNode, flash}) {
                 {node.hasMemoryPolicy && (
                     <Collapse in={open}>
                         <Box sx={{
-                            mt: 1.5, p: "8px 10px", borderRadius: 1.5,
-                            background: "rgba(255,255,255,0.04)", border: `0.5px solid ${T.border}`,
+                            mt: 1.5,
+                            p: "8px 10px",
+                            borderRadius: 1.5,
+                            background: "rgba(255,255,255,0.04)",
+                            border: `0.5px solid ${T.border}`
                         }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{mb: 0.5}}>
                                 <Stack direction="row" spacing={0.5} alignItems="center">
@@ -219,7 +207,7 @@ function NodeCard({node, prevNode, flash}) {
                                         backgroundColor: "rgba(255,255,255,0.08)",
                                         "& .MuiLinearProgress-bar": {
                                             borderRadius: 2,
-                                            backgroundColor: prog.pct >= 100 ? "success.main" : "primary.main",
+                                            backgroundColor: prog.pct >= 100 ? "success.main" : "primary.main"
                                         },
                                     }}/>
                                     <Typography
@@ -227,14 +215,13 @@ function NodeCard({node, prevNode, flash}) {
                                 </>
                             )}
                             {node.firstTrueEpochMs > 0 && (
-                                <Typography sx={{fontSize: 10, color: "text.disabled"}}>
-                                    continuous since {fmtAgo(node.firstTrueEpochMs)}
-                                </Typography>
+                                <Typography sx={{fontSize: 10, color: "text.disabled"}}>continuous
+                                    since {fmtAgo(node.firstTrueEpochMs)}</Typography>
                             )}
                             {node.consecutiveTrueCount > 0 && (
-                                <Typography sx={{fontSize: 10, color: "text.disabled"}}>
-                                    {node.consecutiveTrueCount} consecutive ticks
-                                </Typography>
+                                <Typography
+                                    sx={{fontSize: 10, color: "text.disabled"}}>{node.consecutiveTrueCount} consecutive
+                                    ticks</Typography>
                             )}
                         </Box>
                     </Collapse>
@@ -244,16 +231,13 @@ function NodeCard({node, prevNode, flash}) {
     );
 }
 
-// ─── Branch card ──────────────────────────────────────────────────────────────
 function BranchCard({branch, prevBranch, flash}) {
     const st = (branch.state || "IDLE").toUpperCase();
     const changed = prevBranch && prevBranch.state !== branch.state;
     const color = st === "ACTIVE" ? "success.main" : st === "HOLDING" ? "warning.main" : "divider";
     const scheduleLabel = () => {
-        if (branch.scheduleType === "range" && branch.fromTime)
-            return `${branch.fromTime} – ${branch.toTime}`;
-        if (branch.scheduleType === "interval" && branch.intervalMinutes)
-            return `every ${branch.intervalMinutes}min`;
+        if (branch.scheduleType === "range" && branch.fromTime) return `${branch.fromTime} – ${branch.toTime}`;
+        if (branch.scheduleType === "interval" && branch.intervalMinutes) return `every ${branch.intervalMinutes}min`;
         return branch.scheduleType || "data";
     };
     return (
@@ -292,9 +276,8 @@ function BranchCard({branch, prevBranch, flash}) {
                             backgroundColor: "rgba(255,255,255,0.08)",
                             "& .MuiLinearProgress-bar": {borderRadius: 2, backgroundColor: "warning.main"},
                         }}/>
-                        <Typography sx={{fontSize: 10, color: "text.disabled", mt: 0.5}}>
-                            running — duration key active
-                        </Typography>
+                        <Typography sx={{fontSize: 10, color: "text.disabled", mt: 0.5}}>running — duration key
+                            active</Typography>
                     </Box>
                 )}
             </CardContent>
@@ -302,21 +285,20 @@ function BranchCard({branch, prevBranch, flash}) {
     );
 }
 
-// ─── Live log row ─────────────────────────────────────────────────────────────
 function LogRow({event}) {
     const icon = OUTCOME_ICON[event.outcome] || "•";
     const color = OUTCOME_COLOR[event.outcome] || "default";
     return (
-        <Box sx={{
-            display: "flex", gap: 1, alignItems: "baseline",
-            py: "5px", borderBottom: `0.5px solid ${T.border}`,
-        }}>
-            <Typography sx={{fontSize: 11, color: "text.disabled", minWidth: 68, fontFamily: T.mono}}>
-                {fmtDate(event.evaluatedAt)}
-            </Typography>
+        <Box sx={{display: "flex", gap: 1, alignItems: "baseline", py: "5px", borderBottom: `0.5px solid ${T.border}`}}>
+            <Typography sx={{
+                fontSize: 11,
+                color: "text.disabled",
+                minWidth: 68,
+
+            }}>{fmtDate(event.evaluatedAt)}</Typography>
             <Chip label={`${icon} ${event.outcome}`} size="small" color={color}
                   sx={{fontSize: 10, height: 18, minWidth: 90}}/>
-            <Typography sx={{fontSize: 11, color: "text.secondary", fontFamily: T.mono}}>
+            <Typography sx={{fontSize: 11, color: "text.secondary",}}>
                 {event.c1True ? "c1✓" : "c1✗"}
                 {event.reason ? ` · ${event.reason}` : ""}
                 {event.evalDurationMs != null ? ` · ${event.evalDurationMs}ms` : ""}
@@ -325,48 +307,31 @@ function LogRow({event}) {
     );
 }
 
-// ─── Action fired row ─────────────────────────────────────────────────────────
 function ActionFiredRow({event, isNew}) {
     const [open, setOpen] = useState(false);
     const hasData = event.data != null && event.data !== "";
     return (
         <Box sx={{
-            py: "6px",
-            borderBottom: `0.5px solid ${T.border}`,
+            py: "6px", borderBottom: `0.5px solid ${T.border}`,
             transition: "background 0.4s",
             background: isNew ? "rgba(99,202,183,0.06)" : "transparent",
         }}>
             <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                {/* timestamp */}
                 <Typography
-                    sx={{fontSize: 11, color: "text.disabled", minWidth: 68, fontFamily: T.mono, flexShrink: 0}}>
+                    sx={{fontSize: 11, color: "text.disabled", minWidth: 68, flexShrink: 0}}>
                     {fmtDate(event.firedAt)}
                 </Typography>
-
-                {/* success / fail indicator */}
                 {event.success
                     ? <CheckCircleOutlineIcon sx={{fontSize: 14, color: "success.main", flexShrink: 0}}/>
-                    : <CancelOutlinedIcon sx={{fontSize: 14, color: "error.main", flexShrink: 0}}/>
-                }
-
-                {/* device name / id */}
+                    : <CancelOutlinedIcon sx={{fontSize: 14, color: "error.main", flexShrink: 0}}/>}
                 <Stack direction="row" spacing={0.5} alignItems="center" sx={{flexShrink: 0}}>
                     <DevicesIcon sx={{fontSize: 13, color: "text.disabled"}}/>
-                    <Typography sx={{fontSize: 12, color: "text.primary", fontFamily: T.mono}}>
+                    <Typography sx={{fontSize: 12, color: "text.primary",}}>
                         {event.deviceName || event.deviceId}
                     </Typography>
                 </Stack>
-
-                {/* key */}
-                <Chip
-                    label={event.key}
-                    size="small"
-                    color="info"
-                    variant="outlined"
-                    sx={{fontSize: 10, height: 18, fontFamily: T.mono}}
-                />
-
-                {/* data preview or expand toggle */}
+                <Chip label={event.key} size="small" color="info" variant="outlined"
+                      sx={{fontSize: 10, height: 18,}}/>
                 {hasData && (
                     <Box sx={{display: "flex", alignItems: "center", gap: 0.5, ml: "auto"}}>
                         <Mono sx={{
@@ -375,34 +340,27 @@ function ActionFiredRow({event, isNew}) {
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
-                            fontSize: 11,
+                            fontSize: 11
                         }}>
                             {open ? "" : event.data}
                         </Mono>
                         <IconButton size="small" onClick={() => setOpen(p => !p)} sx={{p: 0.25}}>
-                            {open
-                                ? <ExpandLessIcon sx={{fontSize: 13}}/>
-                                : <ExpandMoreIcon sx={{fontSize: 13}}/>
-                            }
+                            {open ? <ExpandLessIcon sx={{fontSize: 13}}/> : <ExpandMoreIcon sx={{fontSize: 13}}/>}
                         </IconButton>
                     </Box>
                 )}
-
-                {/* node id badge */}
-                {event.nodeId && (
-                    <Mono sx={{color: "text.disabled", fontSize: 10, ml: hasData ? 0 : "auto"}}>
-                        {event.nodeId}
-                    </Mono>
-                )}
+                {event.nodeId &&
+                    <Mono sx={{color: "text.disabled", fontSize: 10, ml: hasData ? 0 : "auto"}}>{event.nodeId}</Mono>}
             </Stack>
-
-            {/* expanded data payload */}
             {hasData && (
                 <Collapse in={open}>
                     <Box sx={{
-                        mt: 1, ml: "76px", p: "8px 10px", borderRadius: 1.5,
+                        mt: 1,
+                        ml: "76px",
+                        p: "8px 10px",
+                        borderRadius: 1.5,
                         background: "rgba(255,255,255,0.04)",
-                        border: `0.5px solid ${T.border}`,
+                        border: `0.5px solid ${T.border}`
                     }}>
                         <SLabel>payload</SLabel>
                         <Mono sx={{color: "text.secondary", whiteSpace: "pre-wrap", wordBreak: "break-all"}}>
@@ -414,11 +372,8 @@ function ActionFiredRow({event, isNew}) {
                                 }
                             })()}
                         </Mono>
-                        {event.traceId && (
-                            <Mono sx={{color: "text.disabled", fontSize: 10, mt: 1}}>
-                                trace: {event.traceId}
-                            </Mono>
-                        )}
+                        {event.traceId &&
+                            <Mono sx={{color: "text.disabled", fontSize: 10, mt: 1}}>trace: {event.traceId}</Mono>}
                     </Box>
                 </Collapse>
             )}
@@ -426,13 +381,11 @@ function ActionFiredRow({event, isNew}) {
     );
 }
 
-// ─── Actions tab ──────────────────────────────────────────────────────────────
 function ActionsTab({actionLog, onClear, connStatus}) {
     const [filterFailed, setFilterFailed] = useState(false);
     const [newIds, setNewIds] = useState(new Set());
     const prevLenRef = useRef(0);
 
-    // Flash newly added rows
     useEffect(() => {
         if (actionLog.length > prevLenRef.current) {
             const added = new Set(actionLog.slice(0, actionLog.length - prevLenRef.current).map((_, i) => i));
@@ -445,12 +398,9 @@ function ActionsTab({actionLog, onClear, connStatus}) {
     }, [actionLog]);
 
     const filtered = filterFailed ? actionLog.filter(e => !e.success) : actionLog;
-
-    // Group by traceId so we can show bursts together
     const groups = useMemo(() => {
         const out = [];
-        let currentTrace = null;
-        let currentGroup = [];
+        let currentTrace = null, currentGroup = [];
         for (const evt of filtered) {
             if (evt.traceId && evt.traceId !== currentTrace) {
                 if (currentGroup.length) out.push({traceId: currentTrace, events: currentGroup});
@@ -473,66 +423,44 @@ function ActionsTab({actionLog, onClear, connStatus}) {
                                          onChange={e => setFilterFailed(e.target.checked)}/>}
                         label={<Typography sx={{fontSize: 12}}>Failed only</Typography>}
                     />
-                    <Chip
-                        label={`${actionLog.length} dispatched`}
-                        size="small"
-                        color={actionLog.length > 0 ? "primary" : "default"}
-                        sx={{fontSize: 10, height: 20}}
-                    />
+                    <Chip label={`${actionLog.length} dispatched`} size="small"
+                          color={actionLog.length > 0 ? "primary" : "default"} sx={{fontSize: 10, height: 20}}/>
                     {actionLog.filter(e => !e.success).length > 0 && (
-                        <Chip
-                            label={`${actionLog.filter(e => !e.success).length} failed`}
-                            size="small"
-                            color="error"
-                            sx={{fontSize: 10, height: 20}}
-                        />
+                        <Chip label={`${actionLog.filter(e => !e.success).length} failed`} size="small" color="error"
+                              sx={{fontSize: 10, height: 20}}/>
                     )}
                 </Stack>
-                <Button size="small" onClick={onClear} sx={{fontSize: 11, color: "text.secondary"}}>
-                    Clear
-                </Button>
+                <Button size="small" onClick={onClear} sx={{fontSize: 11, color: "text.secondary"}}>Clear</Button>
             </Stack>
-
             {filtered.length === 0 ? (
                 <Box sx={{py: 6, textAlign: "center"}}>
                     <ElectricBoltIcon sx={{fontSize: 36, color: "text.disabled", mb: 1}}/>
                     <Typography color="text.disabled" fontSize={13}>
-                        {connStatus === "connected"
-                            ? filterFailed ? "No failed actions yet." : "Waiting for actions to fire…"
-                            : "Connect to see live action dispatches"}
+                        {connStatus === "connected" ? (filterFailed ? "No failed actions yet." : "Waiting for actions to fire…") : "Connect to see live action dispatches"}
                     </Typography>
                 </Box>
             ) : (
                 groups.map((group, gi) => (
                     <Box key={group.traceId || gi} sx={{mb: 1.5}}>
-                        {/* Trace header */}
                         {group.traceId && (
                             <Stack direction="row" spacing={0.75} alignItems="center" sx={{mb: 0.5}}>
                                 <Box sx={{
-                                    height: "1px", flex: 1,
+                                    height: "1px",
+                                    flex: 1,
                                     background: `linear-gradient(to right, ${T.border}, transparent)`
                                 }}/>
-                                <Mono sx={{color: "text.disabled", fontSize: 10}}>
-                                    trace {group.traceId.slice(-8)}
-                                </Mono>
-                                <Chip
-                                    label={`${group.events.length} action${group.events.length !== 1 ? "s" : ""}`}
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{fontSize: 10, height: 16}}
-                                />
+                                <Mono sx={{color: "text.disabled", fontSize: 10}}>trace {group.traceId.slice(-8)}</Mono>
+                                <Chip label={`${group.events.length} action${group.events.length !== 1 ? "s" : ""}`}
+                                      size="small" variant="outlined" sx={{fontSize: 10, height: 16}}/>
                                 <Box sx={{
-                                    height: "1px", flex: 1,
+                                    height: "1px",
+                                    flex: 1,
                                     background: `linear-gradient(to left, ${T.border}, transparent)`
                                 }}/>
                             </Stack>
                         )}
                         {group.events.map((evt, ei) => (
-                            <ActionFiredRow
-                                key={ei}
-                                event={evt}
-                                isNew={gi === 0 && newIds.has(ei)}
-                            />
+                            <ActionFiredRow key={ei} event={evt} isNew={gi === 0 && newIds.has(ei)}/>
                         ))}
                     </Box>
                 ))
@@ -541,7 +469,6 @@ function ActionsTab({actionLog, onClear, connStatus}) {
     );
 }
 
-// ─── Override tab ─────────────────────────────────────────────────────────────
 function OverrideTab({automationId, hasCoalition, onSuccess}) {
     const [loading, setLoading] = useState(null);
     const [snoozeMin, setSnoozeMin] = useState("");
@@ -557,7 +484,6 @@ function OverrideTab({automationId, hasCoalition, onSuccess}) {
             setLoading(null);
         }
     };
-
     const doSnooze = async min => {
         setLoading("snooze");
         try {
@@ -569,7 +495,6 @@ function OverrideTab({automationId, hasCoalition, onSuccess}) {
             setLoading(null);
         }
     };
-
     const doClearSnooze = async () => {
         setLoading("clear");
         try {
@@ -581,7 +506,6 @@ function OverrideTab({automationId, hasCoalition, onSuccess}) {
             setLoading(null);
         }
     };
-
     const Btn = ({action, label, icon, color = "inherit"}) => (
         <Button fullWidth variant="outlined" color={color} size="small"
                 startIcon={loading === action ? <CircularProgress size={12}/> : icon}
@@ -590,7 +514,6 @@ function OverrideTab({automationId, hasCoalition, onSuccess}) {
             {label}
         </Button>
     );
-
     return (
         <Stack spacing={1.5}>
             <Card elevation={0}
@@ -604,14 +527,11 @@ function OverrideTab({automationId, hasCoalition, onSuccess}) {
                         <Grid item xs={6}><Btn action="RESET" label="Full reset" icon={<RestartAltIcon/>}
                                                color="error"/></Grid>
                         <Grid item xs={6}><Btn action="RESET_MEMORY" label="Reset memory" icon={<MemoryIcon/>}/></Grid>
-                        {hasCoalition && (
-                            <Grid item xs={12}><Btn action="RESET_COALITION" label="Reset coalition"
-                                                    icon={<GroupsIcon/>}/></Grid>
-                        )}
+                        {hasCoalition && <Grid item xs={12}><Btn action="RESET_COALITION" label="Reset coalition"
+                                                                 icon={<GroupsIcon/>}/></Grid>}
                     </Grid>
                 </CardContent>
             </Card>
-
             <Card elevation={0}
                   sx={{border: "0.5px solid", borderColor: "divider", borderRadius: 2, background: T.surface}}>
                 <CardContent sx={{p: "12px 14px !important"}}>
@@ -620,9 +540,7 @@ function OverrideTab({automationId, hasCoalition, onSuccess}) {
                         {[15, 30, 60, 120].map(m => (
                             <Button key={m} variant="outlined" size="small" disabled={loading !== null}
                                     startIcon={loading === "snooze" ? <CircularProgress size={11}/> : <PauseIcon/>}
-                                    onClick={() => doSnooze(m)} sx={{fontSize: 11}}>
-                                {m}m
-                            </Button>
+                                    onClick={() => doSnooze(m)} sx={{fontSize: 11}}>{m}m</Button>
                         ))}
                     </Stack>
                     <Stack direction="row" spacing={1} alignItems="center">
@@ -633,14 +551,10 @@ function OverrideTab({automationId, hasCoalition, onSuccess}) {
                                 onClick={() => {
                                     doSnooze(snoozeMin);
                                     setSnoozeMin("");
-                                }} sx={{fontSize: 11}}>
-                            Set
-                        </Button>
+                                }} sx={{fontSize: 11}}>Set</Button>
                         <Button variant="outlined" color="error" size="small" disabled={loading !== null}
                                 startIcon={loading === "clear" ? <CircularProgress size={11}/> : <AlarmOffIcon/>}
-                                onClick={doClearSnooze} sx={{fontSize: 11, whiteSpace: "nowrap"}}>
-                            Clear
-                        </Button>
+                                onClick={doClearSnooze} sx={{fontSize: 11, whiteSpace: "nowrap"}}>Clear</Button>
                     </Stack>
                 </CardContent>
             </Card>
@@ -648,7 +562,6 @@ function OverrideTab({automationId, hasCoalition, onSuccess}) {
     );
 }
 
-// ─── Automation list panel ────────────────────────────────────────────────────
 function AutomationListPanel({liveSummaries, onSelect, loading}) {
     const [automations, setAutomations] = useState([]);
     const [listLoading, setListLoading] = useState(false);
@@ -657,8 +570,7 @@ function AutomationListPanel({liveSummaries, onSelect, loading}) {
     const fetchList = useCallback(async () => {
         setListLoading(true);
         try {
-            const data = await getAutomations();
-            setAutomations(data);
+            setAutomations(await getAutomations());
         } catch (e) {
             console.error("Failed to fetch automations", e);
         } finally {
@@ -672,9 +584,7 @@ function AutomationListPanel({liveSummaries, onSelect, loading}) {
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
-        return automations.filter(a =>
-            !q || a.name?.toLowerCase().includes(q) || a.id?.toLowerCase().includes(q)
-        );
+        return automations.filter(a => !q || a.name?.toLowerCase().includes(q) || a.id?.toLowerCase().includes(q));
     }, [automations, search]);
 
     const liveCount = Object.keys(liveSummaries).length;
@@ -687,13 +597,8 @@ function AutomationListPanel({liveSummaries, onSelect, loading}) {
                         <Typography sx={{fontSize: 13, fontWeight: 500}}>Automations</Typography>
                         {liveCount > 0 && (
                             <Tooltip title={`${liveCount} automation(s) receiving live events`}>
-                                <Chip
-                                    icon={<FlashOnIcon sx={{fontSize: "11px !important"}}/>}
-                                    label={liveCount}
-                                    size="small"
-                                    color="success"
-                                    sx={{fontSize: 10, height: 18}}
-                                />
+                                <Chip icon={<FlashOnIcon sx={{fontSize: "11px !important"}}/>} label={liveCount}
+                                      size="small" color="success" sx={{fontSize: 10, height: 18}}/>
                             </Tooltip>
                         )}
                     </Stack>
@@ -703,31 +608,21 @@ function AutomationListPanel({liveSummaries, onSelect, loading}) {
                         </IconButton>
                     </Tooltip>
                 </Stack>
-                <TextField
-                    fullWidth size="small" placeholder="Search by name or ID…"
-                    value={search} onChange={e => setSearch(e.target.value)}
-                    InputProps={{
-                        startAdornment: (
-                            <InputAdornment position="start">
-                                <SearchIcon sx={{fontSize: 16, color: "text.disabled"}}/>
-                            </InputAdornment>
-                        ),
-                    }}
-                    sx={{"& input": {fontSize: 12}}}
-                />
+                <TextField fullWidth size="small" placeholder="Search by name or ID…"
+                           value={search} onChange={e => setSearch(e.target.value)}
+                           InputProps={{
+                               startAdornment: <InputAdornment position="start"><SearchIcon
+                                   sx={{fontSize: 16, color: "text.disabled"}}/></InputAdornment>
+                           }}
+                           sx={{"& input": {fontSize: 12}}}/>
             </Box>
-
             <Box sx={{flex: 1, overflowY: "auto"}}>
-                {listLoading && (
-                    <Box sx={{py: 3, display: "flex", justifyContent: "center"}}>
-                        <CircularProgress size={18}/>
-                    </Box>
-                )}
+                {listLoading &&
+                    <Box sx={{py: 3, display: "flex", justifyContent: "center"}}><CircularProgress size={18}/></Box>}
                 {!listLoading && filtered.length === 0 && (
                     <Box sx={{py: 4, textAlign: "center"}}>
-                        <Typography color="text.disabled" fontSize={12}>
-                            {search ? "No matches" : "No automations found"}
-                        </Typography>
+                        <Typography color="text.disabled"
+                                    fontSize={12}>{search ? "No matches" : "No automations found"}</Typography>
                     </Box>
                 )}
                 <List dense disablePadding>
@@ -736,53 +631,44 @@ function AutomationListPanel({liveSummaries, onSelect, loading}) {
                         const isEnabled = a.isEnabled;
                         const outcome = summary?.outcome;
                         return (
-                            <ListItemButton
-                                key={a.id}
-                                onClick={() => onSelect(a)}
-                                disabled={loading}
-                                sx={{
-                                    borderBottom: `0.5px solid ${T.border}`,
-                                    py: "10px", px: "14px",
-                                    "&:hover": {background: "rgba(255,255,255,0.04)"},
-                                    transition: "background 0.12s",
-                                }}
-                            >
+                            <ListItemButton key={a.id} onClick={() => onSelect(a)} disabled={loading}
+                                            sx={{
+                                                borderBottom: `0.5px solid ${T.border}`,
+                                                py: "10px",
+                                                px: "14px",
+                                                "&:hover": {background: "rgba(255,255,255,0.04)"},
+                                                transition: "background 0.12s"
+                                            }}>
                                 <ListItemText
                                     primary={
                                         <Stack direction="row" alignItems="center" spacing={0.75} flexWrap="wrap"
                                                useFlexGap>
-                                            <Typography sx={{fontSize: 13, fontWeight: 500, lineHeight: 1.3}}>
-                                                {a.name}
-                                            </Typography>
-                                            {!isEnabled && (
-                                                <Chip label="disabled" size="small" color="default"
-                                                      sx={{fontSize: 10, height: 18}}/>
-                                            )}
-                                            {outcome && (
-                                                <Chip
-                                                    label={`${OUTCOME_ICON[outcome] || ""} ${outcome}`}
-                                                    size="small"
-                                                    color={OUTCOME_COLOR[outcome] || "default"}
-                                                    sx={{fontSize: 10, height: 18}}
-                                                />
-                                            )}
+                                            <Typography sx={{
+                                                fontSize: 13,
+                                                fontWeight: 500,
+                                                lineHeight: 1.3
+                                            }}>{a.name}</Typography>
+                                            {!isEnabled && <Chip label="disabled" size="small" color="default"
+                                                                 sx={{fontSize: 10, height: 18}}/>}
+                                            {outcome &&
+                                                <Chip label={`${OUTCOME_ICON[outcome] || ""} ${outcome}`} size="small"
+                                                      color={OUTCOME_COLOR[outcome] || "default"}
+                                                      sx={{fontSize: 10, height: 18}}/>}
                                         </Stack>
                                     }
                                     secondary={
                                         <Stack direction="row" alignItems="center" spacing={0.75} sx={{mt: 0.25}}
                                                flexWrap="wrap" useFlexGap>
                                             <Mono sx={{color: "text.disabled", fontSize: 11}}>{a.id?.slice(-12)}</Mono>
-                                            {a.trigger?.deviceId && (
-                                                <Typography sx={{fontSize: 11, color: "text.disabled"}}>
-                                                    · {a.trigger.name || a.trigger.deviceId}
-                                                </Typography>
-                                            )}
-                                            {summary && (
-                                                <Typography
-                                                    sx={{fontSize: 10, color: "text.disabled", fontFamily: T.mono}}>
-                                                    · {new Date(summary.evaluatedAt).toLocaleTimeString()}
-                                                </Typography>
-                                            )}
+                                            {a.trigger?.deviceId && <Typography sx={{
+                                                fontSize: 11,
+                                                color: "text.disabled"
+                                            }}>· {a.trigger.name || a.trigger.deviceId}</Typography>}
+                                            {summary && <Typography sx={{
+                                                fontSize: 10,
+                                                color: "text.disabled",
+
+                                            }}>· {new Date(summary.evaluatedAt).toLocaleTimeString()}</Typography>}
                                         </Stack>
                                     }
                                 />
@@ -801,35 +687,90 @@ export function AutomationLiveInspector({defaultId = ""}) {
     const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
     const [liveSummaries, setLiveSummaries] = useState({});
-    const [drawerOpen, setDrawerOpen] = useState(true);
+    const [drawerOpen, setDrawerOpen] = useState(!isMobile);
 
     useEffect(() => {
         if (isMobile) setDrawerOpen(false);
     }, [isMobile]);
 
+    // ── Automation selection ──────────────────────────────────────────────────
     const [inputId, setInputId] = useState(defaultId);
     const [automationId, setAutomationId] = useState(defaultId);
     const resolvedIdRef = useRef(defaultId);
 
+    // ── HTTP state ────────────────────────────────────────────────────────────
     const [httpState, setHttpState] = useState(null);
     const [planData, setPlanData] = useState(null);
     const [httpLoading, setHttpLoading] = useState(false);
     const [httpError, setHttpError] = useState(null);
 
+    // ── Live event state ──────────────────────────────────────────────────────
     const [liveEvent, setLiveEvent] = useState(null);
     const prevEventRef = useRef(null);
     const [flash, setFlash] = useState(false);
     const [log, setLog] = useState([]);
-    const [actionLog, setActionLog] = useState([]);   // ← NEW: ActionFiredEvent log
-    const [connStatus, setConnStatus] = useState("disconnected");
+    const [actionLog, setActionLog] = useState([]);
     const [showSkipped, setShowSkipped] = useState(false);
 
+    // ── UI state ──────────────────────────────────────────────────────────────
     const [tab, setTab] = useState(0);
     const [toast, setToast] = useState({open: false, message: "", severity: "success"});
 
-    const stompRef = useRef(null);
-    const perSubRef = useRef(null);
-    const actionSubRef = useRef(null);   // ← NEW: subscription for action events
+    // ── Eval event handler ────────────────────────────────────────────────────
+    const handleEvalEvent = useCallback((event) => {
+        setLiveEvent(prev => {
+            prevEventRef.current = prev;
+            return event;
+        });
+        setFlash(true);
+        setTimeout(() => setFlash(false), 800);
+        setLog(prev => [event, ...prev].slice(0, MAX_LOG));
+    }, []);
+
+    // ── Action event handler ──────────────────────────────────────────────────
+    const handleActionEvent = useCallback((event) => {
+        setActionLog(prev => [event, ...prev].slice(0, MAX_ACTIONS));
+    }, []);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 🔌  WebSocket — all connection logic lives in the hook.
+    //
+    //     onReconnect must NOT close over `subscribe` directly — the hook
+    //     hasn't returned yet when the callback is first constructed, which
+    //     causes "Cannot access 'subscribe' before initialization".
+    //     We use a ref instead: subscribeRef is updated every render so
+    //     onReconnect always calls the real, initialised function.
+    // ─────────────────────────────────────────────────────────────────────────
+    const subscribeRef = useRef(null);
+
+    const {connStatus, subscribe, unsubscribe} = useAutomationWebSocket({
+        getToken: getAccessToken,
+
+        onBroadcast: useCallback((event) => {
+            setLiveSummaries(prev => ({...prev, [event.automationId]: event}));
+        }, []),
+
+        // No `subscribe` in the dep array — we read it via subscribeRef instead.
+        onReconnect: useCallback(() => {
+            const id = resolvedIdRef.current;
+            if (!id || !subscribeRef.current) return;
+            setTimeout(() => {
+                subscribeRef.current(`/topic/automation.${id}`, handleEvalEvent, "eval");
+                subscribeRef.current(`/topic/automation.${id}.actions`, handleActionEvent, "action");
+            }, 0);
+        }, [handleEvalEvent, handleActionEvent]),
+    });
+
+    // Keep ref pointing at the latest subscribe after every render.
+    subscribeRef.current = subscribe;
+
+    // ── Subscribe helper (reused by select + manual fetch) ───────────────────
+    const subscribeToAutomation = useCallback((id) => {
+        unsubscribe("eval");
+        unsubscribe("action");
+        subscribe(`/topic/automation.${id}`, handleEvalEvent, "eval");
+        subscribe(`/topic/automation.${id}.actions`, handleActionEvent, "action");
+    }, [subscribe, unsubscribe, handleEvalEvent, handleActionEvent]);
 
     // ── HTTP fetch ────────────────────────────────────────────────────────────
     const fetchHttp = useCallback(async (id) => {
@@ -855,92 +796,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
         }
     }, []);
 
-    // ── Subscribe to per-automation eval + action topics ──────────────────────
-    const subscribeToAutomation = useCallback((id) => {
-        const client = stompRef.current;
-        if (!client?.connected || !id) return;
-
-        // Drop previous subscriptions
-        try {
-            perSubRef.current?.unsubscribe();
-        } catch (_) {
-        }
-        try {
-            actionSubRef.current?.unsubscribe();
-        } catch (_) {
-        }
-
-        // Eval events
-        perSubRef.current = client.subscribe(`/topic/automation.${id}`, msg => {
-            try {
-                const event = JSON.parse(msg.body);
-                setLiveEvent(prev => {
-                    prevEventRef.current = prev;
-                    return event;
-                });
-                setFlash(true);
-                setTimeout(() => setFlash(false), 800);
-                setLog(prev => [event, ...prev].slice(0, MAX_LOG));
-            } catch (e) {
-                console.warn("Failed to parse live event", e);
-            }
-        });
-
-        // Action fired events
-        actionSubRef.current = client.subscribe(`/topic/automation.${id}.actions`, msg => {
-            try {
-                const event = JSON.parse(msg.body);
-                console.debug("[actions] received:", event);
-                setActionLog(prev => [event, ...prev].slice(0, MAX_ACTIONS));
-            } catch (e) {
-                console.warn("Failed to parse action event", e);
-            }
-        });
-        console.debug("[actions] subscribed to /topic/automation." + id + ".actions");
-    }, []);
-
-    // ── WebSocket lifecycle ───────────────────────────────────────────────────
-    useEffect(() => {
-        const client = new Client({
-            webSocketFactory: () => new SockJS(WS_URL, null, {withCredentials: false}),
-            reconnectDelay: 5000,
-
-            onConnect: () => {
-                setConnStatus("connected");
-
-                // Broadcast feed for the list panel
-                client.subscribe("/topic/automation.all", msg => {
-                    try {
-                        const event = JSON.parse(msg.body);
-                        if (event?.automationId) {
-                            setLiveSummaries(prev => ({...prev, [event.automationId]: event}));
-                        }
-                    } catch (e) {
-                        console.warn("Failed to parse automation.all event", e);
-                    }
-                });
-
-                // Re-subscribe to whichever automation was selected before disconnect.
-                // subscribeToAutomation reads stompRef.current and checks client.connected,
-                // so we must set stompRef first, then call it after a tick to ensure
-                // the STOMP client reports connected = true.
-                if (resolvedIdRef.current) {
-                    setTimeout(() => subscribeToAutomation(resolvedIdRef.current), 0);
-                }
-            },
-
-            onDisconnect: () => setConnStatus("disconnected"),
-            onStompError: () => setConnStatus("disconnected"),
-        });
-
-        client.activate();
-        stompRef.current = client;
-
-        return () => {
-            client.deactivate();
-        };
-    }, [subscribeToAutomation]); // eslint-disable-line react-hooks/exhaustive-deps
-
+    // Re-subscribe when automationId changes (e.g. after fetchHttp sets it)
     useEffect(() => {
         if (automationId) subscribeToAutomation(automationId);
     }, [automationId, subscribeToAutomation]);
@@ -950,6 +806,13 @@ export function AutomationLiveInspector({defaultId = ""}) {
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Handlers ─────────────────────────────────────────────────────────────
+    const resetLiveState = () => {
+        setLiveEvent(null);
+        prevEventRef.current = null;
+        setLog([]);
+        setActionLog([]);
+    };
+
     const handleFetch = () => {
         const id = inputId.trim();
         if (!id) {
@@ -958,10 +821,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
         }
         resolvedIdRef.current = id;
         setAutomationId(id);
-        setLiveEvent(null);
-        prevEventRef.current = null;
-        setLog([]);
-        setActionLog([]);   // ← clear action log on new automation
+        resetLiveState();
         fetchHttp(id);
         subscribeToAutomation(id);
     };
@@ -971,10 +831,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
         setInputId(id);
         resolvedIdRef.current = id;
         setAutomationId(id);
-        setLiveEvent(null);
-        prevEventRef.current = null;
-        setLog([]);
-        setActionLog([]);   // ← clear action log on new automation
+        resetLiveState();
         setTab(0);
         fetchHttp(id);
         subscribeToAutomation(id);
@@ -990,8 +847,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
 
     const filteredLog = useMemo(() =>
             showSkipped ? log : log.filter(e => e.outcome !== "SKIPPED" && e.outcome !== "NOT_MET"),
-        [log, showSkipped]
-    );
+        [log, showSkipped]);
 
     const showToast = (message, success = true) => {
         setToast({open: true, message, severity: success ? "success" : "error"});
@@ -1009,49 +865,31 @@ export function AutomationLiveInspector({defaultId = ""}) {
         },
         {
             label: "Actions fired",
-            icon: (
-                <Badge
-                    badgeContent={failedActionsCount > 0 ? failedActionsCount : actionLog.length}
-                    color={failedActionsCount > 0 ? "error" : "primary"}
-                    max={99}
-                >
-                    <ElectricBoltIcon sx={{fontSize: 15}}/>
-                </Badge>
-            )
+            icon: <Badge badgeContent={failedActionsCount > 0 ? failedActionsCount : actionLog.length}
+                         color={failedActionsCount > 0 ? "error" : "primary"} max={99}><ElectricBoltIcon
+                sx={{fontSize: 15}}/></Badge>
         },
         {label: "Coalition", icon: <GroupsIcon sx={{fontSize: 15}}/>},
         {label: "Override", icon: <TuneIcon sx={{fontSize: 15}}/>},
     ];
 
     const hasData = httpState !== null;
-
     const listPanel = (
-        <AutomationListPanel
-            liveSummaries={liveSummaries}
-            onSelect={handleSelectAutomation}
-            loading={httpLoading}
-        />
+        <AutomationListPanel liveSummaries={liveSummaries} onSelect={handleSelectAutomation} loading={httpLoading}/>
     );
 
     return (
         <Box sx={{display: "flex", height: "100vh", overflow: "hidden"}}>
 
-            {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+            {/* Sidebar */}
             {isMobile ? (
-                <Drawer
-                    open={drawerOpen}
-                    onClose={() => setDrawerOpen(false)}
-                    PaperProps={{sx: {width: DRAWER_WIDTH}}}
-                >
+                <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{sx: {width: DRAWER_WIDTH}}}>
                     {listPanel}
                 </Drawer>
             ) : (
                 <Box sx={{
-                    width: drawerOpen ? DRAWER_WIDTH : 0,
-                    flexShrink: 0,
-                    overflow: "hidden",
-                    borderRight: drawerOpen ? `0.5px solid ${T.border}` : "none",
-                    transition: "width 0.22s ease",
+                    width: drawerOpen ? DRAWER_WIDTH : 0, flexShrink: 0, overflow: "hidden",
+                    borderRight: drawerOpen ? `0.5px solid ${T.border}` : "none", transition: "width 0.22s ease"
                 }}>
                     <Box sx={{width: DRAWER_WIDTH, height: "100%", display: "flex", flexDirection: "column"}}>
                         {listPanel}
@@ -1059,11 +897,9 @@ export function AutomationLiveInspector({defaultId = ""}) {
                 </Box>
             )}
 
-            {/* ── Inspector pane ──────────────────────────────────────────────── */}
+            {/* Inspector pane */}
             <Box sx={{flex: 1, overflowY: "auto"}}>
                 <Box sx={{p: 2}}>
-
-                    {/* Toolbar row */}
                     <Stack direction="row" alignItems="flex-start" spacing={1} sx={{mb: 2}}>
                         <Tooltip title={drawerOpen ? "Hide list" : "Show automation list"}>
                             <IconButton size="small" onClick={() => setDrawerOpen(p => !p)} sx={{mt: "6px"}}>
@@ -1092,9 +928,8 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                               sx={{fontSize: 10}}/>
                                     )}
                                     {httpState?.hasBranches && (
-                                        <Chip icon={<CallSplitIcon sx={{fontSize: 13}}/>}
-                                              label="branches" size="small" color="info" variant="outlined"
-                                              sx={{fontSize: 10}}/>
+                                        <Chip icon={<CallSplitIcon sx={{fontSize: 13}}/>} label="branches" size="small"
+                                              color="info" variant="outlined" sx={{fontSize: 10}}/>
                                     )}
                                     <Tooltip title="Manual refresh from server">
                                         <IconButton size="small" onClick={() => fetchHttp(resolvedIdRef.current)}
@@ -1119,8 +954,10 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                 ].map(({label, value}) => (
                                     <Grid item xs={3} key={label}>
                                         <Paper elevation={0} sx={{
-                                            p: "10px 14px", background: T.surface,
-                                            border: `0.5px solid ${T.border}`, borderRadius: 2,
+                                            p: "10px 14px",
+                                            background: T.surface,
+                                            border: `0.5px solid ${T.border}`,
+                                            borderRadius: 2
                                         }}>
                                             <Typography sx={{
                                                 fontSize: 11,
@@ -1136,44 +973,44 @@ export function AutomationLiveInspector({defaultId = ""}) {
                             {/* Live eval banner */}
                             {liveEvent && (
                                 <Alert
-                                    severity={
-                                        liveEvent.outcome === "TRIGGERED" ? "success"
-                                            : liveEvent.outcome === "C1_NEGATIVE" || liveEvent.outcome === "RESTORED" ? "warning"
-                                                : "info"
-                                    }
+                                    severity={liveEvent.outcome === "TRIGGERED" ? "success" : liveEvent.outcome === "C1_NEGATIVE" || liveEvent.outcome === "RESTORED" ? "warning" : "info"}
                                     icon={<BoltIcon/>}
                                     sx={{
-                                        mb: 1.5, py: "4px", fontSize: 12, fontFamily: T.mono,
+                                        mb: 1.5,
+                                        py: "4px",
+                                        fontSize: 12,
+
                                         "& .MuiAlert-message": {width: "100%"}
                                     }}
                                 >
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                        <Typography sx={{fontSize: 12, fontFamily: T.mono}}>
+                                        <Typography sx={{fontSize: 12,}}>
                                             {OUTCOME_ICON[liveEvent.outcome]} <strong>{liveEvent.outcome}</strong>
                                             {liveEvent.reason ? ` · ${liveEvent.reason}` : ""}
                                             {liveEvent.c1True ? " · c1 ✓" : " · c1 ✗"}
                                         </Typography>
                                         <Stack direction="row" spacing={1} alignItems="center">
-                                            {liveEvent.evalDurationMs != null && (
-                                                <Typography
-                                                    sx={{fontSize: 11, color: "text.secondary", fontFamily: T.mono}}>
-                                                    {liveEvent.evalDurationMs}ms
-                                                </Typography>
-                                            )}
-                                            <Typography
-                                                sx={{fontSize: 11, color: "text.secondary", fontFamily: T.mono}}>
-                                                {fmtDate(liveEvent.evaluatedAt)}
-                                            </Typography>
-                                            <Mono sx={{color: "text.disabled", fontSize: 10}}>
-                                                {liveEvent.traceId?.slice(-8)}
-                                            </Mono>
+                                            {liveEvent.evalDurationMs != null && <Typography sx={{
+                                                fontSize: 11,
+                                                color: "text.secondary",
+
+                                            }}>{liveEvent.evalDurationMs}ms</Typography>}
+                                            <Typography sx={{
+                                                fontSize: 11,
+                                                color: "text.secondary",
+
+                                            }}>{fmtDate(liveEvent.evaluatedAt)}</Typography>
+                                            <Mono sx={{
+                                                color: "text.disabled",
+                                                fontSize: 10
+                                            }}>{liveEvent.traceId?.slice(-8)}</Mono>
                                         </Stack>
                                     </Stack>
                                     {liveEvent.triggerPayload && Object.keys(liveEvent.triggerPayload).length > 0 && (
                                         <Stack direction="row" spacing={0.5} sx={{mt: 0.5}} flexWrap="wrap" useFlexGap>
                                             {Object.entries(liveEvent.triggerPayload).slice(0, 6).map(([k, v]) => (
                                                 <Chip key={k} label={`${k}: ${v}`} size="small" variant="outlined"
-                                                      sx={{fontSize: 10, height: 18, fontFamily: T.mono}}/>
+                                                      sx={{fontSize: 10, height: 18,}}/>
                                             ))}
                                         </Stack>
                                     )}
@@ -1197,29 +1034,20 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                 {tabs.map((t, i) => <Tab key={i} label={t.label} icon={t.icon} iconPosition="start"/>)}
                             </Tabs>
 
-                            {/* Tab: Condition tree */}
-                            {tab === 0 && (
-                                currentNodes.length === 0
+                            {tab === 0 && (currentNodes.length === 0
                                     ? <Typography color="text.disabled" fontSize={13} sx={{py: 4, textAlign: "center"}}>No
                                         condition tree nodes.</Typography>
-                                    : currentNodes.map(n => (
-                                        <NodeCard key={n.nodeId} node={n} flash={flash}
-                                                  prevNode={prevEventRef.current?.conditionNodes?.find(p => p.nodeId === n.nodeId)}/>
-                                    ))
+                                    : currentNodes.map(n => <NodeCard key={n.nodeId} node={n} flash={flash}
+                                                                      prevNode={prevEventRef.current?.conditionNodes?.find(p => p.nodeId === n.nodeId)}/>)
                             )}
 
-                            {/* Tab: Branches */}
-                            {tab === 1 && (
-                                currentBranches.length === 0
+                            {tab === 1 && (currentBranches.length === 0
                                     ? <Typography color="text.disabled" fontSize={13} sx={{py: 4, textAlign: "center"}}>No
                                         branches compiled.</Typography>
-                                    : currentBranches.map(b => (
-                                        <BranchCard key={b.gateNodeId} branch={b} flash={flash}
-                                                    prevBranch={prevEventRef.current?.branchStates?.find(p => p.gateNodeId === b.gateNodeId)}/>
-                                    ))
+                                    : currentBranches.map(b => <BranchCard key={b.gateNodeId} branch={b} flash={flash}
+                                                                           prevBranch={prevEventRef.current?.branchStates?.find(p => p.gateNodeId === b.gateNodeId)}/>)
                             )}
 
-                            {/* Tab: Live log */}
                             {tab === 2 && (
                                 <Box>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center"
@@ -1230,9 +1058,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                             label={<Typography sx={{fontSize: 12}}>Show SKIPPED / NOT_MET</Typography>}
                                         />
                                         <Button size="small" onClick={() => setLog([])}
-                                                sx={{fontSize: 11, color: "text.secondary"}}>
-                                            Clear
-                                        </Button>
+                                                sx={{fontSize: 11, color: "text.secondary"}}>Clear</Button>
                                     </Stack>
                                     {filteredLog.length === 0
                                         ? <Typography color="text.disabled" fontSize={13}
@@ -1244,21 +1070,12 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                 </Box>
                             )}
 
-                            {/* Tab: Actions fired  ← NEW */}
-                            {tab === 3 && (
-                                <ActionsTab
-                                    actionLog={actionLog}
-                                    onClear={() => setActionLog([])}
-                                    connStatus={connStatus}
-                                />
-                            )}
+                            {tab === 3 && <ActionsTab actionLog={actionLog} onClear={() => setActionLog([])}
+                                                      connStatus={connStatus}/>}
 
-                            {/* Tab: Coalition */}
-                            {tab === 4 && (
-                                !httpState?.coalition
-                                    ? <Typography color="text.disabled" fontSize={13} sx={{py: 4, textAlign: "center"}}>
-                                        No coalition — single-trigger mode.
-                                    </Typography>
+                            {tab === 4 && (!httpState?.coalition
+                                    ? <Typography color="text.disabled" fontSize={13} sx={{py: 4, textAlign: "center"}}>No
+                                        coalition — single-trigger mode.</Typography>
                                     : (
                                         <Card elevation={0} sx={{
                                             border: "0.5px solid",
@@ -1274,9 +1091,10 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                                             fontWeight: 500,
                                                             mb: 0.25
                                                         }}>coalition</Typography>
-                                                        <Typography sx={{fontSize: 12, color: "text.secondary"}}>
-                                                            window: {httpState.coalition.windowSeconds}s
-                                                        </Typography>
+                                                        <Typography sx={{
+                                                            fontSize: 12,
+                                                            color: "text.secondary"
+                                                        }}>window: {httpState.coalition.windowSeconds}s</Typography>
                                                     </Box>
                                                     <Chip label={httpState.coalition.mode} size="small" color="info"
                                                           sx={{fontSize: 11}}/>
@@ -1291,19 +1109,21 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                                         const inWindow = lastFired > 0 && agoS < httpState.coalition.windowSeconds;
                                                         return (
                                                             <Box key={i} sx={{
-                                                                p: "8px 10px", borderRadius: 1.5,
+                                                                p: "8px 10px",
+                                                                borderRadius: 1.5,
                                                                 background: "rgba(255,255,255,0.03)",
-                                                                border: `0.5px solid ${T.border}`,
+                                                                border: `0.5px solid ${T.border}`
                                                             }}>
                                                                 <Stack direction="row" justifyContent="space-between"
                                                                        alignItems="center">
                                                                     <Box>
                                                                         <Mono
                                                                             sx={{color: "text.primary"}}>{m.deviceId}</Mono>
-                                                                        <Typography
-                                                                            sx={{fontSize: 11, color: "text.secondary"}}>
-                                                                            {m.role}
-                                                                            {httpState.coalition.mode === "SEQUENCE" ? ` · seq#${m.sequenceIndex}` : ""}
+                                                                        <Typography sx={{
+                                                                            fontSize: 11,
+                                                                            color: "text.secondary"
+                                                                        }}>
+                                                                            {m.role}{httpState.coalition.mode === "SEQUENCE" ? ` · seq#${m.sequenceIndex}` : ""}
                                                                         </Typography>
                                                                     </Box>
                                                                     <Chip
@@ -1321,34 +1141,25 @@ export function AutomationLiveInspector({defaultId = ""}) {
                                     )
                             )}
 
-                            {/* Tab: Override */}
-                            {tab === 5 && (
-                                <OverrideTab
-                                    automationId={automationId}
-                                    hasCoalition={httpState?.hasCoalition}
-                                    onSuccess={showToast}
-                                />
-                            )}
+                            {tab === 5 &&
+                                <OverrideTab automationId={automationId} hasCoalition={httpState?.hasCoalition}
+                                             onSuccess={showToast}/>}
                         </>
                     )}
 
                     {!hasData && !httpLoading && !httpError && (
                         <Box sx={{py: 6, textAlign: "center"}}>
                             <AccountTreeIcon sx={{fontSize: 40, color: "text.disabled", mb: 1}}/>
-                            <Typography color="text.disabled" fontSize={13}>
-                                Select an automation from the list, or enter an ID above.
-                            </Typography>
+                            <Typography color="text.disabled" fontSize={13}>Select an automation from the list, or enter
+                                an ID above.</Typography>
                         </Box>
                     )}
                 </Box>
             </Box>
 
-            <Snackbar open={toast.open} autoHideDuration={2500}
-                      onClose={() => setToast(p => ({...p, open: false}))}
+            <Snackbar open={toast.open} autoHideDuration={2500} onClose={() => setToast(p => ({...p, open: false}))}
                       anchorOrigin={{vertical: "bottom", horizontal: "right"}}>
-                <Alert severity={toast.severity} variant="filled" sx={{fontSize: 12}}>
-                    {toast.message}
-                </Alert>
+                <Alert severity={toast.severity} variant="filled" sx={{fontSize: 12}}>{toast.message}</Alert>
             </Snackbar>
         </Box>
     );
