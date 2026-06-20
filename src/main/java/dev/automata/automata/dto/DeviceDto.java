@@ -17,4 +17,6 @@ public class DeviceDto {
     private String accessUrl;
     private String macAddr;
     private String deviceSecret;
+    private String homeId;
+    private String category;
 }
