@@ -904,3 +904,62 @@ export const spotifySetVolume = async (percent) => {
     });
     return response.data;
 };
+
+export const getHomes = async () => {
+    const response = await api.get("homes/mine", {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+    return response.data;
+};
+
+export const getOrphanDevices = async () => {
+    const {data} = await api.get('devices/orphan');
+    return data;
+};
+
+export const claimDevice = async (deviceId, homeId) => {
+    const {data} = await api.post(`devices/${deviceId}/claim`, {homeId});
+    return data;
+};
+
+export const getMyHomes = async () => {
+    const {data} = await api.get(`homes/mine`);
+    return data;
+};
+
+export const createHome = async (homeData) => {
+    const {data} = await api.post('homes/create', homeData);
+    return data;
+};
+
+export const joinHome = async (token) => {
+    const {data} = await api.post('invites/accept', null, {params: {token}});
+    return data;
+};
+
+export const getHomeMembers = async (homeId) => {
+    const {data} = await api.get(`homes/${homeId}/members`);
+    return data;
+};
+
+export const changeMemberRole = async (homeId, userId, role) => {
+    const {data} = await api.patch(`homes/${homeId}/members/${userId}`, {role});
+    return data;
+};
+
+export const revokeAccess = async (homeId, userId) => {
+    const {data} = await api.delete(`homes/${homeId}/members/${userId}`);
+    return data;
+};
+
+export const createInvite = async (inviteData) => {
+    const {data} = await api.post('invites', inviteData);
+    return data;
+};
+
+export const deleteHome = async (homeId) => {
+    const {data} = await api.delete(`homes/${homeId}`);
+    return data;
+};

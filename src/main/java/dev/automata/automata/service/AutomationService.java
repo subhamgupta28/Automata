@@ -1,8 +1,6 @@
 package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.automata.automata.automation.AutomationAbTestService;
-import dev.automata.automata.automation.AutomationValidationService;
 import dev.automata.automata.automation.AutomationVersionService;
 import dev.automata.automata.automation.ScheduledAutomationManager;
 import dev.automata.automata.dto.AutomationRuntimeState;
@@ -55,8 +53,6 @@ public class AutomationService {
     private final AutomationRepository automationRepository;
     private final AutomationDetailRepository automationDetailRepository;
     private final AutomationVersionService automationVersionService;
-    private final AutomationValidationService validationService;
-    private final AutomationAbTestService abTestService;
     private final ExecutionPlanCompiler planCompiler;
     private final ExecutionPlanRepository planRepository;
     private final AutomationOrchestrator orchestrator;
@@ -416,28 +412,6 @@ public class AutomationService {
     // SAVE AUTOMATION
     // ═════════════════════════════════════════════════════════════════════
 
-    public String saveAutomationDetailWithValidation(AutomationDetail detail) {
-        List<String> errors = validationService.validate(detail);
-        if (!errors.isEmpty()) {
-            notificationService.sendNotification(
-                    "Validation failed: " + String.join(", ", errors), "error");
-            return "validation_failed: " + String.join("; ", errors);
-        }
-        return saveAutomationDetailInternal(detail);
-    }
-
-    public String saveAutomationDetail(AutomationDetail detail) {
-        return saveAutomationDetailInternal(detail);
-    }
-
-    public String saveAutomationDetailAnnotated(AutomationDetail detail,
-                                                String savedBy, String changeNote) {
-        String result = saveAutomationDetailInternal(detail);
-        if ("success".equals(result))
-            automationRepository.findById(detail.getId()).ifPresent(a ->
-                    automationVersionService.snapshot(a, detail, savedBy, changeNote));
-        return result;
-    }
 
     private String saveAutomationDetailInternal(AutomationDetail detail) {
         log.info("Saving automation: {}", detail.getId());

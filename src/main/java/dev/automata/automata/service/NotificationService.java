@@ -103,4 +103,8 @@ public class NotificationService {
             System.err.println("Failed to call shutdown API: " + e.getMessage());
         }
     }
+
+    public void sendNotification(String newDeviceSet, String success, String homeId) {
+
+    }
 }
