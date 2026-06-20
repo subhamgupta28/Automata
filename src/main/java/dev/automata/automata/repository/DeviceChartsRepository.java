@@ -13,4 +13,10 @@ public interface DeviceChartsRepository extends MongoRepository<DeviceCharts, St
     List<DeviceCharts> findByShowChartTrue();
 
     List<DeviceCharts> findByDeviceId(String deviceId);
+
+    List<DeviceCharts> findAllByHomeId(String homeId);
+
+    List<DeviceCharts> findByShowChartTrueAndHomeIdAndDeviceIdIn(String homeId, List<String> deviceIds);
+
+    List<DeviceCharts> findByShowChartTrueAndDeviceIdIn(List<String> deviceIds);
 }

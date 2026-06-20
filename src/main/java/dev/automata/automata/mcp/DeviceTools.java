@@ -1,6 +1,7 @@
 package dev.automata.automata.mcp;
 
 import dev.automata.automata.model.Device;
+import dev.automata.automata.model.Users;
 import dev.automata.automata.service.AutomationService;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +41,7 @@ public class DeviceTools {
             @ToolParam(description = "The unique device ID") String deviceId
     ) {
         log.info("DeviceTools: getDeviceData deviceId [{}]", deviceId);
-        return mainService.getLastData(deviceId);
+        return mainService.getLastData(deviceId, "", new Users());
     }
 
     /**

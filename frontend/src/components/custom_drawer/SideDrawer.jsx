@@ -37,13 +37,14 @@ import OptionsMenu from "./OptionsMenu.jsx";
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import isEmpty from "../../utils/Helper.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
-import {Dashboard, GridView, Replay, TrendingUp} from "@mui/icons-material";
+import {Dashboard, GridView, TrendingUp} from "@mui/icons-material";
 import AppIcon from "../../../public/icon-color.png"
 import AutomationLiveInspector from "../automation/AutomationInspector.jsx";
 import {ConfigurationView} from "../dashboard/ConfigurationView.jsx";
 import Recordings from "../integrations/AutomataRecordings.jsx";
-import {Map} from "lucide-react";
+import {Bot, Disc3Icon, Map, StoreIcon} from "lucide-react";
 import {MapDevices} from "../device_types/MapDevices.jsx";
+import HomeManagement from "../home/HomeManagement.jsx"; // Import the new component
 
 // Lazy-load heavy route components
 const DeviceNodes = lazy(() => import("../home/DeviceNodes.jsx"));
@@ -136,6 +137,7 @@ const breadcrumbNameMap = {
     '/recording': 'Recording',
     '/configure': 'Configure',
     '/admin/login-analytics': 'Admin Panel',
+    '/home-management': 'Home Management',
 };
 
 function LinkRouter(props) {
@@ -299,7 +301,7 @@ export default function SideDrawer() {
             label: 'Automation',
             headerItem: {name: 'Automations', icon: <AutoAwesomeIcon/>},
             children: [
-                {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
+                {name: 'Automations', url: '/actions', icon: <Bot/>},
                 {name: 'Live Inspector', url: '/automation-analytics', icon: <TrendingUp/>},
             ]
         },
@@ -318,12 +320,13 @@ export default function SideDrawer() {
                 {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
                 {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
                 {name: 'Map', url: '/map', icon: <Map/>},
-                {name: 'Recording', url: '/recording', icon: <Replay/>},
+                {name: 'Recording', url: '/recording', icon: <Disc3Icon/>},
             ]
         },
         {
             label: 'System',
             children: [
+                {name: 'Home Management', url: '/home-management', icon: <StoreIcon/>},
                 {name: 'Configure', url: '/configure', icon: <SettingsIcon/>},
                 ...(user?.role?.toUpperCase() === 'ADMIN' ? [{
                     name: 'Admin Panel',
@@ -456,6 +459,9 @@ export default function SideDrawer() {
                                     <Route path="map" element={<PrivateRoute path="/map" element={<MapDevices/>}/>}/>
                                     <Route path="configure"
                                            element={<PrivateRoute path="/configure" element={<ConfigurationView/>}/>}/>
+                                    <Route path="home-management"
+                                           element={<PrivateRoute path="/home-management"
+                                                                  element={<HomeManagement/>}/>}/>
                                     <Route path="admin/login-analytics"
                                            element={<PrivateRoute path="/admin/login-analytics"
                                                                   element={<AdminLoginDashboard/>}

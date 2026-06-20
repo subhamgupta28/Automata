@@ -38,6 +38,7 @@ public class MainService {
     private final MongoTemplate mongoTemplate;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final HomeAuthzService authzService;
     /*
      * Device: name = battery
      *         type = sensor
@@ -64,7 +65,7 @@ public class MainService {
         return attributeTypeRepository.save(attributeType);
     }
 
-
+    // Device path -- open
     public DeviceDto registerDevice(RegisterDevice registerDevice) {
         DeviceMapper deviceMapper = new DeviceMapper();
         var timestamp = System.currentTimeMillis();
@@ -164,7 +165,7 @@ public class MainService {
         attributeRepository.saveAll(attributes);
     }
 
-
+    // Device path -- open
     public String saveData(String deviceId, Map<String, Object> payload) {
 //        TimeZone.setDefault(TimeZone.getTimeZone("GMT+5:30"));
         ZoneId userZone = ZoneId.of("Asia/Kolkata");
@@ -259,10 +260,11 @@ public class MainService {
         System.out.println("Background task completed!");
     }
 
-    public List<Device> getAllDevice() {
-        var devices = deviceRepository.findAll();
+    public List<Device> getAllDeviceUi(String homeId, Users user) {
+        authzService.requireAccess(homeId, user.getId());
+        var devices = deviceRepository.findAllByHomeId(homeId);
         var chartAttr = dashboardChartsRepository.findAll();
-        var dashboardDevice = deviceDashboardRepository.findAll();
+        var dashboardDevice = deviceDashboardRepository.findAllByHomeId(homeId);
         var dashboardMap = dashboardDevice.stream().collect(Collectors.toMap(Dashboard::getDeviceId, Function.identity()));
 
         var deviceList = new ArrayList<Device>();
@@ -281,6 +283,10 @@ public class MainService {
         return deviceList;
     }
 
+    public List<Device> getAllDevice() {
+        return deviceRepository.findAll();
+    }
+
     private void getDeviceAttributes(List<DeviceCharts> chartAttr, ArrayList<Device> deviceList, Device device) {
         var newAttrs = new ArrayList<Attribute>();
         var attributes = device.getAttributes();
@@ -295,14 +301,15 @@ public class MainService {
         deviceList.add(device);
     }
 
-    public List<Device> getDashboardDevices() {
-        var dashboardDevice = deviceDashboardRepository.findByShowInDashboardTrue();
-        var devices = deviceRepository.findByIdIn(dashboardDevice.stream().map(Dashboard::getDeviceId).toList());
+    public List<Device> getDashboardDevices(String homeId, Users user) {
+        var dashboardDevice = deviceDashboardRepository.findByShowInDashboardTrueAndHomeId(homeId);
+        var deviceIds = dashboardDevice.stream().map(Dashboard::getDeviceId).toList();
+        var devices = deviceRepository.findByIdIn(deviceIds);
 
         var dashboardMap = dashboardDevice.stream().collect(Collectors.toMap(Dashboard::getDeviceId, Function.identity()));
 
         var deviceList = new ArrayList<Device>();
-        var chartAttr = dashboardChartsRepository.findByShowChartTrue();
+        var chartAttr = dashboardChartsRepository.findByShowChartTrueAndDeviceIdIn(deviceIds);
 
         devices.forEach(device -> {
             var dashboard = dashboardMap.get(device.getId());
@@ -340,7 +347,8 @@ public class MainService {
         return map;
     }
 
-    public Map<String, Object> getLastData(String deviceId) {
+    public Map<String, Object> getLastData(String deviceId, String homeId, Users user) {
+        authzService.requireAccess(homeId, user.getId());
         var data = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId).orElse(new Data());
         return data.getData();
     }
@@ -349,8 +357,8 @@ public class MainService {
         return dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(deviceId).orElse(new Data());
     }
 
-    public String updateDevicePosition(String deviceId, String x, String y) {
-        var device = deviceDashboardRepository.findByDeviceId(deviceId).orElse(null);
+    public String updateDevicePosition(String deviceId, String x, String y, String homeId, Users user) {
+        var device = deviceDashboardRepository.findByDeviceIdAndHomeId(deviceId, homeId).orElse(null);
         if (device == null) {
             System.err.println("Device not found");
             device = new Dashboard();
@@ -365,7 +373,7 @@ public class MainService {
         return "success";
     }
 
-    public String updateAttrCharts(String deviceId, String attribute, String isVisible) {
+    public String updateAttrCharts(String deviceId, String attribute, String isVisible, String homeId, Users user) {
         var isShow = Boolean.parseBoolean(isVisible);
         var attr = attributeRepository.findByKeyAndDeviceId(attribute, deviceId);
         System.err.println(attr);
@@ -393,13 +401,13 @@ public class MainService {
         return "success";
     }
 
-    public String showInDashboard(String deviceId, String isVisible) {
+    public String showInDashboard(String deviceId, String isVisible, String homeId, Users user) {
         var isShow = Boolean.parseBoolean(isVisible);
-        var device = deviceDashboardRepository.findByDeviceId(deviceId).orElse(null);
+        var device = deviceDashboardRepository.findByDeviceIdAndHomeId(deviceId, homeId).orElse(null);
         if (device != null) {
             device.setShowInDashboard(isShow);
             deviceDashboardRepository.save(device);
-            notificationService.sendNotification("Device is " + (isShow ? " visible " : " not visible ") + "in dashboard", "success");
+            notificationService.sendNotification("Device is " + (isShow ? " visible " : " not visible ") + "in dashboard", "success", homeId);
         } else {
             var dashboard = Dashboard.builder()
                     .showInDashboard(isShow)
@@ -409,7 +417,7 @@ public class MainService {
                     .showCharts(false)
                     .build();
             deviceDashboardRepository.save(dashboard);
-            notificationService.sendNotification("New device set", "success");
+            notificationService.sendNotification("New device set", "success", homeId);
         }
         return "success";
 

@@ -1,7 +1,9 @@
 package dev.automata.automata.controller;
 
 
-import dev.automata.automata.automation.*;
+import dev.automata.automata.automation.AutomationAnalytics;
+import dev.automata.automata.automation.AutomationAnalyticsService;
+import dev.automata.automata.automation.MultiTimezoneAutomationService;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationDetail;
 import dev.automata.automata.security.AuthenticationService;
@@ -31,8 +33,6 @@ public class AutomationController {
     private final AutomationService automationService;
     private final SimpMessagingTemplate messagingTemplate;
     private final MultiTimezoneAutomationService timezoneService;
-    private final AutomationValidationService validationService;
-    private final AutomationSimulationService simulationService;
     private final AutomationAnalyticsService analyticsService;
     private final AutomationUtils automationUtils;
     private final AuthenticationService authenticationService;
@@ -138,10 +138,6 @@ public class AutomationController {
         return automationService.ackAction(deviceId, payload);
     }
 
-    @PostMapping("/saveAutomationDetail")
-    public ResponseEntity<String> saveAutomationDetail(@RequestBody AutomationDetail automation) {
-        return ResponseEntity.ok(automationService.saveAutomationDetail(automation));
-    }
 
     @GetMapping("/getAutomationDetail/{id}")
     public ResponseEntity<AutomationDetail> getAutomationDetail(@PathVariable("id") String id) {
@@ -166,45 +162,6 @@ public class AutomationController {
     // HIGH PRIORITY ENDPOINTS
 
     /**
-     * Save automation with validation (HIGH PRIORITY 5)
-     */
-    @PostMapping("/save-validated")
-    public ResponseEntity<?> saveAutomationWithValidation(@RequestBody AutomationDetail detail) {
-        log.info("Saving automation with validation: {}", detail.getId());
-
-        List<String> errors = validationService.validate(detail);
-
-        if (!errors.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "errors", errors
-            ));
-        }
-
-        String result = automationService.saveAutomationDetailWithValidation(detail);
-
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "result", result
-        ));
-    }
-
-    /**
-     * Validate automation without saving
-     */
-    @PostMapping("/validate")
-    public ResponseEntity<?> validateAutomation(@RequestBody AutomationDetail detail) {
-        log.info("Validating automation: {}", detail.getId());
-
-        List<String> errors = validationService.validate(detail);
-
-        return ResponseEntity.ok(Map.of(
-                "valid", errors.isEmpty(),
-                "errors", errors
-        ));
-    }
-
-    /**
      * Check distributed lock status (debugging)
      */
     @GetMapping("/locks/{automationId}")
@@ -216,45 +173,6 @@ public class AutomationController {
     }
 
     // LOW PRIORITY ENDPOINTS
-
-    /**
-     * Dry-run simulation (LOW PRIORITY)
-     */
-    @PostMapping("/{automationId}/simulate")
-    public ResponseEntity<AutomationSimulationResult> simulateAutomation(
-            @PathVariable String automationId,
-            @RequestBody(required = false) Map<String, Object> testPayload) {
-
-        log.info("Simulating automation: {}", automationId);
-
-        AutomationSimulationResult result;
-        if (testPayload == null || testPayload.isEmpty()) {
-            result = simulationService.simulateWithCurrentState(automationId);
-        } else {
-            result = simulationService.simulateAutomation(automationId, testPayload);
-        }
-
-        return ResponseEntity.ok(result);
-    }
-
-    /**
-     * Batch simulation - test multiple payloads
-     */
-    @PostMapping("/{automationId}/simulate-batch")
-    public ResponseEntity<List<AutomationSimulationResult>> batchSimulate(
-            @PathVariable String automationId,
-            @RequestBody List<Map<String, Object>> testPayloads) {
-
-        log.info("Batch simulating automation: {} with {} payloads",
-                automationId, testPayloads.size());
-
-        List<AutomationSimulationResult> results = simulationService.batchSimulate(
-                automationId,
-                testPayloads
-        );
-
-        return ResponseEntity.ok(results);
-    }
 
     /**
      * Get analytics for specific automation (LOW PRIORITY)
