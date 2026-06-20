@@ -6,6 +6,7 @@ import dev.automata.automata.modules.SystemMetrics;
 import dev.automata.automata.repository.*;
 import dev.automata.automata.security.JwtService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class MainService {
 
@@ -39,6 +41,7 @@ public class MainService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final HomeAuthzService authzService;
+    private final DeviceMapper deviceMapper;
     /*
      * Device: name = battery
      *         type = sensor
@@ -67,98 +70,184 @@ public class MainService {
 
     // Device path -- open
     public DeviceDto registerDevice(RegisterDevice registerDevice) {
-        DeviceMapper deviceMapper = new DeviceMapper();
-        var timestamp = System.currentTimeMillis();
+        log.info("Registering device: {}", registerDevice);
 
-        System.err.println(registerDevice);
+        Device device = buildDevice(registerDevice);
 
-        var device = Device.builder()
-                .name(registerDevice.getName())
-                .updateInterval(registerDevice.getUpdateInterval())
-                .sleep(registerDevice.getSleep())
-                .host(registerDevice.getHost())
-                .type(registerDevice.getType())
-                .category(registerDevice.getCategory())
-                .macAddr(registerDevice.getMacAddr())
-                .accessUrl(registerDevice.getAccessUrl())
-                .reboot(registerDevice.getReboot())
-                .attributes(registerDevice.getAttributes())
-//                .lastOnline(ZonedDateTime.now())
-                .lastRegistered(new Date())
-                .status(registerDevice.getStatus()).build();
+        return deviceRepository.findByMacAddr(registerDevice.getMacAddr())
+                .stream()
+                .findFirst()
+                .map(existing -> reRegisterDevice(device, existing, registerDevice))
+                .orElseGet(() -> registerNewDevice(device, registerDevice));
+    }
 
-        var timestampAttr = Attribute.builder()
-                .units("time")
-                .deviceId(device.getId())
-                .visible(true)
-                .type("DATA|AUX")
-                .key("last_seen")
-                .displayName("Last Seen")
-                .build();
+    // ── Re-registration (MAC already known) ──────────────────────────────────
 
+    private DeviceDto reRegisterDevice(Device incoming, Device existing,
+                                       RegisterDevice registerDevice) {
+        incoming.setId(existing.getId());
+        incoming.setHomeId(existing.getHomeId());
+        incoming.setStatus(existing.getStatus());
+        incoming.setCreatedBy(existing.getCreatedBy());
+
+        // Merge — preserves attribute IDs and user overrides
+        List<Attribute> merged = mergeAttributes(
+                existing.getId(), registerDevice.getAttributes());
+        incoming.setAttributes(merged);
+
+        Device savedDevice = deviceRepository.save(incoming);
+        log.info("Re-registered device {} | attributes: existing={}, incoming={}, merged={}",
+                savedDevice.getId(),
+                existing.getAttributes().size(),
+                registerDevice.getAttributes().size(),
+                merged.size());
+
+        notificationService.sendNotification(
+                "Device: " + incoming.getName() + " is back online", "low");
+
+        return deviceMapper.apply(savedDevice);
+    }
+
+    // ── First-time registration ───────────────────────────────────────────────
+    private DeviceDto registerNewDevice(Device device, RegisterDevice registerDevice) {
+        Device savedDevice = deviceRepository.save(device);
+
+        // Init — fresh insert, no existing attrs to merge
+        List<Attribute> attributes = initAttributes(
+                savedDevice.getId(), registerDevice.getAttributes());
+
+        ensureDashboardExists(savedDevice.getId());
+
+        savedDevice.setAttributes(attributes);
+        deviceRepository.save(savedDevice);
+
+        notificationService.sendNotification(
+                "New device registered: " + device.getName(), "low");
+
+        return deviceMapper.apply(savedDevice);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private Device buildDevice(RegisterDevice req) {
         String rawSecret = UUID.randomUUID().toString();
-        String encodedSecret = passwordEncoder.encode(rawSecret);
 
-        device.setDeviceSecretHash(encodedSecret);
-//        var isAlreadyRegistered = deviceRepository.findById(registerDevice.getDeviceId()).orElse(null);
-        var attributes = new ArrayList<Attribute>();
-        attributes.add(timestampAttr);
-        var isMacAddrPresent = deviceRepository.findByMacAddr(registerDevice.getMacAddr());
+        return Device.builder()
+                .name(req.getName())
+                .updateInterval(req.getUpdateInterval())
+                .sleep(req.getSleep())
+                .host(req.getHost())
+                .type(req.getType())
+                .category(req.getCategory())
+                .macAddr(req.getMacAddr())
+                .accessUrl(req.getAccessUrl())
+                .reboot(req.getReboot())
+                .attributes(req.getAttributes())
+                .lastRegistered(new Date())
+                .status(req.getStatus())
+                .status(Status.UNCLAIMED)   // always start unclaimed
+                .homeId(null)               // no home until a user claims it
+                .deviceSecretHash(passwordEncoder.encode(rawSecret))
+                .build();
+    }
 
-        if (!isMacAddrPresent.isEmpty()) {
-            var dev = isMacAddrPresent.getFirst();
-            device.setId(dev.getId());
-            var attr = attributeRepository.findByDeviceId(dev.getId());
-            if (!attr.isEmpty()) {
-//                System.err.print("Attributes: ");
-//                System.err.println(attr);
-                attributeRepository.deleteByDeviceId(dev.getId());
+    /**
+     * Merges incoming attributes from the device with what's stored.
+     * - Keys that exist → update metadata (displayName, units, type, visible)
+     * but preserve any user-set overrides you want to protect (e.g. displayName)
+     * - New keys → insert
+     * - Keys no longer reported → delete
+     * - System attribute (last_seen) is always ensured
+     */
+    public List<Attribute> mergeAttributes(String deviceId, List<Attribute> incoming) {
+        Map<String, Attribute> existing = attributeRepository
+                .findByDeviceId(deviceId)
+                .stream()
+                .collect(Collectors.toMap(Attribute::getKey, a -> a));
+
+        Map<String, Attribute> incomingMap = incoming.stream()
+                .collect(Collectors.toMap(Attribute::getKey, a -> a));
+
+        List<Attribute> toSave = new ArrayList<>();
+        Set<String> toDelete = new HashSet<>();
+
+        // Update or insert
+        incomingMap.forEach((key, incomingAttr) -> {
+            incomingAttr.setDeviceId(deviceId);
+
+            if (existing.containsKey(key)) {
+                Attribute existingAttr = existing.get(key);
+                // Update only hardware-reported metadata, preserve the DB id
+                existingAttr.setUnits(incomingAttr.getUnits());
+                existingAttr.setType(incomingAttr.getType());
+                existingAttr.setVisible(incomingAttr.getVisible());
+                // Only overwrite displayName if device explicitly changed it
+                if (incomingAttr.getDisplayName() != null) {
+                    existingAttr.setDisplayName(incomingAttr.getDisplayName());
+                }
+                toSave.add(existingAttr);
+            } else {
+                log.info("New attribute '{}' added for device {}", key, deviceId);
+                toSave.add(incomingAttr);
             }
+        });
 
-            registerDevice.getAttributes().forEach(a -> {
-                a.setDeviceId(device.getId());
-                attributes.add(a);
-            });
-            var atr = attributeRepository.saveAll(attributes);
-            device.setAttributes(atr);
-            dev = deviceRepository.save(device);
-            System.err.println("Already registered device: " + deviceMapper.apply(device));
-            notificationService.sendNotification("Device: " + device.getName() + "  is back online", "low");
-            return deviceMapper.apply(device);
-        } else {
-            notificationService.sendNotification("New device registered: " + device.getName(), "low");
+        // Remove keys no longer reported (skip last_seen — it's system-managed)
+        existing.forEach((key, attr) -> {
+            if (!incomingMap.containsKey(key) && !key.equals("last_seen")) {
+                log.info("Attribute '{}' removed for device {}", key, deviceId);
+                toDelete.add(attr.getId());
+            }
+        });
+
+        if (!toDelete.isEmpty()) {
+            attributeRepository.deleteAllById(toDelete);
         }
 
+        // Always ensure last_seen exists
+        if (!existing.containsKey("last_seen")) {
+            toSave.add(buildLastSeen(deviceId));
+        }
 
-        var savedDevice = deviceRepository.save(device);
+        return attributeRepository.saveAll(toSave);
+    }
 
-        var dashboard = deviceDashboardRepository.findByDeviceId(device.getId());
-        if (dashboard.isEmpty()) {
-            System.err.println("Device is in dashboard" + device.getId());
-            var dash = Dashboard.builder()
-                    .deviceId(device.getId())
+    public List<Attribute> initAttributes(String deviceId, List<Attribute> incoming) {
+        List<Attribute> attributes = new ArrayList<>();
+        attributes.add(buildLastSeen(deviceId));
+
+        incoming.forEach(a -> {
+            a.setDeviceId(deviceId);
+            attributes.add(a);
+        });
+
+        return attributeRepository.saveAll(attributes);
+    }
+
+    private Attribute buildLastSeen(String deviceId) {
+        return Attribute.builder()
+                .deviceId(deviceId)
+                .key("last_seen")
+                .displayName("Last Seen")
+                .units("time")
+                .type("DATA|AUX")
+                .visible(true)
+                .build();
+    }
+
+
+    private void ensureDashboardExists(String deviceId) {
+        if (deviceDashboardRepository.findByDeviceId(deviceId).isEmpty()) {
+            Dashboard dash = Dashboard.builder()
+                    .deviceId(deviceId)
                     .analytics(false)
-                    .x(50)
-                    .y(50)
+                    .x(50).y(50)
                     .showCharts(false)
                     .showInDashboard(true)
                     .build();
-
             deviceDashboardRepository.save(dash);
-        } else
-            System.err.println("Device is not in dashboard" + device.getId());
-
-
-        registerDevice.getAttributes().forEach(a -> {
-            a.setDeviceId(savedDevice.getId());
-            attributes.add(a);
-        });
-        attributeRepository.saveAll(attributes);
-        device.setAttributes(attributes);
-
-        deviceRepository.save(device);
-
-        return deviceMapper.apply(device);
+            log.debug("Created dashboard for device {}", deviceId);
+        }
     }
 
     public void saveAttributes(List<Attribute> attributes) {
