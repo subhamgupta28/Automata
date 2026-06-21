@@ -413,7 +413,7 @@ public class AutomationService {
     // ═════════════════════════════════════════════════════════════════════
 
 
-    private String saveAutomationDetailInternal(AutomationDetail detail) {
+    public String saveAutomationDetailInternal(AutomationDetail detail) {
         log.info("Saving automation: {}", detail.getId());
 
         var automationBuilder = Automation.builder()

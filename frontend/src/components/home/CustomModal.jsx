@@ -65,7 +65,7 @@ export const CustomModal = ({isOpen, onClose, devices, messages, map, version = 
                         <Tabs value={value}
                               onChange={handleChange}
                               aria-label="devices">
-                            {devices.map((device) => (
+                            {devices?.map((device) => (
                                 <Tab label={device.name}/>
                             ))}
                         </Tabs>
@@ -75,7 +75,7 @@ export const CustomModal = ({isOpen, onClose, devices, messages, map, version = 
             <DialogContent style={{overflow: 'auto',}}>
 
 
-                {devices.map((device, i) => (
+                {devices?.map((device, i) => (
                     <CustomTabPanel value={value} index={i}>
                         <ModelContent
                             device={device} onClose={onClose} messages={messages}
@@ -241,7 +241,7 @@ const ModelContent = ({device, onClose, messages, map, version, handleAction}) =
                             marginTop: '10px'
                         }}>
 
-                            {device.attributes.map(attribute => (
+                            {device?.attributes.map(attribute => (
                                 (attribute.type !== "DATA|MAIN" && attribute.type !== "DATA|INFO") ? (
                                     <Card key={attribute.id} elevation={0} style={{
                                         borderRadius: '8px',

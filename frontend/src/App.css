@@ -2,7 +2,7 @@
     --start: 0;
     position: relative;
     border-radius: 12px;
-    --glow-color: rgb(255 216 33);
+    --glow-color: rgb(250 228 126);
 
     --gradient: conic-gradient(
             from 90deg at 50% 50%,
