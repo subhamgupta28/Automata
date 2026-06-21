@@ -4,10 +4,10 @@ export const darkTheme = createTheme({
     palette: {
         mode: 'dark',
         primary: {
-            main: '#ffd821', // Primary yellow accent
+            main: '#f8e697', // Primary yellow accent
         },
         secondary: {
-            main: 'rgb(120,126,45)', // Secondary blue for highlights
+            main: 'rgb(162 157 81)', // Secondary blue for highlights
         },
         background: {
             default: '#161616', // Dark background for the main canvas
@@ -24,7 +24,7 @@ export const darkTheme = createTheme({
         h1: {
             fontSize: '2.5rem',
             fontWeight: 500,
-            color: '#ffd821',
+            color: '#f6d87d',
         },
         h2: {
             fontSize: '2rem',
@@ -43,7 +43,7 @@ export const darkTheme = createTheme({
                     // backgroundColor: '#fce02b', // Primary color for buttons
                     // color: '#121212', // Text color on buttons
                     '&:hover': {
-                        borderColor: '#ffd821', // Darker yellow on hover
+                        borderColor: '#e7d372', // Darker yellow on hover
                     },
                 },
             },

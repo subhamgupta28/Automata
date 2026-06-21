@@ -63,7 +63,7 @@ const AdminLoginDashboard = lazy(() => import("../admin/AdminLoginDashboard.jsx"
 
 const PageLoader = () => (
     <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%'}}>
-        <CircularProgress size={32} sx={{color: '#ffd821'}}/>
+        <CircularProgress size={32} color="primary"/>
     </Box>
 );
 
@@ -189,7 +189,7 @@ function NavGroup({group, drawerOpen, location}) {
                     tooltip: {
                         sx: {
                             fontSize: '1rem',
-                            color: '#ffd821',
+                            color: '#f6e07c',
                             backgroundColor: 'rgb(255 255 255 / 10%)',
                             backdropFilter: 'blur(3px)'
                         }
@@ -208,9 +208,9 @@ function NavGroup({group, drawerOpen, location}) {
                         justifyContent: drawerOpen ? 'initial' : 'center',
                         minHeight: 40,
                         '&.active, &.Mui-selected': {
-                            backgroundColor: 'rgba(255, 216, 33, 0.12)',
-                            '& .MuiListItemIcon-root': {color: '#ffd821'},
-                            '& .MuiListItemText-primary': {color: '#ffd821', fontWeight: 600},
+                            // backgroundColor: 'rgb(240 219 120 / 0.12)',
+                            '& .MuiListItemIcon-root': {color: '#f0dc7a'},
+                            '& .MuiListItemText-primary': {color: '#f0dc7b', fontWeight: 600},
                         },
                     }}
                 >

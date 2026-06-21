@@ -138,6 +138,10 @@ public class AutomationController {
         return automationService.ackAction(deviceId, payload);
     }
 
+    @PostMapping("/saveAutomationDetail")
+    public ResponseEntity<String> saveAutomationDetail(@RequestBody AutomationDetail automation) {
+        return ResponseEntity.ok(automationService.saveAutomationDetailInternal(automation));
+    }
 
     @GetMapping("/getAutomationDetail/{id}")
     public ResponseEntity<AutomationDetail> getAutomationDetail(@PathVariable("id") String id) {

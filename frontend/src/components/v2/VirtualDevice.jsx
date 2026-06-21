@@ -2,8 +2,6 @@ import React, {useEffect, useMemo, useRef, useState} from "react";
 import {Card, LinearProgress, Skeleton} from "@mui/material";
 import Typography from "@mui/material/Typography";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
-import SettingsIcon from "@mui/icons-material/Settings";
-import IconButton from "@mui/material/IconButton";
 import ChartDetail from "../charts/ChartDetail.jsx";
 import WledDevices from "../device_types/WledDevices.jsx";
 import HVACDevices from "../device_types/HVACDevices.jsx";
@@ -140,49 +138,49 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                 variant="elevated" style={{
                 background: 'transparent',
                 // boxShadow: 'rgb(30 30 30) 0px 0px 86px 10px inset',
-                border: `1px solid ${C.border}`,
+                border: `2px solid ${C.border}`,
                 // backdropFilter: 'blur(4px)',
                 // backgroundColor: 'rgb(0 0 0 / 20%)',
                 minHeight: height, height: '100%', minWidth: width,
                 borderRadius: '10px', padding: '0px',
             }}>
                 <div className="card-glow"/>
-                <div
-                    style={{
-                        // padding: '0px', width: '100%', height: '100%',
-                        // paddingRight: '6px',
-                        // borderRadius: '12px 12px 0px 0px',
-                        // background: 'transparent',
-                        marginRight: '4px',
-                        alignItems: 'center',
-                        display: 'flex',
-                        justifyContent: 'space-between'
-                    }}>
-                    <Typography
-                        variant="caption"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginLeft: '18px',
-                            // fontWeight: 'bold',
-                            // fontSize: '18px',
-                            paddingTop: '8px'
-                        }}
-                    >
-                        {name}
-                    </Typography>
-                    <IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}} size="small">
-                        <SettingsIcon style={{fontSize: '14px'}}/>
-                    </IconButton>
-                </div>
+                {/*<div*/}
+                {/*    style={{*/}
+                {/*        // padding: '0px', width: '100%', height: '100%',*/}
+                {/*        // paddingRight: '6px',*/}
+                {/*        // borderRadius: '12px 12px 0px 0px',*/}
+                {/*        // background: 'transparent',*/}
+                {/*        marginRight: '4px',*/}
+                {/*        alignItems: 'center',*/}
+                {/*        display: 'flex',*/}
+                {/*        justifyContent: 'space-between'*/}
+                {/*    }}>*/}
+                {/*    <Typography*/}
+                {/*        variant="caption"*/}
+                {/*        style={{*/}
+                {/*            display: 'flex',*/}
+                {/*            alignItems: 'center',*/}
+                {/*            justifyContent: 'space-between',*/}
+                {/*            marginLeft: '18px',*/}
+                {/*            // fontWeight: 'bold',*/}
+                {/*            // fontSize: '18px',*/}
+                {/*            paddingTop: '8px'*/}
+                {/*        }}*/}
+                {/*    >*/}
+                {/*        {name}*/}
+                {/*    </Typography>*/}
+                {/*    <IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}} size="small">*/}
+                {/*        <SettingsIcon style={{fontSize: '14px'}}/>*/}
+                {/*    </IconButton>*/}
+                {/*</div>*/}
                 <div
                     style={{
                         width: '100%',
                         // display:'flex',
                         alignItems: 'center',
-                        padding: '6px',
-                        paddingBottom: '6px',
+                        padding: '2px',
+                        // paddingBottom: '6px',
                         justifyContent: 'center'
                     }}>
                     {actionAck?.command === 'reboot' && (
