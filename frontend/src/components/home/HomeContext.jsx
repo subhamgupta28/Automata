@@ -1,7 +1,6 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useState} from 'react';
 import {getHomes} from '../../services/apis.jsx';
 import {useAuth} from '../auth/AuthContext.jsx';
-import {LinearProgress} from "@mui/material"; // Assuming AuthContext is in this path
 
 const HomeContext = createContext();
 
@@ -90,18 +89,17 @@ export const HomeProvider = ({children}) => {
                     alignItems: 'center',
                     height: '100vh',
                     width: '100vw',
-                    background: 'transparent'
+                    background: '#121212'
                 }}>
                     <div style={{
-                        color: '#ffd821', width: '100%',
-                        height: '100dvh',
+                        color: '#ffd821', width: '200px',
+                        height: '200px',
                         background: 'transparent',
-                        backdropFilter: 'blur(4px)',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center'
                     }}>
-                        <LinearProgress aria-label="Loading…" style={{width: '80%'}}/>
+                        <img alt="home icon" src="/icons/home.svg"/>
                     </div>
                 </div>
             ) : children}

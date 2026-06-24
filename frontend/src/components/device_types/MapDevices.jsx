@@ -280,8 +280,9 @@ function StatPill({label, value}) {
         <div
             style={{
                 display: "flex",
-                flexDirection: "column",
+                flexDirection: "row",
                 gap: 2,
+                alignItems: 'center',
                 // border: "0.5px solid var(--color-border-tertiary)",
                 // borderRadius: 10,
                 padding: "8px 12px",
@@ -289,14 +290,14 @@ function StatPill({label, value}) {
             }}
         >
             <span style={{
-                fontSize: 8,
+                fontSize: 12,
                 color: "var(--color-text-secondary)",
                 textTransform: "uppercase",
                 letterSpacing: "0.04em"
             }}>
                 {label}
             </span>
-            <span style={{fontSize: 12, fontWeight: 500, color: "var(--color-text-primary)"}}>
+            <span style={{fontSize: 12, fontWeight: 500, marginLeft: '12px', color: "var(--color-text-primary)"}}>
                 {value}
             </span>
         </div>
@@ -344,7 +345,7 @@ function SpeedTooltip({active, payload, label}) {
     );
 }
 
-function SpeedChart({data}) {
+function SpeedChart({data, routeStats}) {
     if (!data.length) return null;
 
     // Build gradient stops positioned by each point's fractional x-position,
@@ -367,18 +368,32 @@ function SpeedChart({data}) {
                 // margin: "10px 10px 0",
             }}
         >
-            <span
-                style={{
-                    fontSize: 11,
-                    color: "#a1a1aa",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                    fontWeight: 500,
-                    marginLeft: 8,
-                }}
-            >
+            <div>
+                <span
+                    style={{
+                        fontSize: 11,
+                        color: "#a1a1aa",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                        fontWeight: 500,
+                        marginLeft: 8,
+                    }}
+                >
                 Speed over time
             </span>
+                {/* Route stat pills — only once we have an accumulated route */}
+                {routeStats && (
+                    <div style={{display: "flex", flexWrap: "wrap", gap: 8, marginLeft: 10, marginBottom: 4}}>
+                        <StatPill label="Route points" value={routeStats.points}/>
+                        <StatPill label="Distance" value={`${routeStats.distKm} km`}/>
+                        <StatPill label="Avg speed"
+                                  value={routeStats.avgSpeed != null ? `${routeStats.avgSpeed.toFixed(1)} km/h` : "—"}/>
+                        <StatPill label="Max speed"
+                                  value={routeStats.maxSpeed != null ? `${routeStats.maxSpeed.toFixed(1)} km/h` : "—"}/>
+                    </div>
+                )}
+            </div>
+
             <ResponsiveContainer width="100%" height={160}>
                 <LineChart data={data} margin={{top: 10, right: 16, left: -10, bottom: 0}}>
                     <defs>
@@ -483,6 +498,8 @@ function SessionPicker({sessions, loading, selectedId, onSelect}) {
             <InputLabel>Recording session</InputLabel>
             <Select
                 label="Recording session"
+                variant="outlined"
+                size="small"
                 value={selectedId ?? ""}
                 onChange={(e) => onSelect(e.target.value)}
             >
@@ -526,7 +543,7 @@ export const MapDevices = React.memo(() => {
     }, [gpsDevices.length]);
 
     useEffect(() => {
-        if (!messages?.deviceId || !messages?.data) return;
+        if (mode === "recording" || !messages?.deviceId || !messages?.data) return;
         setLiveDataMap((prev) => ({
             ...prev,
             [messages.deviceId]: messages.data,
@@ -639,6 +656,14 @@ export const MapDevices = React.memo(() => {
 
     const route = activeBuffer.length > 1 ? activeBuffer.map((r) => [r.lat, r.lng]) : null;
 
+    // Full-length speed array, same order as `route` (one entry per
+    // coordinate, NOT down-sampled). Passed to MapView so it can color each
+    // route segment by speed — the map-equivalent of the chart's gradient line.
+    const routeSpeeds = useMemo(
+        () => (activeBuffer.length > 1 ? activeBuffer.map((r) => r.speed) : null),
+        [activeBuffer]
+    );
+
     const markerPoints = useMemo(() => {
         if (activeBuffer.length < 2) return [];
         const sampled = activeBuffer.filter((_, i) => i % MARKER_SAMPLE_EVERY === 0);
@@ -695,7 +720,7 @@ export const MapDevices = React.memo(() => {
             display: "flex",
             flexDirection: "column",
             gap: 0,
-            maxHeight: '97dvh',
+            // maxHeight: '97dvh',
             margin: "10px",
             background: 'transparent',
             backdropFilter: 'blur(4)',
@@ -773,6 +798,17 @@ export const MapDevices = React.memo(() => {
                         Recording in progress
                     </span>
                 )}
+                {/* Recording mode: session dropdown */}
+                {mode === "recording" && (
+                    <div style={{marginBottom: 12}}>
+                        <SessionPicker
+                            sessions={sessions}
+                            loading={sessionsLoading}
+                            selectedId={selectedSessionId}
+                            onSelect={setSelectedSessionId}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Live mode: device tabs */}
@@ -834,17 +870,6 @@ export const MapDevices = React.memo(() => {
                 </div>
             )}
 
-            {/* Recording mode: session dropdown */}
-            {mode === "recording" && (
-                <div style={{marginBottom: 12}}>
-                    <SessionPicker
-                        sessions={sessions}
-                        loading={sessionsLoading}
-                        selectedId={selectedSessionId}
-                        onSelect={setSelectedSessionId}
-                    />
-                </div>
-            )}
 
             {/* Map */}
             <div
@@ -855,22 +880,13 @@ export const MapDevices = React.memo(() => {
                     margin: 10,
                 }}
             >
-                <MapView lat={lat} lng={lng} h="50dvh" w="100%" route={route} points={markerPoints}/>
+                <MapView lat={lat} lng={lng} h="70dvh" w="100%" route={route} points={markerPoints}
+                         centerMap={mode === "live"}
+                         routeSpeeds={routeSpeeds}/>
             </div>
 
             {/* Coordinate badge */}
             <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
-                {/* Route stat pills — only once we have an accumulated route */}
-                {routeStats && (
-                    <div style={{display: "flex", flexWrap: "wrap", gap: 8, marginLeft: 10, marginBottom: 4}}>
-                        <StatPill label="Route points" value={routeStats.points}/>
-                        <StatPill label="Distance" value={`${routeStats.distKm} km`}/>
-                        <StatPill label="Avg speed"
-                                  value={routeStats.avgSpeed != null ? `${routeStats.avgSpeed.toFixed(1)} km/h` : "—"}/>
-                        <StatPill label="Max speed"
-                                  value={routeStats.maxSpeed != null ? `${routeStats.maxSpeed.toFixed(1)} km/h` : "—"}/>
-                    </div>
-                )}
                 <div style={{marginBottom: 6, marginLeft: 10}}>
                     {hasPosition ? (
                         <CoordBadge lat={lat} lng={lng}/>
@@ -882,7 +898,7 @@ export const MapDevices = React.memo(() => {
                 </div>
             </div>
             {/* Speed-over-time chart */}
-            <SpeedChart data={speedSeries}/>
+            <SpeedChart data={speedSeries} routeStats={routeStats}/>
 
             {/* Metric chips grid — live mode shows the latest live reading;
                 recording mode shows the most recent reading in the selected session */}

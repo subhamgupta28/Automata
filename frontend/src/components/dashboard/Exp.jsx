@@ -3,7 +3,7 @@ import React from 'react';
 // Dummy data following the EnergyStat Java model (one entry per day)
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
-import BoltIcon from "@mui/icons-material/Bolt";
+import BatteryWidget from "../device_types/BatteryWidget.jsx";
 
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
@@ -54,147 +54,6 @@ const series = [
     {label: 'Battery 500Wh', data: [1000, 700, 400, 159, 850, 653]},
 ];
 
-const TOTAL_SEGMENTS = 10;
-const LOW_BATTERY_THRESHOLD = 20;
-
-function BatteryWidget({
-                           batteryPercent = 52,
-                           remainingTime = "2.5 hours",
-                           timeLabel = "for full charge",
-                           lowBatteryThreshold = LOW_BATTERY_THRESHOLD,
-                       }) {
-    const percent = Math.max(0, Math.min(100, batteryPercent));
-    const isLowBattery = percent <= lowBatteryThreshold;
-    return (
-        <Box
-            sx={{
-                width: 307,
-                height: 320,
-                borderRadius: "48px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                pt: 5,
-                boxSizing: "border-box",
-            }}
-        >
-            {/* Header */}
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                }}
-            >
-                <Box
-                    sx={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: "50%",
-                        background: "#E6C7FF",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 0 12px rgba(217,168,255,.7)",
-                    }}
-                >
-                    <BoltIcon sx={{color: "#6E3AA8", fontSize: 18}}/>
-                </Box>
-
-                <Typography
-                    sx={{
-                        color: "#fff",
-                        fontSize: 26,
-                        fontWeight: 700,
-                    }}
-                >
-                    {percent}%
-                </Typography>
-            </Box>
-
-            {/* Battery Container */}
-            <Box
-                sx={{
-                    mt: 1,
-                    p: "4px",
-                    borderRadius: "8px",
-                    background: isLowBattery
-                        ? "rgb(100 24 20 / 0.71)"
-                        : "rgba(190,130,255,0.18)",
-
-                    boxShadow: isLowBattery
-                        ? "0 0 30px rgba(255,59,48,.45)"
-                        : "0 0 30px rgba(177,119,255,.45)",
-                }}
-            >
-                <Box
-                    sx={{
-                        width: 140,
-                        height: 40,
-                        display: "flex",
-                        gap: "8px",
-                    }}
-                >
-                    {Array.from({length: TOTAL_SEGMENTS}).map((_, index) => {
-                        const segmentStart = index * (100 / TOTAL_SEGMENTS);
-
-                        const segmentProgress = Math.max(
-                            0,
-                            Math.min(
-                                100,
-                                ((percent - segmentStart) / (100 / TOTAL_SEGMENTS)) * 100
-                            )
-                        );
-
-                        return (
-                            <Box
-                                key={index}
-                                sx={{
-                                    flex: 1,
-                                    height: "100%",
-                                    borderRadius: "6px",
-                                    background: "#1A1A20",
-                                    overflow: "hidden",
-                                    position: "relative",
-                                }}
-                            >
-                                <Box
-                                    sx={{
-                                        position: "absolute",
-                                        inset: 0,
-                                        width: `${segmentProgress}%`,
-                                        borderRadius: "6px",
-                                        transition: "all .5s ease",
-                                        background: isLowBattery
-                                            ? "linear-gradient(180deg, #FF9E9E 0%, #FF3B30 100%)"
-                                            : "linear-gradient(180deg, #F0D8FF 0%, #DDBBFF 100%)",
-
-                                        // optional glow
-                                        boxShadow: isLowBattery
-                                            ? "0 0 12px rgba(255,59,48,.5)"
-                                            : "0 0 12px rgba(221,187,255,.4)",
-                                    }}
-                                />
-                            </Box>
-                        );
-                    })}
-                </Box>
-            </Box>
-
-            {/* Footer */}
-            <Typography
-                sx={{
-                    mt: 1,
-                    color: "#fff",
-                    fontSize: 24,
-                    fontWeight: 500,
-                }}
-            >
-                {remainingTime}
-            </Typography>
-        </Box>
-    );
-}
 
 const Exp = () => {
     const weather = {
@@ -219,7 +78,7 @@ const Exp = () => {
 
             <BatteryWidget
                 batteryPercent={51}
-                remainingTime="2.5 hours"
+                remainingTime="2.5 hours left"
                 // timeLabel="for full charge"
             />
             {/*// With route*/}
