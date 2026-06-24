@@ -3,7 +3,7 @@ package dev.automata.automata.configs;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import dev.automata.automata.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.messaging.MessageChannel;
@@ -84,22 +83,22 @@ public class ApplicationConfiguration {
         });
     }
 
-    @Bean
-    public RedisMessageListenerContainer redisMessageListenerContainer(
-            RedisConnectionFactory connectionFactory) {
-        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
-        container.setConnectionFactory(connectionFactory);
-        // Uses SimpleAsyncTaskExecutor by default; inject a bounded executor
-        // if listener callbacks do heavy work (they don't here — just evict from map)
-        return container;
-    }
+//    @Bean
+//    public RedisMessageListenerContainer redisMessageListenerContainer(
+//            RedisConnectionFactory connectionFactory) {
+//        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+//        container.setConnectionFactory(connectionFactory);
+//        // Uses SimpleAsyncTaskExecutor by default; inject a bounded executor
+//        // if listener callbacks do heavy work (they don't here — just evict from map)
+//        return container;
+//    }
 
     @Bean
     @Primary
     public ObjectMapper objectMapper() {
         return JsonMapper.builder()
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .build().registerModule(new JavaTimeModule());
+                .build().registerModule(new ParameterNamesModule()).findAndRegisterModules();
     }
 //    @Bean
 //    @Primary

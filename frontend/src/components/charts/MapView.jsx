@@ -11,18 +11,28 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const customIcon = (color) => L.divIcon({
+const customIcon = (color, size = 14) => L.divIcon({
     className: '',
     html: `<div style="
-        width: 14px; height: 14px;
+        width: ${size}px; height: ${size}px;
         background: ${color};
         border: 2px solid #fff;
         border-radius: 50%;
         box-shadow: 0 0 6px rgba(0,0,0,0.6);
     "></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
 });
+
+// Speed bucketed color, mirrors a typical "slow -> fast" traffic-light scale.
+// Tweak thresholds (km/h) to taste.
+const speedColor = (speed) => {
+    if (speed == null) return '#94a3b8'; // slate - unknown
+    if (speed < 5) return '#60a5fa';     // blue - idle / very slow
+    if (speed < 30) return '#4ade80';    // green - normal
+    if (speed < 60) return '#facc15';    // yellow - brisk
+    return '#f87171';                    // red - fast
+};
 
 const FitBounds = ({route}) => {
     const map = useMap();
@@ -44,9 +54,18 @@ const RecenterMap = ({position}) => {
 
     return null;
 };
-export const MapView = React.memo(({lat, lng, h, w, route}) => {
+
+/**
+ * points (optional): richer per-coordinate metadata for intermediate markers, e.g.
+ *   [{ lat, lng, speed, satellites, fix, timestamp }, ...]
+ * Rendered as small color-coded dots (by speed) with a popup showing the metrics.
+ * Pass a subset (e.g. every Nth point) from the caller to avoid marker clutter —
+ * MapView does not down-sample points itself.
+ */
+export const MapView = React.memo(({lat, lng, h, w, route, points}) => {
     const position = [lat || 0, lng || 0];
     const hasRoute = route && route.length > 1;
+    const hasPoints = points && points.length > 0;
 
     return (
         <MapContainer
@@ -65,6 +84,7 @@ export const MapView = React.memo(({lat, lng, h, w, route}) => {
             <TileLayer
                 url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
                 maxZoom={20}
+                rotationAngle={60}
                 subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
                 className="dark-tiles"
             />
@@ -76,6 +96,24 @@ export const MapView = React.memo(({lat, lng, h, w, route}) => {
                         positions={route}
                         pathOptions={{color: '#4ade80', weight: 4, opacity: 0.85}}
                     />
+                    {/*/!* Intermediate metric markers (speed / satellites / fix), color-coded by speed *!/*/}
+                    {/*{hasPoints && points.map((p, i) => (*/}
+                    {/*    <Marker*/}
+                    {/*        key={`pt-${i}`}*/}
+                    {/*        position={[p.lat, p.lng]}*/}
+                    {/*        icon={customIcon(speedColor(p.speed), 10)}*/}
+                    {/*    >*/}
+                    {/*        <Popup>*/}
+                    {/*            <div style={{fontSize: 12, lineHeight: 1.5}}>*/}
+                    {/*                {p.speed != null && <div><strong>Speed:</strong> {p.speed} km/h</div>}*/}
+                    {/*                {p.satellites != null && <div><strong>Satellites:</strong> {p.satellites}</div>}*/}
+                    {/*                {p.fix != null && <div><strong>Fix:</strong> {p.fix}</div>}*/}
+                    {/*                {p.timestamp &&*/}
+                    {/*                    <div><strong>Time:</strong> {new Date(p.timestamp).toLocaleTimeString()}</div>}*/}
+                    {/*            </div>*/}
+                    {/*        </Popup>*/}
+                    {/*    </Marker>*/}
+                    {/*))}*/}
                     {/* Start marker — green */}
                     <Marker position={route[0]} icon={customIcon('#4ade80')}/>
                     {/* End marker — red */}

@@ -3,6 +3,8 @@ package dev.automata.automata.v2;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.model.AutomationLog;
 import dev.automata.automata.model.DeviceActionState;
+import dev.automata.automata.modules.Spotify;
+import dev.automata.automata.modules.SpotifyService;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.DeviceActionStateRepository;
 import dev.automata.automata.repository.DeviceRepository;
@@ -42,6 +44,7 @@ public class ActionDispatcher {
     private final ScheduledExecutorService actionDelayScheduler;
     private final AutomationLogStream logStream;
     private final AutomationLivePublisher livePublisher;   // ← ADDED
+    private final SpotifyService spotifyService;
 
     private static final long ACTION_TIMEOUT_SECONDS = 30;
 
@@ -55,7 +58,9 @@ public class ActionDispatcher {
                                                String user,
                                                String automationId,
                                                String automationName,
-                                               String traceId) {
+                                               String traceId,
+                                               String homeId
+    ) {
         if (actions == null || actions.isEmpty()) {
             // No trackable actions — resolve delivery immediately as NOT_APPLICABLE
             logStream.updateDeliveryStatus(
@@ -65,7 +70,7 @@ public class ActionDispatcher {
             return CompletableFuture.completedFuture(true);
         }
 
-        return buildChain(actions, payload, user, automationId, automationName, traceId)
+        return buildChain(actions, payload, user, automationId, automationName, traceId, homeId)
                 .orTimeout(ACTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .exceptionally(ex -> {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
@@ -116,7 +121,9 @@ public class ActionDispatcher {
                                                   String user,
                                                   String automationId,
                                                   String automationName,
-                                                  String traceId) {
+                                                  String traceId,
+                                                  String homeId
+    ) {
         CompletableFuture<Boolean> chain = CompletableFuture.completedFuture(true);
 
         for (ExecutionPlan.CompiledAction action : actions) {
@@ -127,7 +134,7 @@ public class ActionDispatcher {
                         log.info("▶️ [traceId={}] [{}] Dispatching: {} {}={} (order={})",
                                 traceId, automationName, action.getName(),
                                 action.getKey(), action.getData(), action.getOrder());
-                        dispatchSingle(action, payload, user, automationId, automationName, traceId);
+                        dispatchSingle(action, payload, user, automationId, automationName, traceId, homeId);
                         success = true;
                         return true;
                     } catch (Exception e) {
@@ -166,7 +173,9 @@ public class ActionDispatcher {
                                 String user,
                                 String automationId,
                                 String automationName,
-                                String traceId) {
+                                String traceId,
+                                String homeId
+    ) {
         Object parsedData = parseData(action.getData());
         Map<String, Object> payload = Map.of(action.getKey(), parsedData, "key", action.getKey());
 
@@ -185,8 +194,14 @@ public class ActionDispatcher {
             return;
         }
         if ("WLED".equals(action.getDeviceType())) {
-            dispatchWled(action.getDeviceId(), new HashMap<>(payload), user, automationId, automationName, traceId);
+            dispatchWled(action.getDeviceId(), new HashMap<>(payload), user, automationId, automationName, traceId, homeId);
             // WLED has no ACK path currently — mark NOT_APPLICABLE
+            logStream.updateDeliveryStatus(
+                    traceId, AutomationLog.DeliveryStatus.NOT_APPLICABLE, new Date());
+            return;
+        }
+        if ("MEDIA".equals(action.getDeviceType())) {
+            dispatchMedia(action.getDeviceId(), new HashMap<>(payload), user, automationId, automationName, traceId, homeId);
             logStream.updateDeliveryStatus(
                     traceId, AutomationLog.DeliveryStatus.NOT_APPLICABLE, new Date());
             return;
@@ -225,12 +240,37 @@ public class ActionDispatcher {
         });
     }
 
+    private void dispatchMedia(String deviceId,
+                               Map<String, Object> payload,
+                               String user,
+                               String automationId,
+                               String automationName,
+                               String traceId,
+                               String homeId
+    ) {
+        deviceRepository.findByIdAndHomeId(deviceId, homeId).ifPresent(device -> {
+            try {
+                new Spotify(spotifyService, device.getId()).handleAction(payload);
+                deliveryTracker.registerWled(
+                        deviceId, automationId, automationName, device.getName(), payload, traceId);
+
+            } catch (Exception e) {
+                log.error("MEDIA dispatch error for '{}': {}", deviceId, e.getMessage());
+                // Dispatch itself failed — mark immediately
+                logStream.updateDeliveryStatus(
+                        traceId, AutomationLog.DeliveryStatus.DELIVERY_FAILED, new Date());
+            }
+        });
+    }
+
     private void dispatchWled(String deviceId,
                               Map<String, Object> payload,
                               String user,
                               String automationId,
                               String automationName,
-                              String traceId) {
+                              String traceId,
+                              String homeId
+    ) {
         deviceRepository.findById(deviceId).ifPresent(device -> {
             try {
                 new Wled(mqttOutboundChannel, device).handleAction(payload);

@@ -1251,7 +1251,7 @@ export function AutomationListItemWithActions({a, onOpen, onRefresh, onDeleted})
         <>
             <Box sx={{
                 display: 'flex', alignItems: 'center', gap: '6px',
-                p: '6px 8px', mt: '6px', borderRadius: '8px',
+                p: '6px 8px', borderRadius: '8px',
                 border: '1px solid rgba(255,255,255,0.1)',
                 transition: 'border-color 0.15s',
                 '&:hover': {borderColor: 'rgba(255,255,255,0.2)'},

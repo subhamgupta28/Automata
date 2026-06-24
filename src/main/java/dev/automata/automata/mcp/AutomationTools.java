@@ -50,6 +50,6 @@ public class AutomationTools {
                 "key", automation.getTrigger().getKey() != null ? automation.getTrigger().getKey() : "trigger",
                 "value", automation.getTrigger().getValue() != null ? automation.getTrigger().getValue() : "1"
         );
-        return automationService.handleAction(deviceId, payload, "", "mcp");
+        return automationService.handleAction(deviceId, payload, "", "mcp", "");
     }
 }

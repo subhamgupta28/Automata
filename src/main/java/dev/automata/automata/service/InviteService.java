@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -43,6 +44,12 @@ public class InviteService {
         // TODO: Send email to invite.getInvitedEmail() with the invite link
 
         return inviteRepository.save(invite);
+    }
+
+    public List<Invite> getHomeInvites(String homeId, String requestingUserId) {
+        authzService.requireRole(homeId, requestingUserId, HomeRole.OWNER, HomeRole.ADMIN);
+        return inviteRepository.findAllByHomeIdAndUsedIsFalseAndExpiresAtAfter(
+                homeId, Instant.now());
     }
 
     @Transactional

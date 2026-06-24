@@ -5,10 +5,7 @@ import dev.automata.automata.automation.AutomationVersionService;
 import dev.automata.automata.automation.ScheduledAutomationManager;
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.LiveEvent;
-import dev.automata.automata.model.Automation;
-import dev.automata.automata.model.AutomationDetail;
-import dev.automata.automata.model.Device;
-import dev.automata.automata.model.TriggerSource;
+import dev.automata.automata.model.*;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.AutomationDetailRepository;
 import dev.automata.automata.repository.AutomationRepository;
@@ -86,7 +83,7 @@ public class AutomationService {
         return automationRepository.save(a);
     }
 
-    public List<Automation> getActions() {
+    public List<Automation> getActions(Users user, String homeId) {
         return automationRepository.findAll();
     }
 
@@ -110,7 +107,7 @@ public class AutomationService {
     // ═════════════════════════════════════════════════════════════════════
 
     public String handleAction(String deviceId, Map<String, Object> payload,
-                               String deviceType, String user) {
+                               String deviceType, String user, String homeId) {
 
         if ("WLED".equals(deviceType)) {
             return handleWLED(deviceId, payload, user);
@@ -144,8 +141,8 @@ public class AutomationService {
             req.put(key, value);
             req.put("direct", true);
             req.put("deviceId", id);
-            deviceRepository.findById(id)
-                    .ifPresent(d -> handleAction(id, req, d.getType(), user));
+            deviceRepository.findByIdAndHomeId(id, homeId)
+                    .ifPresent(d -> handleAction(id, req, d.getType(), user, homeId));
             return "success";
         }
 
@@ -170,7 +167,7 @@ public class AutomationService {
                     ExecutionPlan plan = planCache.get(a.getId());
                     if (plan != null && plan.hasCoalition()) {
                         // Pass the firing deviceId so CoalitionGuard can record it
-                        orchestrator.execute(a.getId(), payload, user, deviceId);
+                        orchestrator.execute(a.getId(), payload, user, deviceId, plan.getHomeId());
                     } else {
                         // Legacy single-trigger path
                         orchestrator.execute(a.getId(), payload, user);
@@ -227,10 +224,10 @@ public class AutomationService {
         return "success";
     }
 
-    public String rebootAllDevices() {
-        notificationService.sendNotification("Rebooting All Devices", "success");
-        deviceRepository.findAll().forEach(this::rebootDevice);
-        notificationService.sendNotification("Reboot Complete", "success");
+    public String rebootAllDevices(Users user, String homeId) {
+        notificationService.sendNotification("Rebooting All Devices", "success", homeId);
+        deviceRepository.findAllByHomeId(homeId).forEach(this::rebootDevice);
+        notificationService.sendNotification("Reboot Complete", "success", homeId);
         return "success";
     }
 
@@ -413,7 +410,7 @@ public class AutomationService {
     // ═════════════════════════════════════════════════════════════════════
 
 
-    public String saveAutomationDetailInternal(AutomationDetail detail) {
+    public String saveAutomationDetailInternal(AutomationDetail detail, String user, String homeId) {
         log.info("Saving automation: {}", detail.getId());
 
         var automationBuilder = Automation.builder()
@@ -422,6 +419,7 @@ public class AutomationService {
         if (detail.getId() != null && !detail.getId().isEmpty())
             automationBuilder.id(detail.getId());
 
+        detail.setHomeId(homeId);
         detail.getNodes().stream()
                 .filter(n -> n.getData().getTriggerData() != null)
                 .findFirst().ifPresent(tn -> {
@@ -516,8 +514,8 @@ public class AutomationService {
     // DELETE AUTOMATION
     // ═════════════════════════════════════════════════════════════════════
 
-    public Map<String, String> deleteAutomation(String id, String user) {
-        Automation automation = automationRepository.findById(id).orElse(null);
+    public Map<String, String> deleteAutomation(String id, String user, String homeId) {
+        Automation automation = automationRepository.findByIdAndHomeId(id, homeId).orElse(null);
         if (automation == null)
             return Map.of("status", "error", "reason", "Automation not found");
 
@@ -550,13 +548,14 @@ public class AutomationService {
     // COPY / ROLLBACK
     // ═════════════════════════════════════════════════════════════════════
 
-    public Map<String, Object> copyAutomation(String id, String user) {
-        Automation original = automationRepository.findById(id).orElse(null);
+    public Map<String, Object> copyAutomation(String id, String user, String homeId) {
+        Automation original = automationRepository.findByIdAndHomeId(id, homeId).orElse(null);
         if (original == null) return new HashMap<>();
 
         Automation copy = Automation.builder()
                 .name(original.getName() + " (copy)")
                 .trigger(original.getTrigger())
+                .homeId(homeId)
                 .triggerDeviceType(original.getTriggerDeviceType())
                 .conditions(original.getConditions())
                 .actions(original.getActions())
@@ -588,13 +587,13 @@ public class AutomationService {
         return Map.of("status", "success", "newId", saved.getId(), "newName", saved.getName());
     }
 
-    public String rollbackToVersion(String automationId, int targetVersion, String user) {
+    public String rollbackToVersion(String automationId, int targetVersion, String user, String homeId) {
         try {
             AutomationVersionService.RollbackResult rollback =
                     automationVersionService.rollback(automationId, targetVersion);
             AutomationDetail detail = rollback.detail();
             detail.setUpdateDate(new Date());
-            String result = saveAutomationDetailInternal(detail);
+            String result = saveAutomationDetailInternal(detail, user, homeId);
             if ("success".equals(result)) {
                 automationRepository.findById(automationId).ifPresent(a ->
                         automationVersionService.snapshot(a, detail, user,
@@ -638,7 +637,7 @@ public class AutomationService {
                         c -> c.getOrder() != 0 ? c.getOrder() : Integer.MAX_VALUE))
                 .toList();
         String traceId = "evt-" + automation.getId() + "-" + System.currentTimeMillis();
-        dispatcher.dispatch(compiled, payload, user, automation.getId(), automation.getName(), traceId);
+        dispatcher.dispatch(compiled, payload, user, automation.getId(), automation.getName(), traceId, automation.getHomeId());
     }
 
 

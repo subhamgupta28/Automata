@@ -1,9 +1,11 @@
-import React, {useEffect, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {MapView} from "../charts/MapView.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
-import {Card} from "@mui/material";
-import {getLastData} from "../../services/apis.jsx";
+import {Card, FormControl, InputLabel, MenuItem, Select} from "@mui/material";
+import {getLastData, getSessionBuckets, getSessions} from "../../services/apis.jsx";
+import {findGpsDeviceId} from "../../utils/Helper.jsx";
+import {Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 
 const METRIC_DEFS = [
     {
@@ -84,6 +86,15 @@ const STATUS_BG = {
     info: "blue",
 };
 
+// Cap how many readings we keep in memory per device so a long-running
+// live session doesn't grow the route/chart buffers unbounded.
+const MAX_BUFFER_POINTS = 500;
+// Down-sample factor for map markers — showing a dot per reading would
+// clutter the map, so we only render every Nth point.
+const MARKER_SAMPLE_EVERY = 5;
+// Poll interval for an ACTIVE recording session being viewed in Recording mode.
+const SESSION_POLL_MS = 10_000;
+
 function MetricChip({def, value}) {
     const status = def.colorFn(value);
     return (
@@ -162,12 +173,344 @@ function CoordBadge({lat, lng}) {
     );
 }
 
+// Mirrors the haversine helper used in GpsRoutePanel, for route distance.
+const haversineKm = ([lat1, lon1], [lat2, lon2]) => {
+    const R = 6371;
+    const dL = ((lat2 - lat1) * Math.PI) / 180;
+    const dl = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+        Math.sin(dL / 2) ** 2 +
+        Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dl / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+// Same fix/stationary/no-data filtering rules as Helper.jsx's extractGpsRoute,
+// applied to a single incoming live reading against the last accepted point.
+const isAcceptableReading = (reading, lastLat, lastLng) => {
+    const lat = parseFloat(reading.LAT ?? reading.lat ?? reading.latitude);
+    const lng = parseFloat(reading.LONG ?? reading.lng ?? reading.longitude ?? reading.lon);
+    const fix = reading.FIX ?? reading.fix;
+
+    if (!lat || !lng) return null;               // no fix
+    if (fix === 0 || fix === '0') return null;    // explicit invalid fix
+    if (lat === lastLat && lng === lastLng) return null; // stationary duplicate
+
+    return {lat, lng};
+};
+
+/** Builds the same {lat,lng,speed,satellites,fix,time} shape from a raw reading,
+ *  used by both the live buffer and the recording-session buckets so downstream
+ *  stats/markers/chart code can be shared between modes. */
+const toBufferPoint = (lat, lng, reading) => ({
+    lat,
+    lng,
+    speed: (reading.SPEED ?? reading.speed) != null ? parseFloat(reading.SPEED ?? reading.speed) : null,
+    satellites: reading.SATS ?? reading.satellites ?? null,
+    fix: reading.FIX ?? reading.fix ?? null,
+    time: reading.ts ? new Date(reading.ts).getTime() : Date.now(),
+});
+
+/** Extracts a buffer (lat/lng/speed/satellites/fix/time) from a recording
+ *  session's buckets, scoped to the GPS device, reusing Helper.jsx's
+ *  filtering rules via extractGpsRoute for the lat/lng/fix/stationary logic,
+ *  then re-walking the readings to attach speed/satellites/time per point. */
+const bufferFromSessionBuckets = (buckets, gpsDeviceId) => {
+    const gpsBuckets = gpsDeviceId
+        ? buckets.filter((b) => b.deviceId === gpsDeviceId)
+        : buckets;
+
+    const buffer = [];
+    let lastLat = null;
+    let lastLng = null;
+
+    for (const bucket of gpsBuckets) {
+        for (const r of bucket.readings ?? []) {
+            const lat = parseFloat(r.LAT ?? r.lat ?? r.latitude);
+            const lng = parseFloat(r.LONG ?? r.lng ?? r.longitude ?? r.lon);
+            const fix = r.FIX ?? r.fix;
+
+            if (!lat || !lng) continue;
+            if (fix === 0 || fix === '0') continue;
+            if (lat === lastLat && lng === lastLng) continue;
+
+            buffer.push(toBufferPoint(lat, lng, r));
+            lastLat = lat;
+            lastLng = lng;
+        }
+    }
+    return buffer;
+};
+
+/** Route + chart stats derived from an accumulated reading buffer. Shared
+ *  between Live and Recording modes since both produce the same buffer shape. */
+function useRouteStats(buffer) {
+    return useMemo(() => {
+        if (!buffer.length) return null;
+
+        const route = buffer.map((r) => [r.lat, r.lng]);
+
+        let distKm = 0;
+        for (let i = 1; i < route.length; i++) {
+            distKm += haversineKm(route[i - 1], route[i]);
+        }
+
+        const speeds = buffer.map((r) => r.speed).filter((s) => s != null);
+        const avgSpeed = speeds.length
+            ? speeds.reduce((a, b) => a + b, 0) / speeds.length
+            : null;
+        const maxSpeed = speeds.length ? Math.max(...speeds) : null;
+
+        const last = buffer.at(-1);
+
+        return {
+            points: route.length,
+            distKm: distKm.toFixed(2),
+            avgSpeed,
+            maxSpeed,
+            satellites: last.satellites,
+            fix: last.fix,
+        };
+    }, [buffer]);
+}
+
+function StatPill({label, value}) {
+    return (
+        <div
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                // border: "0.5px solid var(--color-border-tertiary)",
+                // borderRadius: 10,
+                padding: "8px 12px",
+                minWidth: 84,
+            }}
+        >
+            <span style={{
+                fontSize: 8,
+                color: "var(--color-text-secondary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em"
+            }}>
+                {label}
+            </span>
+            <span style={{fontSize: 12, fontWeight: 500, color: "var(--color-text-primary)"}}>
+                {value}
+            </span>
+        </div>
+    );
+}
+
+const speedColor = (speed) => {
+    if (speed == null) return '#94a3b8'; // slate - unknown
+    if (speed < 5) return '#60a5fa';     // blue - idle / very slow
+    if (speed < 30) return '#4ade80';    // green - normal
+    if (speed < 60) return '#facc15';    // yellow - brisk
+    return '#f87171';                    // red - fast
+};
+
+function SpeedTooltip({active, payload, label}) {
+    if (!active || !payload?.length) return null;
+    const speed = payload[0].value;
+    return (
+        <div
+            style={{
+                background: "#1e1e1e",
+                border: "1px solid #3a3a3a",
+                borderRadius: 8,
+                padding: "8px 12px",
+                fontSize: 12,
+                color: "#ffffff",
+            }}
+        >
+            <div style={{color: "#a1a1aa", marginBottom: 2}}>
+                {new Date(label).toLocaleTimeString()}
+            </div>
+            <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                <span
+                    style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: speedColor(speed),
+                        display: "inline-block",
+                    }}
+                />
+                <span style={{fontWeight: 600}}>{speed} km/h</span>
+            </div>
+        </div>
+    );
+}
+
+function SpeedChart({data}) {
+    if (!data.length) return null;
+
+    // Build gradient stops positioned by each point's fractional x-position,
+    // colored by that point's speed — so the line's color at any pixel
+    // matches the speed value at that point, not just a fixed start/end fade.
+    const lastIdx = data.length - 1;
+    const gradientId = "speedLineGradient";
+    const gradientStops = data.map((d, i) => ({
+        offset: lastIdx === 0 ? "0%" : `${(i / lastIdx) * 100}%`,
+        color: speedColor(d.speed),
+    }));
+
+    return (
+        <div
+            style={{
+                // border: "0.5px solid #3a3a3a",
+                borderRadius: 12,
+                background: "#141414",
+                padding: "8px",
+                // margin: "10px 10px 0",
+            }}
+        >
+            <span
+                style={{
+                    fontSize: 11,
+                    color: "#a1a1aa",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                    fontWeight: 500,
+                    marginLeft: 8,
+                }}
+            >
+                Speed over time
+            </span>
+            <ResponsiveContainer width="100%" height={160}>
+                <LineChart data={data} margin={{top: 10, right: 16, left: -10, bottom: 0}}>
+                    <defs>
+                        <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
+                            {gradientStops.map((stop, i) => (
+                                <stop key={i} offset={stop.offset} stopColor={stop.color}/>
+                            ))}
+                        </linearGradient>
+                    </defs>
+                    <XAxis
+                        dataKey="time"
+                        tick={{fontSize: 10, fill: "#ffffff"}}
+                        axisLine={{stroke: "#3a3a3a"}}
+                        tickLine={{stroke: "#3a3a3a"}}
+                        tickFormatter={(t) => new Date(t).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+                        minTickGap={30}
+                    />
+                    <YAxis
+                        tick={{fontSize: 10, fill: "#ffffff"}}
+                        axisLine={{stroke: "#3a3a3a"}}
+                        tickLine={{stroke: "#3a3a3a"}}
+                        width={36}
+                        label={{value: "km/h", angle: -90, position: "insideLeft", fontSize: 10, fill: "#ffffff"}}
+                    />
+                    <Tooltip content={<SpeedTooltip/>}/>
+                    <Line
+                        type="monotone"
+                        dataKey="speed"
+                        stroke={`url(#${gradientId})`}
+                        strokeWidth={2.5}
+                        dot={false}
+                        isAnimationActive={false}
+                    />
+                </LineChart>
+            </ResponsiveContainer>
+        </div>
+    );
+}
+
+// ── ModeToggle ────────────────────────────────────────────────────────────────
+function ModeToggle({mode, onChange}) {
+    return (
+        <div
+            style={{
+                display: "inline-flex",
+                border: "0.5px solid var(--color-border-tertiary)",
+                borderRadius: 8,
+                padding: 2,
+                gap: 2,
+            }}
+        >
+            {[["live", "Live"], ["recording", "Recording"]].map(([key, label]) => {
+                const isActive = mode === key;
+                return (
+                    <button
+                        key={key}
+                        onClick={() => onChange(key)}
+                        style={{
+                            padding: "5px 12px",
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: isActive ? 500 : 400,
+                            cursor: "pointer",
+                            border: "none",
+                            background: isActive
+                                ? "var(--color-background-info)"
+                                : "transparent",
+                            color: isActive
+                                ? "var(--color-text-info)"
+                                : "var(--color-text-secondary)",
+                            transition: "all 0.15s ease",
+                        }}
+                    >
+                        {label}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+// ── SessionPicker ─────────────────────────────────────────────────────────────
+function SessionPicker({sessions, loading, selectedId, onSelect}) {
+    if (loading) {
+        return (
+            <span style={{fontSize: 12, color: "var(--color-text-secondary)"}}>
+                Loading recordings…
+            </span>
+        );
+    }
+
+    if (!sessions.length) {
+        return (
+            <span style={{fontSize: 12, color: "var(--color-text-secondary)"}}>
+                No GPS recordings found
+            </span>
+        );
+    }
+
+    return (
+        <FormControl size="small" fullWidth>
+            <InputLabel>Recording session</InputLabel>
+            <Select
+                label="Recording session"
+                value={selectedId ?? ""}
+                onChange={(e) => onSelect(e.target.value)}
+            >
+                {sessions.map((s) => (
+                    <MenuItem key={s.id} value={s.id}>
+                        {s.name} — {s.status}
+                    </MenuItem>
+                ))}
+            </Select>
+        </FormControl>
+    );
+}
+
 export const MapDevices = React.memo(() => {
     const {messages} = useDeviceLiveData();
     const {devices, loading, error} = useCachedDevices();
 
+    const [mode, setMode] = useState("live"); // 'live' | 'recording'
+
+    // ── Live mode state ───────────────────────────────────────────────────
     const [liveDataMap, setLiveDataMap] = useState({});
     const [activeDeviceId, setActiveDeviceId] = useState(null);
+
+    // Per-device accumulated reading buffer for live mode, used to build the
+    // route + speed chart. Kept in a ref to avoid re-render churn on every
+    // push; mirrored into state (liveRouteBuffers) only when it changes shape.
+    const buffersRef = useRef({}); // { [deviceId]: [{lat, lng, speed, satellites, fix, time}] }
+    const [liveRouteBuffers, setLiveRouteBuffers] = useState({});
 
     const gpsDevices = devices?.filter((d) => d.category === "SENSOR|GPS") ?? [];
 
@@ -188,16 +531,139 @@ export const MapDevices = React.memo(() => {
             ...prev,
             [messages.deviceId]: messages.data,
         }));
+
+        const id = messages.deviceId;
+        const reading = messages.data;
+        const buf = buffersRef.current[id] ?? [];
+        const lastPoint = buf.at(-1);
+        const accepted = isAcceptableReading(reading, lastPoint?.lat ?? null, lastPoint?.lng ?? null);
+
+        if (accepted) {
+            const next = [...buf, toBufferPoint(accepted.lat, accepted.lng, reading)].slice(-MAX_BUFFER_POINTS);
+            buffersRef.current[id] = next;
+            setLiveRouteBuffers((prev) => ({...prev, [id]: next}));
+        }
     }, [messages]);
 
+    // ── Recording mode state ──────────────────────────────────────────────
+    const [sessions, setSessions] = useState([]);
+    const [sessionsLoading, setSessionsLoading] = useState(false);
+    const [selectedSessionId, setSelectedSessionId] = useState(null);
+    const [selectedSession, setSelectedSession] = useState(null); // full session w/ buckets
+    const sessionPollRef = useRef(null);
+
+    // Fetch the session list once we enter Recording mode, filtered to
+    // sessions that actually involve a GPS device, and to ACTIVE/STOPPED only.
+    useEffect(() => {
+        if (mode !== "recording" || !devices?.length) return;
+
+        let cancelled = false;
+        setSessionsLoading(true);
+        getSessions()
+            .then((data) => {
+                if (cancelled) return;
+                const gpsSessions = (data ?? []).filter((s) => {
+                    if (s.status !== "ACTIVE" && s.status !== "STOPPED") return false;
+                    return !!findGpsDeviceId(s.deviceIds, devices);
+                });
+                setSessions(gpsSessions);
+                // Auto-select the first session if none chosen yet
+                if (!selectedSessionId && gpsSessions.length > 0) {
+                    setSelectedSessionId(gpsSessions[0].id);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setSessionsLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [mode, devices?.length]);
+
+    // Load buckets for the selected session, and poll while it's ACTIVE.
+    useEffect(() => {
+        if (mode !== "recording" || !selectedSessionId) {
+            setSelectedSession(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        const load = () => {
+            getSessionBuckets(selectedSessionId).then((withBuckets) => {
+                if (!cancelled) setSelectedSession(withBuckets);
+            });
+        };
+
+        load();
+
+        clearInterval(sessionPollRef.current);
+        const meta = sessions.find((s) => s.id === selectedSessionId);
+        if (meta?.status === "ACTIVE") {
+            sessionPollRef.current = setInterval(load, SESSION_POLL_MS);
+        }
+
+        return () => {
+            cancelled = true;
+            clearInterval(sessionPollRef.current);
+        };
+    }, [mode, selectedSessionId, sessions]);
+
+    const sessionGpsDeviceId = useMemo(
+        () => findGpsDeviceId(selectedSession?.deviceIds, devices),
+        [selectedSession?.deviceIds, devices]
+    );
+
+    const recordingBuffer = useMemo(() => {
+        if (!selectedSession?.buckets?.length) return [];
+        return bufferFromSessionBuckets(selectedSession.buckets, sessionGpsDeviceId);
+    }, [selectedSession?.buckets, sessionGpsDeviceId]);
+
+    // ── Derived data, shared shape between modes ──────────────────────────
     const activeDevice = gpsDevices.find(
         (d) => (d._id ?? d.id) === activeDeviceId
     );
     const liveData = liveDataMap[activeDeviceId] ?? {};
+    const liveBuffer = liveRouteBuffers[activeDeviceId] ?? [];
 
-    const lat = liveData.LAT ?? liveData.lat;
-    const lng = liveData.LONG ?? liveData.lng ?? liveData.LON;
+    const activeBuffer = mode === "live" ? liveBuffer : recordingBuffer;
+
+    const lastPoint = activeBuffer.at(-1);
+    const lat = mode === "live" ? (liveData.LAT ?? liveData.lat) : lastPoint?.lat;
+    const lng = mode === "live" ? (liveData.LONG ?? liveData.lng ?? liveData.LON) : lastPoint?.lng;
     const hasPosition = lat != null && lng != null;
+
+    const routeStats = useRouteStats(activeBuffer);
+
+    const route = activeBuffer.length > 1 ? activeBuffer.map((r) => [r.lat, r.lng]) : null;
+
+    const markerPoints = useMemo(() => {
+        if (activeBuffer.length < 2) return [];
+        const sampled = activeBuffer.filter((_, i) => i % MARKER_SAMPLE_EVERY === 0);
+        const last = activeBuffer.at(-1);
+        if (sampled.at(-1) !== last) sampled.push(last);
+        return sampled.map((r) => ({
+            lat: r.lat,
+            lng: r.lng,
+            speed: r.speed,
+            satellites: r.satellites,
+            fix: r.fix,
+            timestamp: r.time,
+        }));
+    }, [activeBuffer]);
+
+    const speedSeries = useMemo(
+        () => activeBuffer
+            .filter((r) => r.speed != null)
+            .map((r) => ({time: r.time, speed: r.speed})),
+        [activeBuffer]
+    );
+
+    const handleModeChange = useCallback((next) => {
+        setMode(next);
+    }, []);
 
     if (loading) {
         return (
@@ -229,8 +695,8 @@ export const MapDevices = React.memo(() => {
             display: "flex",
             flexDirection: "column",
             gap: 0,
-            maxHeight: '95dvh',
-            margin: "20px",
+            maxHeight: '97dvh',
+            margin: "10px",
             background: 'transparent',
             backdropFilter: 'blur(4)',
             padding: "20px",
@@ -243,20 +709,25 @@ export const MapDevices = React.memo(() => {
                     alignItems: "center",
                     justifyContent: "space-between",
                     marginBottom: 12,
+                    flexWrap: "wrap",
+                    gap: 8,
                 }}
             >
-                <span
-                    style={{
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: "var(--color-text-primary)",
-                        letterSpacing: "0.01em",
-                    }}
-                >
-                    GPS Tracker
-                </span>
+                <div style={{display: "flex", alignItems: "center", gap: 10}}>
+                    <span
+                        style={{
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: "var(--color-text-primary)",
+                            letterSpacing: "0.01em",
+                        }}
+                    >
+                        GPS Tracker
+                    </span>
+                    <ModeToggle mode={mode} onChange={handleModeChange}/>
+                </div>
 
-                {hasPosition && (
+                {mode === "live" && hasPosition && (
                     <span
                         style={{
                             display: "inline-flex",
@@ -283,10 +754,29 @@ export const MapDevices = React.memo(() => {
                         Live
                     </span>
                 )}
+
+                {mode === "recording" && selectedSession?.status === "ACTIVE" && (
+                    <span
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            fontSize: 11,
+                            fontWeight: 500,
+                            color: "var(--color-text-warning)",
+                            background: "var(--color-background-warning)",
+                            border: "0.5px solid var(--color-border-warning)",
+                            borderRadius: 6,
+                            padding: "3px 8px",
+                        }}
+                    >
+                        Recording in progress
+                    </span>
+                )}
             </div>
 
-            {/* Device tabs */}
-            {gpsDevices.length > 1 && (
+            {/* Live mode: device tabs */}
+            {mode === "live" && gpsDevices.length > 1 && (
                 <div
                     style={{
                         display: "flex",
@@ -344,6 +834,18 @@ export const MapDevices = React.memo(() => {
                 </div>
             )}
 
+            {/* Recording mode: session dropdown */}
+            {mode === "recording" && (
+                <div style={{marginBottom: 12}}>
+                    <SessionPicker
+                        sessions={sessions}
+                        loading={sessionsLoading}
+                        selectedId={selectedSessionId}
+                        onSelect={setSelectedSessionId}
+                    />
+                </div>
+            )}
+
             {/* Map */}
             <div
                 style={{
@@ -353,43 +855,94 @@ export const MapDevices = React.memo(() => {
                     margin: 10,
                 }}
             >
-                <MapView lat={lat} lng={lng} h="100dvh" w="100%"/>
+                <MapView lat={lat} lng={lng} h="50dvh" w="100%" route={route} points={markerPoints}/>
             </div>
 
             {/* Coordinate badge */}
-            <div style={{marginBottom: 12}}>
-                {hasPosition ? (
-                    <CoordBadge lat={lat} lng={lng}/>
-                ) : (
-                    <span style={{fontSize: 12, color: "var(--color-text-secondary)"}}>
-                        Waiting for position…
-                    </span>
+            <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+                {/* Route stat pills — only once we have an accumulated route */}
+                {routeStats && (
+                    <div style={{display: "flex", flexWrap: "wrap", gap: 8, marginLeft: 10, marginBottom: 4}}>
+                        <StatPill label="Route points" value={routeStats.points}/>
+                        <StatPill label="Distance" value={`${routeStats.distKm} km`}/>
+                        <StatPill label="Avg speed"
+                                  value={routeStats.avgSpeed != null ? `${routeStats.avgSpeed.toFixed(1)} km/h` : "—"}/>
+                        <StatPill label="Max speed"
+                                  value={routeStats.maxSpeed != null ? `${routeStats.maxSpeed.toFixed(1)} km/h` : "—"}/>
+                    </div>
                 )}
+                <div style={{marginBottom: 6, marginLeft: 10}}>
+                    {hasPosition ? (
+                        <CoordBadge lat={lat} lng={lng}/>
+                    ) : (
+                        <span style={{fontSize: 12, color: "var(--color-text-secondary)"}}>
+                        {mode === "live" ? "Waiting for position…" : "No GPS data in this recording"}
+                    </span>
+                    )}
+                </div>
             </div>
+            {/* Speed-over-time chart */}
+            <SpeedChart data={speedSeries}/>
 
-            {/* Metric chips grid */}
-            <div
-                style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 8,
-                }}
-            >
-                {METRIC_DEFS.map((def) => (
-                    <MetricChip
-                        key={def.key}
-                        def={def}
-                        value={liveData[def.key]}
-                    />
-                ))}
-            </div>
+            {/* Metric chips grid — live mode shows the latest live reading;
+                recording mode shows the most recent reading in the selected session */}
 
-            {/* Device info footer */}
-            {activeDevice && (
+
+            {/* Device / session info footer */}
+            {mode === "live" && activeDevice && (
+                <>
+
+                    <div
+                        style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 8,
+                            // marginTop: 12,
+                        }}
+                    >
+                        {METRIC_DEFS.map((def) => {
+                            const value = mode === "live"
+                                ? liveData[def.key]
+                                : (def.key === "SPEED" ? lastPoint?.speed
+                                    : def.key === "SATS" ? lastPoint?.satellites
+                                        : def.key === "FIX" ? lastPoint?.fix
+                                            : undefined);
+                            return <MetricChip key={def.key} def={def} value={value}/>;
+                        })}
+                    </div>
+                    <div
+                        style={{
+                            // marginTop: 12,
+                            // paddingTop: 12,
+                            borderTop: "0.5px solid var(--color-border-tertiary)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            flexWrap: "wrap",
+                            gap: 6,
+                        }}
+                    >
+                    <span style={{fontSize: 12, color: "var(--color-text-secondary)"}}>
+                        {activeDevice.name ?? activeDevice.label ?? activeDeviceId}
+                    </span>
+                        <span
+                            style={{
+                                fontSize: 11,
+                                color: "var(--color-text-tertiary)",
+                                fontFamily: "var(--font-mono)",
+                            }}
+                        >
+                        {activeDeviceId}
+                    </span>
+                    </div>
+                </>
+            )}
+
+            {mode === "recording" && selectedSession && (
                 <div
                     style={{
-                        marginTop: 12,
-                        paddingTop: 12,
+                        // marginTop: 12,
+                        // paddingTop: 12,
                         borderTop: "0.5px solid var(--color-border-tertiary)",
                         display: "flex",
                         alignItems: "center",
@@ -399,7 +952,7 @@ export const MapDevices = React.memo(() => {
                     }}
                 >
                     <span style={{fontSize: 12, color: "var(--color-text-secondary)"}}>
-                        {activeDevice.name ?? activeDevice.label ?? activeDeviceId}
+                        {selectedSession.name}
                     </span>
                     <span
                         style={{
@@ -408,7 +961,7 @@ export const MapDevices = React.memo(() => {
                             fontFamily: "var(--font-mono)",
                         }}
                     >
-                        {activeDeviceId}
+                        {selectedSession.startTime ? new Date(selectedSession.startTime).toLocaleString() : ""}
                     </span>
                 </div>
             )}

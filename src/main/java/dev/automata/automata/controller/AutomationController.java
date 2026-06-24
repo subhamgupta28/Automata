@@ -6,11 +6,9 @@ import dev.automata.automata.automation.AutomationAnalyticsService;
 import dev.automata.automata.automation.MultiTimezoneAutomationService;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationDetail;
-import dev.automata.automata.security.AuthenticationService;
+import dev.automata.automata.model.Users;
 import dev.automata.automata.service.AutomationService;
 import dev.automata.automata.service.AutomationUtils;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +16,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,7 +34,7 @@ public class AutomationController {
     private final MultiTimezoneAutomationService timezoneService;
     private final AutomationAnalyticsService analyticsService;
     private final AutomationUtils automationUtils;
-    private final AuthenticationService authenticationService;
+
 
     @GetMapping("/send/{deviceId}")
     public ResponseEntity<?> sendConditionToDevice(@PathVariable String deviceId) {
@@ -99,31 +98,34 @@ public class AutomationController {
     }
 
     @GetMapping("/getAction")
-    public ResponseEntity<List<Automation>> getActions() {
-        return ResponseEntity.ok(automationService.getActions());
+    public ResponseEntity<List<Automation>> getActions(
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(automationService.getActions(user, homeId));
     }
 
-    // for getting action data from devices
 
     @MessageMapping("/action")
     public String sendAction(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            @Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor
+            @Payload Map<String, Object> payload, @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
     ) {
         System.err.println("got action message: " + payload);
         String deviceId = payload.get("device_id").toString();
         if (deviceId.isEmpty() || deviceId.equals("null")) {
             return "Device Id not found";
         }
-        var user = authenticationService.getAuthUser(request);
         var userId = user != null ? user.getId() : "System";
-        return automationService.handleAction(deviceId, payload, "", userId);
+        return automationService.handleAction(deviceId, payload, "", userId, homeId);
     }
 
     @GetMapping("/rebootAllDevices")
-    public ResponseEntity<String> rebootAllDevices() {
-        return ResponseEntity.ok(automationService.rebootAllDevices());
+    public ResponseEntity<String> rebootAllDevices(
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(automationService.rebootAllDevices(user, homeId));
     }
 
     @MessageMapping("/ackAction")
@@ -139,8 +141,12 @@ public class AutomationController {
     }
 
     @PostMapping("/saveAutomationDetail")
-    public ResponseEntity<String> saveAutomationDetail(@RequestBody AutomationDetail automation) {
-        return ResponseEntity.ok(automationService.saveAutomationDetailInternal(automation));
+    public ResponseEntity<String> saveAutomationDetail(
+            @RequestBody AutomationDetail automation,
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(automationService.saveAutomationDetailInternal(automation, user.getId(), homeId));
     }
 
     @GetMapping("/getAutomationDetail/{id}")
@@ -157,10 +163,11 @@ public class AutomationController {
     public ResponseEntity<String> handleAction(
             @RequestBody Map<String, Object> payload,
             @PathVariable String deviceId,
-            @PathVariable String deviceType
+            @PathVariable String deviceType,
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
     ) {
-        System.err.println("got action message: " + payload);
-        return ResponseEntity.ok(automationService.handleAction(deviceId, payload, deviceType, "user"));
+        return ResponseEntity.ok(automationService.handleAction(deviceId, payload, deviceType, user.getId(), homeId));
     }
 
     // HIGH PRIORITY ENDPOINTS
@@ -368,25 +375,39 @@ public class AutomationController {
     @PostMapping("/automation/{id}/snooze")
     public ResponseEntity<String> snooze(
             @PathVariable String id,
-            @RequestParam int minutes) {
-        return ResponseEntity.ok(automationUtils.snoozeAutomation(id, minutes));
+            @RequestParam int minutes,
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(automationUtils.snoozeAutomation(id, minutes, user, homeId));
     }
 
     @PostMapping("/automation/{id}/disable-timed")
     public ResponseEntity<String> timedDisable(
             @PathVariable String id,
-            @RequestParam(defaultValue = "0") int minutes) {
-        return ResponseEntity.ok(automationUtils.timedDisableAutomation(id, minutes));
+            @RequestParam(defaultValue = "0") int minutes,
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(automationUtils.timedDisableAutomation(id, minutes, user, homeId));
     }
 
     @PostMapping("/automation/{id}/resume")
-    public ResponseEntity<String> resume(@PathVariable String id) {
-        return ResponseEntity.ok(automationUtils.resumeAutomation(id));
+    public ResponseEntity<String> resume(
+            @PathVariable String id,
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(automationUtils.resumeAutomation(id, user, homeId));
     }
 
     @GetMapping("/automation/{id}/snooze-status")
-    public ResponseEntity<Map<String, Object>> status(@PathVariable String id) {
-        return ResponseEntity.ok(automationUtils.getSnoozeStatus(id));
+    public ResponseEntity<Map<String, Object>> status(
+            @PathVariable String id,
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(automationUtils.getSnoozeStatus(id, user, homeId));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -406,8 +427,10 @@ public class AutomationController {
     @PostMapping("/{id}/copy")
     public ResponseEntity<Map<String, Object>> copy(
             @PathVariable String id,
-            @RequestParam(defaultValue = "api") String user) {
-        return ResponseEntity.ok(automationService.copyAutomation(id, user));
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(automationService.copyAutomation(id, user.getId(), homeId));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -426,8 +449,10 @@ public class AutomationController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> delete(
             @PathVariable String id,
-            @RequestParam(defaultValue = "api") String user) {
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
+    ) {
 
-        return ResponseEntity.ok(automationService.deleteAutomation(id, user));
+        return ResponseEntity.ok(automationService.deleteAutomation(id, user.getId(), homeId));
     }
 }

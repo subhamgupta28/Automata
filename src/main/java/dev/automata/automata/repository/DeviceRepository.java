@@ -1,6 +1,7 @@
 package dev.automata.automata.repository;
 
 import dev.automata.automata.model.Device;
+import dev.automata.automata.model.Status;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.Collection;
@@ -25,4 +26,10 @@ public interface DeviceRepository extends MongoRepository<Device, String> {
     List<Device> findAllByMacAddr(String macAddr);
 
     List<Device> findAllByHomeId(String homeId);
+
+    Optional<Device> findByIdAndHomeId(String id, String homeId);
+
+    List<Device> findAllByHomeIdIsNull();
+
+    List<Device> findAllByHomeIdIsNullOrStatus(Status status);
 }

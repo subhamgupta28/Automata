@@ -8,10 +8,12 @@ import dev.automata.automata.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -764,5 +766,22 @@ public class MainService {
                 jwtService.generateDeviceToken(device.getFirst());
 
         return new DeviceAuthResponse(token);
+    }
+
+    public List<Device> getUnclaimedDevices(String homeId, String requestingUserId) {
+        authzService.requireAccess(homeId, requestingUserId);
+        return deviceRepository.findAllByHomeIdIsNull();
+    }
+
+    // DeviceService
+    public void claimDevice(String homeId, String deviceId, String requestingUserId) {
+        authzService.requireRole(homeId, requestingUserId, HomeRole.OWNER, HomeRole.ADMIN);
+        Device device = deviceRepository.findById(deviceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Device not found"));
+        if (device.getHomeId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Device is already claimed");
+        }
+        device.setHomeId(homeId);
+        deviceRepository.save(device);
     }
 }

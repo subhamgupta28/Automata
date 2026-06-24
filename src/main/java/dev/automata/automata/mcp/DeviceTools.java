@@ -85,7 +85,7 @@ public class DeviceTools {
         payload.put("direct", true);
         payload.put("deviceId", deviceId);
         log.info("DeviceTools: sendDeviceCommand payload [{}]", payload);
-        return automationService.handleAction(deviceId, payload, deviceType, "mcp");
+        return automationService.handleAction(deviceId, payload, deviceType, "mcp", "AI");
     }
 
     /**
@@ -111,6 +111,6 @@ public class DeviceTools {
 
         log.info("DeviceTools: sendWledCommand payload [{}]", payload);
         // "WLED" type is intercepted at the top of handleAction() → handleWLED()
-        return automationService.handleAction(deviceId, payload, "WLED", "mcp");
+        return automationService.handleAction(deviceId, payload, "WLED", "mcp", "AI");
     }
 }

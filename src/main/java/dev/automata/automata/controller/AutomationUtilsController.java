@@ -5,9 +5,11 @@ import dev.automata.automata.automation.AutomationVersionService;
 import dev.automata.automata.dto.AutomationAnalyticsDto;
 import dev.automata.automata.dto.AutomationAnalyticsSummaryDto;
 import dev.automata.automata.model.AutomationVersion;
+import dev.automata.automata.model.Users;
 import dev.automata.automata.service.AutomationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -77,10 +79,13 @@ public class AutomationUtilsController {
     public ResponseEntity<Map<String, String>> rollback(
             @PathVariable String automationId,
             @PathVariable int version,
-            @RequestBody(required = false) Map<String, String> body) {
+            @RequestBody(required = false) Map<String, String> body,
+            @RequestHeader("X-Home-Id") String homeId,
+            @AuthenticationPrincipal Users user
+    ) {
 
-        String user = body != null ? body.getOrDefault("user", "api") : "api";
-        String result = automationService.rollbackToVersion(automationId, version, user);
+//        String user = body != null ? body.getOrDefault("user", "api") : "api";
+        String result = automationService.rollbackToVersion(automationId, version, user.getId(), homeId);
         return ResponseEntity.ok(Map.of("status", result));
     }
 

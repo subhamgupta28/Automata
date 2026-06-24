@@ -65,7 +65,7 @@ public class AutomationStateStore {
     private static final String STATE_PREFIX = "AUTOMATION_STATE:";
     private static final String DEF_PREFIX = "AUTOMATION_DEF:";
     private static final String KEYS_PREFIX = "AUTOMATION_KEYS:";
-
+    private static final String VERSION_PREFIX = "AUTOMATION_DEF_VERSION:";
     private static final long STATE_TTL_S = 86_400L;   // 24h
     private static final long REGISTRY_TTL_S = 90_000L;   // 25h — outlives state
 
@@ -175,8 +175,36 @@ public class AutomationStateStore {
             String key = DEF_PREFIX + automationId;
             redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(plan));
             registerKey(automationId, key);
+
+            // Cheap version marker — lets nodes self-heal from a missed pub/sub
+            // eviction without paying the cost of deserializing the full plan
+            // on every evaluation. Stamped as compiledAt's epoch millis so it's
+            // monotonic with the plan itself (no separate counter to keep in sync).
+            String versionKey = VERSION_PREFIX + automationId;
+            long stamp = plan.getCompiledAt() != null ? plan.getCompiledAt().getTime() : 0L;
+            redisTemplate.opsForValue().set(versionKey, String.valueOf(stamp));
+            registerKey(automationId, versionKey);
         } catch (Exception e) {
             log.error("❌ Failed to write plan for '{}': {}", automationId, e.getMessage());
+        }
+    }
+
+    /**
+     * Returns the compiledAt epoch-millis stamp for the latest plan written
+     * to Redis, or -1 if no plan/version key exists.
+     * <p>
+     * Cheap (single GET of a tiny string value) compared to readPlan(), so
+     * it's safe to call on every evaluation tick to detect a missed pub/sub
+     * invalidation: if this value doesn't match the locally-cached plan's
+     * compiledAt, the local cache is stale and must be refreshed via readPlan().
+     */
+    public long readPlanVersion(String automationId) {
+        try {
+            Object raw = redisTemplate.opsForValue().get(VERSION_PREFIX + automationId);
+            return raw != null ? Long.parseLong(raw.toString()) : -1L;
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to read plan version for '{}': {}", automationId, e.getMessage());
+            return -1L;
         }
     }
 
@@ -378,7 +406,8 @@ public class AutomationStateStore {
                 "SNOOZE:" + automationId,
                 "TIMED_DISABLE:" + automationId,
                 STATE_PREFIX + automationId,
-                DEF_PREFIX + automationId));
+                DEF_PREFIX + automationId,
+                VERSION_PREFIX + automationId));
     }
 
 

@@ -32,6 +32,7 @@ public class ExecutionPlan {
     String triggerDeviceId;          // legacy — still populated for backward compat
     int schemaVersion;
     Date compiledAt;
+    String homeId;
 
     // ── Point 1: multi-trigger coalition ──────────────────────────────────
     // null → legacy single-trigger path (triggerDeviceId used, no quorum check)

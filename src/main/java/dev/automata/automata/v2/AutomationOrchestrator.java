@@ -67,11 +67,12 @@ public class AutomationOrchestrator {
     private final RedisTemplate<String, String> redisTemplate;
     private final ExecutionPlanCompiler planCompiler;
     private final AutomationLivePublisher livePublisher;
+    private final ReconcileLock reconcileLock;
     private final CoalitionGuard coalitionGuard;         // Point 1
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
     private static final int CAS_MAX_RETRIES = 2;
-    private static final String PLAN_INVALIDATE_CHANNEL = "automation:plan:invalidated";
+    public static final String PLAN_INVALIDATE_CHANNEL = "automation:plan:invalidated";
 
     private final ConcurrentHashMap<String, String> nameCache = new ConcurrentHashMap<>();
 
@@ -115,14 +116,23 @@ public class AutomationOrchestrator {
 
         String id = automation.getId();
         String name = automation.getName();
+        String homeId = automation.getHomeId();
 
         ExecutionPlan cached = planCache.get(id);
 
         // ── Case 1: plan is completely absent ────────────────────────────
         if (cached == null) {
+            if (!reconcileLock.tryAcquire(id)) {
+                log.debug("🔒 [reconciler] '{}' missing but another node already recompiling — skipping", name);
+                return;
+            }
             log.warn("⚠️ [reconciler] Plan missing for '{}' — recompiling", name);
-            recompile(automation, "missing from cache");
-            counter.incrementAndGet();
+            try {
+                recompile(automation, "missing from cache");
+                counter.incrementAndGet();
+            } finally {
+                reconcileLock.release(id);
+            }
             return;
         }
 
@@ -133,10 +143,18 @@ public class AutomationOrchestrator {
         Date compiledAt = cached.getCompiledAt();
 
         if (isStale(updatedAt, compiledAt)) {
+            if (!reconcileLock.tryAcquire(id)) {
+                log.debug("🔒 [reconciler] '{}' stale but another node already recompiling — skipping", name);
+                return;
+            }
             log.warn("⚠️ [reconciler] Plan stale for '{}' (DB={}, plan={}) — recompiling",
                     name, updatedAt, compiledAt);
-            recompile(automation, "stale (DB newer than cache)");
-            counter.incrementAndGet();
+            try {
+                recompile(automation, "stale (DB newer than cache)");
+                counter.incrementAndGet();
+            } finally {
+                reconcileLock.release(id);
+            }
         }
     }
 
@@ -187,7 +205,7 @@ public class AutomationOrchestrator {
     public void execute(String automationId, Map<String, Object> payload, String user) {
         ExecutionPlan plan = planCache.get(automationId);
         String firingDeviceId = plan != null ? plan.getTriggerDeviceId() : null;
-        executeInternal(automationId, payload, user, firingDeviceId);
+        executeInternal(automationId, payload, user, firingDeviceId, plan != null ? plan.getHomeId() : null);
     }
 
     /**
@@ -196,12 +214,12 @@ public class AutomationOrchestrator {
      */
     @Async("automationExecutor")
     public void execute(String automationId, Map<String, Object> payload,
-                        String user, String firingDeviceId) {
-        executeInternal(automationId, payload, user, firingDeviceId);
+                        String user, String firingDeviceId, String homeId) {
+        executeInternal(automationId, payload, user, firingDeviceId, homeId);
     }
 
     private void executeInternal(String automationId, Map<String, Object> payload,
-                                 String user, String firingDeviceId) {
+                                 String user, String firingDeviceId, String homeId) {
 
         String traceId = automationId.substring(0, Math.min(8, automationId.length()))
                 + "-" + System.currentTimeMillis()
@@ -210,10 +228,38 @@ public class AutomationOrchestrator {
         log.debug("🔍 [traceId={}] execute start — automation='{}' user='{}' firingDevice='{}'",
                 traceId, automationId, user, firingDeviceId);
 
-        // 1. Load plan
+        // 1. Load plan — fall back to Redis if this node's local cache missed it
+        // (e.g. evicted by pub/sub invalidation, or this node hasn't warmed yet).
         ExecutionPlan plan = planCache.get(automationId);
         if (plan == null) {
-            log.warn("⏭️ [traceId={}] No execution plan for '{}' — skipping.", traceId, automationId);
+            plan = stateStore.readPlan(automationId);
+            if (plan != null) {
+                planCache.put(automationId, plan);
+                log.info("♻️ [traceId={}] '{}' missing from local cache — warmed from Redis",
+                        traceId, automationId);
+            }
+        } else {
+            // Self-heal a missed pub/sub eviction: compare against the cheap
+            // version marker instead of always re-fetching the full plan.
+            // This is the safety net for Fix #1 — if the eviction message
+            // never arrived (node was disconnected, message dropped), this
+            // catches it on the very next execution instead of waiting up to
+            // 30 minutes for the reconciler.
+            long remoteVersion = stateStore.readPlanVersion(automationId);
+            long localVersion = plan.getCompiledAt() != null ? plan.getCompiledAt().getTime() : 0L;
+            if (remoteVersion > 0 && remoteVersion != localVersion) {
+                log.info("♻️ [traceId={}] '{}' local plan version {} != Redis version {} — refreshing",
+                        traceId, automationId, localVersion, remoteVersion);
+                ExecutionPlan fresh = stateStore.readPlan(automationId);
+                if (fresh != null) {
+                    planCache.put(automationId, fresh);
+                    plan = fresh;
+                }
+            }
+        }
+        if (plan == null) {
+            log.warn("⏭️ [traceId={}] No execution plan for '{}' (local + Redis miss) — skipping.",
+                    traceId, automationId);
             return;
         }
 
@@ -582,11 +628,12 @@ public class AutomationOrchestrator {
                                 AutomationRuntimeState prevState) {
         String name = resolveAutomationName(automationId);
         String traceId = result.getTraceId();
+        String homeId = plan.getHomeId();
 
         switch (result.getOutcome()) {
 
             case STATELESS_FIRE, FALLBACK -> dispatcher.dispatch(result.getActionsToFire(), payload, user,
-                            automationId, name, traceId)
+                            automationId, name, traceId, homeId)
                     .thenRun(() -> publishLog(automationId, plan, user, payload, result));
 
             case TRIGGERED -> {
@@ -596,7 +643,7 @@ public class AutomationOrchestrator {
                                     ? result.getActionsToFire()
                                     : (plan.getTopLevelPositiveActions() != null
                                        ? plan.getTopLevelPositiveActions() : List.of());
-                    dispatcher.dispatch(actions, payload, user, automationId, name, traceId)
+                    dispatcher.dispatch(actions, payload, user, automationId, name, traceId, homeId)
                             .thenRun(() -> {
                                 dispatcher.notifyTriggered(name);
                                 publishLog(automationId, plan, user, payload, result);
@@ -629,7 +676,7 @@ public class AutomationOrchestrator {
                             });
                 }
 
-                dispatcher.dispatch(toFire, payload, user, automationId, name, traceId)
+                dispatcher.dispatch(toFire, payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
                             notificationService.sendNotification(
                                     name + " — trigger condition lost", "info");
@@ -647,6 +694,7 @@ public class AutomationOrchestrator {
                                          String user,
                                          String automationId,
                                          String automationName) {
+        String homeId = plan.getHomeId();
         if (result.getBranchDecisions() == null) return;
 
         List<CompletableFuture<Void>> allFutures = new ArrayList<>();
@@ -661,7 +709,7 @@ public class AutomationOrchestrator {
                 case TRIGGER -> {
                     CompletableFuture<Void> f =
                             dispatcher.dispatch(branch.getPositiveActions(), payload,
-                                            user, automationId, automationName, result.getTraceId())
+                                            user, automationId, automationName, result.getTraceId(), homeId)
                                     .thenAccept(ok -> {
                                         if (!ok) {
                                             log.warn("⚠️ [{}] '{}' positive dispatch failed",
@@ -687,7 +735,7 @@ public class AutomationOrchestrator {
                     String reason = decision.getReason();
                     CompletableFuture<Void> f =
                             dispatcher.dispatch(branch.getNegativeActions(), payload,
-                                            user, automationId, automationName, result.getTraceId())
+                                            user, automationId, automationName, result.getTraceId(), homeId)
                                     .thenAccept(ok -> {
                                         if (ok) {
                                             stateStore.deleteRunningKey(automationId, gateNodeId);
@@ -723,15 +771,29 @@ public class AutomationOrchestrator {
     // ─────────────────────────────────────────────────────────────────────
 
     public void invalidatePlan(String automationId) {
-        planCache.evict(automationId);
-        nameCache.remove(automationId);
+        evictLocalCaches(automationId);
         redisTemplate.convertAndSend(PLAN_INVALIDATE_CHANNEL, automationId);
         log.info("📡 Plan invalidation published for '{}'", automationId);
+    }
+
+    /**
+     * Evicts both local caches (plan + name) for this automation. Called both
+     * by the node that triggers an invalidation and by PlanInvalidationListener
+     * on every other node that receives the resulting pub/sub message — so
+     * nameCache no longer silently goes stale on nodes that didn't do the save.
+     */
+    public void evictLocalCaches(String automationId) {
+        planCache.evict(automationId);
+        nameCache.remove(automationId);
     }
 
     public void updatePlan(String automationId, ExecutionPlan plan) {
         planCache.put(automationId, plan);
         nameCache.put(automationId, plan.getAutomationName());
+        // Note: this node already has the fresh plan+name locally (set above),
+        // so the pub/sub message below is purely for *other* nodes — this
+        // node's own PlanInvalidationListener firing on its own publish is a
+        // harmless no-op evict-then-the-data's-already-correct race, not a bug.
         redisTemplate.convertAndSend(PLAN_INVALIDATE_CHANNEL, automationId);
         log.info("📡 Plan updated and invalidation published for '{}'", automationId);
     }
