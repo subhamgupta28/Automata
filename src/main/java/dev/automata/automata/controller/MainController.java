@@ -115,6 +115,23 @@ public class MainController {
         return ResponseEntity.ok("success");
     }
 
+    @GetMapping("/{homeId}/devices/unclaimed")
+    public ResponseEntity<List<Device>> getUnclaimedDevices(
+            @PathVariable String homeId,
+            @AuthenticationPrincipal Users user) {
+        return ResponseEntity.ok(mainService.getUnclaimedDevices(homeId, user.getId()));
+    }
+
+    // PATCH /api/v1/homes/{homeId}/devices/{deviceId}/claim
+    @GetMapping("/{homeId}/devices/{deviceId}/claim")
+    public ResponseEntity<Void> claimDevice(
+            @PathVariable String homeId,
+            @PathVariable String deviceId,
+            @AuthenticationPrincipal Users user) {
+        mainService.claimDevice(homeId, deviceId, user.getId());
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/mainNodePos")
     public ResponseEntity<Map<String, Object>> getMainNodePos(
             @RequestHeader("X-Home-Id") String homeId,

@@ -193,6 +193,7 @@ public class ExecutionPlanCompiler {
         ExecutionPlan plan = ExecutionPlan.builder()
                 .automationId(automation.getId())
                 .automationName(automation.getName())
+                .homeId(automation.getHomeId())
                 .triggerDeviceId(automation.getTrigger().getDeviceId())
                 .schemaVersion(ExecutionPlan.CURRENT_SCHEMA_VERSION)
                 .compiledAt(new Date())

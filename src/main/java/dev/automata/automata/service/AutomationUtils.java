@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.AutomationCache;
 import dev.automata.automata.dto.AutomationState;
 import dev.automata.automata.model.Automation;
+import dev.automata.automata.model.Users;
 import dev.automata.automata.repository.AutomationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +31,7 @@ public class AutomationUtils {
     private static final String DISABLE_KEY = "TIMED_DISABLE:"; // TIMED_DISABLE:{automationId}
     // ─── SNOOZE ───────────────────────────────────────────────────────────────
 
-    public String snoozeAutomation(String automationId, int durationMinutes) {
+    public String snoozeAutomation(String automationId, int durationMinutes, Users user, String homeId) {
         automationRepository.findById(automationId).ifPresent(a -> {
             String key = SNOOZE_KEY + automationId;
             long ttl = durationMinutes * 60L;
@@ -63,7 +64,7 @@ public class AutomationUtils {
 
 // ─── TIMED DISABLE ────────────────────────────────────────────────────────
 
-    public String timedDisableAutomation(String automationId, int durationMinutes) {
+    public String timedDisableAutomation(String automationId, int durationMinutes, Users user, String homeId) {
         automationRepository.findById(automationId).ifPresent(a -> {
 
             if (durationMinutes <= 0) {
@@ -105,7 +106,7 @@ public class AutomationUtils {
 
 // ─── RESUME ───────────────────────────────────────────────────────────────
 
-    public String resumeAutomation(String automationId) {
+    public String resumeAutomation(String automationId, Users user, String homeId) {
         automationRepository.findById(automationId).ifPresent(a -> {
             redisService.delete(SNOOZE_KEY + automationId);
             redisService.delete(SNOOZE_KEY + "META:" + automationId);
@@ -130,7 +131,7 @@ public class AutomationUtils {
 
 // ─── STATUS ───────────────────────────────────────────────────────────────
 
-    public Map<String, Object> getSnoozeStatus(String automationId) {
+    public Map<String, Object> getSnoozeStatus(String automationId, Users user, String homeId) {
         boolean snoozed = redisService.exists(SNOOZE_KEY + automationId);
         boolean timedDisabled = redisService.exists(DISABLE_KEY + automationId);
 

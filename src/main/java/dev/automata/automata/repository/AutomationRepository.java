@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface AutomationRepository extends MongoRepository<Automation, String> {
 
@@ -18,4 +19,6 @@ public interface AutomationRepository extends MongoRepository<Automation, String
 
     @Query("{ 'trigger.sources.deviceId': ?0, 'isEnabled': true }")
     List<Automation> findByCoalitionMemberDeviceId(String deviceId);
+
+    Optional<Automation> findByIdAndHomeId(String id, String homeId);
 }

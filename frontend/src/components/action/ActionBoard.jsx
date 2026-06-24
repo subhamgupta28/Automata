@@ -1151,7 +1151,7 @@ function ActionBoardDetailComponent() {
         <Box sx={{position: 'relative', zIndex: 0}}>
             <Stack direction="row">
                 {/* Canvas */}
-                <Box sx={{width: '80%', height: '100dvh', borderRadius: '10px', p: '10px 10px 10px 0px'}}
+                <Box sx={{width: '75%', height: '100dvh', borderRadius: '10px', p: '10px 10px 10px 0px'}}
                      className="reactflow-wrapper" ref={reactFlowWrapper}>
                     <ReactFlow
                         style={{
@@ -1240,7 +1240,7 @@ function ActionBoardDetailComponent() {
                 </Box>
 
                 {/* Sidebar */}
-                <Box sx={{width: '20%', height: '100dvh'}}>
+                <Box sx={{width: '25%', height: '100dvh'}}>
                     <Card style={{
                         height: '97dvh',
                         display: 'flex',
@@ -1255,7 +1255,7 @@ function ActionBoardDetailComponent() {
                     }}>
                         <CardContent style={{
                             flex: 1,
-                            padding: '16px',
+                            padding: '6px',
                             display: 'flex',
                             flexDirection: 'column',
                             overflow: 'hidden'
@@ -1276,7 +1276,7 @@ function ActionBoardDetailComponent() {
                                          onDragStart={e => onDragStart(e, t)}>{label}</div>
                                 ))}
                             </Box>
-                            <Box sx={{flex: 1, overflow: 'auto', scrollbarWidth: 'none', mt: '16px', p: '10px'}}>
+                            <Box sx={{flex: 1, overflow: 'auto', scrollbarWidth: 'none',}}>
                                 <Typography>Saved Automations</Typography>
                                 <List>
                                     {automations.map(a => (

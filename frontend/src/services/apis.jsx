@@ -919,8 +919,8 @@ export const getOrphanDevices = async () => {
     return data;
 };
 
-export const claimDevice = async (deviceId, homeId) => {
-    const {data} = await api.post(`devices/${deviceId}/claim`, {homeId});
+export const claimDevice = async (homeId, deviceId) => {
+    const {data} = await api.get(`main/${homeId}/devices/${deviceId}/claim`);
     return data;
 };
 
@@ -963,3 +963,10 @@ export const deleteHome = async (homeId) => {
     const {data} = await api.delete(`homes/${homeId}`);
     return data;
 };
+
+// services/apis.js
+export const getUnclaimedDevices = (homeId) =>
+    api.get(`/main/${homeId}/devices/unclaimed`).then(r => r.data);
+
+export const getHomeInvites = (homeId) =>
+    api.get(`/invites/${homeId}/invites`).then(r => r.data);

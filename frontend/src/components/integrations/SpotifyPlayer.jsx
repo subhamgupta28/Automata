@@ -179,8 +179,8 @@ export default function SpotifyPlayer() {
         <Box
             sx={{
                 width: "100%",
-                height: 220,
-                borderRadius: "12px",
+                height: 235,
+                borderRadius: "6px",
                 overflow: 'hidden',
                 position: 'relative',
                 flexShrink: 0,

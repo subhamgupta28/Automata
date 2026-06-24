@@ -855,7 +855,7 @@ export const MapDevices = React.memo(() => {
                     margin: 10,
                 }}
             >
-                <MapView lat={lat} lng={lng} h="100%" w="100%" route={route} points={markerPoints}/>
+                <MapView lat={lat} lng={lng} h="50dvh" w="100%" route={route} points={markerPoints}/>
             </div>
 
             {/* Coordinate badge */}

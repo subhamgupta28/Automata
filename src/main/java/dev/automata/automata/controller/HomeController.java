@@ -1,6 +1,7 @@
 package dev.automata.automata.controller;
 
 import dev.automata.automata.dto.HomeDto;
+import dev.automata.automata.dto.HomeMemberDto;
 import dev.automata.automata.model.Home;
 import dev.automata.automata.model.HomeRole;
 import dev.automata.automata.model.Users;
@@ -39,7 +40,9 @@ public class HomeController {
     }
 
     @GetMapping("/{homeId}/members")
-    public ResponseEntity<List<HomeDto>> getHomeMembers(@PathVariable String homeId, @AuthenticationPrincipal Users user) {
+    public ResponseEntity<List<HomeMemberDto>> getHomeMembers(
+            @PathVariable String homeId,
+            @AuthenticationPrincipal Users user) {
         return ResponseEntity.ok(homeService.getHomeMembers(homeId, user.getId()));
     }
 
