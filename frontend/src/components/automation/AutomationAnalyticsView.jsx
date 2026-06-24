@@ -1,12 +1,10 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {
     Alert,
-    Backdrop,
     Box,
     Button,
     ButtonGroup,
     Chip,
-    CircularProgress,
     Grid,
     IconButton,
     LinearProgress,
@@ -394,12 +392,16 @@ export default function AutomationAnalyticsView() {
             </Box>
 
             {/* Backdrop Loading */}
-            <Backdrop
-                sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
-                open={false}
-            >
-                <CircularProgress color="inherit"/>
-            </Backdrop>
+            <div style={{
+                color: '#ffd821', width: '200px',
+                height: '200px',
+                background: 'transparent',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+            }}>
+                <img alt="home icon" src="/icons/home.svg"/>
+            </div>
         </Box>
     );
 }
