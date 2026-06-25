@@ -5,7 +5,6 @@ import {
     Button,
     Card,
     Chip,
-    CircularProgress,
     FormControl,
     InputLabel,
     MenuItem,
@@ -22,6 +21,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import List from "@mui/material/List";
 import DeviceCreateForm from "./DeviceCreateForm.jsx";
+import LoadingScreen from "../../utils/LoadingScreen.jsx";
 
 const DashboardEditor = ({change, existingDevice}) => {
     const {devices, loading, error} = useCachedDevices();
@@ -173,7 +173,7 @@ const DashboardEditor = ({change, existingDevice}) => {
     const handleDisable = async (e) => {
         await updateShowVirtualDevice(existingDevice.id, e.target.checked)
     }
-    if (loading) return <CircularProgress/>;
+    if (loading) return <LoadingScreen/>;
     if (error) return <Alert severity="error">Failed to load devices</Alert>;
 
     return (

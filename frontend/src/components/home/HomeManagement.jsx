@@ -54,6 +54,7 @@ import {
     joinHome,
     revokeAccess,
 } from '../../services/apis';
+import LoadingScreen from "../../utils/LoadingScreen.jsx";
 
 const modalStyle = {
     position: 'absolute',
@@ -120,7 +121,7 @@ function UnclaimedDevicesTab({homeId, myRole}) {
 
     if (loading) return (
         <Box sx={{display: 'flex', justifyContent: 'center', py: 4}}>
-            <CircularProgress size={28}/>
+            <LoadingScreen/>
         </Box>
     );
 

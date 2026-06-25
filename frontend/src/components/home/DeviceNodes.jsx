@@ -1,24 +1,26 @@
-import React, {useCallback, useEffect, useState, useMemo, useRef, memo} from 'react';
+import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
     addEdge,
     applyEdgeChanges,
-    applyNodeChanges, Panel,
+    applyNodeChanges,
+    Panel,
     ReactFlow,
     useEdgesState,
-    useNodesState, useReactFlow
+    useNodesState,
+    useReactFlow
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {getMainNodePos, rebootAllDevices} from "../../services/apis.jsx";
 // import useWebSocket from "../../services/useWebSocket.jsx";
-
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {AlertNode, Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
-import {Backdrop, Button, CircularProgress} from "@mui/material";
+import {Button} from "@mui/material";
 import NodeInspector from "./NodeInspector.jsx";
 import {ZoomSlider} from "./ZoomSlider.jsx";
 import ContextMenu from "./ContextMenu.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
+import LoadingScreen from "../../utils/LoadingScreen.jsx";
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {
@@ -90,7 +92,7 @@ const DeviceNodesComponent = () => {
         };
 
         if (devices)
-        fetchData();
+            fetchData();
     }, [setNodes, setEdges, devices, loading]);
 
     const onNodesChange = useCallback(
@@ -181,12 +183,7 @@ const DeviceNodesComponent = () => {
                 {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
             </ReactFlow>
 
-            <Backdrop
-                sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
-                open={openBackdrop}
-            >
-                <CircularProgress color="inherit"/>
-            </Backdrop>
+            <LoadingScreen/>
         </div>
     );
 };
@@ -198,7 +195,7 @@ const Dashboard = () => {
     return (
         // <DeviceDataProvider>
         // <ReactFlowProvider>
-            <DeviceNodes/>
+        <DeviceNodes/>
         // </ReactFlowProvider>
         // </DeviceDataProvider>
 
