@@ -64,6 +64,7 @@ import {
     stopSession,
 } from '../../services/apis.jsx';
 import GpsRoutePanel from "../../utils/GpsRoutePanel.jsx";
+import LoadingScreen from "../../utils/LoadingScreen.jsx";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const fmt = (n) => (n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n));
@@ -379,7 +380,7 @@ const NewSessionForm = ({devices, onCancel, onCreate}) => {
                     </Button>
                     <Button
                         variant="contained" size="small" onClick={handleCreate} disabled={loading}
-                        startIcon={loading ? <CircularProgress size={12} color="inherit"/> : null}
+                        startIcon={loading ? <LoadingScreen/> : null}
                         sx={{bgcolor: '#1D9E75', '&:hover': {bgcolor: '#17856A'}}}
                     >
                         {loading ? 'Creating…' : 'Create session'}

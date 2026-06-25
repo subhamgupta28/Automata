@@ -26,7 +26,7 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import Notifications from "../Notifications.jsx";
 import {SnackbarProvider} from "notistack";
-import {Card, CircularProgress} from "@mui/material";
+import {Card} from "@mui/material";
 import SignUp from "../auth/SignUp.jsx";
 import SignIn from "../auth/SignIn.jsx";
 import PrivateRoute from "../auth/PrivateRoute.jsx";
@@ -44,7 +44,8 @@ import {ConfigurationView} from "../dashboard/ConfigurationView.jsx";
 import Recordings from "../integrations/AutomataRecordings.jsx";
 import {Bot, Disc3Icon, Map, StoreIcon} from "lucide-react";
 import {MapDevices} from "../device_types/MapDevices.jsx";
-import HomeManagement from "../home/HomeManagement.jsx"; // Import the new component
+import HomeManagement from "../home/HomeManagement.jsx";
+import LoadingScreen from "../../utils/LoadingScreen.jsx"; // Import the new component
 
 // Lazy-load heavy route components
 const DeviceNodes = lazy(() => import("../home/DeviceNodes.jsx"));
@@ -63,7 +64,7 @@ const AdminLoginDashboard = lazy(() => import("../admin/AdminLoginDashboard.jsx"
 
 const PageLoader = () => (
     <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%'}}>
-        <CircularProgress size={32} color="primary"/>
+        <LoadingScreen/>
     </Box>
 );
 

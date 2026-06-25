@@ -1,8 +1,9 @@
 import React, {memo, useEffect, useMemo, useState} from "react";
 
 import ChartDetail from "../charts/ChartDetail.jsx";
-import {Backdrop, Box, CircularProgress, Tab, Tabs, useTheme,} from "@mui/material";
+import {Backdrop, Box, Tab, Tabs, useTheme,} from "@mui/material";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
+import LoadingScreen from "../../utils/LoadingScreen.jsx";
 
 const CustomTabPanel = memo(function CustomTabPanel(props) {
     const {children, value, index, ...other} = props;
@@ -92,7 +93,7 @@ function AnalyticsViewComponent() {
                 sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
                 open={openBackdrop}
             >
-                <CircularProgress color="inherit"/>
+                <LoadingScreen/>
             </Backdrop>
         </Box>
     );

@@ -1,16 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import {
-    Box,
-    Grid,
-    Typography,
-    CircularProgress,
-    Alert,
-    Paper,
-    Stack,
-    Chip,
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import { getAutomationAnalytics } from '../../services/apis.jsx';
+import React, {useEffect, useState} from 'react';
+import {Alert, Box, Chip, Grid, Paper, Stack, Typography,} from '@mui/material';
+import {useTheme} from '@mui/material/styles';
+import {getAutomationAnalytics} from '../../services/apis.jsx';
 import TriggerTrendChart from './analytics/TriggerTrendChart.jsx';
 import SuccessRateGauge from './analytics/SuccessRateGauge.jsx';
 import TriggerStatusBreakdown from './analytics/TriggerStatusBreakdown.jsx';
@@ -18,8 +9,9 @@ import HourlyDistributionChart from './analytics/HourlyDistributionChart.jsx';
 import FailureReasonsChart from './analytics/FailureReasonsChart.jsx';
 import DeviceImpactChart from './analytics/DeviceImpactChart.jsx';
 import AnalyticsMetricsPanel from './analytics/AnalyticsMetricsPanel.jsx';
+import LoadingScreen from "../../utils/LoadingScreen.jsx";
 
-export default function AutomationAnalyticsDetail({ automationId, daysBack = 7 }) {
+export default function AutomationAnalyticsDetail({automationId, daysBack = 7}) {
     const theme = useTheme();
     const [analytics, setAnalytics] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -47,8 +39,8 @@ export default function AutomationAnalyticsDetail({ automationId, daysBack = 7 }
 
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-                <CircularProgress />
+            <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px'}}>
+                <LoadingScreen/>
             </Box>
         );
     }
@@ -58,7 +50,7 @@ export default function AutomationAnalyticsDetail({ automationId, daysBack = 7 }
     }
 
     return (
-        <Box sx={{ width: '100%' }}>
+        <Box sx={{width: '100%'}}>
             {/* Automation Header */}
             <Paper
                 sx={{
@@ -71,31 +63,31 @@ export default function AutomationAnalyticsDetail({ automationId, daysBack = 7 }
             >
                 <Stack spacing={2}>
                     <Box>
-                        <Typography variant="h5" sx={{ color: theme.palette.primary.main, fontWeight: 'bold' }}>
+                        <Typography variant="h5" sx={{color: theme.palette.primary.main, fontWeight: 'bold'}}>
                             {analytics.automationName}
                         </Typography>
-                        <Typography variant="body2" sx={{ color: theme.palette.text.secondary, marginTop: '4px' }}>
+                        <Typography variant="body2" sx={{color: theme.palette.text.secondary, marginTop: '4px'}}>
                             ID: {analytics.automationId}
                         </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <Box sx={{display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
                         {analytics.isCurrentlyActive && (
-                            <Chip label="Currently Active" sx={{ backgroundColor: '#4caf50', color: '#fff' }} />
+                            <Chip label="Currently Active" sx={{backgroundColor: '#4caf50', color: '#fff'}}/>
                         )}
-                        <Chip label={`Last ${daysBack} days`} variant="outlined" />
-                        <Chip label={`${analytics.totalEvaluations} evaluations`} variant="outlined" />
+                        <Chip label={`Last ${daysBack} days`} variant="outlined"/>
+                        <Chip label={`${analytics.totalEvaluations} evaluations`} variant="outlined"/>
                     </Box>
                 </Stack>
             </Paper>
 
             {/* Key Metrics */}
-            <AnalyticsMetricsPanel analytics={analytics} />
+            <AnalyticsMetricsPanel analytics={analytics}/>
 
             {/* Charts Grid */}
-            <Grid container spacing={3} sx={{ marginTop: '10px' }}>
+            <Grid container spacing={3} sx={{marginTop: '10px'}}>
                 {/* Success Rate Gauge */}
                 <Grid item xs={12} sm={6} md={4}>
-                    <SuccessRateGauge successRate={analytics.successRate} />
+                    <SuccessRateGauge successRate={analytics.successRate}/>
                 </Grid>
 
                 {/* Trigger Status Breakdown */}
@@ -143,7 +135,7 @@ export default function AutomationAnalyticsDetail({ automationId, daysBack = 7 }
                         >
                             {analytics.triggeredCount}
                         </Typography>
-                        <Typography variant="body2" sx={{ color: theme.palette.text.secondary, marginTop: '8px' }}>
+                        <Typography variant="body2" sx={{color: theme.palette.text.secondary, marginTop: '8px'}}>
                             Successful executions
                         </Typography>
                     </Paper>
@@ -151,25 +143,25 @@ export default function AutomationAnalyticsDetail({ automationId, daysBack = 7 }
 
                 {/* Trigger Trend Chart */}
                 <Grid item xs={12} md={6}>
-                    <TriggerTrendChart triggersByDay={analytics.triggersByDay} />
+                    <TriggerTrendChart triggersByDay={analytics.triggersByDay}/>
                 </Grid>
 
                 {/* Most Common Times */}
                 <Grid item xs={12} md={6}>
-                    <HourlyDistributionChart mostCommonTimes={analytics.mostCommonTriggerTimes} />
+                    <HourlyDistributionChart mostCommonTimes={analytics.mostCommonTriggerTimes}/>
                 </Grid>
 
                 {/* Failure Reasons */}
                 {analytics.failureReasons && analytics.failureReasons.length > 0 && (
                     <Grid item xs={12} md={6}>
-                        <FailureReasonsChart failureReasons={analytics.failureReasons} />
+                        <FailureReasonsChart failureReasons={analytics.failureReasons}/>
                     </Grid>
                 )}
 
                 {/* Affected Devices */}
                 {analytics.affectedDevices && analytics.affectedDevices.length > 0 && (
                     <Grid item xs={12} md={6}>
-                        <DeviceImpactChart affectedDevices={analytics.affectedDevices} />
+                        <DeviceImpactChart affectedDevices={analytics.affectedDevices}/>
                     </Grid>
                 )}
             </Grid>

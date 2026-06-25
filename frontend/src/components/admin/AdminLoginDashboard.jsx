@@ -6,7 +6,6 @@ import {
     Card,
     CardContent,
     CardHeader,
-    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
@@ -41,6 +40,7 @@ import {
 import {getLoginAnalytics} from '../../services/apis';
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import LoadingScreen from "../../utils/LoadingScreen.jsx";
 
 dayjs.extend(relativeTime)
 
@@ -128,7 +128,7 @@ export default function AdminLoginDashboard() {
     if (loading) {
         return (
             <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>
-                <CircularProgress/>
+                <LoadingScreen/>
             </Box>
         );
     }
