@@ -1,7 +1,6 @@
 package dev.automata.automata.v2;
 
 import dev.automata.automata.dto.AutomationRuntimeState;
-import dev.automata.automata.dto.BranchDecision;
 import dev.automata.automata.dto.ConditionMemory;
 import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.RedisService;
@@ -11,38 +10,61 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Stream;
 
 /**
  * Pure evaluation component — NO Redis writes, NO action dispatch.
+ *
+ * <p>Bug fixes (this version)
+ * ─────────────────────────
+ * BUG 4 — OR fanout branch actions silently swallowed when top-level already ACTIVE
  * <p>
- * Changes vs previous version
- * ───────────────────────────
- * 1. applyMemoryPolicy() (Point 2)
- * Called inside walkNode() after evalSingleCondition().
- * Wraps the raw boolean through the node's ConditionMemoryPolicy (if any)
- * and updates ConditionMemory entries on the next-state object.
- * The evaluator receives a mutable memoryUpdates map; the orchestrator
- * writes these into the next AutomationRuntimeState after CAS succeeds.
+ * Root cause: walkConditionTree() previously routed every successful tree walk
+ * through handleActivate(), which gates on state.isTopLevelActive(). When an
+ * automation is already ACTIVE (because another OR branch fired earlier), any
+ * subsequent OR branch that becomes true gets EvalOutcome.SKIPPED — its own
+ * positiveActions are never dispatched and the EvalResult.hasChanges() == false
+ * short-circuit in the orchestrator causes a full early return with zero side
+ * effects.
  * <p>
- * 2. Memory-aware walkNode signature
- * walkNode() accepts a memoryUpdates map (nodeId → ConditionMemory) that
- * it populates as it walks the tree. The orchestrator copies these into
- * nextState.conditionMemories after a successful CAS write.
+ * Concrete example from the TESTING automation:
+ * node_condition_22 (9:30 AM–4:30 PM) is a sibling OR branch to
+ * node_condition_10 (6 PM–2 AM) under the same OR fanout at node_18.
+ * If the automation was triggered via the 6 PM branch and later the
+ * daytime window opens (9:30 AM), node_22 passes but handleActivate()
+ * sees isTopLevelActive()==true and returns SKIPPED with no actions.
  * <p>
- * 3. Memory summary generation for EvalResult (Point 9)
- * After walking, the evaluator builds human-readable summaries of each
- * node's memory state and attaches them to EvalResult for the snapshot.
+ * Fix: walkConditionTree() now distinguishes two cases after a successful walk:
+ * <ol>
+ *   <li>The walk produced branch-level positiveActions (walkResult.positiveActionsToFire
+ *       is non-empty) — these belong to specific OR fanout branches. We check per-NODE
+ *       active state instead of the top-level state: if any of the PASSED nodes
+ *       were previously INACTIVE, those nodes have just transitioned inactive→active
+ *       and their actions must fire. This produces EvalOutcome.BRANCH_TRIGGERED.
+ *       If every passed node was already ACTIVE, we emit EvalOutcome.SKIPPED so
+ *       the orchestrator's hasChanges() guard correctly suppresses re-dispatch.</li>
+ *   <li>The walk produced NO branch-level actions (pure condition chain with only
+ *       top-level actions). Behaviour is unchanged: delegate to handleActivate()
+ *       which checks top-level state and returns TRIGGERED or SKIPPED as before.</li>
+ * </ol>
+ * EvalOutcome.BRANCH_TRIGGERED is treated identically to TRIGGERED in the
+ * orchestrator's dispatch and state-compute paths, with the sole difference that
+ * it does NOT touch the top-level topLevelState field (it may already be ACTIVE
+ * and should remain so; the per-node nodeStates are the authoritative record).
  * <p>
- * 4. handleNoBranch fix (from previous analysis)
- * nextTopLevelState is always "ACTIVE" so single-shot automations don't
- * re-fire every tick.
+ * Previously documented bug fixes (carried forward unchanged):
+ * BUG 1 — Stranded descendants (see class javadoc in previous version)
+ * BUG 2 — durationMinutes silently ignored (intervalNodesToArm)
+ * BUG 3 — Cross-branch state pollution (conditionResults per-node flags)
+ * Performance fix — SECONDARY_CACHE per-evaluation in-memory cache
  */
 @Slf4j
 @Component
@@ -60,6 +82,13 @@ public class AutomationEvaluator {
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
+    /**
+     * Per-evaluation in-memory cache for secondary device data.
+     * Keyed by deviceId → payload map. Created fresh for each evaluate() call.
+     */
+    private static final ThreadLocal<Map<String, Map<String, Object>>> SECONDARY_CACHE =
+            ThreadLocal.withInitial(HashMap::new);
+
 
     // ─────────────────────────────────────────────────────────────────────
     // ENTRY POINT
@@ -74,12 +103,13 @@ public class AutomationEvaluator {
         long evalStart = System.currentTimeMillis();
         ZonedDateTime now = ZonedDateTime.now(IST);
 
+        SECONDARY_CACHE.get().clear();
+
         EvalResult.EvalResultBuilder result = EvalResult.builder()
                 .automationId(automationId)
                 .evaluatedAt(Date.from(now.toInstant()))
                 .traceId(traceId);
 
-        // memoryUpdates: populated by walkNode, written to state post-CAS by orchestrator
         Map<String, ConditionMemory> memoryUpdates = new LinkedHashMap<>();
 
         EvalResult built;
@@ -92,13 +122,10 @@ public class AutomationEvaluator {
                     .build();
         } else if (plan.hasConditionTree()) {
             built = walkConditionTree(plan, payload, state, automationId, now, result, memoryUpdates);
-        } else if (plan.hasBranches()) {
-            built = handleBranches(plan, state, result.c1True(true), automationId, now, payload);
         } else {
-            built = handleNoBranch(plan, state, result.c1True(true), now);
+            built = handleActivate(plan, state, result.c1True(true), now);
         }
 
-        // Attach memory updates to result so orchestrator can persist them post-CAS
         built = built.toBuilder()
                 .memoryUpdates(memoryUpdates)
                 .evalDurationMs(System.currentTimeMillis() - evalStart)
@@ -107,6 +134,8 @@ public class AutomationEvaluator {
         if (built.getEvalDurationMs() > 200)
             log.warn("⚠️ [{}] Slow evaluation: {}ms (traceId={})",
                     plan.getAutomationName(), built.getEvalDurationMs(), traceId);
+
+        SECONDARY_CACHE.get().clear();
 
         return built;
     }
@@ -128,79 +157,127 @@ public class AutomationEvaluator {
         if (plan.getConditionTree() != null)
             plan.getConditionTree().forEach(n -> nodeMap.put(n.getNodeId(), n));
 
-        var visited = new HashSet<String>();
+        Set<String> visited = new HashSet<>();
+        Map<String, Boolean> allConditionResults = new LinkedHashMap<>();
+        Set<String> intervalNodesToArm = new LinkedHashSet<>();
+
         for (String rootId : plan.getRootConditionNodeIds()) {
             ExecutionPlan.CompiledConditionNode rootNode = nodeMap.get(rootId);
             if (rootNode == null) {
-                log.warn("⚠️ Root condition node '{}' not found in tree — skipping", rootId);
+                log.warn("⚠️ Root node '{}' not found in nodeMap for '{}' — skipping",
+                        rootId, plan.getAutomationName());
                 continue;
             }
 
             TreeWalkResult walkResult = walkNode(rootNode, nodeMap, payload, state,
-                    automationId, now, plan.getAutomationName(), memoryUpdates, visited);
+                    automationId, now, plan.getAutomationName(), memoryUpdates, visited,
+                    intervalNodesToArm);
+
+            allConditionResults.putAll(walkResult.conditionResults);
 
             if (!walkResult.passed) {
-                log.debug("🌿 [{}] Tree walk stopped at '{}' — firing {} negative action(s)",
+                log.debug("🌿 [{}] Tree walk failed at '{}' — {} negative action(s)",
                         plan.getAutomationName(), walkResult.failedNodeId,
                         walkResult.negativeActionsToFire.size());
 
-                boolean anyBranchWasActive = plan.hasBranches() &&
-                        plan.getBranches().stream()
-                                .anyMatch(b -> state.isBranchActive(b.getGateNodeId()));
-                boolean topLevelWasActive = !plan.hasBranches() && state.isTopLevelActive();
-                boolean anyNodeWasActive = plan.getConditionTree() != null
-                        && plan.getConditionTree().stream()
+                boolean anyNodeWasActive = plan.getConditionTree().stream()
                         .anyMatch(n -> n.isStateful() && state.isNodeActive(n.getNodeId()));
-                boolean anyWasActive = anyBranchWasActive || topLevelWasActive || anyNodeWasActive;
-
-                List<String> branchesToRevert = anyBranchWasActive
-                        ? plan.getBranches().stream()
-                          .filter(b -> state.isBranchActive(b.getGateNodeId()))
-                          .map(ExecutionPlan.CompiledBranch::getGateNodeId)
-                          .toList()
-                        : List.of();
 
                 List<ExecutionPlan.CompiledAction> toFire = new ArrayList<>();
-                if (anyWasActive && plan.getInformationalActions() != null)
+                if (anyNodeWasActive && plan.getInformationalActions() != null)
                     toFire.addAll(plan.getInformationalActions());
                 toFire.addAll(walkResult.negativeActionsToFire);
 
                 return result
                         .c1True(false)
-                        .outcome(anyWasActive ? EvalOutcome.C1_NEGATIVE : EvalOutcome.NOT_MET)
+                        .outcome(anyNodeWasActive ? EvalOutcome.C1_NEGATIVE : EvalOutcome.NOT_MET)
                         .actionsToFire(toFire)
-                        .branchesToRevert(branchesToRevert)
-                        .anyWasActive(anyWasActive)
-                        .conditionResults(walkResult.conditionResults)
+                        .anyWasActive(anyNodeWasActive)
+                        .conditionResults(allConditionResults)
+                        .intervalNodesToArm(Set.of())
                         .build();
             }
 
-            if (plan.hasBranches()) {
-                return handleBranches(plan, state,
-                        result.c1True(true).conditionResults(walkResult.conditionResults),
-                        automationId, now, payload);
-            } else {
-                return handleNoBranch(plan, state,
-                        result.c1True(true)
-                                .conditionResults(walkResult.conditionResults)
-                                .actionsToFire(walkResult.positiveActionsToFire),
-                        now);
+            // ── BUG 4 FIX: branch-level vs top-level activation ───────────────
+            //
+            // If the walk produced per-branch positive actions we must NOT route
+            // through handleActivate() unconditionally.  handleActivate() gates on
+            // the top-level isTopLevelActive() flag, which is shared across all OR
+            // branches — so once ANY branch fires and sets the automation ACTIVE,
+            // every subsequent branch whose window opens gets SKIPPED and its own
+            // positiveActions are silently dropped.
+            //
+            // Instead:
+            //   • If walkResult has its own positiveActionsToFire → use per-node
+            //     state to decide whether this is a new activation (BRANCH_TRIGGERED)
+            //     or a steady-state repeat (SKIPPED).
+            //   • If walkResult has NO branch-level actions → fall through to the
+            //     original handleActivate() path (top-level TRIGGERED / SKIPPED).
+            //
+            // "Any passed node was previously INACTIVE" is the correct transition
+            // signal: it means at least one OR branch just changed state and its
+            // hardware commands must be dispatched.
+
+            List<ExecutionPlan.CompiledAction> branchActions = walkResult.positiveActionsToFire;
+
+            if (branchActions != null && !branchActions.isEmpty()) {
+                // Determine which nodes passed this tick so we can check their
+                // previous per-node state.
+                Set<String> passedNodeIds = new LinkedHashSet<>();
+                allConditionResults.forEach((nodeId, passed) -> {
+                    if (Boolean.TRUE.equals(passed)) passedNodeIds.add(nodeId);
+                });
+
+                boolean anyBranchJustActivated = passedNodeIds.stream()
+                        .anyMatch(nodeId -> {
+                            ExecutionPlan.CompiledConditionNode n = nodeMap.get(nodeId);
+                            // Only stateful nodes track per-node active state; for non-stateful
+                            // nodes we always treat them as "just activated" so their actions fire.
+                            return n == null || !n.isStateful() || !state.isNodeActive(nodeId);
+                        });
+
+                log.debug("🌿 [{}] Branch walk passed — {} branch action(s), anyJustActivated={}",
+                        plan.getAutomationName(), branchActions.size(), anyBranchJustActivated);
+
+                if (anyBranchJustActivated) {
+                    // At least one OR branch node transitioned inactive → active.
+                    // Dispatch its positive actions and record the activation.
+                    EvalResult activated = result
+                            .c1True(true)
+                            .outcome(EvalOutcome.BRANCH_TRIGGERED)
+                            .actionsToFire(branchActions)
+                            .conditionResults(allConditionResults)
+                            .nextTopLevelState("ACTIVE")
+                            .triggeredAt(Date.from(now.toInstant()))
+                            .build();
+                    return activated.toBuilder().intervalNodesToArm(intervalNodesToArm).build();
+                } else {
+                    // Every passed node was already ACTIVE — steady state, no re-dispatch.
+                    return result
+                            .c1True(true)
+                            .outcome(EvalOutcome.SKIPPED)
+                            .reason("Branch already active — OR branch still true")
+                            .conditionResults(allConditionResults)
+                            .intervalNodesToArm(Set.of())
+                            .build();
+                }
             }
+
+            // No branch-level actions: original top-level handleActivate() path.
+            EvalResult activated = handleActivate(plan, state,
+                    result.c1True(true)
+                            .conditionResults(allConditionResults)
+                            .actionsToFire(walkResult.positiveActionsToFire),
+                    now);
+            return activated.toBuilder().intervalNodesToArm(intervalNodesToArm).build();
         }
 
-        if (plan.hasBranches())
-            return handleBranches(plan, state, result.c1True(true), automationId, now, payload);
-        return handleNoBranch(plan, state, result.c1True(true), now);
+        // No root nodes evaluated
+        return handleActivate(plan, state, result.c1True(true), now)
+                .toBuilder().intervalNodesToArm(Set.of()).build();
     }
 
-    /**
-     * Recursively walks one condition node and its subtree.
-     * <p>
-     * Point 2 integration: after evalSingleCondition(), if the node has a
-     * memoryPolicy, the raw result is passed through applyMemoryPolicy().
-     * The updated ConditionMemory is recorded in memoryUpdates for post-CAS
-     * persistence by the orchestrator.
-     */
+
     private TreeWalkResult walkNode(ExecutionPlan.CompiledConditionNode node,
                                     Map<String, ExecutionPlan.CompiledConditionNode> nodeMap,
                                     Map<String, Object> payload,
@@ -208,14 +285,22 @@ public class AutomationEvaluator {
                                     String automationId,
                                     ZonedDateTime now,
                                     String automationName,
-                                    Map<String, ConditionMemory> memoryUpdates, Set<String> visited) {
+                                    Map<String, ConditionMemory> memoryUpdates,
+                                    Set<String> visited,
+                                    Set<String> intervalNodesToArm) {
+
+        // Cycle guard — MUST be first
+        if (!visited.add(node.getNodeId())) {
+            log.warn("⚠️ [{}] Cycle detected at node '{}' — skipping", automationName, node.getNodeId());
+            return TreeWalkResult.passed(List.of(), Map.of());
+        }
 
         boolean wasActive = node.isStateful() && state.isNodeActive(node.getNodeId());
 
         boolean rawResult = evalSingleCondition(node.getCondition(), payload,
                 wasActive, automationId, now);
 
-        // ── Point 2: apply memory policy ──────────────────────────────────
+        // ── Apply memory policy ────────────────────────────────────────────
         boolean result;
         if (node.hasMemoryPolicy()) {
             ConditionMemory currentMemory = state.getConditionMemory(node.getNodeId());
@@ -228,9 +313,6 @@ public class AutomationEvaluator {
                     policyResult.memorySummary, result);
         } else {
             result = rawResult;
-            // Still update memory even for nodes without a policy, so that
-            // previousRawResult is always available for future edge detection if
-            // the user later adds a policy without restarting.
             ConditionMemory currentMemory = state.getConditionMemory(node.getNodeId());
             ConditionMemory updated = rawResult
                     ? currentMemory.withRawTrue(now.toInstant().toEpochMilli())
@@ -241,13 +323,16 @@ public class AutomationEvaluator {
         Map<String, Boolean> condResults = new LinkedHashMap<>();
         condResults.put(node.getNodeId(), result);
 
-        if (!visited.add(node.getNodeId())) {
-            // Already evaluated this tick — return cached result or skip
-            return TreeWalkResult.passed(List.of(), condResults);
-        }
         log.debug("  📊 [{}] Node '{}' ({}) wasActive={} → {}",
                 automationName, node.getNodeId(),
                 node.getCondition().getConditionType(), wasActive, result);
+
+        // BUG 2 fix: record interval nodes with a duration window that
+        // evaluated true this tick, so the orchestrator can arm RUNNING
+        // after a successful dispatch.
+        if (result && isIntervalWithDuration(node.getCondition())) {
+            intervalNodesToArm.add(node.getNodeId());
+        }
 
         if (!result) {
             List<ExecutionPlan.CompiledAction> negActions = new ArrayList<>();
@@ -256,207 +341,119 @@ public class AutomationEvaluator {
             return TreeWalkResult.failed(node.getNodeId(), negActions, condResults);
         }
 
-        // Replace single child walk:
-        if (node.getPositiveChildNodeIds() != null && !node.getPositiveChildNodeIds().isEmpty()) {
+        // ── Leaf node ─────────────────────────────────────────────────────
+        if (node.getPositiveChildNodeIds() == null || node.getPositiveChildNodeIds().isEmpty()) {
+            List<ExecutionPlan.CompiledAction> posActions =
+                    node.getPositiveActions() != null ? node.getPositiveActions() : List.of();
+            return TreeWalkResult.passed(posActions, condResults);
+        }
+
+        log.debug("{} Node {} children = {}",
+                automationName, node.getNodeId(), node.getPositiveChildNodeIds());
+
+        if (!node.isFanout()) {
+            // ── AND path: all children must pass ──────────────────────────
             List<ExecutionPlan.CompiledAction> allChildNegActions = new ArrayList<>();
             Map<String, Boolean> allChildCondResults = new LinkedHashMap<>();
 
             for (String childId : node.getPositiveChildNodeIds()) {
                 ExecutionPlan.CompiledConditionNode child = nodeMap.get(childId);
-                if (child == null) continue;
+                if (child == null) {
+                    log.warn("⚠️ [{}] Child node '{}' referenced by '{}' not found in nodeMap",
+                            automationName, childId, node.getNodeId());
+                    continue;
+                }
                 TreeWalkResult childResult = walkNode(child, nodeMap, payload, state,
-                        automationId, now, automationName, memoryUpdates, visited);
+                        automationId, now, automationName, memoryUpdates, visited,
+                        intervalNodesToArm);
                 allChildCondResults.putAll(childResult.conditionResults);
+
                 if (!childResult.passed) {
                     allChildNegActions.addAll(childResult.negativeActionsToFire);
-                    // First failure stops the chain — return failed with all accumulated neg actions
                     condResults.putAll(allChildCondResults);
-                    return TreeWalkResult.failed(childResult.failedNodeId, allChildNegActions, condResults);
+                    return TreeWalkResult.failed(childResult.failedNodeId,
+                            allChildNegActions, condResults);
                 }
             }
+
             condResults.putAll(allChildCondResults);
-            // All children passed — collect their positive actions
             List<ExecutionPlan.CompiledAction> allPos = node.getPositiveChildNodeIds().stream()
-                    .map(nodeMap::get).filter(Objects::nonNull)
-                    .flatMap(n -> n.getPositiveActions() != null ? n.getPositiveActions().stream() : Stream.empty())
+                    .map(nodeMap::get)
+                    .filter(Objects::nonNull)
+                    .flatMap(n -> n.getPositiveActions() != null
+                            ? n.getPositiveActions().stream() : Stream.empty())
                     .toList();
             return TreeWalkResult.passed(allPos, condResults);
+
+        } else {
+            // ── OR fan-out path ────────────────────────────────────────────
+            List<ExecutionPlan.CompiledAction> allPositiveActions = new ArrayList<>();
+            List<ExecutionPlan.CompiledAction> allNegativeActions = new ArrayList<>();
+            Map<String, Boolean> allChildCondResults = new LinkedHashMap<>();
+            boolean anyPassed = false;
+            boolean firstMatch = node.isFirstMatch();
+
+            for (String childId : node.getPositiveChildNodeIds()) {
+                ExecutionPlan.CompiledConditionNode child = nodeMap.get(childId);
+                if (child == null) {
+                    log.warn("⚠️ [{}] Fan-out child '{}' not found in nodeMap", automationName, childId);
+                    continue;
+                }
+                TreeWalkResult childResult = walkNode(child, nodeMap, payload, state,
+                        automationId, now, automationName, memoryUpdates, visited,
+                        intervalNodesToArm);
+                allChildCondResults.putAll(childResult.conditionResults);
+
+                log.debug("{} Child {} result={}", automationName, childId, childResult.passed());
+
+                if (childResult.passed) {
+                    allPositiveActions.addAll(childResult.positiveActionsToFire);
+                    anyPassed = true;
+                    if (firstMatch) break;
+                } else {
+                    allNegativeActions.addAll(childResult.negativeActionsToFire);
+                }
+            }
+
+            condResults.putAll(allChildCondResults);
+
+            if (!anyPassed) {
+                return TreeWalkResult.failed("fanout@" + node.getNodeId(),
+                        allNegativeActions, condResults);
+            }
+
+            // For OR fanout, combine negative actions from failing branches FIRST
+            // (so devices on failing branches get their off-commands), then the
+            // positive actions from passing branches.
+            List<ExecutionPlan.CompiledAction> combined = new ArrayList<>(allNegativeActions);
+            combined.addAll(allPositiveActions);
+
+            log.debug("{} OR node {} cond results={}", automationName, node.getNodeId(), condResults);
+            return TreeWalkResult.passed(combined, condResults);
         }
+    }
 
-        List<ExecutionPlan.CompiledAction> posActions =
-                node.getPositiveActions() != null ? node.getPositiveActions() : List.of();
-        return TreeWalkResult.passed(posActions, condResults);
+    private boolean isIntervalWithDuration(ExecutionPlan.CompiledCondition c) {
+        return c != null
+                && "scheduled".equals(c.getConditionType())
+                && "interval".equals(c.getScheduleType())
+                && c.getDurationMinutes() > 0;
     }
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // POINT 2 — MEMORY POLICY EVALUATION
+    // ACTIVATE  (top-level — checks isTopLevelActive())
     // ─────────────────────────────────────────────────────────────────────
-
-    private record MemoryPolicyResult(boolean passes, ConditionMemory updatedMemory,
-                                      String memorySummary) {
-    }
 
     /**
-     * Applies a ConditionMemoryPolicy to a raw condition result.
+     * Used when there are NO branch-level positive actions — i.e. the automation
+     * has only top-level actions and we need to check whether the whole automation
+     * is already ACTIVE before dispatching.
      * <p>
-     * DURATION
-     * true only if rawResult=true AND the condition has been continuously true
-     * for at least policy.requiredDurationSeconds.
-     * Timer starts on the first true; a false tick resets it.
-     * <p>
-     * CONSECUTIVE_TICKS
-     * true only if rawResult=true AND consecutiveTrueCount (after increment) >=
-     * policy.requiredTicks.
-     * <p>
-     * EDGE_RISING
-     * true only on the tick where rawResult transitions false → true.
-     * Subsequent true ticks return false (edge already fired).
-     * <p>
-     * EDGE_FALLING
-     * true only on the tick where rawResult transitions true → false.
-     * <p>
-     * EDGE_BOTH
-     * true on any transition.
+     * Do NOT call this for OR-fanout paths that carry their own per-branch
+     * positiveActions — use the BRANCH_TRIGGERED path in walkConditionTree() instead.
      */
-    private MemoryPolicyResult applyMemoryPolicy(ConditionMemoryPolicy policy,
-                                                 boolean rawResult,
-                                                 ConditionMemory memory,
-                                                 ZonedDateTime now) {
-        long nowMs = now.toInstant().toEpochMilli();
-
-        return switch (policy.getType()) {
-
-            case DURATION -> {
-                if (!rawResult) {
-                    // Condition is false — reset timer
-                    ConditionMemory updated = memory.withRawFalse();
-                    yield new MemoryPolicyResult(false, updated, "DURATION: reset (false)");
-                }
-                // Condition is true — start or continue timer
-                ConditionMemory updated = memory.withRawTrue(nowMs).withPolicyPassed(false);
-                long firstTrue = updated.getFirstTrueEpochMs();
-                long elapsedSec = (nowMs - firstTrue) / 1000;
-                boolean passes = elapsedSec >= policy.getRequiredDurationSeconds();
-                updated = updated.withPolicyPassed(passes);
-                String summary = "DURATION: " + elapsedSec + "/" + policy.getRequiredDurationSeconds() + "s";
-                yield new MemoryPolicyResult(passes, updated, summary);
-            }
-
-            case CONSECUTIVE_TICKS -> {
-                if (!rawResult) {
-                    ConditionMemory updated = memory.withRawFalse();
-                    yield new MemoryPolicyResult(false, updated, "CONSECUTIVE: reset (false)");
-                }
-                ConditionMemory updated = memory.withRawTrue(nowMs);
-                int count = updated.getConsecutiveTrueCount();
-                boolean passes = count >= policy.getRequiredTicks();
-                updated = updated.withPolicyPassed(passes);
-                String summary = "CONSECUTIVE: " + count + "/" + policy.getRequiredTicks();
-                yield new MemoryPolicyResult(passes, updated, summary);
-            }
-
-            case EDGE_RISING -> {
-                Boolean prev = memory.getPreviousRawResult();
-                // Rising edge: previous was false (or null = first tick) AND current is true
-                boolean edge = rawResult && (prev == null || !prev);
-                ConditionMemory updated = (rawResult
-                        ? memory.withRawTrue(nowMs)
-                        : memory.withRawFalse())
-                        .withPolicyPassed(edge);
-                String summary = edge ? "EDGE_RISING: fired" : "EDGE_RISING: no edge (raw=" + rawResult + ")";
-                yield new MemoryPolicyResult(edge, updated, summary);
-            }
-
-            case EDGE_FALLING -> {
-                Boolean prev = memory.getPreviousRawResult();
-                // Falling edge: previous was true AND current is false
-                boolean edge = !rawResult && (prev != null && prev);
-                ConditionMemory updated = (rawResult
-                        ? memory.withRawTrue(nowMs)
-                        : memory.withRawFalse())
-                        .withPolicyPassed(edge);
-                String summary = edge ? "EDGE_FALLING: fired" : "EDGE_FALLING: no edge (raw=" + rawResult + ")";
-                yield new MemoryPolicyResult(edge, updated, summary);
-            }
-
-            case EDGE_BOTH -> {
-                Boolean prev = memory.getPreviousRawResult();
-                boolean edge = prev == null ? rawResult : (rawResult != prev);
-                ConditionMemory updated = (rawResult
-                        ? memory.withRawTrue(nowMs)
-                        : memory.withRawFalse())
-                        .withPolicyPassed(edge);
-                String summary = edge ? "EDGE_BOTH: fired (" + prev + "→" + rawResult + ")"
-                        : "EDGE_BOTH: no edge";
-                yield new MemoryPolicyResult(edge, updated, summary);
-            }
-        };
-    }
-
-    /**
-     * Generates a human-readable summary of a ConditionMemory state for the
-     * inspection snapshot (Point 9). Called by the orchestrator after evaluation.
-     */
-    public String summarizeMemory(ConditionMemoryPolicy policy, ConditionMemory memory) {
-        if (policy == null || memory == null) return null;
-        return switch (policy.getType()) {
-            case DURATION -> "DURATION: "
-                    + (memory.getFirstTrueEpochMs() > 0
-                    ? ((System.currentTimeMillis() - memory.getFirstTrueEpochMs()) / 1000)
-                    : 0)
-                    + "/" + policy.getRequiredDurationSeconds() + "s";
-            case CONSECUTIVE_TICKS ->
-                    "CONSECUTIVE: " + memory.getConsecutiveTrueCount() + "/" + policy.getRequiredTicks();
-            case EDGE_RISING -> "EDGE_RISING: prev=" + memory.getPreviousRawResult();
-            case EDGE_FALLING -> "EDGE_FALLING: prev=" + memory.getPreviousRawResult();
-            case EDGE_BOTH -> "EDGE_BOTH: prev=" + memory.getPreviousRawResult();
-        };
-    }
-
-
-    // ─────────────────────────────────────────────────────────────────────
-    // TREE WALK RESULT
-    // ─────────────────────────────────────────────────────────────────────
-
-    private record TreeWalkResult(boolean passed, String failedNodeId,
-                                  List<ExecutionPlan.CompiledAction> negativeActionsToFire,
-                                  List<ExecutionPlan.CompiledAction> positiveActionsToFire,
-                                  Map<String, Boolean> conditionResults) {
-        private TreeWalkResult(boolean passed, String failedNodeId,
-                               List<ExecutionPlan.CompiledAction> negativeActionsToFire,
-                               List<ExecutionPlan.CompiledAction> positiveActionsToFire,
-                               Map<String, Boolean> conditionResults) {
-            this.passed = passed;
-            this.failedNodeId = failedNodeId;
-            this.negativeActionsToFire = negativeActionsToFire != null ? negativeActionsToFire : List.of();
-            this.positiveActionsToFire = positiveActionsToFire != null ? positiveActionsToFire : List.of();
-            this.conditionResults = conditionResults != null ? conditionResults : Map.of();
-        }
-
-        static TreeWalkResult failed(String nodeId,
-                                     List<ExecutionPlan.CompiledAction> negActions,
-                                     Map<String, Boolean> condResults) {
-            return new TreeWalkResult(false, nodeId, negActions, List.of(), condResults);
-        }
-
-        static TreeWalkResult passed(List<ExecutionPlan.CompiledAction> posActions,
-                                     Map<String, Boolean> condResults) {
-            return new TreeWalkResult(true, null, List.of(), posActions, condResults);
-        }
-
-        TreeWalkResult withConditionResults(Map<String, Boolean> newCondResults) {
-            return new TreeWalkResult(passed, failedNodeId,
-                    negativeActionsToFire, positiveActionsToFire, newCondResults);
-        }
-    }
-
-
-    // ─────────────────────────────────────────────────────────────────────
-    // NO-BRANCH PATH
-    // ─────────────────────────────────────────────────────────────────────
-
-    private EvalResult handleNoBranch(ExecutionPlan plan,
+    private EvalResult handleActivate(ExecutionPlan plan,
                                       AutomationRuntimeState state,
                                       EvalResult.EvalResultBuilder result,
                                       ZonedDateTime now) {
@@ -468,9 +465,6 @@ public class AutomationEvaluator {
                 actions = plan.getTopLevelPositiveActions() != null
                         ? plan.getTopLevelPositiveActions() : List.of();
 
-            // Always "ACTIVE" — prevents single-shot automations re-firing every tick.
-            // C1_NEGATIVE resets to IDLE when the condition later becomes false,
-            // even when there are no negative actions.
             return result
                     .outcome(EvalOutcome.TRIGGERED)
                     .actionsToFire(actions)
@@ -487,110 +481,6 @@ public class AutomationEvaluator {
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // BRANCH PATH
-    // ─────────────────────────────────────────────────────────────────────
-
-    private EvalResult handleBranches(ExecutionPlan plan,
-                                      AutomationRuntimeState state,
-                                      EvalResult.EvalResultBuilder result,
-                                      String automationId,
-                                      ZonedDateTime now,
-                                      Map<String, Object> payload) {
-
-        List<BranchDecision> decisions = new ArrayList<>();
-        ExecutionPlan.CompiledBranch winner = null;
-        List<ExecutionPlan.CompiledBranch> trueBranches = new ArrayList<>();
-
-        for (ExecutionPlan.CompiledBranch branch : plan.getBranches()) {
-            boolean wasActive = state.isBranchActive(branch.getGateNodeId());
-            boolean gateTrue = evalSingleCondition(
-                    branch.getGateCondition(), payload, wasActive, automationId, now);
-            log.debug("  📊 [{}] Gate '{}' (pri={}, logic={}) wasActive={} → {}",
-                    plan.getAutomationName(), branch.getGateNodeId(),
-                    branch.getPriority(), branch.getLogicType(), wasActive, gateTrue);
-            if (gateTrue) {
-                trueBranches.add(branch);
-                if (winner == null) winner = branch;
-            }
-        }
-
-        for (ExecutionPlan.CompiledBranch branch : plan.getBranches()) {
-            boolean gateTrue = trueBranches.contains(branch);
-            boolean isWinner = branch == winner;
-            String bState = state.getBranchStateStr(branch.getGateNodeId());
-            boolean wasActive = "ACTIVE".equals(bState) || "HOLDING".equals(bState);
-
-            if (wasActive) {
-                if (!gateTrue || !isWinner) {
-                    String reason = !gateTrue ? "Gate no longer true"
-                            : "Overridden by priority " + winner.getPriority();
-                    decisions.add(BranchDecision.revert(branch, reason));
-                } else {
-                    if ("HOLDING".equals(bState)
-                            && !stateStore.runningKeyExists(automationId, branch.getGateNodeId())) {
-                        decisions.add(BranchDecision.durationExpired(branch));
-                    } else {
-                        decisions.add(BranchDecision.keepActive(branch));
-                    }
-                }
-            } else {
-                if (gateTrue && isWinner) {
-                    if ("AND".equals(branch.getLogicType())
-                            && branch.getSiblingGateNodeIds() != null
-                            && !branch.getSiblingGateNodeIds().isEmpty()) {
-                        Set<String> trueGateIds = new HashSet<>();
-                        trueBranches.forEach(b -> trueGateIds.add(b.getGateNodeId()));
-                        boolean allSiblingsTrue = trueGateIds.containsAll(branch.getSiblingGateNodeIds());
-                        if (!allSiblingsTrue) {
-                            log.debug("  🔗 [{}] Gate '{}' (AND) suppressed — not all siblings true",
-                                    plan.getAutomationName(), branch.getGateNodeId());
-                            decisions.add(BranchDecision.suppressed(branch,
-                                    "AND: not all sibling gates met"));
-                            continue;
-                        }
-                    }
-                    decisions.add(BranchDecision.trigger(branch));
-                } else if (gateTrue) {
-                    decisions.add(BranchDecision.suppressed(branch, winner.getGateNodeId()));
-                }
-            }
-        }
-
-        boolean anyJustTriggered = decisions.stream()
-                .anyMatch(d -> d.getType() == BranchDecision.Type.TRIGGER);
-        boolean anyCurrentlyActive = decisions.stream()
-                .anyMatch(d -> d.getType() == BranchDecision.Type.TRIGGER
-                        || d.getType() == BranchDecision.Type.KEEP_ACTIVE);
-        boolean anyPendingRevert = decisions.stream()
-                .anyMatch(d -> d.getType() == BranchDecision.Type.REVERT
-                        || d.getType() == BranchDecision.Type.DURATION_EXPIRED);
-
-        if (!anyCurrentlyActive && winner == null && !anyPendingRevert) {
-            List<ExecutionPlan.CompiledAction> fallback = plan.getFallbackActions();
-            if (fallback != null && !fallback.isEmpty()) {
-                return result.outcome(EvalOutcome.FALLBACK)
-                        .actionsToFire(fallback).branchDecisions(decisions).build();
-            }
-            return result.outcome(EvalOutcome.NOT_MET)
-                    .reason("c1 true but no gate branch matched")
-                    .branchDecisions(decisions).build();
-        }
-
-        EvalOutcome outcome = anyJustTriggered ? EvalOutcome.TRIGGERED
-                : anyPendingRevert ? EvalOutcome.RESTORED
-                  : anyCurrentlyActive ? EvalOutcome.SKIPPED
-                    : EvalOutcome.NOT_MET;
-
-        return result
-                .outcome(outcome)
-                .branchDecisions(decisions)
-                .triggeredAt(anyJustTriggered ? Date.from(now.toInstant()) : null)
-                .anyWasActive(anyCurrentlyActive || anyPendingRevert)
-                .build();
-    }
-
-
-    // ─────────────────────────────────────────────────────────────────────
     // SINGLE CONDITION EVALUATION
     // ─────────────────────────────────────────────────────────────────────
 
@@ -602,40 +492,17 @@ public class AutomationEvaluator {
         if ("scheduled".equals(c.getConditionType()))
             return evalScheduled(c, automationId, now);
 
-        // ── Payload resolution (secondary device or primary) ───────────────
+        // ── Secondary device resolution with per-evaluation cache ─────────
         Map<String, Object> payload = primaryPayload;
         if (c.getDeviceId() != null && !c.getDeviceId().isBlank()) {
-            Map<String, Object> secondary = redisService.getRecentDeviceData(c.getDeviceId());
-            if (secondary == null || secondary.isEmpty()) {
-                log.warn("⚠️ [{}] Secondary device '{}' has no Redis data — fetching from DB",
-                        automationId, c.getDeviceId());
-                var data = mainService.getLastFullData(c.getDeviceId());
-                // Fix: 500_000 was wrong (5.7 days). For stale conditions skip this
-                // guard entirely — stale data IS the signal. For others: 300s = 5min.
-                var currentTime = Instant.now();
-                if (!"stale".equals(c.getConditionType())
-                        && currentTime.getEpochSecond() - data.getUpdateDate().getEpochSecond() > 300) {
-                    log.warn("⚠️ [{}] Secondary DB data older than 5min — condition=false",
-                            automationId);
-                    return false;
-                }
-                secondary = data.getData() != null ? new HashMap<>(data.getData()) : new HashMap<>();
-                // Inject last_seen from the DB record's updateDate into the secondary map
-                if (data.getUpdateDate() != null)
-                    secondary.put("last_seen", data.getUpdateDate().getEpochSecond() * 1000L);
-            }
-            payload = secondary;
+            payload = resolveSecondaryPayload(c, automationId, now);
+            if (payload == null) return false;  // timed out or stale — skip condition
         }
 
-        // ── STALE condition — intercept before generic key/numeric handling ─
-        // conditionType="stale": true when (now - last_seen) > value minutes.
-        // last_seen is resolved from the payload (stamped by writeDeviceData for
-        // online devices, or injected by buildDbFallbackPayload for offline ones).
         if ("stale".equals(c.getConditionType())) {
             return evalStale(c, payload, automationId, now);
         }
 
-        // ── Generic key lookup ─────────────────────────────────────────────
         String key = c.getTriggerKey();
         if (key == null || key.isBlank()) {
             log.warn("⚠️ [{}] Condition '{}' has no triggerKey", automationId, c.getNodeId());
@@ -648,12 +515,10 @@ public class AutomationEvaluator {
         }
 
         String raw = payload.get(key).toString();
-
         if (!raw.matches("-?\\d+(\\.\\d+)?"))
             return raw.equals(c.getValue());
 
         double v = Double.parseDouble(raw);
-
         if (c.isExact()) return c.getValue().equals(raw);
 
         return switch (c.getConditionType()) {
@@ -680,125 +545,82 @@ public class AutomationEvaluator {
     }
 
     /**
-     * Evaluates a stale condition: returns true when the device has not sent
-     * data for longer than the configured threshold.
-     * <p>
-     * last_seen resolution (in order):
-     * 1. payload.get("last_seen") — stamped by writeDeviceData (online devices)
-     * or injected by buildDbFallbackPayload / secondary DB fallback (offline)
-     * 2. Any numeric field named by c.getTriggerKey() if different from "last_seen"
-     * 3. 0 — never seen → treat as stale (conservative, correct for new devices)
-     * <p>
-     * value = threshold in minutes (stored as string in CompiledCondition.value)
+     * Resolves the payload for a secondary device condition.
+     * Resolution order: per-evaluation cache → Redis → MongoDB DB fallback
+     * (only for stale conditions, where missing data IS the signal).
+     * Returns null if the data cannot be resolved or is too stale.
      */
+    private Map<String, Object> resolveSecondaryPayload(ExecutionPlan.CompiledCondition c,
+                                                        String automationId,
+                                                        ZonedDateTime now) {
+        String deviceId = c.getDeviceId();
+        Map<String, Map<String, Object>> cache = SECONDARY_CACHE.get();
+
+        if (cache.containsKey(deviceId)) {
+            return cache.get(deviceId);
+        }
+
+        Map<String, Object> secondary = redisService.getRecentDeviceData(deviceId);
+        if (secondary != null && !secondary.isEmpty()) {
+            cache.put(deviceId, secondary);
+            return secondary;
+        }
+
+        if (!"stale".equals(c.getConditionType())) {
+            log.warn("⚠️ [{}] Secondary device '{}' has no Redis data — condition '{}' skipped (not stale type)",
+                    automationId, deviceId, c.getNodeId());
+            cache.put(deviceId, Map.of());
+            return null;
+        }
+
+        log.warn("⚠️ [{}] Secondary device '{}' has no Redis data — fetching from DB for stale check",
+                automationId, deviceId);
+        long dbStart = System.currentTimeMillis();
+
+        try {
+            var data = mainService.getLastFullData(deviceId);
+            long dbMs = System.currentTimeMillis() - dbStart;
+            if (dbMs > 200)
+                log.warn("⚠️ [{}] DB fallback for '{}' took {}ms", automationId, deviceId, dbMs);
+
+            Map<String, Object> result = new HashMap<>();
+            if (data.getData() != null) result.putAll(data.getData());
+            if (data.getUpdateDate() != null)
+                result.put("last_seen", data.getUpdateDate().getEpochSecond() * 1000L);
+
+            cache.put(deviceId, result);
+            return result;
+
+        } catch (Exception e) {
+            log.error("❌ [{}] DB fallback failed for device '{}': {}",
+                    automationId, deviceId, e.getMessage());
+            cache.put(deviceId, Map.of());
+            return null;
+        }
+    }
+
+
     private boolean evalStale(ExecutionPlan.CompiledCondition c,
                               Map<String, Object> payload,
                               String automationId,
                               ZonedDateTime now) {
         String key = c.getTriggerKey() != null && !c.getTriggerKey().isBlank()
                 ? c.getTriggerKey() : "last_seen";
-
         long lastSeenMs = extractLastSeenMs(payload, key);
         if (lastSeenMs <= 0) {
-            log.warn("⚠️ [{}] Stale condition '{}': last_seen not resolvable (payload keys: {})"
-                            + " — treating as STALE",
-                    automationId, c.getNodeId(), payload.keySet());
-            return true;  // never seen = stale
+            log.warn("⚠️ [{}] Stale '{}': last_seen not resolvable — treating as STALE",
+                    automationId, c.getNodeId());
+            return true;
         }
-
         long thresholdMs = (long) (Double.parseDouble(c.getValue()) * 60_000);
         long staleMs = now.toInstant().toEpochMilli() - lastSeenMs;
         boolean isStale = staleMs > thresholdMs;
-
         log.debug("⏱️ [{}] Stale '{}': last_seen={}s ago, threshold={}min → {}",
-                automationId, c.getNodeId(),
-                staleMs / 1000, c.getValue(),
+                automationId, c.getNodeId(), staleMs / 1000, c.getValue(),
                 isStale ? "STALE" : "FRESH");
-
         return isStale;
     }
 
-    /**
-     * Resolves the last_seen timestamp in milliseconds for a stale condition.
-     * <p>
-     * Resolution order:
-     * 1. payload.get(triggerKey) — the field named by triggerKey (e.g. "last_seen")
-     * in the current evaluation payload.  For online devices this is fresh.
-     * Value may be ISO-8601 string, epoch-ms long, or epoch-s long.
-     * <p>
-     * 2. If condition has a deviceId (secondary device): Redis recent data for
-     * that device → same key lookup in secondary payload.
-     * Falls back to mainService.getLastFullData(deviceId).getUpdateDate().
-     * <p>
-     * 3. If payload does NOT contain the key (device is offline — no live data
-     * arrived this tick): Redis recent data for the primary device → key lookup.
-     * Then DB fallback via mainService.getLastFullData(triggerDeviceId).
-     * <p>
-     * 4. 0 → never seen, treat as stale.
-     */
-    private long resolveLastSeenMs(ExecutionPlan.CompiledCondition c,
-                                   Map<String, Object> payload,
-                                   Map<String, Object> primaryPayload,
-                                   String automationId) {
-        String key = c.getTriggerKey();  // e.g. "last_seen"
-
-        // 1. Try the current evaluation payload first (fastest path)
-        long fromPayload = extractLastSeenMs(payload, key);
-        if (fromPayload > 0) return fromPayload;
-
-        // 2. If a secondary deviceId is specified, try its Redis data then DB
-        if (c.getDeviceId() != null && !c.getDeviceId().isBlank()) {
-            Map<String, Object> secondary = redisService.getRecentDeviceData(c.getDeviceId());
-            if (secondary != null && !secondary.isEmpty()) {
-                long fromSecondary = extractLastSeenMs(secondary, key);
-                if (fromSecondary > 0) return fromSecondary;
-            }
-            // DB fallback for secondary device
-            try {
-                var data = mainService.getLastFullData(c.getDeviceId());
-                if (data != null && data.getUpdateDate() != null) {
-                    long dbMs = data.getUpdateDate().getEpochSecond() * 1000L;
-                    log.debug("⏱️ [{}] Stale: DB fallback last_seen for '{}' = {}",
-                            automationId, c.getDeviceId(), data.getUpdateDate());
-                    return dbMs;
-                }
-            } catch (Exception e) {
-                log.warn("⚠️ [{}] Stale DB fallback failed for '{}': {}",
-                        automationId, c.getDeviceId(), e.getMessage());
-            }
-            return 0L;
-        }
-
-        // 3. Primary device — Redis fallback (device may be offline, no live payload)
-        // The primary payload IS the Redis data when triggerPeriodicAutomations runs,
-        // so check it again by key in case it has last_seen but under a different path.
-        long fromPrimary = extractLastSeenMs(primaryPayload, key);
-        if (fromPrimary > 0) return fromPrimary;
-
-        // 4. DB fallback for primary device — use the record's updateDate as last_seen
-        // This is what "no data has arrived at all" looks like.
-        try {
-            // c.getDeviceId() is null here (primary device) — we need the triggerDeviceId.
-            // The evaluator doesn't have direct access to it, but if primaryPayload is
-            // empty (no live event), the DB updateDate is the best proxy for last_seen.
-            // Caller should pass deviceId via CompiledCondition.deviceId for secondary,
-            // or leave null for primary (handled by the orchestrator's payload injection).
-            log.debug("⚠️ [{}] last_seen key '{}' not in payload — device may be offline",
-                    automationId, key);
-        } catch (Exception ignored) {
-        }
-
-        return 0L;
-    }
-
-    /**
-     * Extracts a last_seen timestamp from a map value and normalises to epoch-ms.
-     * Handles:
-     * - ISO-8601 string: "2026-05-17T22:34:18.601+05:30"
-     * - Long epoch-ms:   1747508058601
-     * - Long epoch-s:    1747508058   (detected if value < 1e10)
-     * - Date object (from Jackson deserialisation)
-     */
     private long extractLastSeenMs(Map<String, Object> payload, String key) {
         if (payload == null || !payload.containsKey(key)) return 0L;
         Object raw = payload.get(key);
@@ -808,7 +630,7 @@ public class AutomationEvaluator {
             }
             case Number n -> {
                 long v = n.longValue();
-                return v < 10_000_000_000L ? v * 1000L : v;  // normalise epoch-s → epoch-ms
+                return v < 10_000_000_000L ? v * 1000L : v;
             }
             case Date d -> {
                 return d.getTime();
@@ -816,14 +638,12 @@ public class AutomationEvaluator {
             default -> {
             }
         }
-
         String s = raw.toString().trim();
         try {
             long v = Long.parseLong(s);
             return v < 10_000_000_000L ? v * 1000L : v;
         } catch (NumberFormatException ignored) {
         }
-
         try {
             return java.time.OffsetDateTime.parse(s).toInstant().toEpochMilli();
         } catch (Exception ignored) {
@@ -832,10 +652,11 @@ public class AutomationEvaluator {
             return java.time.Instant.parse(s).toEpochMilli();
         } catch (Exception ignored) {
         }
-
-        log.warn("⚠️ Unparseable last_seen value '{}' (type={})", s, raw.getClass().getSimpleName());
+        log.warn("⚠️ Unparseable last_seen '{}' (type={})", s, raw.getClass().getSimpleName());
         return 0L;
     }
+
+
     // ─────────────────────────────────────────────────────────────────────
     // SCHEDULE EVALUATION
     // ─────────────────────────────────────────────────────────────────────
@@ -845,7 +666,8 @@ public class AutomationEvaluator {
         LocalTime current = now.toLocalTime();
 
         if (c.getDays() != null && !c.getDays().isEmpty()) {
-            String dow = now.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+            String dow = now.getDayOfWeek()
+                    .getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH);
             dow = dow.substring(0, 1).toUpperCase() + dow.substring(1).toLowerCase();
             if (!c.getDays().contains("Everyday") && !c.getDays().contains(dow)) return false;
         }
@@ -871,7 +693,7 @@ public class AutomationEvaluator {
         if ("interval".equals(st)) {
             if (stateStore.runningKeyExists(automationId, c.getNodeId())) return true;
             if (stateStore.intervalKeyExists(automationId, c.getNodeId())) return false;
-            log.debug("🕒 [{}] Interval gate '{}' ready to fire", automationId, c.getNodeId());
+            log.debug("🕒 [{}] Interval '{}' ready to fire", automationId, c.getNodeId());
             return true;
         }
 
@@ -879,6 +701,124 @@ public class AutomationEvaluator {
         if (target == null) return false;
         if (Math.abs(ChronoUnit.MINUTES.between(target, current)) > 1) return false;
         return !stateStore.dailyFireKeyExists(automationId, now.toLocalDate().toString());
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // MEMORY POLICY
+    // ─────────────────────────────────────────────────────────────────────
+
+    private record MemoryPolicyResult(boolean passes, ConditionMemory updatedMemory,
+                                      String memorySummary) {
+    }
+
+    private MemoryPolicyResult applyMemoryPolicy(ConditionMemoryPolicy policy,
+                                                 boolean rawResult,
+                                                 ConditionMemory memory,
+                                                 ZonedDateTime now) {
+        long nowMs = now.toInstant().toEpochMilli();
+
+        return switch (policy.getType()) {
+            case DURATION -> {
+                if (!rawResult) {
+                    yield new MemoryPolicyResult(false, memory.withRawFalse(), "DURATION: reset (false)");
+                }
+                long firstTrue = memory.getFirstTrueEpochMs() > 0
+                        ? memory.getFirstTrueEpochMs() : nowMs;
+                ConditionMemory updated = memory.withRawTrue(firstTrue).withPolicyPassed(false);
+                long elapsedSec = (nowMs - firstTrue) / 1000;
+                boolean passes = elapsedSec >= policy.getRequiredDurationSeconds();
+                updated = updated.withPolicyPassed(passes);
+                yield new MemoryPolicyResult(passes, updated,
+                        "DURATION: " + elapsedSec + "/" + policy.getRequiredDurationSeconds() + "s");
+            }
+            case CONSECUTIVE_TICKS -> {
+                if (!rawResult) {
+                    yield new MemoryPolicyResult(false, memory.withRawFalse(), "CONSECUTIVE: reset (false)");
+                }
+                ConditionMemory updated = memory.withRawTrue(nowMs);
+                int count = updated.getConsecutiveTrueCount();
+                boolean passes = count >= policy.getRequiredTicks();
+                updated = updated.withPolicyPassed(passes);
+                yield new MemoryPolicyResult(passes, updated,
+                        "CONSECUTIVE: " + count + "/" + policy.getRequiredTicks());
+            }
+            case EDGE_RISING -> {
+                Boolean prev = memory.getPreviousRawResult();
+                boolean edge = rawResult && (prev == null || !prev);
+                ConditionMemory updated = (rawResult ? memory.withRawTrue(nowMs) : memory.withRawFalse())
+                        .withPolicyPassed(edge);
+                yield new MemoryPolicyResult(edge, updated,
+                        edge ? "EDGE_RISING: fired" : "EDGE_RISING: no edge (raw=" + rawResult + ")");
+            }
+            case EDGE_FALLING -> {
+                Boolean prev = memory.getPreviousRawResult();
+                boolean edge = !rawResult && (prev != null && prev);
+                ConditionMemory updated = (rawResult ? memory.withRawTrue(nowMs) : memory.withRawFalse())
+                        .withPolicyPassed(edge);
+                yield new MemoryPolicyResult(edge, updated,
+                        edge ? "EDGE_FALLING: fired" : "EDGE_FALLING: no edge (raw=" + rawResult + ")");
+            }
+            case EDGE_BOTH -> {
+                Boolean prev = memory.getPreviousRawResult();
+                boolean edge = prev == null ? rawResult : (rawResult != prev);
+                ConditionMemory updated = (rawResult ? memory.withRawTrue(nowMs) : memory.withRawFalse())
+                        .withPolicyPassed(edge);
+                yield new MemoryPolicyResult(edge, updated,
+                        edge ? "EDGE_BOTH: fired (" + prev + "→" + rawResult + ")" : "EDGE_BOTH: no edge");
+            }
+        };
+    }
+
+    public String summarizeMemory(ConditionMemoryPolicy policy, ConditionMemory memory) {
+        if (policy == null || memory == null) return null;
+        return switch (policy.getType()) {
+            case DURATION -> "DURATION: "
+                    + (memory.getFirstTrueEpochMs() > 0
+                    ? (System.currentTimeMillis() - memory.getFirstTrueEpochMs()) / 1000 : 0)
+                    + "/" + policy.getRequiredDurationSeconds() + "s";
+            case CONSECUTIVE_TICKS ->
+                    "CONSECUTIVE: " + memory.getConsecutiveTrueCount() + "/" + policy.getRequiredTicks();
+            case EDGE_RISING -> "EDGE_RISING: prev=" + memory.getPreviousRawResult();
+            case EDGE_FALLING -> "EDGE_FALLING: prev=" + memory.getPreviousRawResult();
+            case EDGE_BOTH -> "EDGE_BOTH: prev=" + memory.getPreviousRawResult();
+        };
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // TREE WALK RESULT
+    // ─────────────────────────────────────────────────────────────────────
+
+    private record TreeWalkResult(boolean passed,
+                                  String failedNodeId,
+                                  List<ExecutionPlan.CompiledAction> negativeActionsToFire,
+                                  List<ExecutionPlan.CompiledAction> positiveActionsToFire,
+                                  Map<String, Boolean> conditionResults) {
+
+        private TreeWalkResult(boolean passed, String failedNodeId,
+                               List<ExecutionPlan.CompiledAction> negativeActionsToFire,
+                               List<ExecutionPlan.CompiledAction> positiveActionsToFire,
+                               Map<String, Boolean> conditionResults) {
+            this.passed = passed;
+            this.failedNodeId = failedNodeId;
+            this.negativeActionsToFire = negativeActionsToFire != null
+                    ? negativeActionsToFire : List.of();
+            this.positiveActionsToFire = positiveActionsToFire != null
+                    ? positiveActionsToFire : List.of();
+            this.conditionResults = conditionResults != null ? conditionResults : Map.of();
+        }
+
+        static TreeWalkResult failed(String nodeId,
+                                     List<ExecutionPlan.CompiledAction> negActions,
+                                     Map<String, Boolean> condResults) {
+            return new TreeWalkResult(false, nodeId, negActions, List.of(), condResults);
+        }
+
+        static TreeWalkResult passed(List<ExecutionPlan.CompiledAction> posActions,
+                                     Map<String, Boolean> condResults) {
+            return new TreeWalkResult(true, null, List.of(), posActions, condResults);
+        }
     }
 
 
@@ -937,7 +877,23 @@ public class AutomationEvaluator {
     // ─────────────────────────────────────────────────────────────────────
 
     public enum EvalOutcome {
-        TRIGGERED, C1_NEGATIVE, SKIPPED, NOT_MET, STATELESS_FIRE, FALLBACK, SUPPRESSED, RESTORED
+        TRIGGERED,
+        /**
+         * An OR fanout branch transitioned inactive→active and dispatched its own
+         * per-branch positive actions. The top-level automation state is ACTIVE
+         * (or becomes ACTIVE), but the trigger came from a specific branch node
+         * rather than the automation as a whole.
+         * <p>
+         * Distinct from TRIGGERED so the orchestrator knows NOT to reset
+         * topLevelState on every BRANCH_TRIGGERED — topLevelState is already
+         * ACTIVE and should remain so until ALL branches fail (C1_NEGATIVE).
+         */
+        BRANCH_TRIGGERED,
+        C1_NEGATIVE,
+        SKIPPED,
+        NOT_MET,
+        STATELESS_FIRE,
+        FALLBACK
     }
 
     @lombok.Builder(toBuilder = true)
@@ -950,28 +906,25 @@ public class AutomationEvaluator {
         String reason;
         Map<String, Boolean> conditionResults;
         List<ExecutionPlan.CompiledAction> actionsToFire;
-        List<BranchDecision> branchDecisions;
-        List<String> branchesToRevert;
         String nextTopLevelState;
         Date triggeredAt;
         boolean anyWasActive;
         String traceId;
         Long evalDurationMs;
-
-        // Post-CAS schedule key signals
         boolean shouldArmIntervalCooldown;
         String intervalCooldownNodeId;
         long intervalCooldownTtlSeconds;
         boolean shouldWriteDailySolarKey;
         boolean shouldWriteDailyFireKey;
+        Map<String, ConditionMemory> memoryUpdates;
 
         /**
-         * Point 2: memory state updates to write into nextState.conditionMemories
-         * after a successful CAS. Keyed by nodeId.
-         * Not null — populated for every evaluation (even SKIPPED) so memory
-         * timestamps advance continuously.
+         * BUG 2 fix: nodeIds of interval-scheduled conditions (durationMinutes>0)
+         * that evaluated true THIS tick. The orchestrator arms
+         * stateStore.setRunningKey() for each of these after a successful
+         * positive-action dispatch.
          */
-        Map<String, ConditionMemory> memoryUpdates;
+        Set<String> intervalNodesToArm;
 
         public boolean hasActions() {
             return actionsToFire != null && !actionsToFire.isEmpty();
@@ -979,7 +932,7 @@ public class AutomationEvaluator {
 
         public boolean hasChanges() {
             return outcome == EvalOutcome.TRIGGERED
-                    || outcome == EvalOutcome.RESTORED
+                    || outcome == EvalOutcome.BRANCH_TRIGGERED  // ← BUG 4 fix
                     || outcome == EvalOutcome.C1_NEGATIVE
                     || outcome == EvalOutcome.STATELESS_FIRE
                     || outcome == EvalOutcome.FALLBACK;

@@ -1,5 +1,5 @@
 import React, {memo, useEffect, useState} from 'react';
-import {Box, Button, Chip, Collapse, Divider, Stack, Switch} from '@mui/material';
+import {Backdrop, Box, Button, Chip, Collapse, Divider, Stack, Switch} from '@mui/material';
 import {Add} from '@mui/icons-material';
 import {updateAttribute} from "../services/apis.jsx";
 import CreateDeviceDialog from "./CreateDeviceDialog.jsx";
@@ -290,16 +290,22 @@ function DevicesComponent() {
                     </TableBody>
                 </Table>
             </TableContainer>
-            <div style={{
-                color: '#ffd821', width: '200px',
-                height: '200px',
-                background: 'transparent',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
-            }}>
-                <img alt="home icon" src="/icons/home.svg"/>
-            </div>
+            <Backdrop
+                sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
+                open={loading}
+            >
+                <div style={{
+                    color: '#ffd821', width: '200px',
+                    height: '200px',
+                    background: 'transparent',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
+                    <img alt="home icon" src="/icons/home.svg"/>
+                </div>
+            </Backdrop>
+
             {/*<DeviceList devices={devicesData}/>*/}
         </div>
     )

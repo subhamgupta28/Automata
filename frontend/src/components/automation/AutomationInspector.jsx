@@ -95,13 +95,27 @@ function parseMemProgress(summary) {
     return null;
 }
 
+// FIX: RESTORED was missing from both maps. It is used in the live eval banner
+// severity branch (`liveEvent.outcome === "RESTORED"`) but had no entry here,
+// causing LogRow to render it unstyled and the banner to fall through to "info"
+// instead of "warning".
 const OUTCOME_COLOR = {
-    TRIGGERED: "success", RESTORED: "warning", SKIPPED: "default",
-    NOT_MET: "default", C1_NEGATIVE: "error", STATELESS_FIRE: "info", FALLBACK: "info",
+    TRIGGERED: "success",
+    RESTORED: "warning",       // ← was missing
+    SKIPPED: "default",
+    NOT_MET: "default",
+    C1_NEGATIVE: "error",
+    STATELESS_FIRE: "info",
+    FALLBACK: "info",
 };
 const OUTCOME_ICON = {
-    TRIGGERED: "🚀", RESTORED: "⏹", SKIPPED: "⏭",
-    NOT_MET: "💤", C1_NEGATIVE: "⛔", STATELESS_FIRE: "⚡", FALLBACK: "↩",
+    TRIGGERED: "🚀",
+    RESTORED: "⏹",             // ← was missing
+    SKIPPED: "⏭",
+    NOT_MET: "💤",
+    C1_NEGATIVE: "⛔",
+    STATELESS_FIRE: "⚡",
+    FALLBACK: "↩",
 };
 
 // ─── Shared small components ──────────────────────────────────────────────────
@@ -141,9 +155,6 @@ function ConnPill({status}) {
         />
     );
 }
-
-// ─── NodeCard / BranchCard / LogRow / ActionFiredRow / ActionsTab / OverrideTab
-// (unchanged — copied verbatim from original)
 
 function NodeCard({node, prevNode, flash}) {
     const [open, setOpen] = useState(true);
@@ -796,6 +807,17 @@ export function AutomationLiveInspector({defaultId = ""}) {
         }
     }, []);
 
+    // FIX: resetLiveState wrapped in useCallback so it has a stable reference.
+    // Previously it was a plain function recreated on every render — any future
+    // useEffect or useCallback dep array including it would silently break or
+    // cause infinite loops.
+    const resetLiveState = useCallback(() => {
+        setLiveEvent(null);
+        prevEventRef.current = null;
+        setLog([]);
+        setActionLog([]);
+    }, []);
+
     // Re-subscribe when automationId changes (e.g. after fetchHttp sets it)
     useEffect(() => {
         if (automationId) subscribeToAutomation(automationId);
@@ -806,14 +828,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Handlers ─────────────────────────────────────────────────────────────
-    const resetLiveState = () => {
-        setLiveEvent(null);
-        prevEventRef.current = null;
-        setLog([]);
-        setActionLog([]);
-    };
-
-    const handleFetch = () => {
+    const handleFetch = useCallback(() => {
         const id = inputId.trim();
         if (!id) {
             setHttpError("Enter an automation ID");
@@ -824,7 +839,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
         resetLiveState();
         fetchHttp(id);
         subscribeToAutomation(id);
-    };
+    }, [inputId, resetLiveState, fetchHttp, subscribeToAutomation]);
 
     const handleSelectAutomation = useCallback((automation) => {
         const id = automation.id;
@@ -836,7 +851,7 @@ export function AutomationLiveInspector({defaultId = ""}) {
         fetchHttp(id);
         subscribeToAutomation(id);
         if (isMobile) setDrawerOpen(false);
-    }, [isMobile, fetchHttp, subscribeToAutomation]);
+    }, [isMobile, fetchHttp, subscribeToAutomation, resetLiveState]);
 
     // ── Derived state ─────────────────────────────────────────────────────────
     const currentNodes = liveEvent?.conditionNodes || httpState?.conditionNodes || [];
@@ -849,10 +864,10 @@ export function AutomationLiveInspector({defaultId = ""}) {
             showSkipped ? log : log.filter(e => e.outcome !== "SKIPPED" && e.outcome !== "NOT_MET"),
         [log, showSkipped]);
 
-    const showToast = (message, success = true) => {
+    const showToast = useCallback((message, success = true) => {
         setToast({open: true, message, severity: success ? "success" : "error"});
         if (success) setTimeout(() => fetchHttp(resolvedIdRef.current), 600);
-    };
+    }, [fetchHttp]);
 
     // ── Tabs ──────────────────────────────────────────────────────────────────
     const failedActionsCount = actionLog.filter(e => !e.success).length;

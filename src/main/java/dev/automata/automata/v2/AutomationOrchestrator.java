@@ -1,7 +1,6 @@
 package dev.automata.automata.v2;
 
 import dev.automata.automata.dto.AutomationRuntimeState;
-import dev.automata.automata.dto.BranchDecision;
 import dev.automata.automata.dto.ConditionMemory;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationLog;
@@ -18,7 +17,6 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,31 +24,32 @@ import java.util.stream.Collectors;
 
 /**
  * Core automation orchestrator.
+ *
+ * <p>Bug fixes (this version)
+ * ─────────────────────────
+ * BUG 4 — OR fanout branch actions silently swallowed when top-level ACTIVE
  * <p>
- * Changes vs previous version
- * ───────────────────────────
- * Point 1 — Coalition guard
- * execute() now accepts an optional firingDeviceId parameter.
- * Before evaluation, it records the firing device in runtime state and
- * calls CoalitionGuard.evaluate(). If the guard returns NOT_YET or VETOED,
- * execution is skipped (state is still written to persist the lastFired timestamp).
+ * dispatchResult() and computeNextState() now handle the new
+ * EvalOutcome.BRANCH_TRIGGERED outcome emitted by the evaluator when an OR
+ * fanout branch node transitions inactive→active while the top-level
+ * automation is already ACTIVE.
  * <p>
- * Point 2 — Memory persistence
- * After a successful CAS write, writePostCasMemoryUpdates() copies
- * EvalResult.memoryUpdates into nextState and writes the state again.
- * Because memory updates don't affect correctness (only diagnostics and
- * policy evaluation), they bypass the CAS version check — last write wins.
- * This avoids adding latency to the critical CAS path.
+ * Key differences vs TRIGGERED:
+ * • BRANCH_TRIGGERED dispatches the branch's own per-node positiveActions,
+ * NOT plan.getTopLevelPositiveActions(). The branch-level actions are
+ * already in result.getActionsToFire() from the evaluator.
+ * • computeNextState() does NOT reset/overwrite topLevelState — it was
+ * already ACTIVE and must remain so. Only the per-node nodeStates are
+ * updated (via the shared applyPerNodeActiveFlags() call).
+ * • publishLog() maps BRANCH_TRIGGERED → LogStatus.TRIGGERED so the log
+ * stream is unchanged for consumers.
+ * • hasChanges() in EvalResult returns true for BRANCH_TRIGGERED so the
+ * orchestrator's early-return guard does not suppress dispatch.
  * <p>
- * IMPORTANT: memoryUpdates ARE included in the CAS-protected nextState for
- * TRIGGERED/RESTORED/C1_NEGATIVE outcomes (where state must be consistent).
- * The post-CAS write is only for SKIPPED/NOT_MET outcomes where the core
- * state didn't change but memory still needs to advance.
- * <p>
- * Point 9 — Eval snapshot
- * After every execution (whether state changed or not), writeEvalSnapshot()
- * writes a lightweight diagnostic snapshot into the runtime state.
- * This does NOT participate in CAS — it's a best-effort last-write-wins write.
+ * Previously documented bug fixes (BUG 1–3, carried forward unchanged):
+ * BUG 1 — Stranded descendants now fire their negative actions
+ * BUG 2 — durationMinutes now actually holds an interval condition true
+ * BUG 3 — computeNextState() no longer blindly marks the whole tree ACTIVE
  */
 @Slf4j
 @Component
@@ -68,7 +67,7 @@ public class AutomationOrchestrator {
     private final ExecutionPlanCompiler planCompiler;
     private final AutomationLivePublisher livePublisher;
     private final ReconcileLock reconcileLock;
-    private final CoalitionGuard coalitionGuard;         // Point 1
+    private final CoalitionGuard coalitionGuard;
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
     private static final int CAS_MAX_RETRIES = 2;
@@ -77,13 +76,12 @@ public class AutomationOrchestrator {
     private final ConcurrentHashMap<String, String> nameCache = new ConcurrentHashMap<>();
 
 
-    /**
-     * Runs every 30 minutes.
-     * Adjust fixedDelay / cron to taste — the job is idempotent.
-     */
-    @Scheduled(fixedDelay = 30 * 60 * 1_000)   // 30 min
-    public void reconcile() {
+    // ─────────────────────────────────────────────────────────────────────
+    // RECONCILER
+    // ─────────────────────────────────────────────────────────────────────
 
+    @Scheduled(fixedDelay = 4 * 60 * 60 * 1_000)
+    public void reconcile() {
         List<Automation> enabled = automationRepository.findEnabledForExecution();
         if (enabled.isEmpty()) return;
 
@@ -108,22 +106,15 @@ public class AutomationOrchestrator {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Core logic
-    // ─────────────────────────────────────────────────────────────────────
-
     private void recompileIfNeeded(Automation automation, AtomicInteger counter) {
-
         String id = automation.getId();
         String name = automation.getName();
-        String homeId = automation.getHomeId();
 
         ExecutionPlan cached = planCache.get(id);
 
-        // ── Case 1: plan is completely absent ────────────────────────────
         if (cached == null) {
             if (!reconcileLock.tryAcquire(id)) {
-                log.debug("🔒 [reconciler] '{}' missing but another node already recompiling — skipping", name);
+                log.debug("🔒 [reconciler] '{}' missing but another node already recompiling", name);
                 return;
             }
             log.warn("⚠️ [reconciler] Plan missing for '{}' — recompiling", name);
@@ -136,15 +127,12 @@ public class AutomationOrchestrator {
             return;
         }
 
-        // ── Case 2: plan is present but stale ────────────────────────────
-        // automation.getUpdateDate() is set by your save service whenever the
-        // user edits the automation. compiledAt is stamped by the compiler.
         Date updatedAt = automation.getUpdateDate();
         Date compiledAt = cached.getCompiledAt();
 
         if (isStale(updatedAt, compiledAt)) {
             if (!reconcileLock.tryAcquire(id)) {
-                log.debug("🔒 [reconciler] '{}' stale but another node already recompiling — skipping", name);
+                log.debug("🔒 [reconciler] '{}' stale but another node already recompiling", name);
                 return;
             }
             log.warn("⚠️ [reconciler] Plan stale for '{}' (DB={}, plan={}) — recompiling",
@@ -158,60 +146,31 @@ public class AutomationOrchestrator {
         }
     }
 
-    /**
-     * Compiles and pushes the plan into both the in-process cache and Redis.
-     * Mirrors what AutomationService does on save — kept in one method so the
-     * write path is identical regardless of who triggers it.
-     */
     private void recompile(Automation automation, String reason) {
-        String id = automation.getId();
-        String name = automation.getName();
-
         ExecutionPlan plan = planCompiler.compile(automation);
-
-        // Push to in-process cache + publish Redis invalidation to all nodes
-        updatePlan(id, plan);
-
-        // Persist plan blob to Redis so other nodes can warm from it on startup
-        stateStore.writePlan(id, plan);
-
-        log.info("✅ [reconciler] '{}' recompiled — reason: {}", name, reason);
+        updatePlan(automation.getId(), plan);
+        stateStore.writePlan(automation.getId(), plan);
+        log.info("✅ [reconciler] '{}' recompiled — reason: {}", automation.getName(), reason);
     }
 
-    /**
-     * Returns true when the DB record is newer than the compiled plan by more
-     * than a small clock-skew buffer.
-     * <p>
-     * The buffer (2 s) prevents a harmless race where the compiler stamps
-     * compiledAt a few milliseconds before the DB write's updatedAt is
-     * committed, causing a perpetual false-positive on every reconciler cycle.
-     */
     private boolean isStale(Date updatedAt, Date compiledAt) {
         if (updatedAt == null || compiledAt == null) return true;
-        long SKEW_BUFFER_MS = 2_000;
-        return updatedAt.getTime() > compiledAt.getTime() + SKEW_BUFFER_MS;
+        return updatedAt.getTime() > compiledAt.getTime() + 2_000;
     }
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // MAIN ENTRY POINT
+    // MAIN ENTRY POINTS
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Overload for the legacy single-device path (AutomationService.handleAction,
-     * triggerPeriodicAutomations). firingDeviceId defaults to plan.triggerDeviceId.
-     */
     @Async("automationExecutor")
     public void execute(String automationId, Map<String, Object> payload, String user) {
         ExecutionPlan plan = planCache.get(automationId);
         String firingDeviceId = plan != null ? plan.getTriggerDeviceId() : null;
-        executeInternal(automationId, payload, user, firingDeviceId, plan != null ? plan.getHomeId() : null);
+        executeInternal(automationId, payload, user, firingDeviceId,
+                plan != null ? plan.getHomeId() : null);
     }
 
-    /**
-     * Coalition-aware entry point — called when a specific device fired.
-     * AutomationService calls this overload when it knows which device triggered.
-     */
     @Async("automationExecutor")
     public void execute(String automationId, Map<String, Object> payload,
                         String user, String firingDeviceId, String homeId) {
@@ -225,31 +184,23 @@ public class AutomationOrchestrator {
                 + "-" + System.currentTimeMillis()
                 + "-" + Long.toHexString(ThreadLocalRandom.current().nextLong() & 0xFFFFFFFFL);
 
-        log.debug("🔍 [traceId={}] execute start — automation='{}' user='{}' firingDevice='{}'",
-                traceId, automationId, user, firingDeviceId);
+        log.debug("🔍 [traceId={}] execute — automation='{}' firingDevice='{}'",
+                traceId, automationId, firingDeviceId);
 
-        // 1. Load plan — fall back to Redis if this node's local cache missed it
-        // (e.g. evicted by pub/sub invalidation, or this node hasn't warmed yet).
+        // ── 1. Load plan ──────────────────────────────────────────────────
         ExecutionPlan plan = planCache.get(automationId);
         if (plan == null) {
             plan = stateStore.readPlan(automationId);
             if (plan != null) {
                 planCache.put(automationId, plan);
-                log.info("♻️ [traceId={}] '{}' missing from local cache — warmed from Redis",
-                        traceId, automationId);
+                log.info("♻️ [traceId={}] '{}' warmed from Redis", traceId, automationId);
             }
         } else {
-            // Self-heal a missed pub/sub eviction: compare against the cheap
-            // version marker instead of always re-fetching the full plan.
-            // This is the safety net for Fix #1 — if the eviction message
-            // never arrived (node was disconnected, message dropped), this
-            // catches it on the very next execution instead of waiting up to
-            // 30 minutes for the reconciler.
             long remoteVersion = stateStore.readPlanVersion(automationId);
             long localVersion = plan.getCompiledAt() != null ? plan.getCompiledAt().getTime() : 0L;
             if (remoteVersion > 0 && remoteVersion != localVersion) {
-                log.info("♻️ [traceId={}] '{}' local plan version {} != Redis version {} — refreshing",
-                        traceId, automationId, localVersion, remoteVersion);
+                log.info("♻️ [traceId={}] '{}' local plan stale — refreshing from Redis",
+                        traceId, automationId);
                 ExecutionPlan fresh = stateStore.readPlan(automationId);
                 if (fresh != null) {
                     planCache.put(automationId, fresh);
@@ -258,12 +209,11 @@ public class AutomationOrchestrator {
             }
         }
         if (plan == null) {
-            log.warn("⏭️ [traceId={}] No execution plan for '{}' (local + Redis miss) — skipping.",
-                    traceId, automationId);
+            log.warn("⏭️ [traceId={}] No plan for '{}' — skipping.", traceId, automationId);
             return;
         }
 
-        // 2. Snooze / timed-disable
+        // ── 2. Snooze / timed-disable ─────────────────────────────────────
         if (stateStore.isSnoozed(automationId)) {
             long rem = Optional.ofNullable(stateStore.snoozeTTL(automationId)).orElse(0L);
             publishSkippedLog(automationId, plan, user, payload,
@@ -277,16 +227,12 @@ public class AutomationOrchestrator {
             return;
         }
 
-        // 3. Read state
+        // ── 3. Read state ─────────────────────────────────────────────────
         AutomationRuntimeState state = stateStore.read(automationId);
 
-        // ── Point 1: Coalition guard ───────────────────────────────────────
+        // ── 4. Coalition guard ────────────────────────────────────────────
         if (plan.hasCoalition() && firingDeviceId != null) {
             long nowMs = System.currentTimeMillis();
-
-            // Record this member's fire time in a provisional next-state.
-            // We write this unconditionally (even if coalition not satisfied) so that
-            // subsequent members can see that this one has fired.
             AutomationRuntimeState stateWithMember = state.withNextVersion();
             stateWithMember.recordMemberFired(firingDeviceId, nowMs);
 
@@ -298,9 +244,6 @@ public class AutomationOrchestrator {
                     coalitionResult.status(), coalitionResult.reason());
 
             if (!coalitionResult.shouldProceed()) {
-                // Persist the updated lastFired timestamp even though we skip evaluation.
-                // Use forceWrite (no CAS) because lastFired is a best-effort timestamp;
-                // a concurrent write from another member is acceptable.
                 stateStore.forceWrite(automationId, stateWithMember);
                 publishSkippedLog(automationId, plan, user, payload,
                         "Coalition " + coalitionResult.status() + ": " + coalitionResult.reason(),
@@ -308,20 +251,23 @@ public class AutomationOrchestrator {
                 return;
             }
 
-            // Coalition satisfied — use the updated state (with this member's fire recorded)
             state = stateWithMember;
 
-            // For SEQUENCE coalitions: advance or reset sequenceProgress
             if (plan.getTriggerCoalition().getMode() == TriggerCoalition.CoalitionMode.SEQUENCE) {
                 handleSequenceProgress(plan.getTriggerCoalition(), firingDeviceId, state,
                         coalitionResult.status(), nowMs);
             }
         }
 
-        // 4. Evaluate (pure — no side effects)
+        // ── 5. Evaluate ───────────────────────────────────────────────────
         AutomationEvaluator.EvalResult result;
         try {
             result = evaluator.evaluate(plan, payload, state, automationId, traceId);
+            log.debug("Automation {} final result getConditionResults={} getActionsToFire={} outcome={}",
+                    plan.getAutomationName(),
+                    result.getConditionResults(),
+                    result.getActionsToFire(),
+                    result.getOutcome());
         } catch (Exception e) {
             log.error("❌ [traceId={}] Evaluation failed: {}", traceId, e.getMessage(), e);
             publishSkippedLog(automationId, plan, user, payload,
@@ -329,22 +275,27 @@ public class AutomationOrchestrator {
             return;
         }
 
+        // BUG 1 fix: fold in negative actions for stranded descendants
+        if (result.getOutcome() == AutomationEvaluator.EvalOutcome.C1_NEGATIVE) {
+            result = foldInStrandedNegativeActions(result, plan, state);
+        }
+
         log.debug("📋 [traceId={}] outcome={} c1={} anyWasActive={}",
                 traceId, result.getOutcome(), result.isC1True(), result.isAnyWasActive());
 
-        // 5. No state change needed — but still persist memory updates and snapshot
+        // ── 6. No state change — persist memory + snapshot ────────────────
         if (!result.hasChanges()) {
-            writePostCasMemoryUpdates(automationId, result, state);
+            writePostCasMemoryUpdates(automationId, result);
             writeEvalSnapshot(automationId, plan, result, state);
             livePublisher.publish(plan, result, state, payload);
             publishLog(automationId, plan, user, payload, result);
             return;
         }
 
-        // 6. Compute next state (pure)
+        // ── 7. Compute next state ─────────────────────────────────────────
         AutomationRuntimeState nextState = computeNextState(state, result, plan);
 
-        // 7. CAS write with retry
+        // ── 8. CAS write with retry ───────────────────────────────────────
         boolean written = false;
         for (int attempt = 0; attempt < CAS_MAX_RETRIES && !written; attempt++) {
             if (attempt > 0) {
@@ -352,8 +303,11 @@ public class AutomationOrchestrator {
                 try {
                     state = stateStore.read(automationId);
                     result = evaluator.evaluate(plan, payload, state, automationId, traceId);
+                    if (result.getOutcome() == AutomationEvaluator.EvalOutcome.C1_NEGATIVE) {
+                        result = foldInStrandedNegativeActions(result, plan, state);
+                    }
                     if (!result.hasChanges()) {
-                        writePostCasMemoryUpdates(automationId, result, state);
+                        writePostCasMemoryUpdates(automationId, result);
                         writeEvalSnapshot(automationId, plan, result, state);
                         publishLog(automationId, plan, user, payload, result);
                         return;
@@ -371,79 +325,115 @@ public class AutomationOrchestrator {
         }
 
         if (!written) {
-            log.warn("⚡ [traceId={}] CAS conflict unresolved for '{}' after {} attempts",
-                    traceId, automationId, CAS_MAX_RETRIES);
+            log.warn("⚡ [traceId={}] CAS conflict unresolved after {} attempts", traceId, CAS_MAX_RETRIES);
             publishSkippedLog(automationId, plan, user, payload,
                     "CAS conflict — concurrent state update", traceId);
             return;
         }
 
-        // 8. POST-CAS: write schedule keys
-        writePostCasScheduleKeys(result, automationId);
-
-        // 9. POST-CAS: write eval snapshot for inspection API (Point 9)
+        // ── 9. Post-CAS ───────────────────────────────────────────────────
+        writePostCasScheduleKeys(result, automationId, plan);
         writeEvalSnapshot(automationId, plan, result, nextState);
         livePublisher.publish(plan, result, nextState, payload);
-        // 10. Dispatch actions
-        dispatchResult(result, plan, payload, user, automationId, state);
+        dispatchResult(result, plan, payload, user, automationId);
     }
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // POINT 1 — SEQUENCE PROGRESS
+    // BUG 1 FIX — STRANDED DESCENDANT NEGATIVE ACTIONS
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Advances or resets sequenceProgress after a coalition evaluation.
-     * Called in-place on the state object (before CAS write — sequenceProgress
-     * is part of the state blob and protected by CAS).
-     */
+    private AutomationEvaluator.EvalResult foldInStrandedNegativeActions(
+            AutomationEvaluator.EvalResult result,
+            ExecutionPlan plan,
+            AutomationRuntimeState prevState) {
+
+        if (plan.getConditionTree() == null || plan.getConditionTree().isEmpty()) return result;
+
+        Map<String, Boolean> walkedThisTick =
+                result.getConditionResults() != null ? result.getConditionResults() : Map.of();
+
+        List<ExecutionPlan.CompiledAction> existing =
+                result.getActionsToFire() != null ? result.getActionsToFire() : List.of();
+
+        Set<String> seen = existing.stream()
+                .map(a -> a.getDeviceId() + "|" + a.getKey() + "|" + a.getData())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<ExecutionPlan.CompiledAction> stranded = new ArrayList<>();
+
+        for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
+            if (!node.isStateful()) continue;
+            boolean wasActive = prevState.isNodeActive(node.getNodeId());
+            boolean walkedThisNode = walkedThisTick.containsKey(node.getNodeId());
+
+            if (wasActive && !walkedThisNode) {
+                log.debug("🧩 Stranded descendant '{}' was active but not walked this tick — "
+                                + "firing its {} negative action(s)",
+                        node.getNodeId(), node.getNegativeActions() != null
+                                ? node.getNegativeActions().size() : 0);
+                if (node.getNegativeActions() != null) {
+                    for (ExecutionPlan.CompiledAction a : node.getNegativeActions()) {
+                        String key = a.getDeviceId() + "|" + a.getKey() + "|" + a.getData();
+                        if (seen.add(key)) stranded.add(a);
+                    }
+                }
+            }
+        }
+
+        if (stranded.isEmpty()) return result;
+
+        List<ExecutionPlan.CompiledAction> combined = new ArrayList<>(existing);
+        combined.addAll(stranded);
+
+        Map<String, Boolean> extendedResults = new LinkedHashMap<>(walkedThisTick);
+        for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
+            if (node.isStateful()
+                    && prevState.isNodeActive(node.getNodeId())
+                    && !walkedThisTick.containsKey(node.getNodeId())) {
+                extendedResults.put(node.getNodeId(), false);
+            }
+        }
+
+        return result.toBuilder()
+                .actionsToFire(combined)
+                .conditionResults(extendedResults)
+                .build();
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // COALITION SEQUENCE PROGRESS
+    // ─────────────────────────────────────────────────────────────────────
+
     private void handleSequenceProgress(TriggerCoalition coalition,
                                         String firingDeviceId,
                                         AutomationRuntimeState state,
                                         CoalitionGuard.CoalitionStatus status,
                                         long nowMs) {
         if (status == CoalitionGuard.CoalitionStatus.SATISFIED) {
-            // Sequence complete — reset for next cycle
             state.setSequenceProgress(0);
         } else if (status == CoalitionGuard.CoalitionStatus.NOT_YET) {
-            // Check if the firing device was the expected next in sequence
             List<TriggerMember> ordered = coalition.getNonVetoMembers().stream()
                     .sorted(Comparator.comparingInt(TriggerMember::getSequenceIndex))
                     .toList();
             int progress = state.getSequenceProgress();
             if (progress < ordered.size()
                     && ordered.get(progress).getDeviceId().equals(firingDeviceId)) {
-                // Correct next member — advance
                 state.setSequenceProgress(progress + 1);
             }
-            // Out-of-order or timed-out — leave as-is (guard already logged the reset signal)
         }
     }
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // POINT 2 — MEMORY UPDATE POST-CAS
+    // MEMORY UPDATE POST-CAS
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Writes memory updates into the stored state for SKIPPED/NOT_MET outcomes.
-     * <p>
-     * For state-changing outcomes (TRIGGERED etc.), memory is already included
-     * in nextState by computeNextState() and written via CAS. This method handles
-     * the case where the core state didn't change but memory still needs to advance
-     * (e.g. DURATION timer must keep ticking even when the threshold isn't met yet).
-     * <p>
-     * Uses forceWrite (no CAS) — memory is best-effort; a concurrent write from
-     * another thread may overwrite it, which is acceptable for diagnostic state.
-     */
     private void writePostCasMemoryUpdates(String automationId,
-                                           AutomationEvaluator.EvalResult result,
-                                           AutomationRuntimeState currentState) {
+                                           AutomationEvaluator.EvalResult result) {
         Map<String, ConditionMemory> updates = result.getMemoryUpdates();
         if (updates == null || updates.isEmpty()) return;
-
-        // Re-read to get latest state (avoid overwriting concurrent CAS writes)
         AutomationRuntimeState latest = stateStore.read(automationId);
         updates.forEach(latest::setConditionMemory);
         stateStore.forceWrite(automationId, latest);
@@ -451,14 +441,9 @@ public class AutomationOrchestrator {
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // POINT 9 — EVAL SNAPSHOT
+    // EVAL SNAPSHOT
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Writes a lightweight diagnostic snapshot into the stored state.
-     * The snapshot is best-effort — it's not version-guarded.
-     * The inspection API endpoint reads this snapshot via stateStore.read().
-     */
     private void writeEvalSnapshot(String automationId,
                                    ExecutionPlan plan,
                                    AutomationEvaluator.EvalResult result,
@@ -474,14 +459,10 @@ public class AutomationOrchestrator {
             snapshot.setEvalDurationMs(result.getEvalDurationMs());
             snapshot.setConditionResults(result.getConditionResults());
 
-            // Branch states at time of eval
-            snapshot.setBranchStates(new HashMap<>(currentState.getBranchStates()));
-
-            // Coalition tracking
+            snapshot.setNodeStates(new HashMap<>(currentState.getNodeStates()));
             snapshot.setCoalitionLastFired(new HashMap<>(currentState.getTriggerMemberLastFired()));
             snapshot.setSequenceProgress(currentState.getSequenceProgress());
 
-            // Memory summaries (human-readable) — built from conditionMemories + plan nodes
             if (plan.getConditionTree() != null && result.getMemoryUpdates() != null) {
                 Map<String, String> summaries = new LinkedHashMap<>();
                 for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
@@ -496,7 +477,6 @@ public class AutomationOrchestrator {
                 snapshot.setConditionMemorySummaries(summaries);
             }
 
-            // Re-read latest state and attach snapshot (best-effort)
             AutomationRuntimeState latest = stateStore.read(automationId);
             latest.setLastEvalSnapshot(snapshot);
             stateStore.forceWrite(automationId, latest);
@@ -507,36 +487,41 @@ public class AutomationOrchestrator {
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // POST-CAS SCHEDULE KEY WRITES
+    // POST-CAS SCHEDULE KEYS
     // ─────────────────────────────────────────────────────────────────────
 
     private void writePostCasScheduleKeys(AutomationEvaluator.EvalResult result,
-                                          String automationId) {
-        if (result.getOutcome() != AutomationEvaluator.EvalOutcome.TRIGGERED) return;
-        if (result.getBranchDecisions() == null) return;
+                                          String automationId,
+                                          ExecutionPlan plan) {
+        // Write schedule keys for both TRIGGERED and BRANCH_TRIGGERED outcomes —
+        // both represent a successful positive dispatch that arms cooldown timers.
+        if (result.getOutcome() != AutomationEvaluator.EvalOutcome.TRIGGERED
+                && result.getOutcome() != AutomationEvaluator.EvalOutcome.BRANCH_TRIGGERED) return;
+        if (plan.getConditionTree() == null) return;
+
+        Map<String, Boolean> condResults = result.getConditionResults();
+        if (condResults == null) return;
 
         ZonedDateTime now = ZonedDateTime.now(IST);
         String today = now.toLocalDate().toString();
         long ttlUntilMidnight = ChronoUnit.SECONDS.between(
                 now, now.plusDays(1).truncatedTo(ChronoUnit.DAYS));
 
-        for (BranchDecision d : result.getBranchDecisions()) {
-            if (d.getType() != BranchDecision.Type.TRIGGER) continue;
-            ExecutionPlan.CompiledBranch branch = d.getBranch();
-            ExecutionPlan.CompiledCondition gc = branch.getGateCondition();
-            if (gc == null) continue;
+        for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
+            if (!Boolean.TRUE.equals(condResults.get(node.getNodeId()))) continue;
 
-            String st = gc.getScheduleType();
-            // Use gateCondition.getNodeId() for schedule keys (always plain condition ID)
-            // Use branch.getGateNodeId() only for branchState and runningKey (needs uniqueness)
-            String scheduleKeyNodeId = gc.getNodeId();  // always "node_condition_1"
-            String branchKeyNodeId = branch.getGateNodeId();  // "node_condition_1" or "node_condition_1@node_and_6"
+            ExecutionPlan.CompiledCondition c = node.getCondition();
+            if (c == null || !"scheduled".equals(c.getConditionType())) continue;
+
+            String st = c.getScheduleType();
+            String nodeId = node.getNodeId();
+
             if ("interval".equals(st)) {
-                long intervalTtl = gc.getIntervalMinutes() * 60L;
-                stateStore.setIntervalKey(automationId, scheduleKeyNodeId, intervalTtl);
-                log.info("⏱️ [{}] Interval cooldown armed: {}min (key TTL={}s)",
-                        automationId, gc.getIntervalMinutes(), intervalTtl);
-                stateStore.setDailyIntervalKey(automationId, scheduleKeyNodeId, today, ttlUntilMidnight);
+                long intervalTtl = c.getIntervalMinutes() * 60L;
+                stateStore.setIntervalKey(automationId, nodeId, intervalTtl);
+                stateStore.setDailyIntervalKey(automationId, nodeId, today, ttlUntilMidnight);
+                log.debug("⏱️ [{}] Interval cooldown: {}min (nodeId={})",
+                        automationId, c.getIntervalMinutes(), nodeId);
             } else if ("solar".equals(st)) {
                 stateStore.setDailySolarKey(automationId, today, ttlUntilMidnight);
             } else if ("at".equals(st) || st == null) {
@@ -547,71 +532,94 @@ public class AutomationOrchestrator {
 
 
     // ─────────────────────────────────────────────────────────────────────
-    // STATE COMPUTATION (pure)
+    // STATE COMPUTATION
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * BUG 3 fix (carried forward) + BUG 4 fix:
+     * <p>
+     * BRANCH_TRIGGERED must NOT overwrite topLevelState. The top-level state
+     * may already be "ACTIVE" (set by a previous TRIGGERED from another OR
+     * branch) and must remain so. Only the per-node nodeStates are updated.
+     * Setting it back to ACTIVE when it's already ACTIVE is harmless but
+     * setting it to something else would corrupt the C1_NEGATIVE detection
+     * logic (which looks at topLevelState == "ACTIVE" to decide whether
+     * negative actions are warranted).
+     */
     private AutomationRuntimeState computeNextState(AutomationRuntimeState current,
                                                     AutomationEvaluator.EvalResult result,
                                                     ExecutionPlan plan) {
         AutomationRuntimeState next = current.withNextVersion();
 
-        // Point 2: always carry forward memory updates into the CAS-protected next state
         if (result.getMemoryUpdates() != null) {
             result.getMemoryUpdates().forEach(next::setConditionMemory);
         }
 
         switch (result.getOutcome()) {
             case TRIGGERED -> {
-                if (!plan.hasBranches()) {
-                    String s = result.getNextTopLevelState();
-                    next.setTopLevelState(s != null ? s : "ACTIVE");
-                    next.setLastExecutionTime(new Date());
-                    // Mark condition tree nodes active for hysteresis
-                    if (plan.getConditionTree() != null)
-                        plan.getConditionTree().forEach(n -> {
-                            if (n.isStateful()) next.setNodeActive(n.getNodeId(), true);
-                        });
-                } else {
-                    // Branch automation: mark condition tree nodes active
-                    if (plan.getConditionTree() != null)
-                        plan.getConditionTree().forEach(n -> {
-                            if (n.isStateful()) next.setNodeActive(n.getNodeId(), true);
-                        });
-                    applyBranchDecisions(result, next);
-                }
+                next.setTopLevelState("ACTIVE");
+                next.setLastExecutionTime(new Date());
+                applyPerNodeActiveFlags(next, plan, result.getConditionResults());
             }
-            case RESTORED -> {
-                // Mark condition tree nodes inactive so hysteresis resets cleanly
-                if (plan.getConditionTree() != null)
-                    plan.getConditionTree().forEach(n -> next.setNodeActive(n.getNodeId(), false));
-                applyBranchDecisions(result, next);
+            case BRANCH_TRIGGERED -> {
+                // BUG 4 fix: a branch inside an already-active automation fired.
+                // The top-level state stays ACTIVE (it was already set, or if this
+                // is the very first branch to fire it should also become ACTIVE).
+                // We deliberately do NOT call next.setTopLevelState("IDLE") here.
+                next.setTopLevelState("ACTIVE");
+                next.setLastExecutionTime(new Date());
+                applyPerNodeActiveFlags(next, plan, result.getConditionResults());
             }
             case C1_NEGATIVE -> {
-                if (plan.hasBranches())
-                    next.getBranchStates().replaceAll((k, v) -> "IDLE");
-                if (plan.getConditionTree() != null)
-                    plan.getConditionTree().forEach(n -> next.setNodeActive(n.getNodeId(), false));
                 next.setTopLevelState("IDLE");
+                applyPerNodeActiveFlags(next, plan, result.getConditionResults());
             }
-            default -> { /* SKIPPED, NOT_MET, FALLBACK, STATELESS_FIRE — no state change */ }
+            // SKIPPED, NOT_MET, FALLBACK, STATELESS_FIRE — no state change
+            default -> {
+            }
         }
         return next;
     }
 
-    private void applyBranchDecisions(AutomationEvaluator.EvalResult result,
-                                      AutomationRuntimeState next) {
-        if (result.getBranchDecisions() == null) return;
-        for (BranchDecision d : result.getBranchDecisions()) {
-            String nodeId = d.getBranch().getGateNodeId();
-            switch (d.getType()) {
-                case TRIGGER -> {
-                    next.setBranchState(nodeId, d.getBranch().hasDuration() ? "HOLDING" : "ACTIVE");
-                    next.setLastExecutionTime(new Date());
-                }
-                case REVERT, DURATION_EXPIRED -> next.setBranchState(nodeId, "IDLE");
-                default -> {
-                }
-            }
+    /**
+     * Sets each stateful node's active flag strictly according to whether it
+     * was walked and what it evaluated to THIS tick.
+     */
+    private void applyPerNodeActiveFlags(AutomationRuntimeState next,
+                                         ExecutionPlan plan,
+                                         Map<String, Boolean> conditionResults) {
+        if (plan.getConditionTree() == null || conditionResults == null) return;
+        for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
+            if (!node.isStateful()) continue;
+            Boolean walkedResult = conditionResults.get(node.getNodeId());
+            if (walkedResult == null) continue; // not walked this tick — leave as-is
+            next.setNodeState(node.getNodeId(), walkedResult ? "ACTIVE" : "IDLE");
+        }
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // BUG 2 FIX — DURATION WINDOW ARMING
+    // ─────────────────────────────────────────────────────────────────────
+
+    private void armDurationWindows(AutomationEvaluator.EvalResult result, String automationId) {
+        Set<String> toArm = result.getIntervalNodesToArm();
+        if (toArm == null || toArm.isEmpty()) return;
+
+        ExecutionPlan plan = planCache.get(automationId);
+        if (plan == null || plan.getConditionTree() == null) return;
+
+        Map<String, ExecutionPlan.CompiledConditionNode> nodeMap = plan.getConditionTree().stream()
+                .collect(Collectors.toMap(ExecutionPlan.CompiledConditionNode::getNodeId, n -> n));
+
+        for (String nodeId : toArm) {
+            ExecutionPlan.CompiledConditionNode node = nodeMap.get(nodeId);
+            if (node == null || node.getCondition() == null) continue;
+            long durationTtl = node.getCondition().getDurationMinutes() * 60L;
+            if (durationTtl <= 0) continue;
+            stateStore.setRunningKey(automationId, nodeId, durationTtl);
+            log.info("⏱️ [{}] Duration window armed for '{}': {}min",
+                    automationId, nodeId, node.getCondition().getDurationMinutes());
         }
     }
 
@@ -624,8 +632,7 @@ public class AutomationOrchestrator {
                                 ExecutionPlan plan,
                                 Map<String, Object> payload,
                                 String user,
-                                String automationId,
-                                AutomationRuntimeState prevState) {
+                                String automationId) {
         String name = resolveAutomationName(automationId);
         String traceId = result.getTraceId();
         String homeId = plan.getHomeId();
@@ -637,47 +644,55 @@ public class AutomationOrchestrator {
                     .thenRun(() -> publishLog(automationId, plan, user, payload, result));
 
             case TRIGGERED -> {
-                if (!plan.hasBranches()) {
-                    List<ExecutionPlan.CompiledAction> actions =
-                            result.getActionsToFire() != null && !result.getActionsToFire().isEmpty()
-                                    ? result.getActionsToFire()
-                                    : (plan.getTopLevelPositiveActions() != null
-                                       ? plan.getTopLevelPositiveActions() : List.of());
-                    dispatcher.dispatch(actions, payload, user, automationId, name, traceId, homeId)
-                            .thenRun(() -> {
-                                dispatcher.notifyTriggered(name);
-                                publishLog(automationId, plan, user, payload, result);
-                            });
-                } else {
-                    dispatchBranchDecisions(result, plan, payload, user, automationId, name);
-                }
+                List<ExecutionPlan.CompiledAction> actions =
+                        result.getActionsToFire() != null && !result.getActionsToFire().isEmpty()
+                                ? result.getActionsToFire()
+                                : (plan.getTopLevelPositiveActions() != null
+                                   ? plan.getTopLevelPositiveActions() : List.of());
+
+                dispatcher.dispatch(actions, payload, user, automationId, name, traceId, homeId)
+                        .thenRun(() -> {
+                            log.info("🚀 [{}] Triggered", name);
+                            armDurationWindows(result, automationId);
+                            dispatcher.notifyTriggered(name);
+                            publishLog(automationId, plan, user, payload, result);
+                        });
             }
 
-            case RESTORED -> dispatchBranchDecisions(result, plan, payload, user, automationId, name);
+            case BRANCH_TRIGGERED -> {
+                // BUG 4 fix: dispatch per-branch actions assembled by the evaluator.
+                // Do NOT fall back to plan.getTopLevelPositiveActions() — those belong
+                // to the TRIGGERED path. The branch actions are already in actionsToFire.
+                List<ExecutionPlan.CompiledAction> actions =
+                        result.getActionsToFire() != null && !result.getActionsToFire().isEmpty()
+                                ? result.getActionsToFire() : List.of();
+
+                if (actions.isEmpty()) {
+                    log.warn("⚠️ [{}] BRANCH_TRIGGERED but actionsToFire is empty — nothing to dispatch",
+                            name);
+                    publishLog(automationId, plan, user, payload, result);
+                    return;
+                }
+
+                dispatcher.dispatch(actions, payload, user, automationId, name, traceId, homeId)
+                        .thenRun(() -> {
+                            log.info("🌿 [{}] Branch triggered — {} action(s) dispatched",
+                                    name, actions.size());
+                            armDurationWindows(result, automationId);
+                            dispatcher.notifyTriggered(name);
+                            publishLog(automationId, plan, user, payload, result);
+                        });
+            }
 
             case C1_NEGATIVE -> {
-                // Collect tree-walk negative actions + active branch negative actions (deduplicated)
+                // BUG 1 fix: actionsToFire already includes stranded descendant
+                // negative actions, folded in by foldInStrandedNegativeActions().
                 List<ExecutionPlan.CompiledAction> toFire = result.getActionsToFire() != null
                         ? new ArrayList<>(result.getActionsToFire()) : new ArrayList<>();
 
-                if (plan.hasBranches()) {
-                    Set<String> seen = toFire.stream()
-                            .map(a -> a.getDeviceId() + "|" + a.getKey() + "|" + a.getData())
-                            .collect(Collectors.toCollection(LinkedHashSet::new));
-                    plan.getBranches().stream()
-                            .filter(b -> prevState.isBranchActive(b.getGateNodeId()))
-                            .forEach(b -> {
-                                stateStore.deleteRunningKey(automationId, b.getGateNodeId());
-                                if (b.getNegativeActions() != null)
-                                    b.getNegativeActions().stream()
-                                            .filter(a -> seen.add(
-                                                    a.getDeviceId() + "|" + a.getKey() + "|" + a.getData()))
-                                            .forEach(toFire::add);
-                            });
-                }
-
                 dispatcher.dispatch(toFire, payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
+                            log.debug("[{}] — trigger condition lost", name);
                             notificationService.sendNotification(
                                     name + " — trigger condition lost", "info");
                             publishLog(automationId, plan, user, payload, result);
@@ -686,83 +701,6 @@ public class AutomationOrchestrator {
 
             default -> publishLog(automationId, plan, user, payload, result);
         }
-    }
-
-    private void dispatchBranchDecisions(AutomationEvaluator.EvalResult result,
-                                         ExecutionPlan plan,
-                                         Map<String, Object> payload,
-                                         String user,
-                                         String automationId,
-                                         String automationName) {
-        String homeId = plan.getHomeId();
-        if (result.getBranchDecisions() == null) return;
-
-        List<CompletableFuture<Void>> allFutures = new ArrayList<>();
-
-        for (BranchDecision decision : result.getBranchDecisions()) {
-            ExecutionPlan.CompiledBranch branch = decision.getBranch();
-            String gateNodeId = branch.getGateNodeId();
-            String branchDesc = describeBranch(branch);
-
-            switch (decision.getType()) {
-
-                case TRIGGER -> {
-                    CompletableFuture<Void> f =
-                            dispatcher.dispatch(branch.getPositiveActions(), payload,
-                                            user, automationId, automationName, result.getTraceId(), homeId)
-                                    .thenAccept(ok -> {
-                                        if (!ok) {
-                                            log.warn("⚠️ [{}] '{}' positive dispatch failed",
-                                                    automationName, branchDesc);
-                                            return;
-                                        }
-                                        if (branch.hasDuration()) {
-                                            long durationTtl =
-                                                    branch.getGateCondition().getDurationMinutes() * 60L;
-                                            stateStore.setRunningKey(automationId, gateNodeId, durationTtl);
-                                            log.info("⏱️ [{}] '{}' running for {}min",
-                                                    automationName, branchDesc,
-                                                    branch.getGateCondition().getDurationMinutes());
-                                        }
-                                        dispatcher.notifyTriggered(automationName);
-                                        log.info("🚀 [{}] '{}' triggered (priority {})",
-                                                automationName, branchDesc, branch.getPriority());
-                                    });
-                    allFutures.add(f);
-                }
-
-                case REVERT, DURATION_EXPIRED -> {
-                    String reason = decision.getReason();
-                    CompletableFuture<Void> f =
-                            dispatcher.dispatch(branch.getNegativeActions(), payload,
-                                            user, automationId, automationName, result.getTraceId(), homeId)
-                                    .thenAccept(ok -> {
-                                        if (ok) {
-                                            stateStore.deleteRunningKey(automationId, gateNodeId);
-                                            dispatcher.notifyReverted(automationName, branchDesc);
-                                            log.info("⏹️ [{}] '{}' → IDLE — {}",
-                                                    automationName, branchDesc, reason);
-                                        }
-                                    });
-                    allFutures.add(f);
-                }
-
-                case SUPPRESSED -> log.debug("⏸️ [{}] '{}' suppressed — {}",
-                        automationName, branchDesc, decision.getReason());
-
-                default -> {
-                }
-            }
-        }
-
-        CompletableFuture.allOf(allFutures.toArray(new CompletableFuture[0]))
-                .thenRun(() -> publishLog(automationId, plan, user, payload, result))
-                .exceptionally(ex -> {
-                    log.error("❌ [{}] Branch dispatch error: {}", automationName, ex.getMessage(), ex);
-                    publishSkippedLog(automationId, plan, user, payload,
-                            "Branch dispatch error: " + ex.getMessage(), result.getTraceId());
-                    return null;
-                });
     }
 
 
@@ -776,12 +714,6 @@ public class AutomationOrchestrator {
         log.info("📡 Plan invalidation published for '{}'", automationId);
     }
 
-    /**
-     * Evicts both local caches (plan + name) for this automation. Called both
-     * by the node that triggers an invalidation and by PlanInvalidationListener
-     * on every other node that receives the resulting pub/sub message — so
-     * nameCache no longer silently goes stale on nodes that didn't do the save.
-     */
     public void evictLocalCaches(String automationId) {
         planCache.evict(automationId);
         nameCache.remove(automationId);
@@ -790,10 +722,6 @@ public class AutomationOrchestrator {
     public void updatePlan(String automationId, ExecutionPlan plan) {
         planCache.put(automationId, plan);
         nameCache.put(automationId, plan.getAutomationName());
-        // Note: this node already has the fresh plan+name locally (set above),
-        // so the pub/sub message below is purely for *other* nodes — this
-        // node's own PlanInvalidationListener firing on its own publish is a
-        // harmless no-op evict-then-the-data's-already-correct race, not a bug.
         redisTemplate.convertAndSend(PLAN_INVALIDATE_CHANNEL, automationId);
         log.info("📡 Plan updated and invalidation published for '{}'", automationId);
     }
@@ -807,12 +735,11 @@ public class AutomationOrchestrator {
                             String user, Map<String, Object> payload,
                             AutomationEvaluator.EvalResult result) {
         AutomationLog.LogStatus status = switch (result.getOutcome()) {
-            case TRIGGERED, STATELESS_FIRE, FALLBACK -> AutomationLog.LogStatus.TRIGGERED;
-            case RESTORED -> AutomationLog.LogStatus.RESTORED;
+            // BUG 4 fix: BRANCH_TRIGGERED is a successful dispatch — map to TRIGGERED
+            case TRIGGERED, BRANCH_TRIGGERED, STATELESS_FIRE, FALLBACK -> AutomationLog.LogStatus.TRIGGERED;
             case C1_NEGATIVE -> AutomationLog.LogStatus.TRIGGER_FALSE;
             case SKIPPED -> AutomationLog.LogStatus.SKIPPED;
             case NOT_MET -> AutomationLog.LogStatus.NOT_MET;
-            case SUPPRESSED -> AutomationLog.LogStatus.SUPPRESSED;
         };
 
         logStream.publish(AutomationLog.builder()
@@ -855,25 +782,5 @@ public class AutomationOrchestrator {
                 automationRepository.findById(id)
                         .map(Automation::getName)
                         .orElse(id));
-    }
-
-    private String describeBranch(ExecutionPlan.CompiledBranch branch) {
-        ExecutionPlan.CompiledCondition gc = branch.getGateCondition();
-        if (gc == null) return branch.getGateNodeId();
-        if ("scheduled".equals(gc.getConditionType())) {
-            return switch (Optional.ofNullable(gc.getScheduleType()).orElse("at")) {
-                case "range" -> "Time " + gc.getFromTime() + "-" + gc.getToTime();
-                case "interval" -> "Every " + gc.getIntervalMinutes() + "min";
-                case "solar" -> gc.getSolarType();
-                default -> "At " + gc.getTime();
-            };
-        }
-        String k = gc.getTriggerKey() != null ? gc.getTriggerKey() : "value";
-        return switch (gc.getConditionType()) {
-            case "above" -> k + ">" + gc.getValue();
-            case "below" -> k + "<" + gc.getValue();
-            case "range" -> k + " in " + gc.getAbove() + "-" + gc.getBelow();
-            default -> k + "=" + gc.getValue();
-        };
     }
 }

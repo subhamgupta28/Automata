@@ -26,21 +26,23 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * AutomationService — public API surface only.
+ * AutomationService — public API surface.
  * <p>
  * Changes vs previous version
  * ───────────────────────────
- * 1. handleAction() — coalition-aware routing (Point 1)
- * Uses automationRepository.findByAnyTriggerDeviceId(deviceId) to find
- * automations where deviceId is ANY coalition member (not just primary trigger).
- * Falls back to findByTrigger_DeviceId for automations without a coalition.
- * Passes firingDeviceId to orchestrator.execute() overload.
+ * 1. saveAutomationDetailInternal():
+ * - Operators mapping removed (operators[] no longer used by compiler).
+ * - Condition mapping extended to carry positiveChildren, negativeChildren,
+ * and fanoutMode from the frontend node data. These are resolved from
+ * the previousNodeRef edges inside the compiler — the fields are optional
+ * here and serve as a future explicit override if the frontend sends them.
+ * - Schedule key cleanup iterates conditionTree nodes from the compiled plan
+ * rather than automation.getConditions() to stay in sync.
  * <p>
- * 2. triggerPeriodicAutomations() — corrected filter (Bug 3 fix)
- * Was: !hasOnlyScheduledConditions (excluded scheduled-only → wrong for mixed)
- * Now: hasAnyScheduledConditions (includes any automation with ≥1 scheduled condition)
+ * 2. planHasStaleCondition() — branch check removed (no more plan.getBranches()).
  * <p>
- * 3. No other logic changes — all execution flow stays in the orchestrator.
+ * 3. All other logic (handleAction, coalition routing, periodic job,
+ * delete, copy, rollback) unchanged.
  */
 @Slf4j
 @Service
@@ -67,6 +69,7 @@ public class AutomationService {
     private final DeviceRepository deviceRepository;
     private final RedisService redisService;
     private final ObjectMapper objectMapper;
+    private final AutomationGraphValidator graphValidator;
 
     private static final String TOPIC_ACTION = "action/";
 
@@ -103,7 +106,7 @@ public class AutomationService {
 
 
     // ═════════════════════════════════════════════════════════════════════
-    // HANDLE ACTION  (live device event entry point)
+    // HANDLE ACTION
     // ═════════════════════════════════════════════════════════════════════
 
     public String handleAction(String deviceId, Map<String, Object> payload,
@@ -152,12 +155,8 @@ public class AutomationService {
             return "Direct action sent";
         }
 
-        // Write live payload to Redis — overwrites previous value, no MongoDB
         writeDeviceData(deviceId, payload);
 
-        // ── Point 1: coalition-aware automation lookup ──────────────────────
-        // Find automations where this deviceId is ANY coalition member OR the legacy trigger.
-        // For non-coalition automations this degrades to findByTrigger_DeviceId behaviour.
         List<Automation> automations = findAutomationsForDevice(deviceId);
         if (automations.isEmpty()) return "No automations for device";
 
@@ -166,10 +165,8 @@ public class AutomationService {
                 .forEach(a -> {
                     ExecutionPlan plan = planCache.get(a.getId());
                     if (plan != null && plan.hasCoalition()) {
-                        // Pass the firing deviceId so CoalitionGuard can record it
                         orchestrator.execute(a.getId(), payload, user, deviceId, plan.getHomeId());
                     } else {
-                        // Legacy single-trigger path
                         orchestrator.execute(a.getId(), payload, user);
                     }
                 });
@@ -177,37 +174,19 @@ public class AutomationService {
         return "Action routed to " + automations.size() + " automation(s)";
     }
 
-    /**
-     * Point 1: finds automations for which the given deviceId is a relevant trigger.
-     * <p>
-     * For coalition automations: deviceId may be any member (primary, secondary, veto).
-     * For legacy automations: deviceId must match trigger.deviceId.
-     * <p>
-     * Implementation note: the simplest approach is to check both sources:
-     * 1. Legacy: findByTrigger_DeviceId (existing index, fast)
-     * 2. Coalition: findByCoalitionMemberDeviceId (new index — see AutomationRepository)
-     * Then deduplicate by ID.
-     * <p>
-     * If you haven't added the coalition repository method yet, this falls back to
-     * the legacy query and coalition devices that are not the primary trigger won't
-     * fire — which is safe (existing behaviour preserved).
-     */
     private List<Automation> findAutomationsForDevice(String deviceId) {
         Set<String> seen = new LinkedHashSet<>();
         List<Automation> result = new ArrayList<>();
 
-        // Legacy primary-trigger lookup (always present, indexed)
         automationRepository.findByTrigger_DeviceId(deviceId).stream()
                 .filter(a -> seen.add(a.getId()))
                 .forEach(result::add);
 
-        // Coalition member lookup (new — only present if repository method added)
         try {
             automationRepository.findByCoalitionMemberDeviceId(deviceId).stream()
                     .filter(a -> seen.add(a.getId()))
                     .forEach(result::add);
         } catch (Exception e) {
-            // Method not yet implemented in repository — safe to ignore
             log.trace("Coalition lookup not available for device '{}': {}", deviceId, e.getMessage());
         }
 
@@ -272,22 +251,6 @@ public class AutomationService {
     // SCHEDULED JOBS
     // ═════════════════════════════════════════════════════════════════════
 
-    /**
-     * Periodic evaluation tick — every 12 seconds.
-     * <p>
-     * Bug 3 fix: filter changed from !hasOnlyScheduledConditions (inverted logic)
-     * to hasAnyScheduledConditions (correct: include automations that NEED periodic
-     * ticking because they have at least one scheduled gate/condition).
-     * <p>
-     * "Periodic Bat 500 charging": has scheduled gate → included ✓
-     * "Emergency Bat 500 Charging": no scheduled conditions → excluded ✓ (event-driven only)
-     * "Charging stop at 100": no scheduled conditions → excluded ✓
-     * "TESTING": has scheduled gates → included ✓
-     * "Light On": has scheduled gates → included ✓
-     * <p>
-     * Point 1: periodic ticks use the legacy single-trigger path (firingDeviceId = primary).
-     * Coalition tracking is only meaningful for live events from individual devices.
-     */
     @Scheduled(fixedRate = 12_000)
     public void triggerPeriodicAutomations() {
         if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) {
@@ -296,7 +259,6 @@ public class AutomationService {
         }
 
         automationRepository.findEnabledForExecution().stream()
-                // Fix Bug 3: was !hasOnlyScheduledConditions (inverted / wrong semantics)
                 .filter(scheduledAutomationManager::hasAnyScheduledConditions)
                 .forEach(a -> {
                     String deviceId = a.getTrigger().getDeviceId();
@@ -305,16 +267,12 @@ public class AutomationService {
 
                     if (!hasRedisData && planHasDataDrivenTrigger(a.getId())) {
 
-                        // Stale-condition automations MUST run when Redis is empty —
-                        // missing data is exactly what they detect.
-                        // Build a synthetic payload from the DB record's updateDate
-                        // so evalSingleCondition has a last_seen to compare against.
                         if (planHasStaleCondition(a.getId())) {
                             Map<String, Object> dbPayload = buildDbFallbackPayload(
                                     deviceId, a.getName());
                             log.info("🐕 [{}] Redis empty — running stale check with DB payload",
                                     a.getName());
-                            warnMissingSecondaryData(a);
+                            prewarmSecondaryDevices(a);
                             orchestrator.execute(a.getId(), dbPayload, "scheduler");
                             return;
                         }
@@ -324,47 +282,31 @@ public class AutomationService {
                         return;
                     }
 
-                    warnMissingSecondaryData(a);
+                    prewarmSecondaryDevices(a);
                     orchestrator.execute(a.getId(),
                             recentData != null ? recentData : Map.of(),
                             "scheduler");
                 });
     }
 
-    /**
-     * Builds a minimal payload for a device that has no Redis data.
-     * Fetches the device's last record from MongoDB and injects last_seen
-     * as epoch-ms so the stale evaluator can compute (now - last_seen).
-     * <p>
-     * If the DB record has a getData() map, it is included in full so any
-     * other conditions on the same automation can also evaluate normally.
-     * If getData() is null or empty, only last_seen is injected.
-     * If no DB record exists at all, last_seen=0 is injected — the evaluator
-     * treats 0 as "never seen" and the stale condition returns true immediately.
-     */
     private Map<String, Object> buildDbFallbackPayload(String deviceId, String automationName) {
         try {
             var record = mainService.getLastFullData(deviceId);
             if (record == null) {
-                log.warn("🐕 [{}] DB fallback: no record found for device '{}' — last_seen=0",
+                log.warn("🐕 [{}] DB fallback: no record for '{}' — last_seen=0",
                         automationName, deviceId);
                 return new HashMap<>(Map.of("last_seen", 0L));
             }
-
             Map<String, Object> payload = new HashMap<>();
             if (record.getData() != null) payload.putAll(record.getData());
-
             long lastSeenMs = record.getUpdateDate() != null
-                    ? record.getUpdateDate().getEpochSecond() * 1000L
-                    : 0L;
+                    ? record.getUpdateDate().getEpochSecond() * 1000L : 0L;
             payload.put("last_seen", lastSeenMs);
-
-            log.info("🐕 [{}] DB fallback: device='{}' last DB record={}",
+            log.info("🐕 [{}] DB fallback: device='{}' last record={}",
                     automationName, deviceId, record.getUpdateDate());
             return payload;
-
         } catch (Exception e) {
-            log.error("❌ [{}] DB fallback failed for device '{}': {}",
+            log.error("❌ [{}] DB fallback failed for '{}': {}",
                     automationName, deviceId, e.getMessage());
             return new HashMap<>(Map.of("last_seen", 0L));
         }
@@ -372,29 +314,15 @@ public class AutomationService {
 
     /**
      * Returns true if the compiled plan contains any condition with
-     * conditionType="stale".  These automations must never be skipped
-     * when Redis is empty — no data IS the alert condition.
+     * conditionType="stale". Checks the condition tree only (branches removed).
      */
     private boolean planHasStaleCondition(String automationId) {
         ExecutionPlan plan = planCache.get(automationId);
         if (plan == null) return false;
-
-        // Check condition tree nodes
-        if (plan.getConditionTree() != null) {
-            boolean inTree = plan.getConditionTree().stream()
-                    .anyMatch(n -> n.getCondition() != null
-                            && "stale".equals(n.getCondition().getConditionType()));
-            if (inTree) return true;
-        }
-
-        // Also check gate branches — stale can be a gate condition too
-        if (plan.getBranches() != null) {
-            return plan.getBranches().stream()
-                    .anyMatch(b -> b.getGateCondition() != null
-                            && "stale".equals(b.getGateCondition().getConditionType()));
-        }
-
-        return false;
+        if (plan.getConditionTree() == null) return false;
+        return plan.getConditionTree().stream()
+                .anyMatch(n -> n.getCondition() != null
+                        && "stale".equals(n.getCondition().getConditionType()));
     }
 
     @Scheduled(fixedRate = 65_000)
@@ -404,20 +332,17 @@ public class AutomationService {
                 .forEach(d -> new Wled(mqttOutboundChannel, d).publishForInfo(d.getId()));
     }
 
+    public AutomationGraphValidator.ValidationResult validateBeforeSave(
+            AutomationDetail detail, String homeId) {
 
-    // ═════════════════════════════════════════════════════════════════════
-    // SAVE AUTOMATION
-    // ═════════════════════════════════════════════════════════════════════
-
-
-    public String saveAutomationDetailInternal(AutomationDetail detail, String user, String homeId) {
-        log.info("Saving automation: {}", detail.getId());
-
+        // Build the Automation model the same way saveAutomationDetailInternal does,
+        // but stop before persisting anything.
+        // Reuse the same builder logic here (or extract it to a private buildAutomation() method
+        // that both saveAutomationDetailInternal and this method call).
+        //
+        // For now, a lightweight version:
         var automationBuilder = Automation.builder()
                 .isEnabled(true).updateDate(new Date()).isActive(false);
-
-        if (detail.getId() != null && !detail.getId().isEmpty())
-            automationBuilder.id(detail.getId());
 
         detail.setHomeId(homeId);
         detail.getNodes().stream()
@@ -430,8 +355,29 @@ public class AutomationService {
                             t.getName(), t.getPriority(), t.getNodeId(), t.getSources(),
                             t.getCoalitionMode(), t.getCoalitionWindowSeconds()
                     ));
-                    automationBuilder.name(t.getName());
                 });
+
+        automationBuilder.conditions(
+                detail.getNodes().stream()
+                        .map(n -> n.getData().getConditionData())
+                        .filter(Objects::nonNull)
+                        .map(c -> {
+                            Automation.Condition cond = new Automation.Condition(
+                                    c.getNodeId() != null ? c.getNodeId() : "",
+                                    c.getCondition(), c.getValueType(), c.getAbove(), c.getBelow(),
+                                    c.getValue(), c.getTime(), c.getTriggerKey(), c.getIsExact(),
+                                    c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays(),
+                                    c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(),
+                                    c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef(),
+                                    c.getDeviceId(), c.getMemoryPolicy(), c.getMemoryPolicyValue(),
+                                    c.getPositiveChildren(), c.getNegativeChildren(), c.getFanoutMode()
+                            );
+                            cond.setPositiveChildren(c.getPositiveChildren());
+                            cond.setNegativeChildren(c.getNegativeChildren());
+                            cond.setFanoutMode(c.getFanoutMode());
+                            return cond;
+                        })
+                        .collect(Collectors.toList()));
 
         automationBuilder.actions(
                 detail.getNodes().stream()
@@ -445,32 +391,88 @@ public class AutomationService {
                                     a.getPreviousNodeRef(), a.getNodeId());
                         }).toList());
 
+        automationBuilder.operators(List.of());
+        automationBuilder.homeId(homeId);
+
+        return graphValidator.validate(automationBuilder.build());
+    }
+    // ═════════════════════════════════════════════════════════════════════
+    // SAVE AUTOMATION
+    // ═════════════════════════════════════════════════════════════════════
+
+    public String saveAutomationDetailInternal(AutomationDetail detail, String user, String homeId) {
+        log.info("Saving automation: {}", detail.getId());
+
+        var automationBuilder = Automation.builder()
+                .isEnabled(true).updateDate(new Date()).isActive(false);
+
+        if (detail.getId() != null && !detail.getId().isEmpty())
+            automationBuilder.id(detail.getId());
+
+        detail.setHomeId(homeId);
+
+        // ── Trigger ───────────────────────────────────────────────────────
+        detail.getNodes().stream()
+                .filter(n -> n.getData().getTriggerData() != null)
+                .findFirst().ifPresent(tn -> {
+                    var t = tn.getData().getTriggerData();
+                    automationBuilder.trigger(new Automation.Trigger(
+                            t.getDeviceId(), t.getType(), t.getValue(), t.getKey(),
+                            t.getKeys().stream().map(k -> k.getKey()).toList(),
+                            t.getName(), t.getPriority(), t.getNodeId(), t.getSources(),
+                            t.getCoalitionMode(), t.getCoalitionWindowSeconds()
+                    ));
+                    automationBuilder.name(t.getName());
+                });
+
+        // ── Actions ───────────────────────────────────────────────────────
+        automationBuilder.actions(
+                detail.getNodes().stream()
+                        .filter(n -> n.getData().getActionData() != null)
+                        .map(n -> {
+                            var a = n.getData().getActionData();
+                            return new Automation.Action(
+                                    a.getKey(), a.getDeviceId(), a.getData(), a.getName(),
+                                    a.getIsEnabled(), a.getRevert(), a.getConditionGroup(),
+                                    a.getOrder(), a.getDelaySeconds(),
+                                    a.getPreviousNodeRef(), a.getNodeId());
+                        }).toList());
+
+        // ── Conditions ────────────────────────────────────────────────────
+        // positiveChildren, negativeChildren, and fanoutMode are read from
+        // the frontend node data if present. If absent, the compiler derives
+        // them from previousNodeRef edges — so the frontend does NOT need to
+        // send these fields explicitly.
         automationBuilder.conditions(
                 detail.getNodes().stream()
                         .map(n -> n.getData().getConditionData())
                         .filter(Objects::nonNull)
-                        .map(c -> new Automation.Condition(
-                                c.getNodeId() != null ? c.getNodeId() : "",
-                                c.getCondition(), c.getValueType(), c.getAbove(), c.getBelow(),
-                                c.getValue(), c.getTime(), c.getTriggerKey(), c.getIsExact(),
-                                c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays(),
-                                c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(),
-                                c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef(),
-                                c.getDeviceId(), c.getMemoryPolicy(), c.getMemoryPolicyValue()
-                        ))
+                        .map(c -> {
+                            // Carry through optional explicit children if the frontend
+                            // supplies them (future: UI toggle for FIRST_MATCH fan-out mode).
+                            // If null the compiler resolves from edges — no action needed.
+                            return new Automation.Condition(
+                                    c.getNodeId() != null ? c.getNodeId() : "",
+                                    c.getCondition(), c.getValueType(), c.getAbove(), c.getBelow(),
+                                    c.getValue(), c.getTime(), c.getTriggerKey(), c.getIsExact(),
+                                    c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays(),
+                                    c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(),
+                                    c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef(),
+                                    c.getDeviceId(), c.getMemoryPolicy(), c.getMemoryPolicyValue(),
+                                    c.getPositiveChildren(), c.getNegativeChildren(), c.getFanoutMode()
+                            );
+                        })
                         .collect(Collectors.toList()));
 
-        automationBuilder.operators(
-                detail.getNodes().stream()
-                        .map(n -> n.getData().getOperators())
-                        .filter(Objects::nonNull)
-                        .map(c -> new Automation.Operator(
-                                c.getType(), c.getLogicType(),
-                                c.getPreviousNodeRef(), c.getNodeId(), c.getPriority()))
-                        .collect(Collectors.toList()));
+        // ── Operators removed ─────────────────────────────────────────────
+        // Operator nodes are no longer part of the execution model.
+        // They are stored in the AutomationDetail for UI rendering only
+        // and are NOT saved to the Automation model or read by the compiler.
+        automationBuilder.operators(List.of());
 
         automationBuilder.homeId(detail.getHomeId());
         Automation automation = automationBuilder.build();
+
         List<String> subscribers = automation.getTrigger().getSources().stream()
                 .filter(s -> "primary".equals(s.getRole()))
                 .map(TriggerSource::getDeviceId)
@@ -484,9 +486,10 @@ public class AutomationService {
         detail.setUpdateDate(new Date());
         automationDetailRepository.save(detail);
 
-        // ── Compile ExecutionPlan ──────────────────────────────────────────
+        // ── Compile ExecutionPlan ─────────────────────────────────────────
+        ExecutionPlan plan = null;
         try {
-            ExecutionPlan plan = planCompiler.compile(saved);
+            plan = planCompiler.compile(saved);
             orchestrator.updatePlan(saved.getId(), plan);
             planRepository.save(plan);
             log.info("✅ ExecutionPlan compiled for '{}'", saved.getName());
@@ -496,20 +499,78 @@ public class AutomationService {
                     "Plan compilation failed for " + saved.getName(), "error");
         }
 
-        // ── Reset runtime state (clears condition memories and coalition state too) ──
+        // ── Reset runtime state ───────────────────────────────────────────
         stateStore.forceWrite(saved.getId(), AutomationRuntimeState.idle());
 
-        // ── Clean up schedule keys ─────────────────────────────────────────
-        if (saved.getConditions() != null)
+        // ── Clean up schedule keys ────────────────────────────────────────
+        // Use the compiled plan's condition tree for accurate node IDs.
+        // Fall back to automation.getConditions() if compilation failed.
+        if (plan != null && plan.getConditionTree() != null) {
+            plan.getConditionTree().forEach(n ->
+                    stateStore.deleteIntervalAndRunningKeys(saved.getId(), n.getNodeId()));
+        } else if (saved.getConditions() != null) {
             saved.getConditions().forEach(c ->
                     stateStore.deleteIntervalAndRunningKeys(saved.getId(), c.getNodeId()));
+        }
 
         automationVersionService.snapshot(saved, detail, "system", null);
         notificationService.sendNotification("Automation saved successfully", "success");
         return "success";
     }
 
+    /**
+     * Pre-warms Redis with the latest DB data for every non-primary coalition
+     * source device that currently has no Redis entry.
+     * <p>
+     * Called synchronously before orchestrator.execute() — this is intentional.
+     * The pre-warm must complete before evaluation starts so the evaluator finds
+     * data in Redis. The DB calls here are bounded by the number of secondary
+     * devices (typically 1–3) and are far cheaper than doing them mid-evaluation
+     * on the async automationExecutor thread pool.
+     * <p>
+     * Only devices with NO current Redis data are fetched — devices that are
+     * actively publishing will already have fresh Redis entries and are skipped.
+     * <p>
+     * The fetched data is written to Redis with a short TTL (30 seconds) to
+     * prevent stale pre-warmed data from being treated as live data.
+     * The evaluator's normal Redis read will then find this data within TTL.
+     */
+    private void prewarmSecondaryDevices(Automation automation) {
+        if (automation.getTrigger().getSources() == null) return;
 
+        automation.getTrigger().getSources().stream()
+                .filter(s -> !"primary".equals(s.getRole()))
+                .filter(s -> s.getDeviceId() != null && !s.getDeviceId().isBlank())
+                .forEach(s -> {
+                    String deviceId = s.getDeviceId();
+                    Map<String, Object> existing = redisService.getRecentDeviceData(deviceId);
+                    if (existing != null && !existing.isEmpty()) return; // already warm
+
+                    try {
+                        var record = mainService.getLastFullData(deviceId);
+                        if (record == null) {
+                            log.warn("⚠️ [{}] Pre-warm: no DB record for secondary device '{}'",
+                                    automation.getName(), deviceId);
+                            return;
+                        }
+                        Map<String, Object> payload = new HashMap<>();
+                        if (record.getData() != null) payload.putAll(record.getData());
+                        if (record.getUpdateDate() != null)
+                            payload.put("last_seen", record.getUpdateDate().getEpochSecond() * 1000L);
+
+                        // Write to Redis with 30s TTL — long enough for the evaluator to read it,
+                        // short enough that truly dead devices don't look alive indefinitely.
+                        redisService.setRecentDeviceDataWithTtl(deviceId, payload, 30);
+
+                        log.debug("🔥 [{}] Pre-warmed secondary device '{}' (last DB record: {})",
+                                automation.getName(), deviceId, record.getUpdateDate());
+
+                    } catch (Exception e) {
+                        log.warn("⚠️ [{}] Pre-warm failed for secondary device '{}': {}",
+                                automation.getName(), deviceId, e.getMessage());
+                    }
+                });
+    }
     // ═════════════════════════════════════════════════════════════════════
     // DELETE AUTOMATION
     // ═════════════════════════════════════════════════════════════════════
@@ -559,7 +620,7 @@ public class AutomationService {
                 .triggerDeviceType(original.getTriggerDeviceType())
                 .conditions(original.getConditions())
                 .actions(original.getActions())
-                .operators(original.getOperators())
+                .operators(List.of())   // operators no longer used
                 .isEnabled(false).isActive(false).updateDate(new Date())
                 .build();
         Automation saved = automationRepository.save(copy);
@@ -637,7 +698,8 @@ public class AutomationService {
                         c -> c.getOrder() != 0 ? c.getOrder() : Integer.MAX_VALUE))
                 .toList();
         String traceId = "evt-" + automation.getId() + "-" + System.currentTimeMillis();
-        dispatcher.dispatch(compiled, payload, user, automation.getId(), automation.getName(), traceId, automation.getHomeId());
+        dispatcher.dispatch(compiled, payload, user, automation.getId(),
+                automation.getName(), traceId, automation.getHomeId());
     }
 
 

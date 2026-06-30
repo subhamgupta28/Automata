@@ -93,7 +93,7 @@ function DashboardDetail() {
 
         fetch();
     }, [])
-    const defaultViewport = useMemo(() => ({x: 0, y: 20, zoom: 0.85}), []);
+    const defaultViewport = useMemo(() => ({x: 0, y: 40, zoom: 0.85}), []);
 
     const onNodeContextMenu = useCallback(
         (event, node) => {
