@@ -334,84 +334,17 @@ public class AutomationService {
 
     public AutomationGraphValidator.ValidationResult validateBeforeSave(
             AutomationDetail detail, String homeId) {
+        var automation = buildAutomation(detail, homeId);
 
-        // Build the Automation model the same way saveAutomationDetailInternal does,
-        // but stop before persisting anything.
-        // Reuse the same builder logic here (or extract it to a private buildAutomation() method
-        // that both saveAutomationDetailInternal and this method call).
-        //
-        // For now, a lightweight version:
-        var automationBuilder = Automation.builder()
-                .isEnabled(true).updateDate(new Date()).isActive(false);
-
-        detail.setHomeId(homeId);
-        detail.getNodes().stream()
-                .filter(n -> n.getData().getTriggerData() != null)
-                .findFirst().ifPresent(tn -> {
-                    var t = tn.getData().getTriggerData();
-                    automationBuilder.trigger(new Automation.Trigger(
-                            t.getDeviceId(), t.getType(), t.getValue(), t.getKey(),
-                            t.getKeys().stream().map(k -> k.getKey()).toList(),
-                            t.getName(), t.getPriority(), t.getNodeId(), t.getSources(),
-                            t.getCoalitionMode(), t.getCoalitionWindowSeconds()
-                    ));
-                });
-
-        automationBuilder.conditions(
-                detail.getNodes().stream()
-                        .map(n -> n.getData().getConditionData())
-                        .filter(Objects::nonNull)
-                        .map(c -> {
-                            Automation.Condition cond = new Automation.Condition(
-                                    c.getNodeId() != null ? c.getNodeId() : "",
-                                    c.getCondition(), c.getValueType(), c.getAbove(), c.getBelow(),
-                                    c.getValue(), c.getTime(), c.getTriggerKey(), c.getIsExact(),
-                                    c.getScheduleType(), c.getFromTime(), c.getToTime(), c.getDays(),
-                                    c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(),
-                                    c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef(),
-                                    c.getDeviceId(), c.getMemoryPolicy(), c.getMemoryPolicyValue(),
-                                    c.getPositiveChildren(), c.getNegativeChildren(), c.getFanoutMode()
-                            );
-                            cond.setPositiveChildren(c.getPositiveChildren());
-                            cond.setNegativeChildren(c.getNegativeChildren());
-                            cond.setFanoutMode(c.getFanoutMode());
-                            return cond;
-                        })
-                        .collect(Collectors.toList()));
-
-        automationBuilder.actions(
-                detail.getNodes().stream()
-                        .filter(n -> n.getData().getActionData() != null)
-                        .map(n -> {
-                            var a = n.getData().getActionData();
-                            return new Automation.Action(
-                                    a.getKey(), a.getDeviceId(), a.getData(), a.getName(),
-                                    a.getIsEnabled(), a.getRevert(), a.getConditionGroup(),
-                                    a.getOrder(), a.getDelaySeconds(),
-                                    a.getPreviousNodeRef(), a.getNodeId());
-                        }).toList());
-
-        automationBuilder.operators(List.of());
-        automationBuilder.homeId(homeId);
-
-        return graphValidator.validate(automationBuilder.build());
+        return graphValidator.validate(automation);
     }
-    // ═════════════════════════════════════════════════════════════════════
-    // SAVE AUTOMATION
-    // ═════════════════════════════════════════════════════════════════════
 
-    public String saveAutomationDetailInternal(AutomationDetail detail, String user, String homeId) {
-        log.info("Saving automation: {}", detail.getId());
-
+    private Automation buildAutomation(AutomationDetail detail, String homeId) {
         var automationBuilder = Automation.builder()
                 .isEnabled(true).updateDate(new Date()).isActive(false);
-
         if (detail.getId() != null && !detail.getId().isEmpty())
             automationBuilder.id(detail.getId());
-
         detail.setHomeId(homeId);
-
-        // ── Trigger ───────────────────────────────────────────────────────
         detail.getNodes().stream()
                 .filter(n -> n.getData().getTriggerData() != null)
                 .findFirst().ifPresent(tn -> {
@@ -459,7 +392,7 @@ public class AutomationService {
                                     c.getSolarType(), c.getOffsetMinutes(), c.getIntervalMinutes(),
                                     c.getDurationMinutes(), c.isEnabled(), c.getPreviousNodeRef(),
                                     c.getDeviceId(), c.getMemoryPolicy(), c.getMemoryPolicyValue(),
-                                    c.getPositiveChildren(), c.getNegativeChildren(), c.getFanoutMode()
+                                    c.getFanoutMode()
                             );
                         })
                         .collect(Collectors.toList()));
@@ -471,7 +404,16 @@ public class AutomationService {
         automationBuilder.operators(List.of());
 
         automationBuilder.homeId(detail.getHomeId());
-        Automation automation = automationBuilder.build();
+        return automationBuilder.build();
+    }
+    // ═════════════════════════════════════════════════════════════════════
+    // SAVE AUTOMATION
+    // ═════════════════════════════════════════════════════════════════════
+
+    public String saveAutomationDetailInternal(AutomationDetail detail, String user, String homeId) {
+        log.info("Saving automation: {}", detail.getId());
+
+        var automation = buildAutomation(detail, homeId);
 
         List<String> subscribers = automation.getTrigger().getSources().stream()
                 .filter(s -> "primary".equals(s.getRole()))

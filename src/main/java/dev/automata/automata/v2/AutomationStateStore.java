@@ -279,7 +279,36 @@ public class AutomationStateStore {
                 intervalKey(automationId, condNodeId),
                 runningKey(automationId, condNodeId)));
     }
+// ── Negative-action grace window (generic, any condition with durationMinutes>0) ──
 
+    private String graceKey(String automationId, String nodeId) {
+        return "automata:grace:" + automationId + ":" + nodeId;
+    }
+
+    /**
+     * Returns the epoch-ms when grace was armed, or null if not armed.
+     */
+    public Long getGraceArmedAtEpochMs(String automationId, String nodeId) {
+        Object v = redisTemplate.opsForValue().get(graceKey(automationId, nodeId));
+        if (v == null) return null;
+        try {
+            return Long.parseLong(v.toString());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Arms the grace timer once. ttlSeconds should be durationMinutes*60 + small buffer.
+     */
+    public void armGrace(String automationId, String nodeId, long nowMs, long ttlSeconds) {
+        redisTemplate.opsForValue().set(graceKey(automationId, nodeId),
+                String.valueOf(nowMs), ttlSeconds, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    public void clearGrace(String automationId, String nodeId) {
+        redisTemplate.delete(graceKey(automationId, nodeId));
+    }
 
     // ─────────────────────────────────────────────────────────────────────
     // SCHEDULE KEYS  — DAILY FIRE (at / exact-time schedules)

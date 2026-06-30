@@ -131,6 +131,8 @@ public class ExecutionPlan {
          * null          → treated as "ALL".
          */
         String fanoutMode;
+        boolean firstMatch;
+        boolean fanout;
 
         public boolean hasMemoryPolicy() {
             return memoryPolicy != null;
@@ -139,16 +141,16 @@ public class ExecutionPlan {
         /**
          * True when this node fans out to multiple OR branches.
          */
-        public boolean isFanout() {
-            return positiveChildNodeIds != null && positiveChildNodeIds.size() > 1;
-        }
+//        public boolean isFanout() {
+//            return positiveChildNodeIds != null && positiveChildNodeIds.size() > 1;
+//        }
 
         /**
          * True when FIRST_MATCH fan-out mode is active.
          */
-        public boolean isFirstMatch() {
-            return "FIRST_MATCH".equals(fanoutMode);
-        }
+//        public boolean isFirstMatch() {
+//            return "FIRST_MATCH".equals(fanoutMode);
+//        }
     }
 
 

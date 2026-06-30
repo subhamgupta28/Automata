@@ -107,6 +107,7 @@ const OUTCOME_COLOR = {
     C1_NEGATIVE: "error",
     STATELESS_FIRE: "info",
     FALLBACK: "info",
+    BRANCH_TRIGGERED: "success"
 };
 const OUTCOME_ICON = {
     TRIGGERED: "🚀",
@@ -116,6 +117,7 @@ const OUTCOME_ICON = {
     C1_NEGATIVE: "⛔",
     STATELESS_FIRE: "⚡",
     FALLBACK: "↩",
+    BRANCH_TRIGGERED: "🌿",
 };
 
 // ─── Shared small components ──────────────────────────────────────────────────
@@ -988,7 +990,11 @@ export function AutomationLiveInspector({defaultId = ""}) {
                             {/* Live eval banner */}
                             {liveEvent && (
                                 <Alert
-                                    severity={liveEvent.outcome === "TRIGGERED" ? "success" : liveEvent.outcome === "C1_NEGATIVE" || liveEvent.outcome === "RESTORED" ? "warning" : "info"}
+                                    severity={
+                                        liveEvent.outcome === "TRIGGERED" || liveEvent.outcome === "BRANCH_TRIGGERED" ? "success"
+                                            : liveEvent.outcome === "C1_NEGATIVE" ? "warning"
+                                                : "info"
+                                    }
                                     icon={<BoltIcon/>}
                                     sx={{
                                         mb: 1.5,

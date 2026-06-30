@@ -58,7 +58,8 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         deviceId: null,    // NEW: null = use primary trigger device
         nodeId: id,
         memoryPolicy: '',
-        memoryPolicyValue: 0
+        memoryPolicyValue: 0,
+        fanoutMode: 'ALL'
     };
 
     const [scheduleType, setScheduleType] = useState(conditionData.scheduleType);
@@ -83,6 +84,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     const [offsetMinutes, setOffsetMinutes] = useState(conditionData.offsetMinutes);
     const [durationMinutes, setDurationMinutes] = useState(conditionData.durationMinutes);
     const [memoryPolicy, setMemoryPolicy] = useState(conditionData.memoryPolicy);
+    const [fanoutMode, setFanoutMode] = useState(conditionData.fanoutMode);
     const [memoryPolicyValue, setMemoryPolicyValue] = useState(
         conditionData.memoryPolicyValue
     );
@@ -145,6 +147,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         if (cd.isExact !== isRange) setIsRange(cd.isExact);
         if (cd.value !== conditionValue) setConditionValue(cd.value);
         if (cd.type !== type) setType(cd.type);
+        if (cd.fanoutMode !== fanoutMode) setFanoutMode(cd.fanoutMode);
         if ((cd.deviceId || '') !== conditionDeviceId) setConditionDeviceId(cd.deviceId || '');
         const newTime = dayjs(cd.time, "hh:mm:ss A");
         if (!newTime.isSame(time)) setTime(newTime);
@@ -228,6 +231,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             durationMinutes,
             enabled: connections.length > 0,
             previousNodeRef: previousNodes,
+            fanoutMode,
             // NEW: which device owns this condition's data
             // null/'' = primary trigger device (backend falls back automatically)
             deviceId: conditionDeviceId || null,
@@ -244,6 +248,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         offsetMinutes, intervalMinutes, durationMinutes, connections,
         conditionDeviceId,
         memoryPolicy,
+        fanoutMode,
         memoryPolicyValue// NEW dependency
     ]);
 
@@ -554,6 +559,21 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
                         </div>
                     )}
+                    <FormControl fullWidth size="small" className='nodrag' sx={{mb: 2}}>
+                        <InputLabel>Fanout Mode</InputLabel>
+                        <Select
+                            variant="outlined"
+                            value={fanoutMode}
+                            label="Fanout Mode"
+                            onChange={(e) => {
+                                setFanoutMode(e.target.value);
+                                console.log("fanout", e.target)
+                            }}
+                        >
+                            <MenuItem value="ALL"><em>All branch nodes are evaluated.</em></MenuItem>
+                            <MenuItem value="FIRST_MATCH">First branch node wins.</MenuItem>
+                        </Select>
+                    </FormControl>
                 </AccordionDetails>
             </Accordion>
 

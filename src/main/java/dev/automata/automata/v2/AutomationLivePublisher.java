@@ -251,7 +251,8 @@ public class AutomationLivePublisher {
 
         // Detect positive actions in plan that were not fired
         if (plan.getConditionTree() != null
-                && result.getOutcome() == AutomationEvaluator.EvalOutcome.TRIGGERED) {
+                && (result.getOutcome() == AutomationEvaluator.EvalOutcome.TRIGGERED
+                || result.getOutcome() == AutomationEvaluator.EvalOutcome.BRANCH_TRIGGERED)) {
             Set<String> fired = new HashSet<>(firedActionNodeIds);
             for (ExecutionPlan.CompiledConditionNode n : plan.getConditionTree()) {
                 if (n.getPositiveActions() == null) continue;
