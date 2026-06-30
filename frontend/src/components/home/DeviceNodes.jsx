@@ -15,7 +15,7 @@ import {getMainNodePos, rebootAllDevices} from "../../services/apis.jsx";
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {AlertNode, Device, MainNode} from "./Nodes.jsx";
 import {createEdges, createNodes} from "./EdgeNode.jsx";
-import {Button} from "@mui/material";
+import {Backdrop, Button} from "@mui/material";
 import NodeInspector from "./NodeInspector.jsx";
 import {ZoomSlider} from "./ZoomSlider.jsx";
 import ContextMenu from "./ContextMenu.jsx";
@@ -182,8 +182,13 @@ const DeviceNodesComponent = () => {
                 <ZoomSlider position="bottom-left"/>
                 {menu && <ContextMenu onClick={onPaneClick} {...menu} />}
             </ReactFlow>
+            <Backdrop
+                sx={(theme) => ({color: '#fff', zIndex: theme.zIndex.drawer + 1})}
+                open={openBackdrop}
+            >
+                <LoadingScreen/>
+            </Backdrop>
 
-            <LoadingScreen/>
         </div>
     );
 };

@@ -188,6 +188,9 @@ public class AutomationDetail {
                 // In Automation.Condition — OPTIONAL, only needed for UI-configurable memory policies
                 String memoryPolicy;       // "DURATION" | "CONSECUTIVE_TICKS" | "EDGE_RISING" | etc.
                 int memoryPolicyValue;     // requiredDurationSeconds or requiredTicks depending on type
+                private List<String> positiveChildren;   // populated by save service
+                private List<String> negativeChildren;
+                private String fanoutMode;
             }
 
             @Getter

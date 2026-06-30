@@ -1025,6 +1025,7 @@ function ActionBoardDetailComponent() {
     const [sceneOpen, setSceneOpen] = useState(false);
     const [abTestOpen, setAbTestOpen] = useState(false);
     const [versionOpen, setVersionOpen] = useState(false);
+    const [loading, setLoading] = useState(false)
 
     const fetchData = async () => {
         try {
@@ -1038,6 +1039,7 @@ function ActionBoardDetailComponent() {
     }, []);
 
     const onSave = useCallback(() => {
+        setLoading(true);
         if (!rfInstance) return;
         const flow = rfInstance.toObject();
         const seenN = new Set();
@@ -1055,7 +1057,9 @@ function ActionBoardDetailComponent() {
             return true;
         });
         const cleanFlow = {...flow, nodes: uniqueNodes, edges: uniqueEdges, id: automationDetail.id || ''};
-        saveAutomationDetail(cleanFlow).then(fetchData);
+        saveAutomationDetail(cleanFlow).then(() => {
+            fetchData().then(() => setLoading(false));
+        });
         localStorage.setItem('flow', JSON.stringify(cleanFlow));
     }, [rfInstance, automationDetail]);
 
@@ -1229,12 +1233,27 @@ function ActionBoardDetailComponent() {
                             </Panel>
                         )}
                         <Controls orientation="horizontal" position="top-left"/>
-                        <Panel position="bottom-right" style={{marginBottom: '20px'}}>
-                            <Button size="small" variant="outlined" onClick={onSave}
-                                    style={{marginLeft: '10px'}}>Save</Button>
-                            <Button size="small" variant="outlined" onClick={clearBoard}
-                                    style={{marginLeft: '10px'}}>Clear</Button>
-                        </Panel>
+                        {hasSelected && (
+                            <Panel position="bottom-right" style={{marginBottom: '20px'}}>
+
+                                <Button
+                                    size="small"
+                                    onClick={onSave}
+                                    loading={loading}
+                                    loadingIndicator="Saving…"
+                                    variant="outlined"
+                                    // loadingPosition="end"
+                                    style={{marginLeft: '10px', width: '120px'}}
+                                >
+                                    Save
+                                </Button>
+                                {/*<Button size="small" variant="outlined" onClick={onSave}*/}
+                                {/*        style={{marginLeft: '10px'}}>Save</Button>*/}
+                                <Button size="small" variant="outlined" onClick={clearBoard}
+                                        style={{marginLeft: '10px'}}>Clear</Button>
+                            </Panel>
+                        )}
+
 
                     </ReactFlow>
                 </Box>

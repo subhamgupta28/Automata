@@ -9,8 +9,10 @@ import dev.automata.automata.model.AutomationDetail;
 import dev.automata.automata.model.Users;
 import dev.automata.automata.service.AutomationService;
 import dev.automata.automata.service.AutomationUtils;
+import dev.automata.automata.v2.AutomationGraphValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -147,6 +149,15 @@ public class AutomationController {
             @AuthenticationPrincipal Users user
     ) {
         return ResponseEntity.ok(automationService.saveAutomationDetailInternal(automation, user.getId(), homeId));
+    }
+
+    @PostMapping("/validate")
+    public ResponseEntity<AutomationGraphValidator.ValidationResult> validate(
+            @RequestBody AutomationDetail detail,
+            @RequestHeader("X-Home-Id") String homeId) {
+        var result = automationService.validateBeforeSave(detail, homeId);
+        HttpStatus status = result.hasErrors() ? HttpStatus.UNPROCESSABLE_ENTITY : HttpStatus.OK;
+        return ResponseEntity.status(status).body(result);
     }
 
     @GetMapping("/getAutomationDetail/{id}")

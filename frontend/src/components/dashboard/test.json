@@ -1,123 +1,67 @@
-[
-  {
-    "_id": {
-      "$oid": "689b7d3f948aef4ed997ec34"
+{
+  "version": 1,
+  "topLevelState": "ACTIVE",
+  "nodeStates": {
+    "node_condition_10": "IDLE",
+    "node_condition_18": "ACTIVE"
+  },
+  "branchStates": {},
+  "nodeActiveStates": {},
+  "conditionMemories": {
+    "node_condition_22": {
+      "firstTrueEpochMs": 1782623936828,
+      "consecutiveTrueCount": 43,
+      "previousRawResult": true,
+      "policyPassed": true
     },
-    "_class": "dev.automata.automata.model.Automation",
-    "actions": [
-      {
-        "key": "onOff",
-        "deviceId": "69559fe7ff8187354090cb2d",
-        "data": "true",
-        "name": "Ring Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-positive:node_condition_1"
-          }
-        ],
-        "nodeId": "node_action_6"
-      },
-      {
-        "key": "onOff",
-        "deviceId": "6955a0bf597f2017005e2b0d",
-        "data": "true",
-        "name": "Monitor Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-positive:node_condition_1"
-          }
-        ],
-        "nodeId": "node_action_8"
-      },
-      {
-        "key": "onOff",
-        "deviceId": "67571bf46f2d631aa77cc632",
-        "data": "true",
-        "name": "Light Strip",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-positive:node_condition_1"
-          }
-        ],
-        "nodeId": "node_action_12"
-      }
-    ],
-    "conditions": [
-      {
-        "nodeId": "node_condition_1",
-        "condition": "range",
-        "valueType": "time",
-        "above": "02:30:47 AM",
-        "below": "01:00:47 AM",
-        "value": "05:00:00 AM",
-        "time": "05:00:00 AM",
-        "triggerKey": "last_seen",
-        "isExact": false,
-        "scheduleType": "at",
-        "fromTime": "01:00:47 AM",
-        "toTime": "02:30:47 AM",
-        "days": [],
-        "offsetMinutes": 0,
-        "intervalMinutes": 0,
-        "durationMinutes": 0,
-        "enabled": true,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_trigger_0",
-            "handle": "rootNode:triggerNode:node_trigger_0"
-          }
-        ],
-        "memoryPolicyValue": 0
-      }
-    ],
-    "isActive": false,
-    "isEnabled": true,
-    "name": "Knock 1",
-    "operators": [],
-    "subscriberDeviceIds": [
-      "678d3ea52d39db1f7a8d8b43"
-    ],
-    "trigger": {
-      "deviceId": "678d3ea52d39db1f7a8d8b43",
-      "type": "state",
-      "keys": [
-        "last_seen"
-      ],
-      "name": "Knock 1",
-      "priority": 8,
-      "nodeId": "node_trigger_0",
-      "sources": [
-        {
-          "deviceId": "678d3ea52d39db1f7a8d8b43",
-          "keys": [
-            "last_seen"
-          ],
-          "role": "primary"
-        }
-      ],
-      "coalitionWindowSeconds": 0
+    "node_condition_9": {
+      "firstTrueEpochMs": 1782623804360,
+      "consecutiveTrueCount": 54,
+      "previousRawResult": true,
+      "policyPassed": true
     },
-    "triggerDeviceType": "System",
-    "updateDate": {
-      "$date": "2026-05-18T20:30:25.599Z"
+    "node_condition_18": {
+      "firstTrueEpochMs": 1782623875864,
+      "consecutiveTrueCount": 48,
+      "previousRawResult": true,
+      "policyPassed": true
+    },
+    "node_condition_10": {
+      "firstTrueEpochMs": 0,
+      "consecutiveTrueCount": 0,
+      "previousRawResult": false,
+      "policyPassed": false
     }
-  }
-]
+  },
+  "triggerMemberLastFired": {},
+  "sequenceProgress": 0,
+  "lastEvalSnapshot": {
+    "outcome": "SKIPPED",
+    "traceId": "69d0335f-1782624642846-d7fd358",
+    "evaluatedAt": 1782624643306,
+    "c1True": true,
+    "anyWasActive": false,
+    "reason": "Already active — condition still true",
+    "evalDurationMs": 116,
+    "conditionResults": {
+      "node_condition_9": true,
+      "node_condition_18": true,
+      "node_condition_10": false,
+      "node_condition_22": true
+    },
+    "conditionMemorySummaries": {
+      "node_condition_9": "DURATION: 839/60s",
+      "node_condition_18": "DURATION: 768/60s"
+    },
+    "nodeStates": {
+      "node_condition_10": "IDLE",
+      "node_condition_18": "ACTIVE"
+    },
+    "coalitionLastFired": {
+      "67dafae9fa67e36c0a25687e": 1782624643306
+    },
+    "sequenceProgress": 0
+  },
+  "lastExecutionTime": 1782623937026,
+  "topLevelActive": true
+}

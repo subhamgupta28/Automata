@@ -1,285 +1,1049 @@
-[
-  {
-    "_id": {
-      "$oid": "689f53b668dded22326d935e"
-    },
-    "_class": "dev.automata.automata.model.Automation",
-    "actions": [
-      {
-        "key": "channel1",
-        "deviceId": "6755d5ec3667d03a2c053eff",
-        "data": "true",
-        "name": "LiFePO4 816WH",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-positive:node_condition_1"
-          }
-        ],
-        "nodeId": "node_action_2"
+{
+  "nodes": [
+    {
+      "id": "node_trigger_0",
+      "type": "trigger",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": -452.4303502538608,
+        "y": 27.45824601771045
       },
-      {
-        "key": "channel1",
-        "deviceId": "6755d5ec3667d03a2c053eff",
-        "data": "false",
-        "name": "LiFePO4 816WH",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 1,
-        "delaySeconds": 1,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-negative:node_condition_1"
-          }
-        ],
-        "nodeId": "node_action_4"
-      },
-      {
-        "key": "app_notify",
-        "deviceId": "678d3ea52d39db1f7a8d8b43",
-        "data": "Battery 500 charging stopped",
-        "name": "System",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-negative:node_condition_1"
-          }
-        ],
-        "nodeId": "node_action_8"
-      },
-      {
-        "key": "app_notify",
-        "deviceId": "678d3ea52d39db1f7a8d8b43",
-        "data": "Battery 500 Charging started",
-        "name": "System",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "positive",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_1",
-            "handle": "out:cond-positive:node_condition_1"
-          }
-        ],
-        "nodeId": "node_action_10"
-      },
-      {
-        "key": "bright",
-        "deviceId": "69559fe7ff8187354090cb2d",
-        "data": "20",
-        "name": "Ring Light",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_5",
-            "handle": "out:cond-negative:node_condition_5"
-          }
-        ],
-        "nodeId": "node_action_13"
-      },
-      {
-        "key": "channel1",
-        "deviceId": "6755d5ec3667d03a2c053eff",
-        "data": "false",
-        "name": "LiFePO4 816WH",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_11",
-            "handle": "out:cond-negative:node_condition_11"
-          }
-        ],
-        "nodeId": "node_action_14"
-      },
-      {
-        "key": "channel1",
-        "deviceId": "6755d5ec3667d03a2c053eff",
-        "data": "false",
-        "name": "LiFePO4 816WH",
-        "isEnabled": true,
-        "revert": false,
-        "conditionGroup": "negative",
-        "order": 1,
-        "delaySeconds": 0,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_5",
-            "handle": "out:cond-negative:node_condition_5"
-          }
-        ],
-        "nodeId": "node_action_16"
-      }
-    ],
-    "conditions": [
-      {
-        "nodeId": "node_condition_1",
-        "condition": "scheduled",
-        "valueType": "int",
-        "above": "0",
-        "below": "0",
-        "value": "10",
-        "time": "Invalid Date",
-        "triggerKey": "",
-        "isExact": false,
-        "scheduleType": "interval",
-        "fromTime": "09:12:50 PM",
-        "toTime": "09:12:50 PM",
-        "days": [
-          "Mon",
-          "Tue",
-          "Wed",
-          "Thu",
-          "Fri",
-          "Sat",
-          "Sun"
-        ],
-        "offsetMinutes": 0,
-        "intervalMinutes": 30,
-        "durationMinutes": 20,
-        "enabled": true,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_and_6",
-            "handle": "out:operator:node_and_6"
-          }
-        ],
-        "memoryPolicyValue": 0
-      },
-      {
-        "nodeId": "node_condition_5",
-        "condition": "below",
-        "valueType": "int",
-        "above": "0",
-        "below": "0",
-        "value": "65",
-        "time": "02:20:05 AM",
-        "triggerKey": "percent",
-        "isExact": false,
-        "scheduleType": "at",
-        "fromTime": "02:20:05 AM",
-        "toTime": "02:20:05 AM",
-        "days": [
-          "Everyday"
-        ],
-        "solarType": "sunset",
-        "offsetMinutes": 0,
-        "intervalMinutes": 30,
-        "durationMinutes": 5,
-        "enabled": true,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_trigger_0",
-            "handle": "rootNode:triggerNode:node_trigger_0"
-          }
-        ],
-        "memoryPolicy": "DURATION",
-        "memoryPolicyValue": 60
-      },
-      {
-        "nodeId": "node_condition_11",
-        "condition": "above",
-        "valueType": "int",
-        "above": "0",
-        "below": "0",
-        "value": "30",
-        "time": "02:20:05 AM",
-        "triggerKey": "percent",
-        "isExact": false,
-        "scheduleType": "at",
-        "fromTime": "02:20:05 AM",
-        "toTime": "02:20:05 AM",
-        "days": [
-          "Everyday"
-        ],
-        "solarType": "sunset",
-        "offsetMinutes": 0,
-        "intervalMinutes": 0,
-        "durationMinutes": 0,
-        "enabled": true,
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_5",
-            "handle": "out:cond-positive:node_condition_5"
-          }
-        ],
-        "deviceId": "6755d5ec3667d03a2c053eff",
-        "memoryPolicy": "DURATION",
-        "memoryPolicyValue": 60
-      }
-    ],
-    "isActive": false,
-    "isEnabled": true,
-    "name": "Periodic Bat 500 charging",
-    "operators": [
-      {
-        "type": "operator",
-        "logicType": "AND",
-        "previousNodeRef": [
-          {
-            "nodeId": "node_condition_11",
-            "handle": "out:cond-positive:node_condition_11"
-          }
-        ],
-        "nodeId": "node_and_6",
-        "priority": 10
-      }
-    ],
-    "subscriberDeviceIds": [
-      "67dafae9fa67e36c0a25687e"
-    ],
-    "trigger": {
-      "deviceId": "67dafae9fa67e36c0a25687e",
-      "type": "state",
-      "keys": [
-        "percent"
-      ],
-      "name": "Periodic Bat 500 charging",
-      "priority": 5,
-      "nodeId": "node_trigger_0",
-      "sources": [
-        {
-          "deviceId": "67dafae9fa67e36c0a25687e",
+      "data": {
+        "triggerData": {
+          "deviceId": "69fa4e92db434d2a1edf112d",
+          "type": "state",
+          "name": "Light On",
           "keys": [
-            "percent"
+            {
+              "conditionId": "node_condition_1",
+              "value": "",
+              "key": "range"
+            }
           ],
-          "role": "primary"
+          "priority": 10,
+          "nodeId": "node_trigger_0",
+          "rootNode": true,
+          "sources": [
+            {
+              "deviceId": "69fa4e92db434d2a1edf112d",
+              "keys": [
+                "range"
+              ],
+              "role": "primary"
+            }
+          ],
+          "subscriberDeviceIds": [
+            "69fa4e92db434d2a1edf112d"
+          ],
+          "coalitionMode": null,
+          "coalitionWindowSeconds": 0
         },
-        {
-          "deviceId": "6755d5ec3667d03a2c053eff",
-          "keys": [
-            "percent"
-          ],
-          "role": "secondary"
+        "conditionData": null,
+        "actionData": null,
+        "operators": null,
+        "value": {
+          "name": "trigger",
+          "newNode": false
         }
-      ],
-      "coalitionMode": "ANY",
-      "coalitionWindowSeconds": 0
+      },
+      "measured": {
+        "width": 340,
+        "height": 449
+      }
     },
-    "triggerDeviceType": "sensor",
-    "updateDate": {
-      "$date": "2026-05-17T08:01:12.350Z"
+    {
+      "id": "node_condition_1",
+      "type": "condition",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 90.20211482529837,
+        "y": -79.96029912653827
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": {
+          "nodeId": "node_condition_1",
+          "condition": "range",
+          "triggerKey": "range",
+          "valueType": "int",
+          "below": "450",
+          "above": "5",
+          "type": "state",
+          "value": "1",
+          "isExact": false,
+          "time": "01:50:00 AM",
+          "scheduleType": null,
+          "fromTime": "04:28:31 PM",
+          "toTime": "04:28:31 PM",
+          "days": [],
+          "solarType": null,
+          "offsetMinutes": 0,
+          "intervalMinutes": 0,
+          "durationMinutes": 0,
+          "enabled": true,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_trigger_0",
+              "handle": "rootNode:triggerNode:node_trigger_0"
+            }
+          ],
+          "deviceId": null,
+          "memoryPolicy": "DURATION",
+          "memoryPolicyValue": 5
+        },
+        "actionData": null,
+        "operators": null,
+        "value": {
+          "name": "condition",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_4",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 1273.059187994804,
+        "y": 116.54248178638036
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_4",
+          "deviceId": "6955a0bf597f2017005e2b0d",
+          "key": "bright",
+          "name": "Monitor Light",
+          "data": "180",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "positive",
+          "order": 4,
+          "delaySeconds": 0,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_16",
+              "handle": "out:cond-positive:node_condition_16"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_5",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 1274.6660427881384,
+        "y": 220.20670225257402
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_5",
+          "deviceId": "67571bf46f2d631aa77cc632",
+          "key": "bright",
+          "name": "Light Strip",
+          "data": "140",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "positive",
+          "order": 3,
+          "delaySeconds": 0,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_16",
+              "handle": "out:cond-positive:node_condition_16"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_7",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 166.07341224790378,
+        "y": 281.13677096063003
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_7",
+          "deviceId": "6955a0bf597f2017005e2b0d",
+          "key": "bright",
+          "name": "Monitor Light",
+          "data": "2",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "negative",
+          "order": 2,
+          "delaySeconds": 1,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_1",
+              "handle": "out:cond-negative:node_condition_1"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_8",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 167.64872167448743,
+        "y": 157.70426461578148
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_8",
+          "deviceId": "67571bf46f2d631aa77cc632",
+          "key": "bright",
+          "name": "Light Strip",
+          "data": "2",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "negative",
+          "order": 1,
+          "delaySeconds": 1,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_1",
+              "handle": "out:cond-negative:node_condition_1"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_10",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 1268.8432730071477,
+        "y": -85.81341547690369
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_10",
+          "deviceId": "67571bf46f2d631aa77cc632",
+          "key": "preset",
+          "name": "Light Strip",
+          "data": "3",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "positive",
+          "order": 2,
+          "delaySeconds": 0,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_16",
+              "handle": "out:cond-positive:node_condition_16"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_12",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 1272.680053223001,
+        "y": 12.68446141723561
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_12",
+          "deviceId": "6955a0bf597f2017005e2b0d",
+          "key": "preset",
+          "name": "Monitor Light",
+          "data": "4",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "positive",
+          "order": 1,
+          "delaySeconds": 0,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_16",
+              "handle": "out:cond-positive:node_condition_16"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_13",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 164.87359319276743,
+        "y": 406.89077345330855
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_13",
+          "deviceId": "67571bf46f2d631aa77cc632",
+          "key": "preset",
+          "name": "Light Strip",
+          "data": "10",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "negative",
+          "order": 3,
+          "delaySeconds": 1,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_1",
+              "handle": "out:cond-negative:node_condition_1"
+            },
+            {
+              "nodeId": "node_condition_16",
+              "handle": "out:cond-negative:node_condition_16"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_15",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 165.8142328723004,
+        "y": 526.9979514501799
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_15",
+          "deviceId": "6955a0bf597f2017005e2b0d",
+          "key": "preset",
+          "name": "Monitor Light",
+          "data": "3",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "negative",
+          "order": 4,
+          "delaySeconds": 1,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_1",
+              "handle": "out:cond-negative:node_condition_1"
+            },
+            {
+              "nodeId": "node_condition_16",
+              "handle": "out:cond-negative:node_condition_16"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_condition_16",
+      "type": "condition",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 673.9006480965661,
+        "y": -92.00879387674381
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": {
+          "nodeId": "node_condition_16",
+          "condition": "scheduled",
+          "triggerKey": "",
+          "valueType": "int",
+          "below": "0",
+          "above": "0",
+          "type": "state",
+          "value": "0",
+          "isExact": false,
+          "time": "02:20:05 AM",
+          "scheduleType": "range",
+          "fromTime": "01:00:05 PM",
+          "toTime": "01:00:05 AM",
+          "days": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun"
+          ],
+          "solarType": null,
+          "offsetMinutes": 0,
+          "intervalMinutes": 0,
+          "durationMinutes": 0,
+          "enabled": true,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_1",
+              "handle": "out:cond-positive:node_condition_1"
+            }
+          ],
+          "deviceId": null,
+          "memoryPolicy": null,
+          "memoryPolicyValue": 0
+        },
+        "actionData": null,
+        "operators": null,
+        "value": {
+          "name": "condition",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_condition_21",
+      "type": "condition",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 676.0000000000002,
+        "y": 498.66666666666663
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": {
+          "nodeId": "node_condition_21",
+          "condition": "scheduled",
+          "triggerKey": "",
+          "valueType": "int",
+          "below": "0",
+          "above": "0",
+          "type": "state",
+          "value": "0",
+          "isExact": false,
+          "time": "02:20:05 AM",
+          "scheduleType": "range",
+          "fromTime": "10:00:05 AM",
+          "toTime": "01:00:05 PM",
+          "days": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun"
+          ],
+          "solarType": "sunset",
+          "offsetMinutes": 0,
+          "intervalMinutes": 30,
+          "durationMinutes": 0,
+          "enabled": true,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_1",
+              "handle": "out:cond-positive:node_condition_1"
+            }
+          ],
+          "deviceId": null,
+          "memoryPolicy": null,
+          "memoryPolicyValue": 0
+        },
+        "actionData": null,
+        "operators": null,
+        "value": {
+          "name": "condition",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_25",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 1292,
+        "y": 697.3333333333335
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_25",
+          "deviceId": "67571bf46f2d631aa77cc632",
+          "key": "preset",
+          "name": "Light Strip",
+          "data": "6",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "positive",
+          "order": 3,
+          "delaySeconds": 1,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_21",
+              "handle": "out:cond-positive:node_condition_21"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_26",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 916.6666666666665,
+        "y": 696
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_26",
+          "deviceId": "6955a0bf597f2017005e2b0d",
+          "key": "preset",
+          "name": "Monitor Light",
+          "data": "6",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "positive",
+          "order": 2,
+          "delaySeconds": 1,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_21",
+              "handle": "out:cond-positive:node_condition_21"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_27",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 917.6499633789062,
+        "y": 804.6666666666667
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_27",
+          "deviceId": "67571bf46f2d631aa77cc632",
+          "key": "bright",
+          "name": "Light Strip",
+          "data": "35",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "positive",
+          "order": 1,
+          "delaySeconds": 1,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_21",
+              "handle": "out:cond-positive:node_condition_21"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_28",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 1295.4832967122397,
+        "y": 804.0000000000001
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_28",
+          "deviceId": "6955a0bf597f2017005e2b0d",
+          "key": "bright",
+          "name": "Monitor Light",
+          "data": "40",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "positive",
+          "order": 4,
+          "delaySeconds": 1,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_21",
+              "handle": "out:cond-positive:node_condition_21"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_29",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 831.3333333333335,
+        "y": 186
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_29",
+          "deviceId": "6955a0bf597f2017005e2b0d",
+          "key": "bright",
+          "name": "Monitor Light",
+          "data": "1",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "negative",
+          "order": 1,
+          "delaySeconds": 1,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_16",
+              "handle": "out:cond-negative:node_condition_16"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
+    },
+    {
+      "id": "node_action_30",
+      "type": "action",
+      "selected": false,
+      "dragging": false,
+      "position": {
+        "x": 831.716593424479,
+        "y": 280.6666666666667
+      },
+      "data": {
+        "triggerData": null,
+        "conditionData": null,
+        "actionData": {
+          "nodeId": "node_action_30",
+          "deviceId": "67571bf46f2d631aa77cc632",
+          "key": "bright",
+          "name": "Light Strip",
+          "data": "1",
+          "isEnabled": true,
+          "revert": false,
+          "conditionGroup": "negative",
+          "order": 2,
+          "delaySeconds": 1,
+          "previousNodeRef": [
+            {
+              "nodeId": "node_condition_16",
+              "handle": "out:cond-negative:node_condition_16"
+            }
+          ]
+        },
+        "operators": null,
+        "value": {
+          "name": "action",
+          "newNode": false
+        }
+      },
+      "measured": {
+        "width": 320,
+        "height": 100
+      }
     }
-  }
-]
+  ],
+  "edges": [
+    {
+      "source": "node_trigger_0",
+      "sourceHandle": "rootNode:triggerNode:node_trigger_0",
+      "target": "node_condition_1",
+      "targetHandle": "in:condition:node_condition_1",
+      "type": "custom-edge",
+      "id": "xy-edge__node_trigger_0rootNode:triggerNode:node_trigger_0-node_condition_1in:condition:node_condition_1",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_1",
+      "sourceHandle": "out:cond-negative:node_condition_1",
+      "target": "node_action_8",
+      "targetHandle": "action:in:node_action_8",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_1out:cond-negative:node_condition_1-node_action_8action:in:node_action_8",
+      "animated": false,
+      "data": {
+        "color": "#f44336"
+      }
+    },
+    {
+      "source": "node_condition_1",
+      "sourceHandle": "out:cond-negative:node_condition_1",
+      "target": "node_action_7",
+      "targetHandle": "action:in:node_action_7",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_1out:cond-negative:node_condition_1-node_action_7action:in:node_action_7",
+      "animated": false,
+      "data": {
+        "color": "#f44336"
+      }
+    },
+    {
+      "source": "node_condition_1",
+      "sourceHandle": "out:cond-negative:node_condition_1",
+      "target": "node_action_15",
+      "targetHandle": "action:in:node_action_15",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_1out:cond-negative:node_condition_1-node_action_15action:in:node_action_15",
+      "animated": false,
+      "data": {
+        "color": "#f44336"
+      }
+    },
+    {
+      "source": "node_condition_1",
+      "sourceHandle": "out:cond-negative:node_condition_1",
+      "target": "node_action_13",
+      "targetHandle": "action:in:node_action_13",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_1out:cond-negative:node_condition_1-node_action_13action:in:node_action_13",
+      "animated": false,
+      "data": {
+        "color": "#f44336"
+      }
+    },
+    {
+      "source": "node_condition_16",
+      "sourceHandle": "out:cond-positive:node_condition_16",
+      "target": "node_action_10",
+      "targetHandle": "action:in:node_action_10",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_16out:cond-positive:node_condition_16-node_action_10action:in:node_action_10",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_16",
+      "sourceHandle": "out:cond-positive:node_condition_16",
+      "target": "node_action_12",
+      "targetHandle": "action:in:node_action_12",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_16out:cond-positive:node_condition_16-node_action_12action:in:node_action_12",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_16",
+      "sourceHandle": "out:cond-positive:node_condition_16",
+      "target": "node_action_4",
+      "targetHandle": "action:in:node_action_4",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_16out:cond-positive:node_condition_16-node_action_4action:in:node_action_4",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_16",
+      "sourceHandle": "out:cond-positive:node_condition_16",
+      "target": "node_action_5",
+      "targetHandle": "action:in:node_action_5",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_16out:cond-positive:node_condition_16-node_action_5action:in:node_action_5",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_16",
+      "sourceHandle": "out:cond-negative:node_condition_16",
+      "target": "node_action_29",
+      "targetHandle": "action:in:node_action_29",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_16out:cond-negative:node_condition_16-node_action_29action:in:node_action_29",
+      "animated": false,
+      "data": {
+        "color": "#f44336"
+      }
+    },
+    {
+      "source": "node_condition_16",
+      "sourceHandle": "out:cond-negative:node_condition_16",
+      "target": "node_action_30",
+      "targetHandle": "action:in:node_action_30",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_16out:cond-negative:node_condition_16-node_action_30action:in:node_action_30",
+      "animated": false,
+      "data": {
+        "color": "#f44336"
+      }
+    },
+    {
+      "source": "node_condition_21",
+      "sourceHandle": "out:cond-positive:node_condition_21",
+      "target": "node_action_25",
+      "targetHandle": "action:in:node_action_25",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_21out:cond-positive:node_condition_21-node_action_25action:in:node_action_25",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_21",
+      "sourceHandle": "out:cond-positive:node_condition_21",
+      "target": "node_action_28",
+      "targetHandle": "action:in:node_action_28",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_21out:cond-positive:node_condition_21-node_action_28action:in:node_action_28",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_21",
+      "sourceHandle": "out:cond-positive:node_condition_21",
+      "target": "node_action_26",
+      "targetHandle": "action:in:node_action_26",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_21out:cond-positive:node_condition_21-node_action_26action:in:node_action_26",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_21",
+      "sourceHandle": "out:cond-positive:node_condition_21",
+      "target": "node_action_27",
+      "targetHandle": "action:in:node_action_27",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_21out:cond-positive:node_condition_21-node_action_27action:in:node_action_27",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_16",
+      "sourceHandle": "out:cond-negative:node_condition_16",
+      "target": "node_action_13",
+      "targetHandle": "action:in:node_action_13",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_16out:cond-negative:node_condition_16-node_action_13action:in:node_action_13",
+      "animated": false,
+      "data": {
+        "color": "#f44336"
+      }
+    },
+    {
+      "source": "node_condition_16",
+      "sourceHandle": "out:cond-negative:node_condition_16",
+      "target": "node_action_15",
+      "targetHandle": "action:in:node_action_15",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_16out:cond-negative:node_condition_16-node_action_15action:in:node_action_15",
+      "animated": false,
+      "data": {
+        "color": "#f44336"
+      }
+    },
+    {
+      "source": "node_condition_1",
+      "sourceHandle": "out:cond-positive:node_condition_1",
+      "target": "node_condition_21",
+      "targetHandle": "in:condition:node_condition_21",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_1out:cond-positive:node_condition_1-node_condition_21in:condition:node_condition_21",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    },
+    {
+      "source": "node_condition_1",
+      "sourceHandle": "out:cond-positive:node_condition_1",
+      "target": "node_condition_16",
+      "targetHandle": "in:condition:node_condition_16",
+      "type": "custom-edge",
+      "id": "xy-edge__node_condition_1out:cond-positive:node_condition_1-node_condition_16in:condition:node_condition_16",
+      "animated": false,
+      "data": {
+        "color": "#4caf50"
+      }
+    }
+  ],
+  "viewport": {
+    "x": 449.6851699237812,
+    "y": 131.17904484450696,
+    "zoom": 0.8104787172611926
+  },
+  "id": "688cc888c82e72169f917631"
+}

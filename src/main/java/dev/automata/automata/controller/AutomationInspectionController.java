@@ -121,10 +121,10 @@ public class AutomationInspectionController {
             case "FORCE_ACTIVE" -> {
                 AutomationRuntimeState next = AutomationRuntimeState.idle();
                 next.setTopLevelState("ACTIVE");
-                if (plan.getConditionTree() != null)
-                    plan.getConditionTree().stream()
-                            .filter(ExecutionPlan.CompiledConditionNode::isStateful)
-                            .forEach(n -> next.setNodeActive(n.getNodeId(), true));
+//                if (plan.getConditionTree() != null)
+//                    plan.getConditionTree().stream()
+//                            .filter(ExecutionPlan.CompiledConditionNode::isStateful)
+//                            .forEach(n -> next.setNodeActive(n.getNodeId(), true));
                 stateStore.forceWrite(id, next);
                 log.info("🔄 Override FORCE_ACTIVE applied to automation '{}'", id);
                 yield ResponseEntity.ok(OverrideResponse.ok("State forced to ACTIVE"));
@@ -132,8 +132,8 @@ public class AutomationInspectionController {
             case "FORCE_IDLE" -> {
                 AutomationRuntimeState next = AutomationRuntimeState.idle();
                 // Explicitly clear branch states
-                if (plan.getBranches() != null)
-                    plan.getBranches().forEach(b -> next.setBranchState(b.getGateNodeId(), "IDLE"));
+//                if (plan.getBranches() != null)
+//                    plan.getBranches().forEach(b -> next.setBranchState(b.getGateNodeId(), "IDLE"));
                 stateStore.forceWrite(id, next);
                 log.info("🔄 Override FORCE_IDLE applied to automation '{}'", id);
                 yield ResponseEntity.ok(OverrideResponse.ok("State forced to IDLE"));
@@ -236,20 +236,20 @@ public class AutomationInspectionController {
 
         // Branch summaries
         List<BranchStateView> branchViews = new ArrayList<>();
-        if (plan.getBranches() != null) {
-            for (ExecutionPlan.CompiledBranch branch : plan.getBranches()) {
-                String bState = state.getBranchStateStr(branch.getGateNodeId());
-                branchViews.add(BranchStateView.builder()
-                        .gateNodeId(branch.getGateNodeId())
-                        .priority(branch.getPriority())
-                        .logicType(branch.getLogicType())
-                        .scheduleType(branch.getGateCondition() != null
-                                ? branch.getGateCondition().getScheduleType() : null)
-                        .state(bState)
-                        .active("ACTIVE".equals(bState) || "HOLDING".equals(bState))
-                        .build());
-            }
-        }
+//        if (plan.getBranches() != null) {
+//            for (ExecutionPlan.CompiledBranch branch : plan.getBranches()) {
+//                String bState = state.getBranchStateStr(branch.getGateNodeId());
+//                branchViews.add(BranchStateView.builder()
+//                        .gateNodeId(branch.getGateNodeId())
+//                        .priority(branch.getPriority())
+//                        .logicType(branch.getLogicType())
+//                        .scheduleType(branch.getGateCondition() != null
+//                                ? branch.getGateCondition().getScheduleType() : null)
+//                        .state(bState)
+//                        .active("ACTIVE".equals(bState) || "HOLDING".equals(bState))
+//                        .build());
+//            }
+//        }
 
         // Coalition summary
         CoalitionStateView coalitionView = null;
@@ -287,7 +287,7 @@ public class AutomationInspectionController {
                 .compiledAt(plan.getCompiledAt())
                 .topLevelState(state.getTopLevelState())
                 .isTopLevelActive(state.isTopLevelActive())
-                .hasBranches(plan.hasBranches())
+//                .hasBranches(plan.hasBranches())
                 .hasCoalition(plan.hasCoalition())
                 .conditionNodes(nodeViews)
                 .branches(branchViews)
@@ -328,26 +328,26 @@ public class AutomationInspectionController {
         }
 
         List<Map<String, Object>> branchList = new ArrayList<>();
-        if (plan.getBranches() != null) {
-            for (ExecutionPlan.CompiledBranch b : plan.getBranches()) {
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("gateNodeId", b.getGateNodeId());
-                m.put("priority", b.getPriority());
-                m.put("logicType", b.getLogicType());
-                m.put("positiveActionsCount",
-                        b.getPositiveActions() != null ? b.getPositiveActions().size() : 0);
-                m.put("negativeActionsCount",
-                        b.getNegativeActions() != null ? b.getNegativeActions().size() : 0);
-                if (b.getGateCondition() != null) {
-                    m.put("scheduleType", b.getGateCondition().getScheduleType());
-                    m.put("intervalMinutes", b.getGateCondition().getIntervalMinutes());
-                    m.put("durationMinutes", b.getGateCondition().getDurationMinutes());
-                    m.put("fromTime", b.getGateCondition().getFromTime());
-                    m.put("toTime", b.getGateCondition().getToTime());
-                }
-                branchList.add(m);
-            }
-        }
+//        if (plan.getBranches() != null) {
+//            for (ExecutionPlan.CompiledBranch b : plan.getBranches()) {
+//                Map<String, Object> m = new LinkedHashMap<>();
+//                m.put("gateNodeId", b.getGateNodeId());
+//                m.put("priority", b.getPriority());
+//                m.put("logicType", b.getLogicType());
+//                m.put("positiveActionsCount",
+//                        b.getPositiveActions() != null ? b.getPositiveActions().size() : 0);
+//                m.put("negativeActionsCount",
+//                        b.getNegativeActions() != null ? b.getNegativeActions().size() : 0);
+//                if (b.getGateCondition() != null) {
+//                    m.put("scheduleType", b.getGateCondition().getScheduleType());
+//                    m.put("intervalMinutes", b.getGateCondition().getIntervalMinutes());
+//                    m.put("durationMinutes", b.getGateCondition().getDurationMinutes());
+//                    m.put("fromTime", b.getGateCondition().getFromTime());
+//                    m.put("toTime", b.getGateCondition().getToTime());
+//                }
+//                branchList.add(m);
+//            }
+//        }
 
         return PlanSummaryResponse.builder()
                 .automationId(plan.getAutomationId())

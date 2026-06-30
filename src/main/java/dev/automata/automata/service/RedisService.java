@@ -305,4 +305,13 @@ public class RedisService {
         }
         stringRedisTemplate.opsForValue().set(shadowCacheKey, json, Duration.ofSeconds(i));
     }
+
+    public void setRecentDeviceDataWithTtl(String deviceId,
+                                           Map<String, Object> data,
+                                           long ttlSeconds) throws JsonProcessingException {
+        String key = "device:recent:" + deviceId;  // adjust to your actual key pattern
+        redisTemplate.opsForValue().set(key,
+                objectMapper.writeValueAsString(data),
+                Duration.ofSeconds(ttlSeconds));
+    }
 }

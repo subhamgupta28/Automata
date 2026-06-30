@@ -1361,24 +1361,6 @@ export function AutomationPanelButtons({
             {hasSelected && (
                 <div
                     style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
-                    <Tooltip title="Manage scenes" arrow>
-                        <Button size="small" variant="outlined" onClick={onScene}
-                                sx={{
-                                    color: T.purple, borderColor: `${T.purple}40`,
-                                    '&:hover': {borderColor: T.purple, background: `${T.purple}0d`}
-                                }}>
-                            🎬 Scene
-                        </Button>
-                    </Tooltip>
-                    <Tooltip title="A/B test this automation" arrow>
-                        <Button size="small" variant="outlined" onClick={onAbTest}
-                                sx={{
-                                    color: T.orange, borderColor: `${T.orange}40`,
-                                    '&:hover': {borderColor: T.orange, background: `${T.orange}0d`}
-                                }}>
-                            🧪 A/B Test
-                        </Button>
-                    </Tooltip>
                     <Tooltip title="Version history & rollback" arrow>
                         <Button size="small" variant="outlined" onClick={onVersion}
                                 sx={{

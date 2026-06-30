@@ -213,7 +213,9 @@ public class SecurityConfiguration {
                 "http://192.168.1.54:8010",
                 "http://raspberry.local:8010",
                 "https://automata.realsubhamgupta.in",
-                "http://automata.realsubhamgupta.in"
+                "http://automata.realsubhamgupta.in",
+                "https://automata.subhamgupta.in",
+                "http://automata.subhamgupta.in"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
