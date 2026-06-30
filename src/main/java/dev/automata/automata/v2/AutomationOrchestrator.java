@@ -277,7 +277,7 @@ public class AutomationOrchestrator {
 
         // BUG 1 fix: fold in negative actions for stranded descendants
         if (result.getOutcome() == AutomationEvaluator.EvalOutcome.C1_NEGATIVE) {
-            result = foldInStrandedNegativeActions(result, plan, state);
+            result = foldInStrandedNegativeActions(result, plan, state, automationId);
         }
 
         log.debug("📋 [traceId={}] outcome={} c1={} anyWasActive={}",
@@ -304,7 +304,7 @@ public class AutomationOrchestrator {
                     state = stateStore.read(automationId);
                     result = evaluator.evaluate(plan, payload, state, automationId, traceId);
                     if (result.getOutcome() == AutomationEvaluator.EvalOutcome.C1_NEGATIVE) {
-                        result = foldInStrandedNegativeActions(result, plan, state);
+                        result = foldInStrandedNegativeActions(result, plan, state, automationId);
                     }
                     if (!result.hasChanges()) {
                         writePostCasMemoryUpdates(automationId, result);
@@ -346,7 +346,8 @@ public class AutomationOrchestrator {
     private AutomationEvaluator.EvalResult foldInStrandedNegativeActions(
             AutomationEvaluator.EvalResult result,
             ExecutionPlan plan,
-            AutomationRuntimeState prevState) {
+            AutomationRuntimeState prevState,
+            String automationId) {
 
         if (plan.getConditionTree() == null || plan.getConditionTree().isEmpty()) return result;
 
@@ -361,39 +362,60 @@ public class AutomationOrchestrator {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
         List<ExecutionPlan.CompiledAction> stranded = new ArrayList<>();
+        Map<String, Boolean> extendedResults = new LinkedHashMap<>(walkedThisTick);
+        long nowMs = System.currentTimeMillis();
 
         for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
             if (!node.isStateful()) continue;
             boolean wasActive = prevState.isNodeActive(node.getNodeId());
             boolean walkedThisNode = walkedThisTick.containsKey(node.getNodeId());
 
-            if (wasActive && !walkedThisNode) {
-                log.debug("🧩 Stranded descendant '{}' was active but not walked this tick — "
-                                + "firing its {} negative action(s)",
-                        node.getNodeId(), node.getNegativeActions() != null
-                                ? node.getNegativeActions().size() : 0);
-                if (node.getNegativeActions() != null) {
-                    for (ExecutionPlan.CompiledAction a : node.getNegativeActions()) {
-                        String key = a.getDeviceId() + "|" + a.getKey() + "|" + a.getData();
-                        if (seen.add(key)) stranded.add(a);
-                    }
+            if (!wasActive || walkedThisNode) continue; // not stranded
+
+            ExecutionPlan.CompiledCondition c = node.getCondition();
+            boolean hasGrace = c != null && c.getDurationMinutes() > 0;
+
+            if (hasGrace) {
+                long durationMs = c.getDurationMinutes() * 60_000L;
+                Long armedAt = stateStore.getGraceArmedAtEpochMs(automationId, node.getNodeId());
+
+                if (armedAt == null) {
+                    // Parent just failed this tick, stranding this child for the first time.
+                    // Start its grace clock and keep it ACTIVE — don't fire negatives yet,
+                    // and don't mark it IDLE in extendedResults (leaving it unset means
+                    // applyPerNodeActiveFlags() leaves the node's state untouched = still ACTIVE).
+                    stateStore.armGrace(automationId, node.getNodeId(), nowMs,
+                            c.getDurationMinutes() * 60L + 30);
+                    log.info("⏳ Stranded node '{}' — parent false, honoring {}min child grace before negative actions",
+                            node.getNodeId(), c.getDurationMinutes());
+                    continue;
+                } else if (nowMs - armedAt < durationMs) {
+                    // Still within grace — keep holding, no negatives, no state change.
+                    continue;
+                } else {
+                    // Grace expired — fall through and fire negatives below, clearing the timer.
+                    stateStore.clearGrace(automationId, node.getNodeId());
                 }
             }
+
+            log.debug("🧩 Stranded descendant '{}' was active but not walked this tick — "
+                            + "firing its {} negative action(s)",
+                    node.getNodeId(), node.getNegativeActions() != null
+                            ? node.getNegativeActions().size() : 0);
+
+            if (node.getNegativeActions() != null) {
+                for (ExecutionPlan.CompiledAction a : node.getNegativeActions()) {
+                    String key = a.getDeviceId() + "|" + a.getKey() + "|" + a.getData();
+                    if (seen.add(key)) stranded.add(a);
+                }
+            }
+            extendedResults.put(node.getNodeId(), false);
         }
 
-        if (stranded.isEmpty()) return result;
+        if (stranded.isEmpty() && extendedResults.size() == walkedThisTick.size()) return result;
 
         List<ExecutionPlan.CompiledAction> combined = new ArrayList<>(existing);
         combined.addAll(stranded);
-
-        Map<String, Boolean> extendedResults = new LinkedHashMap<>(walkedThisTick);
-        for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
-            if (node.isStateful()
-                    && prevState.isNodeActive(node.getNodeId())
-                    && !walkedThisTick.containsKey(node.getNodeId())) {
-                extendedResults.put(node.getNodeId(), false);
-            }
-        }
 
         return result.toBuilder()
                 .actionsToFire(combined)
@@ -572,7 +594,8 @@ public class AutomationOrchestrator {
             }
             case C1_NEGATIVE -> {
                 next.setTopLevelState("IDLE");
-                applyPerNodeActiveFlags(next, plan, result.getConditionResults());
+                next.resetAllNodeStates();
+//                applyPerNodeActiveFlags(next, plan, result.getConditionResults());
             }
             // SKIPPED, NOT_MET, FALLBACK, STATELESS_FIRE — no state change
             default -> {
@@ -649,11 +672,11 @@ public class AutomationOrchestrator {
                                 ? result.getActionsToFire()
                                 : (plan.getTopLevelPositiveActions() != null
                                    ? plan.getTopLevelPositiveActions() : List.of());
-
+                armDurationWindows(result, automationId);
                 dispatcher.dispatch(actions, payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
                             log.info("🚀 [{}] Triggered", name);
-                            armDurationWindows(result, automationId);
+
                             dispatcher.notifyTriggered(name);
                             publishLog(automationId, plan, user, payload, result);
                         });
@@ -673,12 +696,12 @@ public class AutomationOrchestrator {
                     publishLog(automationId, plan, user, payload, result);
                     return;
                 }
-
+                armDurationWindows(result, automationId);
                 dispatcher.dispatch(actions, payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
                             log.info("🌿 [{}] Branch triggered — {} action(s) dispatched",
                                     name, actions.size());
-                            armDurationWindows(result, automationId);
+
                             dispatcher.notifyTriggered(name);
                             publishLog(automationId, plan, user, payload, result);
                         });

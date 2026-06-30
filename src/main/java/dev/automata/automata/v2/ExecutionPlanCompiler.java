@@ -131,7 +131,15 @@ public class ExecutionPlanCompiler {
                     positiveChildrenByParent.getOrDefault(nodeId, List.of());
             List<String> negChildren =
                     negativeChildrenByParent.getOrDefault(nodeId, List.of());
-
+            // Derive fanout purely from topology — never trust c.getFanoutMode() from the UI.
+            // This was the deeper root cause of BUG 4: even when fanoutMode WAS set on a
+            // node, isFanout was never set on CompiledConditionNode at all, so the
+            // evaluator's AND-path/OR-path branch in walkNode() never routed multi-child
+            // nodes to the OR fanout logic in the first place.
+            boolean isFanout = posChildren.size() > 1;
+            String derivedFanoutMode = isFanout
+                    ? (isFirstMatchFanout(c) ? "FIRST_MATCH" : "ALL")
+                    : null;
             nodeMap.put(nodeId, ExecutionPlan.CompiledConditionNode.builder()
                     .nodeId(nodeId)
                     .condition(compileCondition(c, automation.getTrigger().getDeviceId()))
@@ -141,7 +149,9 @@ public class ExecutionPlanCompiler {
                     .negativeChildNodeIds(negChildren)
                     .stateful(stateful)
                     .memoryPolicy(memPolicy)
-                    .fanoutMode(c.getFanoutMode())
+                    .fanout(isFanout)
+                    .fanoutMode(derivedFanoutMode)
+                    .firstMatch("FIRST_MATCH".equals(derivedFanoutMode))
                     .build());
         }
 
@@ -253,6 +263,16 @@ public class ExecutionPlanCompiler {
         return plan;
     }
 
+    /**
+     * The only thing the UI's fanoutMode field is still trusted for: an explicit
+     * opt-in to FIRST_MATCH (stop at the first passing branch). Topology alone
+     * can't distinguish "evaluate every sibling independently" from "first one
+     * wins" — that's a genuine authoring decision, not a graph-structure fact.
+     * Anything other than a literal "FIRST_MATCH" defaults to ALL.
+     */
+    private boolean isFirstMatchFanout(Automation.Condition c) {
+        return "FIRST_MATCH".equals(c.getFanoutMode());
+    }
 
     // ─────────────────────────────────────────────────────────────────────
     // MEMORY POLICY

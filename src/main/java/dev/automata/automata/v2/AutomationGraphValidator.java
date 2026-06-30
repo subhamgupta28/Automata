@@ -630,7 +630,6 @@ public class AutomationGraphValidator {
     private void detectFanout(List<Automation.Condition> conditions,
                               Map<String, Automation.Condition> condById,
                               List<ValidationIssue> issues) {
-        // Build parent → positive children count map
         Map<String, Integer> positiveChildCount = new HashMap<>();
 
         for (Automation.Condition c : conditions) {
@@ -651,24 +650,21 @@ public class AutomationGraphValidator {
             Automation.Condition parent = condById.get(parentNodeId);
             String fanoutMode = parent != null ? parent.getFanoutMode() : null;
 
-            if (fanoutMode == null || fanoutMode.isBlank()) {
-                issues.add(new ValidationIssue(Severity.ERROR, parentNodeId,
-                        "Condition '" + parentNodeId + "' has " + e.getValue()
-                                + " positive children but no fanoutMode set. "
-                                + "An OR fan-out must explicitly choose ALL (evaluate every branch "
-                                + "independently) or FIRST_MATCH (stop at the first branch that "
-                                + "passes) — leaving this unset silently defaults to ALL, which "
-                                + "means every branch is re-walked on every tick even when the "
-                                + "branches are meant to be mutually exclusive. Set fanoutMode "
-                                + "before saving."));
-            } else if (!"ALL".equals(fanoutMode) && !"FIRST_MATCH".equals(fanoutMode)) {
+            // isFanout is now ALWAYS derived server-side from topology
+            // (posChildren.size() > 1) in ExecutionPlanCompiler — it can no
+            // longer be "missing". Only flag an actually-invalid explicit value;
+            // unset/blank just means ALL, which is correct and expected.
+            if (fanoutMode != null && !fanoutMode.isBlank()
+                    && !"ALL".equals(fanoutMode) && !"FIRST_MATCH".equals(fanoutMode)) {
                 issues.add(new ValidationIssue(Severity.ERROR, parentNodeId,
                         "Condition '" + parentNodeId + "' has unknown fanoutMode '" + fanoutMode
-                                + "'. Must be ALL or FIRST_MATCH."));
+                                + "'. Must be ALL, FIRST_MATCH, or left unset (defaults to ALL)."));
             } else {
+                String effectiveMode = "FIRST_MATCH".equals(fanoutMode) ? "FIRST_MATCH" : "ALL";
                 issues.add(new ValidationIssue(Severity.INFO, parentNodeId,
                         "Condition '" + parentNodeId + "' has " + e.getValue()
-                                + " positive children using fanoutMode=" + fanoutMode + "."));
+                                + " positive children — will fan out with mode=" + effectiveMode
+                                + " (derived automatically)."));
             }
         }
     }

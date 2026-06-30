@@ -343,6 +343,16 @@ export const getAutomationDetail = async (id) => {
     });
     return response.data;
 }
+export const validateAutomation = async (payload) => {
+    const response = await api.post("action/validate", payload, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+
+        },
+    });
+    return response.data;
+}
 export const saveAutomationDetail = async (payload) => {
     const response = await api.post("action/saveAutomationDetail", payload, {
         headers: {

@@ -19,6 +19,7 @@ import {
     saveAutomationDetail,
     snoozeAutomation,
     timedDisableAuto,
+    validateAutomation,
 } from "../../services/apis.jsx";
 
 import {
@@ -1038,8 +1039,7 @@ function ActionBoardDetailComponent() {
         fetchData();
     }, []);
 
-    const onSave = useCallback(() => {
-        setLoading(true);
+    const buildAutomation = (rfInstance, automationDetail) => {
         if (!rfInstance) return;
         const flow = rfInstance.toObject();
         const seenN = new Set();
@@ -1056,11 +1056,23 @@ function ActionBoardDetailComponent() {
             seenE.add(e.id);
             return true;
         });
-        const cleanFlow = {...flow, nodes: uniqueNodes, edges: uniqueEdges, id: automationDetail.id || ''};
+        return {...flow, nodes: uniqueNodes, edges: uniqueEdges, id: automationDetail.id || ''};
+    }
+
+    const onValidate = useCallback(() => {
+        const cleanFlow = buildAutomation(rfInstance, automationDetail);
+        validateAutomation(cleanFlow).then(res => {
+            console.log(res)
+        })
+    }, [rfInstance, automationDetail])
+
+    const onSave = useCallback(() => {
+        setLoading(true);
+        const cleanFlow = buildAutomation(rfInstance, automationDetail);
         saveAutomationDetail(cleanFlow).then(() => {
             fetchData().then(() => setLoading(false));
         });
-        localStorage.setItem('flow', JSON.stringify(cleanFlow));
+        // localStorage.setItem('flow', JSON.stringify(cleanFlow));
     }, [rfInstance, automationDetail]);
 
     const handleDisableAutomation = async (e) => await disableAutomation(selectedAutomation.id, e.target.checked);
@@ -1246,6 +1258,17 @@ function ActionBoardDetailComponent() {
                                     style={{marginLeft: '10px', width: '120px'}}
                                 >
                                     Save
+                                </Button>
+                                <Button
+                                    size="small"
+                                    onClick={onValidate}
+                                    // loading={loading}
+                                    // loadingIndicator="Saving…"
+                                    variant="outlined"
+                                    // loadingPosition="end"
+                                    style={{marginLeft: '10px', width: '120px'}}
+                                >
+                                    Validate
                                 </Button>
                                 {/*<Button size="small" variant="outlined" onClick={onSave}*/}
                                 {/*        style={{marginLeft: '10px'}}>Save</Button>*/}

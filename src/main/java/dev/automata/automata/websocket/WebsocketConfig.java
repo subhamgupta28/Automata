@@ -36,7 +36,9 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
                         "http://192.168.1.54:8010",
                         "http://raspberry.local:8010",
                         "https://automata.realsubhamgupta.in",
-                        "http://automata.realsubhamgupta.in"
+                        "http://automata.realsubhamgupta.in",
+                        "https://automata.subhamgupta.in",
+                        "http://automata.subhamgupta.in"
                 )
                 .withSockJS();
     }

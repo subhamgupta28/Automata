@@ -334,6 +334,58 @@ public class AutomationEvaluator {
             intervalNodesToArm.add(node.getNodeId());
         }
 
+        // ---------------------------------------------------------------------
+        // Respect runFor (durationMinutes)
+        // If the condition is scheduled+interval with a runFor duration and the
+        // RUNNING key still exists, keep the node logically TRUE until the
+        // duration expires.
+        // ---------------------------------------------------------------------
+        if (!result
+                && isIntervalWithDuration(node.getCondition())
+                && stateStore.runningKeyExists(automationId, node.getNodeId())) {
+
+            log.debug("⏳ [{}] Node '{}' still within runFor duration - suppressing negative transition",
+                    automationName, node.getNodeId());
+
+            result = true;
+            condResults.put(node.getNodeId(), true);
+        }
+// ── Generic negative-action grace (any condition with durationMinutes>0) ──
+        if (hasNegativeGraceDuration(node.getCondition())) {
+            long nowMs = now.toInstant().toEpochMilli();
+            long durationMs = node.getCondition().getDurationMinutes() * 60_000L;
+
+            if (result) {
+                // Condition recovered (or never failed) — clear any stale grace timer
+                // so the NEXT false transition starts its own fresh window.
+                stateStore.clearGrace(automationId, node.getNodeId());
+            } else {
+                Long armedAt = stateStore.getGraceArmedAtEpochMs(automationId, node.getNodeId());
+
+                if (armedAt == null) {
+                    if (wasActive) {
+                        // First false tick after being active — start the grace clock,
+                        // and hold this tick as "true" so the negative path doesn't fire yet.
+                        stateStore.armGrace(automationId, node.getNodeId(), nowMs,
+                                node.getCondition().getDurationMinutes() * 60L + 30);
+                        log.info("⏳ [{}] Node '{}' went false — arming {}min grace before negative actions",
+                                automationName, node.getNodeId(), node.getCondition().getDurationMinutes());
+                        result = true;
+                        condResults.put(node.getNodeId(), true);
+                    }
+                    // else: wasn't active anyway — nothing to hold, let it fail normally
+                } else if (nowMs - armedAt < durationMs) {
+                    // Still inside the grace window — keep holding true.
+                    result = true;
+                    condResults.put(node.getNodeId(), true);
+                } else {
+                    // Grace expired — release it, let result=false flow through to negatives.
+                    log.info("⏰ [{}] Node '{}' grace window expired — firing negative actions",
+                            automationName, node.getNodeId());
+                    stateStore.clearGrace(automationId, node.getNodeId());
+                }
+            }
+        }
         if (!result) {
             List<ExecutionPlan.CompiledAction> negActions = new ArrayList<>();
             if (wasActive && node.getNegativeActions() != null)
@@ -431,6 +483,12 @@ public class AutomationEvaluator {
             log.debug("{} OR node {} cond results={}", automationName, node.getNodeId(), condResults);
             return TreeWalkResult.passed(combined, condResults);
         }
+    }
+
+    private boolean hasNegativeGraceDuration(ExecutionPlan.CompiledCondition c) {
+        return c != null
+                && c.getDurationMinutes() > 0
+                && !isIntervalWithDuration(c);   // interval+duration already has its own hold semantics
     }
 
     private boolean isIntervalWithDuration(ExecutionPlan.CompiledCondition c) {

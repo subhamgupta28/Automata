@@ -122,8 +122,8 @@ public class Automation {
         private String deviceId;
         String memoryPolicy;       // "DURATION" | "CONSECUTIVE_TICKS" | "EDGE_RISING" | etc.
         int memoryPolicyValue;     // requiredDurationSeconds or requiredTicks depending on type
-        private List<String> positiveChildren;   // populated by save service
-        private List<String> negativeChildren;
+        //        private List<String> positiveChildren;   // populated by save service
+//        private List<String> negativeChildren;
         private String fanoutMode;
     }
 

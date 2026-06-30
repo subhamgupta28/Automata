@@ -1,67 +1,410 @@
-{
-  "version": 1,
-  "topLevelState": "ACTIVE",
-  "nodeStates": {
-    "node_condition_10": "IDLE",
-    "node_condition_18": "ACTIVE"
-  },
-  "branchStates": {},
-  "nodeActiveStates": {},
-  "conditionMemories": {
-    "node_condition_22": {
-      "firstTrueEpochMs": 1782623936828,
-      "consecutiveTrueCount": 43,
-      "previousRawResult": true,
-      "policyPassed": true
+[
+  {
+    "_id": {
+      "$oid": "69d0335f3efedf22b695921a"
     },
-    "node_condition_9": {
-      "firstTrueEpochMs": 1782623804360,
-      "consecutiveTrueCount": 54,
-      "previousRawResult": true,
-      "policyPassed": true
+    "_class": "dev.automata.automata.model.Automation",
+    "actions": [
+      {
+        "key": "bright",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "5",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_10",
+            "handle": "out:cond-negative:node_condition_10"
+          }
+        ],
+        "nodeId": "node_action_11"
+      },
+      {
+        "key": "preset",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "1",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 2,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_8",
+            "handle": "out:cond-negative:node_condition_8"
+          }
+        ],
+        "nodeId": "node_action_5"
+      },
+      {
+        "key": "preset",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "4",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 2,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_8",
+            "handle": "out:cond-positive:node_condition_8"
+          }
+        ],
+        "nodeId": "node_action_6"
+      },
+      {
+        "key": "bright",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "20",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_8",
+            "handle": "out:cond-positive:node_condition_8"
+          }
+        ],
+        "nodeId": "node_action_13"
+      },
+      {
+        "key": "preset",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "3",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_10",
+            "handle": "out:cond-negative:node_condition_10"
+          }
+        ],
+        "nodeId": "node_action_14"
+      },
+      {
+        "key": "bright",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "10",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_18",
+            "handle": "out:cond-negative:node_condition_18"
+          }
+        ],
+        "nodeId": "node_action_15"
+      },
+      {
+        "key": "preset",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "5",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_18",
+            "handle": "out:cond-negative:node_condition_18"
+          }
+        ],
+        "nodeId": "node_action_16"
+      },
+      {
+        "key": "animation",
+        "deviceId": "689cba1b948aef4ed997f3fe",
+        "data": "false",
+        "name": "KNOB",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_10",
+            "handle": "out:cond-negative:node_condition_10"
+          }
+        ],
+        "nodeId": "node_action_19"
+      },
+      {
+        "key": "animation",
+        "deviceId": "689cba1b948aef4ed997f3fe",
+        "data": "true",
+        "name": "KNOB",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_8",
+            "handle": "out:cond-positive:node_condition_8"
+          }
+        ],
+        "nodeId": "node_action_21"
+      },
+      {
+        "key": "preset",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "4",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "positive",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_22",
+            "handle": "out:cond-positive:node_condition_22"
+          }
+        ],
+        "nodeId": "node_action_24"
+      },
+      {
+        "key": "preset",
+        "deviceId": "69559fe7ff8187354090cb2d",
+        "data": "7",
+        "name": "Ring Light",
+        "isEnabled": true,
+        "revert": false,
+        "conditionGroup": "negative",
+        "order": 1,
+        "delaySeconds": 0,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_22",
+            "handle": "out:cond-negative:node_condition_22"
+          }
+        ],
+        "nodeId": "node_action_25"
+      }
+    ],
+    "conditions": [
+      {
+        "nodeId": "node_condition_8",
+        "condition": "scheduled",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "100",
+        "time": "02:20:05 AM",
+        "triggerKey": "",
+        "isExact": false,
+        "scheduleType": "interval",
+        "fromTime": "02:20:05 AM",
+        "toTime": "02:20:05 AM",
+        "days": [
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri",
+          "Sat",
+          "Sun"
+        ],
+        "solarType": "sunrise",
+        "offsetMinutes": 0,
+        "intervalMinutes": 2,
+        "durationMinutes": 1,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_10",
+            "handle": "out:cond-positive:node_condition_10"
+          }
+        ],
+        "memoryPolicyValue": 0
+      },
+      {
+        "nodeId": "node_condition_9",
+        "condition": "above",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "40",
+        "time": "02:20:05 AM",
+        "triggerKey": "percent",
+        "isExact": false,
+        "scheduleType": "at",
+        "fromTime": "02:20:05 AM",
+        "toTime": "02:20:05 AM",
+        "days": [
+          "Everyday"
+        ],
+        "solarType": "sunset",
+        "offsetMinutes": 0,
+        "intervalMinutes": 30,
+        "durationMinutes": 5,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_trigger_7",
+            "handle": "rootNode:triggerNode:node_trigger_7"
+          }
+        ],
+        "memoryPolicy": "DURATION",
+        "memoryPolicyValue": 60
+      },
+      {
+        "nodeId": "node_condition_10",
+        "condition": "scheduled",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "0",
+        "time": "02:20:05 AM",
+        "triggerKey": "",
+        "isExact": false,
+        "scheduleType": "range",
+        "fromTime": "06:00:05 PM",
+        "toTime": "02:00:05 AM",
+        "days": [
+          "Everyday"
+        ],
+        "solarType": "sunset",
+        "offsetMinutes": 2,
+        "intervalMinutes": 30,
+        "durationMinutes": 10,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_18",
+            "handle": "out:cond-positive:node_condition_18"
+          }
+        ],
+        "memoryPolicyValue": 0
+      },
+      {
+        "nodeId": "node_condition_18",
+        "condition": "above",
+        "valueType": "int",
+        "above": "0",
+        "below": "0",
+        "value": "10",
+        "time": "02:20:05 AM",
+        "triggerKey": "percent",
+        "isExact": false,
+        "scheduleType": "at",
+        "fromTime": "02:20:05 AM",
+        "toTime": "02:20:05 AM",
+        "days": [
+          "Everyday"
+        ],
+        "solarType": "sunset",
+        "offsetMinutes": 0,
+        "intervalMinutes": 0,
+        "durationMinutes": 0,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_9",
+            "handle": "out:cond-positive:node_condition_9"
+          }
+        ],
+        "deviceId": "6755d5ec3667d03a2c053eff",
+        "memoryPolicy": "DURATION",
+        "memoryPolicyValue": 60
+      },
+      {
+        "nodeId": "node_condition_22",
+        "condition": "scheduled",
+        "valueType": "numeric",
+        "above": "0",
+        "below": "0",
+        "value": "0",
+        "time": "02:20:05 AM",
+        "triggerKey": "",
+        "isExact": false,
+        "scheduleType": "range",
+        "fromTime": "09:30:05 AM",
+        "toTime": "04:30:05 PM",
+        "days": [
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri",
+          "Sat",
+          "Sun"
+        ],
+        "solarType": "sunset",
+        "offsetMinutes": 0,
+        "intervalMinutes": 0,
+        "durationMinutes": 2,
+        "enabled": true,
+        "previousNodeRef": [
+          {
+            "nodeId": "node_condition_18",
+            "handle": "out:cond-positive:node_condition_18"
+          }
+        ],
+        "memoryPolicyValue": 0
+      }
+    ],
+    "homeId": "6a30fb994d3da29ed97e6c3a",
+    "isActive": false,
+    "isEnabled": true,
+    "name": "TESTING",
+    "operators": [],
+    "subscriberDeviceIds": [
+      "67dafae9fa67e36c0a25687e"
+    ],
+    "trigger": {
+      "deviceId": "67dafae9fa67e36c0a25687e",
+      "type": "state",
+      "keys": [
+        "percent"
+      ],
+      "name": "TESTING",
+      "priority": 5,
+      "nodeId": "node_trigger_7",
+      "sources": [
+        {
+          "deviceId": "67dafae9fa67e36c0a25687e",
+          "keys": [
+            "percent"
+          ],
+          "role": "primary"
+        },
+        {
+          "deviceId": "6755d5ec3667d03a2c053eff",
+          "keys": [
+            "percent"
+          ],
+          "role": "secondary"
+        }
+      ],
+      "coalitionMode": "ANY",
+      "coalitionWindowSeconds": 0
     },
-    "node_condition_18": {
-      "firstTrueEpochMs": 1782623875864,
-      "consecutiveTrueCount": 48,
-      "previousRawResult": true,
-      "policyPassed": true
-    },
-    "node_condition_10": {
-      "firstTrueEpochMs": 0,
-      "consecutiveTrueCount": 0,
-      "previousRawResult": false,
-      "policyPassed": false
+    "triggerDeviceType": "sensor",
+    "updateDate": {
+      "$date": "2026-06-28T05:34:40.662Z"
     }
-  },
-  "triggerMemberLastFired": {},
-  "sequenceProgress": 0,
-  "lastEvalSnapshot": {
-    "outcome": "SKIPPED",
-    "traceId": "69d0335f-1782624642846-d7fd358",
-    "evaluatedAt": 1782624643306,
-    "c1True": true,
-    "anyWasActive": false,
-    "reason": "Already active — condition still true",
-    "evalDurationMs": 116,
-    "conditionResults": {
-      "node_condition_9": true,
-      "node_condition_18": true,
-      "node_condition_10": false,
-      "node_condition_22": true
-    },
-    "conditionMemorySummaries": {
-      "node_condition_9": "DURATION: 839/60s",
-      "node_condition_18": "DURATION: 768/60s"
-    },
-    "nodeStates": {
-      "node_condition_10": "IDLE",
-      "node_condition_18": "ACTIVE"
-    },
-    "coalitionLastFired": {
-      "67dafae9fa67e36c0a25687e": 1782624643306
-    },
-    "sequenceProgress": 0
-  },
-  "lastExecutionTime": 1782623937026,
-  "topLevelActive": true
-}
+  }
+]
