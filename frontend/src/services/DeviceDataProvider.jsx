@@ -1,4 +1,3 @@
-// Single unified WebSocket provider — one STOMP connection, two topic subscriptions.
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
 import SockJS from "sockjs-client";
 import {Client} from "@stomp/stompjs";
@@ -16,12 +15,25 @@ export const useDeviceLiveData = () => useContext(WebSocketContext);
 export const DeviceDataProvider = ({children}) => {
     const [messages, setMessages] = useState({device_id: "", deviceConfig: {}});
     const [alertMessages, setAlertMessages] = useState({device_id: ""});
+
+    // Reactive — when user switches home, effect re-runs and resubscribes
+    const [homeId, setHomeId] = useState(() => localStorage.getItem('selectedHomeId'));
+
     const clientRef = useRef(null);
+
+    const switchHome = useCallback((newHomeId) => {
+        localStorage.setItem('selectedHomeId', newHomeId);
+        setHomeId(newHomeId);
+    }, []);
 
     useEffect(() => {
         const token = JSON.parse(localStorage.getItem("user"))?.access_token;
         if (!token) {
-            console.warn("No auth token found — WebSocket connection aborted.");
+            console.warn("No auth token — WebSocket connection aborted.");
+            return;
+        }
+        if (!homeId) {
+            console.warn("No homeId — WebSocket connection aborted.");
             return;
         }
 
@@ -34,11 +46,13 @@ export const DeviceDataProvider = ({children}) => {
                 Authorization: `Bearer ${token}`,
             },
             onConnect: () => {
-                console.log("WebSocket connected");
-                // setAlertMessages({message: "Connected to server.", severity: "High"});
-                client.subscribe("/topic/data", (message) => {
+                console.log(`WebSocket connected — subscribed to home: ${homeId}`);
+
+                client.subscribe(`/topic/home/${homeId}/data`, (message) => {
                     setMessages(JSON.parse(message.body));
                 });
+
+                // Alert topic stays global — not home-scoped (system-wide alerts)
                 client.subscribe("/topic/alert", (message) => {
                     setAlertMessages(JSON.parse(message.body));
                 });
@@ -46,6 +60,7 @@ export const DeviceDataProvider = ({children}) => {
             onStompError: (frame) => {
                 const errMsg = frame.headers?.message ?? "";
                 console.warn("STOMP error:", errMsg);
+
                 const isAuthError =
                     errMsg.toLowerCase().includes("unauthorized") ||
                     errMsg.toLowerCase().includes("forbidden") ||
@@ -68,19 +83,19 @@ export const DeviceDataProvider = ({children}) => {
         return () => {
             client.deactivate();
         };
-    }, []);
+    }, [homeId]); // ← re-runs on home switch; token changes don't happen mid-session
 
     const sendMessage = useCallback((destination, message) => {
         if (clientRef.current?.connected) {
             clientRef.current.publish({destination, body: message});
         } else {
-            console.warn("WebSocket not connected. Message not sent.");
+            console.warn("WebSocket not connected — message dropped.");
         }
     }, []);
 
     const contextValue = useMemo(
-        () => ({messages, alertMessages, sendMessage}),
-        [messages, alertMessages, sendMessage]
+        () => ({messages, alertMessages, sendMessage, homeId, switchHome}),
+        [messages, alertMessages, sendMessage, homeId, switchHome]
     );
 
     return (

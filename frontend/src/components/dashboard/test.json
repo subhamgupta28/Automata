@@ -289,7 +289,7 @@
         "solarType": "sunset",
         "offsetMinutes": 2,
         "intervalMinutes": 30,
-        "durationMinutes": 10,
+        "durationMinutes": 0,
         "enabled": true,
         "previousNodeRef": [
           {
@@ -328,7 +328,8 @@
         ],
         "deviceId": "6755d5ec3667d03a2c053eff",
         "memoryPolicy": "DURATION",
-        "memoryPolicyValue": 60
+        "memoryPolicyValue": 60,
+        "fanoutMode": "ALL"
       },
       {
         "nodeId": "node_condition_22",
@@ -355,7 +356,7 @@
         "solarType": "sunset",
         "offsetMinutes": 0,
         "intervalMinutes": 0,
-        "durationMinutes": 2,
+        "durationMinutes": 0,
         "enabled": true,
         "previousNodeRef": [
           {
@@ -404,7 +405,7 @@
     },
     "triggerDeviceType": "sensor",
     "updateDate": {
-      "$date": "2026-06-28T05:34:40.662Z"
+      "$date": "2026-07-01T19:18:08.213Z"
     }
   }
 ]

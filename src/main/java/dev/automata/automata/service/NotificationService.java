@@ -104,7 +104,15 @@ public class NotificationService {
         }
     }
 
-    public void sendNotification(String newDeviceSet, String success, String homeId) {
-
+    public void sendNotification(String message, String severity, String homeId) {
+        Notification notification = Notification.builder()
+                .message(message)
+                .severity(severity)
+                .timestamp(new Date())
+                .build();
+//        var notify = notificationRepository.save(notification);
+        if (severity.equals("high"))
+            sendNotify("Automata", message, severity);
+        messagingTemplate.convertAndSend("/topic/" + homeId + "/notification", notification);
     }
 }

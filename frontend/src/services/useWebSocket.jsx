@@ -8,15 +8,21 @@ const url = __API_MODE__ === 'serve'
 
 const RECONNECT_DELAY = 5000;
 
-const useWebSocket = (topic) => {
+const useWebSocket = () => {
     const [messages, setMessages] = useState({device_id: ""});
     const clientRef = useRef(null);
     const token = JSON.parse(localStorage.getItem("user"))?.access_token;
+    const [homeId, setHomeId] = useState(() => localStorage.getItem('selectedHomeId'));
+
     if (!token) {
         console.warn("No auth token found — WebSocket connection aborted.");
         return;
     }
     useEffect(() => {
+        if (!homeId) {
+            console.warn("No homeId — WebSocket connection aborted.");
+            return;
+        }
         const client = new Client({
             webSocketFactory: () => new SockJS(url, null, {withCredentials: false}),
             reconnectDelay: RECONNECT_DELAY,
@@ -28,7 +34,7 @@ const useWebSocket = (topic) => {
             onConnect: () => {
                 console.log("WebSocket connected");
                 // setMessages({message: "Connected to server.", severity: "High"});
-                client.subscribe(topic, (message) => {
+                client.subscribe(`/topic/${homeId}/notification`, (message) => {
                     setMessages(JSON.parse(message.body));
                 });
             },
@@ -56,7 +62,7 @@ const useWebSocket = (topic) => {
         return () => {
             client.deactivate();
         };
-    }, [topic]);
+    }, []);
 
     const sendMessage = useCallback((destination, message) => {
         if (clientRef.current?.connected) {
@@ -64,7 +70,7 @@ const useWebSocket = (topic) => {
         } else {
             console.warn("WebSocket not connected. Message not sent.");
         }
-    }, []);
+    }, [homeId]);
 
     return {messages, sendMessage};
 };

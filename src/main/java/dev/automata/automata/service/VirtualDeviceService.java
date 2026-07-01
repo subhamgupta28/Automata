@@ -3,10 +3,7 @@ package dev.automata.automata.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.DeviceTrendDTO;
 import dev.automata.automata.dto.TimeSeriesTrendDTO;
-import dev.automata.automata.model.Data;
-import dev.automata.automata.model.Device;
-import dev.automata.automata.model.EnergyStat;
-import dev.automata.automata.model.VirtualDevice;
+import dev.automata.automata.model.*;
 import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import dev.automata.automata.repository.EnergyStatRepository;
@@ -45,11 +42,11 @@ public class VirtualDeviceService {
     private final EnergyStatRepository energyStatRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public VirtualDevice getVirtualDevice(String vid) {
-        return virtualDeviceRepository.findById(vid).orElse(null);
+    public VirtualDevice getVirtualDevice(String vid, Users user, String homeId) {
+        return virtualDeviceRepository.findByIdAndHomeId(vid, homeId).orElse(null);
     }
 
-    public List<VirtualDevice> getVirtualDeviceList() {
+    public List<VirtualDevice> getVirtualDeviceList(Users user, String homeId) {
 //        var list = virtualDeviceRepository.findAll();
 //        var finalList = new ArrayList<VirtualDevice>();
 //        ObjectMapper mapper = new ObjectMapper();
@@ -63,7 +60,7 @@ public class VirtualDeviceService {
 //            }
 //            finalList.add(device);
 //        }
-        return virtualDeviceRepository.findAll();
+        return virtualDeviceRepository.findAllByHomeId(homeId);
     }
 
     private double extractParamValue(EnergyStat stat, String param) {
@@ -94,9 +91,9 @@ public class VirtualDeviceService {
         };
     }
 
-    public Map<String, Object> getEnergyAnalyticsChart(String vid, String param) {
+    public Map<String, Object> getEnergyAnalyticsChart(String vid, String param, Users user, String homeId) {
 
-        var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
+        var virtualDevice = virtualDeviceRepository.findByIdAndHomeId(vid, homeId).orElse(null);
         ZoneId zone = ZoneId.of("Asia/Kolkata");
 
         LocalDate todayUser = LocalDate.now(zone);
@@ -118,7 +115,7 @@ public class VirtualDeviceService {
             return Map.of("msg", "Error, device not found", "status", "error");
         }
 
-        var deviceList = deviceRepository.findAllById(virtualDevice.getDeviceIds());
+        var deviceList = deviceRepository.findAllByIdInAndHomeId(virtualDevice.getDeviceIds(), homeId);
         var deviceNames = deviceList.stream().collect(Collectors.toMap(Device::getId, Device::getName));
 
         var stats = energyStatRepository
@@ -220,8 +217,8 @@ public class VirtualDeviceService {
        DEVICE LEVEL TREND + AQI DIRECTION
        ===================================================== */
     public List<DeviceTrendDTO> getDeviceTrend(
-            String deviceId
-    ) {
+            String deviceId,
+            Users user, String homeId) {
         ZoneId zone = ZoneId.of("Asia/Kolkata");
         LocalDate today = LocalDate.now(zone);
         var to = Instant.now();
@@ -282,7 +279,7 @@ public class VirtualDeviceService {
     /* =====================================================
        HOURLY TIME-SERIES (CHART READY)
        ===================================================== */
-    public List<TimeSeriesTrendDTO> hourlyTrend(String deviceId) {
+    public List<TimeSeriesTrendDTO> hourlyTrend(String deviceId, Users user, String homeId) {
 
         Aggregation agg = Aggregation.newAggregation(
 
@@ -333,11 +330,11 @@ public class VirtualDeviceService {
         return data.getData();
     }
 
-    public List<EnergyStat> getEnergyStatAnalytics(List<String> deviceIds) {
+    public List<EnergyStat> getEnergyStatAnalytics(List<String> deviceIds, Users user, String homeId) {
         return energyStatRepository.findAllByDeviceIdIn(deviceIds);
     }
 
-    public Map<String, Object> getRecentDeviceData(List<String> deviceIds) {
+    public Map<String, Object> getRecentDeviceData(List<String> deviceIds, Users user, String homeId) {
         var map = new HashMap<String, Object>();
         for (var id : deviceIds) {
             map.put(id, getLastData(id));
@@ -346,7 +343,8 @@ public class VirtualDeviceService {
         return map;
     }
 
-    public VirtualDevice createVirtualDevice(VirtualDevice virtualDevice) {
+    public VirtualDevice createVirtualDevice(VirtualDevice virtualDevice, Users user, String homeId) {
+        virtualDevice.setHomeId(homeId);
         return virtualDeviceRepository.save(virtualDevice);
     }
 
@@ -400,8 +398,8 @@ public class VirtualDeviceService {
     }
 
 
-    public String updateDevicePosition(String vid, String x, String y, String width, String height) {
-        var device = virtualDeviceRepository.findById(vid).orElse(null);
+    public String updateDevicePosition(String vid, String x, String y, String width, String height, Users user, String homeId) {
+        var device = virtualDeviceRepository.findByIdAndHomeId(vid, homeId).orElse(null);
         if (device == null)
             return "Device not found.";
         device.setX(Math.floor(Double.parseDouble(x)));
@@ -410,7 +408,7 @@ public class VirtualDeviceService {
         device.setHeight(Math.floor(Double.parseDouble(height)));
 
         virtualDeviceRepository.save(device);
-        notificationService.sendNotification("Devices positions updated", "success");
+        notificationService.sendNotification("Devices positions updated", "success", homeId);
         return "success";
     }
 
@@ -457,7 +455,7 @@ public class VirtualDeviceService {
         }
     }
 
-    public EnergyStat getEnergyStatById(String vid) {
+    public EnergyStat getEnergyStatById(String vid, Users user, String homeId) {
 
 //        var virtualDevice = virtualDeviceRepository.findById(vid).orElse(null);
 //        if (virtualDevice != null)
@@ -524,13 +522,13 @@ public class VirtualDeviceService {
         return Map.of("DISCHARGE", totalWh, "CHARGING", chargeTotalWh);
     }
 
-    public String showCharts(String vid, String isVisible) {
+    public String showCharts(String vid, String isVisible, Users user, String homeId) {
         var isShow = Boolean.parseBoolean(isVisible);
-        var device = virtualDeviceRepository.findById(vid).orElse(null);
+        var device = virtualDeviceRepository.findByIdAndHomeId(vid, homeId).orElse(null);
         if (device != null) {
             device.setActive(isShow);
             virtualDeviceRepository.save(device);
-            notificationService.sendNotification("Device is" + (isShow ? " visible " : " not visible ") + "in dashboard", "success");
+            notificationService.sendNotification("Device is" + (isShow ? " visible " : " not visible ") + "in dashboard", "success", homeId);
             return "success";
         }
 
