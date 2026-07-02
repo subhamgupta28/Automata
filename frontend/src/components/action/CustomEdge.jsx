@@ -32,12 +32,12 @@ export default function CustomEdge({
     }, [id, setEdges]);
     return (
         <>
-            <BaseEdge id={id} path={edgePath} style={{stroke: color, strokeWidth: '3px',}}/>
+            <BaseEdge id={id} path={edgePath} style={{stroke: color, strokeOpacity: 0.4, strokeWidth: '3px',}}/>
             <EdgeLabelRenderer>
                 <IconButton
 
                     style={{
-                        backgroundColor: 'rgba(255,165,0,0.51)',
+                        backgroundColor: 'rgb(255 165 0 / 0.1)',
                         position: 'absolute',
                         transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
                         pointerEvents: 'all',

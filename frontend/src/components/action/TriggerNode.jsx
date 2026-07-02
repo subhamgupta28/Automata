@@ -5,17 +5,16 @@ import {Button, Card, Divider, FormControl, InputLabel, MenuItem, Select, TextFi
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
-import AddIcon from "@mui/icons-material/Add";
 import NumberSpinner from "../charts/NumberSpinner.jsx";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 
 const triggerStyle = {
-    padding: '10px',
-    borderRadius: '10px',
+    padding: '16px',
+    borderRadius: '12px',
     width: '340px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    border: '2px solid #6DBF6D',
-    background: 'transparent',
+    boxShadow: 'rgb(230 230 230 / 20%) 0px 0px 86px 10px inset',
+    border: '2px solid rgb(230 230 230 / 30%)',
+    // background: 'transparent',
     backdropFilter: 'blur(6px)',
     backgroundColor: 'rgb(0 0 0 / 28%)',
     overflow: 'visible'
@@ -422,17 +421,12 @@ export const TriggerNode = ({id, data, isConnectable}) => {
             )}
 
             <Handle
-                style={{width: '18px', height: '18px', background: '#6DBF6D', opacity: 0}}
+                style={{width: '28px', height: '28px', background: '#6DBF6D'}}
                 type="source"
                 position={Position.Right}
                 id={"rootNode:triggerNode:" + id}
                 isConnectable={isConnectable}
             />
-            <AddIcon style={{
-                background: '#6DBF6D', top: '50%',
-                right: 0,
-                transform: 'translate(50%, -50%)'
-            }} className='react-flow__handle'/>
         </Card>
     );
 };
