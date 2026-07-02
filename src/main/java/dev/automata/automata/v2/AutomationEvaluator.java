@@ -488,7 +488,8 @@ public class AutomationEvaluator {
     private boolean hasNegativeGraceDuration(ExecutionPlan.CompiledCondition c) {
         return c != null
                 && c.getDurationMinutes() > 0
-                && !isIntervalWithDuration(c);   // interval+duration already has its own hold semantics
+                && !isIntervalWithDuration(c)
+                && !"scheduled".equals(c.getConditionType());  // ← exclude ALL scheduled conditions
     }
 
     private boolean isIntervalWithDuration(ExecutionPlan.CompiledCondition c) {
@@ -554,7 +555,17 @@ public class AutomationEvaluator {
         Map<String, Object> payload = primaryPayload;
         if (c.getDeviceId() != null && !c.getDeviceId().isBlank()) {
             payload = resolveSecondaryPayload(c, automationId, now);
-            if (payload == null) return false;  // timed out or stale — skip condition
+            if (payload == null) {
+                // FIX: no fresh secondary data this tick is NOT the same as the
+                // condition being false. Treat it as inconclusive and hold the
+                // node's previous active state, so a slow-reporting secondary
+                // device doesn't spuriously reset DURATION memory or trip
+                // C1_NEGATIVE on ticks driven purely by the (faster) primary
+                // trigger device.
+                log.debug("⏸️ [{}] Secondary device data unavailable for '{}' — holding previous state ({})",
+                        automationId, c.getNodeId(), wasActive);
+                return wasActive;
+            }
         }
 
         if ("stale".equals(c.getConditionType())) {

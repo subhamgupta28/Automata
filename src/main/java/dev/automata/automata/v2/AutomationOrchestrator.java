@@ -373,7 +373,9 @@ public class AutomationOrchestrator {
             if (!wasActive || walkedThisNode) continue; // not stranded
 
             ExecutionPlan.CompiledCondition c = node.getCondition();
-            boolean hasGrace = c != null && c.getDurationMinutes() > 0;
+            boolean hasGrace = c != null
+                    && c.getDurationMinutes() > 0
+                    && !"scheduled".equals(c.getConditionType());
 
             if (hasGrace) {
                 long durationMs = c.getDurationMinutes() * 60_000L;

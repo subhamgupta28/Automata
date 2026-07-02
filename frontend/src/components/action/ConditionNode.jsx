@@ -29,9 +29,8 @@ const conditionStyle = {
     borderRadius: '10px',
     width: '320px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    border: '2px solid #FFEB3B',
-    background: 'transparent',
-    backdropFilter: 'blur(6px)',
+    // background: 'transparent',
+    // backdropFilter: 'blur(6px)',
     backgroundColor: 'rgb(0 0 0 / 28%)',
     overflow: 'visible'
 };
@@ -297,7 +296,13 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     const isScheduled = condition === 'scheduled';
 
     return (
-        <>
+        <div
+            style={{
+                borderRadius: '12px',
+                boxShadow: 'rgb(230 230 200 / 20%) 0px 0px 86px 10px inset',
+                border: '2px solid rgb(230 230 200 / 38%)',
+            }}
+        >
             <Handle
                 style={{width: '18px', height: '18px', background: '#FFEB3B',}}
                 type="target"
@@ -308,6 +313,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
 
             <div style={{display: 'flex', justifyContent: 'center', gap: '6px', margin: '4px', alignItems: 'center'}}>
+                <Chip size="small" color="primary" label={"Condition"}/>
                 <Chip size="small" label={"Duration: " + durationMinutes}/>
                 <Chip size="small" label={"Day: " + (days[0] || '-')}/>
                 <IconButton onClick={() => deleteNode(id)}>
@@ -315,7 +321,8 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 </IconButton>
             </div>
 
-            <Accordion style={{borderRadius: '12px', marginTop: '0px', ...conditionStyle}}>
+            <Accordion
+                style={{background: 'rgb(27 27 27 /95%)', borderRadius: '12px', marginTop: '0px', ...conditionStyle}}>
                 <AccordionSummary expandIcon={<ArrowDownwardIcon/>}>
                     <Typography>{handleTitle()}</Typography>
                 </AccordionSummary>
@@ -591,6 +598,6 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 id={"out:cond-negative:" + id}
                 isConnectable={isConnectable}
             />
-        </>
+        </div>
     );
 };

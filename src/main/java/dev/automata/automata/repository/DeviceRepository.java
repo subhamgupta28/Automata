@@ -32,4 +32,6 @@ public interface DeviceRepository extends MongoRepository<Device, String> {
     List<Device> findAllByHomeIdIsNull();
 
     List<Device> findAllByHomeIdIsNullOrStatus(Status status);
+
+    List<Device> findAllByIdInAndHomeId(List<String> deviceIds, String homeId);
 }

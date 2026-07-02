@@ -28,25 +28,27 @@ public class MqttService {
     private final ApplicationEventPublisher publisher;
     private final ActionDeliveryTracker deliveryTracker;
     private final RecordingRoutingService recordingRoutingService;
-
+    private final HomeRoutingService homeRoutingService;          // ← inject
 
     @ServiceActivator(inputChannel = "sendData")
     public void sendData(Map<String, Object> payload) {
 //        System.out.println("📡 Data: " + payload);
         String deviceId = payload.get("device_id").toString();
         if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("No device found");
+            log.error("sendData: missing device_id");
+            return;
         }
         payload.put("last_seen", System.currentTimeMillis());
         if (payload.size() > 1)
             mainService.saveData(deviceId, payload);
-//        var device = mainService.setStatus(deviceId, Status.ONLINE);
+
         var map = new HashMap<String, Object>();
         map.put("deviceId", deviceId);
         map.put("data", payload);
-//        map.put("deviceConfig", device.get("deviceConfig"));
-        messagingTemplate.convertAndSend("/topic/data", map);
 
+//        messagingTemplate.convertAndSend("/topic/data", map);
+
+        homeRoutingService.routeToHome(deviceId, "data", getStringObjectMap(payload, deviceId));
         recordingRoutingService.route(deviceId, payload);
     }
 
@@ -77,13 +79,17 @@ public class MqttService {
         String deviceId = payload.get("device_id").toString();
 //        System.err.println("sendLiveData: " + payload);
         if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("No device found");
+            log.error("sendLiveData: missing device_id");
+            return;
         }
         payload.put("last_seen", new Date());
         var event = new LiveEvent();
         event.setPayload(payload);
         publisher.publishEvent(event);
-        messagingTemplate.convertAndSend("/topic/data", getStringObjectMap(payload, deviceId));
+//        messagingTemplate.convertAndSend("/topic/data", getStringObjectMap(payload, deviceId));
+        // hot path — one local ConcurrentHashMap lookup via DeviceHomeCache,
+        // envelope already built, no extra allocation beyond HashMap(2)
+        homeRoutingService.routeToHome(deviceId, "data", getStringObjectMap(payload, deviceId));
         recordingRoutingService.route(deviceId, payload);
     }
 
@@ -119,7 +125,7 @@ public class MqttService {
     public void handleWled(Message<?> message) {
 
         String deviceName = (String) message.getHeaders().get("device");
-        String payload = message.getPayload().toString();
+        String rawPayload = message.getPayload().toString();
         if (deviceName == null) {
             return;
         }
@@ -133,20 +139,16 @@ public class MqttService {
 
             var wled = new Wled(null, device);
 
-            WledResponse response = wled.parseWledXml(payload);
+            WledResponse response = wled.parseWledXml(rawPayload);
             var data = wled.convertToMap(response, device.getId());
+
             mainService.saveData(device.getId(), data);
-            messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", data));
-            // ── Confirm WLED delivery ─────────────────────────────────────
-            // WLED publishes /v only after successfully processing a command,
-            // so this message IS the ACK. confirmWled() resolves the pending
-            // delivery entry registered in ActionDeliveryTracker.registerWled().
-            // If no pending entry exists (spontaneous publish), confirmWled()
-            // is a no-op.
-            deliveryTracker.confirmWled(device.getId(), deviceName);   // ← NEW
-            log.info("WLED Response for [{}]  data: [{}]", device.getName(), response);
+            homeRoutingService.routeToHome(
+                    device.getId(), "data",
+                    Map.of("deviceId", device.getId(), "data", data)
+            );
+            deliveryTracker.confirmWled(device.getId(), deviceName);
+            log.info("WLED Response for [{}] data: [{}]", device.getName(), response);
         }
-
-
     }
 }

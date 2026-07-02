@@ -7,7 +7,7 @@ import {notificationAction} from "../services/apis.jsx";
 import {useSnackbar} from 'notistack';
 
 export default function Notifications() {
-    const {messages, sendMessage} = useWebSocket('/topic/notification');
+    const {messages, sendMessage} = useWebSocket();
     const [open, setOpen] = React.useState(false);
     const {enqueueSnackbar} = useSnackbar();
 

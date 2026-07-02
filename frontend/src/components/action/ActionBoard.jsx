@@ -65,6 +65,7 @@ import {
     SceneManagerDialog,
     VersionHistoryDialog
 } from "./AutomationFeatures.jsx";
+import {PlaceholderNode} from "./PlaceHolderNode.jsx";
 
 // ─── Node palette styles ──────────────────────────────────────────────────────
 const triggerStyle = {padding: '10px', borderRadius: '5px', width: '100%', border: '2px solid #6DBF6D', cursor: 'grab'};
@@ -1042,6 +1043,12 @@ function ActionBoardDetailComponent() {
     const buildAutomation = (rfInstance, automationDetail) => {
         if (!rfInstance) return;
         const flow = rfInstance.toObject();
+
+        const realNodes = flow.nodes.filter(n => n.type !== 'placeholder');
+        const realNodeIds = new Set(realNodes.map(n => n.id));
+        const realEdges = flow.edges.filter(
+            e => realNodeIds.has(e.source) && realNodeIds.has(e.target)
+        );
         const seenN = new Set();
         const uniqueNodes = flow.nodes.filter(n => {
             if (seenN.has(n.id)) return false;
@@ -1083,9 +1090,68 @@ function ActionBoardDetailComponent() {
     const onDrop = useCallback(e => {
         e.preventDefault();
         if (!type) return;
+
         const position = screenToFlowPosition({x: e.clientX, y: e.clientY});
-        setNodes(nds => nds.concat({id: getId(type), type, position, data: {value: {isNewNode: true, name: type}}}));
-    }, [screenToFlowPosition, type]);
+        const newId = getId(type);
+
+        // Determine which source handle to use for the outgoing placeholder edge
+        const sourceHandleForType = {
+            trigger: `rootNode:triggerNode:${newId}`,
+            condition: `out:cond-positive:${newId}`,   // positive branch by default
+            and: `out:and-positive:${newId}`,
+            or: `out:or-positive:${newId}`,
+        };
+
+        const outHandle = sourceHandleForType[type];
+
+        // Node types that don't get a placeholder (leaf nodes or special cases)
+        const LEAF_TYPES = new Set(['action', 'valueReader']);
+
+        const realNode = {
+            id: newId,
+            type,
+            position,
+            data: {value: {isNewNode: true, name: type}},
+        };
+
+        if (LEAF_TYPES.has(type) || !outHandle) {
+            // Just add the real node, no placeholder
+            setNodes(nds => [...nds, realNode]);
+            return;
+        }
+
+        // Placeholder appears 280px to the right of the dropped node
+        const placeholderId = `ph_${newId}`;
+        const placeholderNode = {
+            id: placeholderId,
+            type: 'placeholder',
+            position: {x: position.x + 280, y: position.y},
+            data: {
+                parentType: type,
+                parentId: newId,
+                sourceHandle: outHandle,
+            },
+            // Prevent it from being saved to backend
+            deletable: true,
+            selectable: true,
+        };
+
+        // Edge connecting real node → placeholder
+        const phEdge = {
+            id: `edge_${newId}_${placeholderId}`,
+            source: newId,
+            target: placeholderId,
+            sourceHandle: outHandle,
+            targetHandle: `ph:in:${placeholderId}`,
+            type: 'custom-edge',
+            animated: true,          // dashed animated to visually distinguish
+            data: {color: '#718096'},
+        };
+
+        setNodes(nds => [...nds, realNode, placeholderNode]);
+        setEdges(eds => [...eds, phEdge]);
+
+    }, [screenToFlowPosition, type, setNodes, setEdges]);
 
     const openAutomation = async (a) => {
         setSelectedAutomation(a);
@@ -1189,7 +1255,8 @@ function ActionBoardDetailComponent() {
                             condition: ConditionNode,
                             valueReader: ValueReaderNode,
                             and: And,
-                            or: Or
+                            or: Or,
+                            placeholder: PlaceholderNode,
                         }}
                     >
                         {/* Bottom-left controls — visible only when automation is open */}
@@ -1311,8 +1378,6 @@ function ActionBoardDetailComponent() {
                                     {style: triggerStyle, type: 'trigger', label: 'Add Trigger'},
                                     {style: conditionStyle, type: 'condition', label: 'Add Condition'},
                                     {style: actionStyle, type: 'action', label: 'Add Action'},
-                                    {style: conditionStyle, type: 'and', label: 'Add AND'},
-                                    {style: conditionStyle, type: 'or', label: 'Add OR'},
                                 ].map(({style: s, type: t, label}) => (
                                     <div key={t} style={{...s, marginTop: '10px'}} draggable
                                          onDragStart={e => onDragStart(e, t)}>{label}</div>

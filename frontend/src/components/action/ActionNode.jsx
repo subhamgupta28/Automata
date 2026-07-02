@@ -21,12 +21,12 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 const actionStyle = {
     // padding: '10px',
-    borderRadius: '10px',
+    borderRadius: '12px',
     width: '320px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    border: '2px solid #0288D1',
-    background: 'transparent',
-    backdropFilter: 'blur(6px)',
+    // boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    // border: '2px solid #0288D1',
+    // background: 'transparent',
+    // backdropFilter: 'blur(6px)',
     backgroundColor: 'rgb(0 0 0 / 28%)',
     overflow: 'visible'
 };
@@ -239,7 +239,13 @@ export const ActionNode = ({id, data, isConnectable}) => {
     }
 
     return (
-        <div>
+        <div
+            style={{
+                borderRadius: "12px",
+                boxShadow: `${conditionGroup === 'negative' ? 'rgb(244 67 54 / 0.10)' : conditionGroup === 'positive' ? 'rgb(76 175 80 / 0.10)' : '#FFF'} 0px 0px 86px 10px inset`,
+                border: `2px solid ${conditionGroup === 'negative' ? 'rgb(244 67 54 / 0.30)' : conditionGroup === 'positive' ? 'rgb(76 175 80 / 0.30)' : '#FFF'}`,
+            }}
+        >
 
             <Handle
                 style={{
@@ -252,20 +258,27 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 id={"action:in:" + id}
                 isConnectable={isConnectable}
             />
-            <div style={{display: 'flex', justifyContent: 'center', gap: '6px', margin: '4px', alignItems: 'center'}}>
+            <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '6px',
+                margin: '4px',
+                alignItems: 'center'
+            }}>
+                <Chip color="primary" size="small" label={"Action"}> </Chip>
                 <Chip size="small" label={"Order: " + order}> </Chip>
                 <Chip size="small" label={"Delay Seconds: " + delaySeconds}> </Chip>
                 <IconButton onClick={() => deleteNode(id)}>
-                    <DeleteIcon sx={{color: '#ff0000'}}/>
+                    <DeleteIcon/>
                 </IconButton>
             </div>
             <Accordion style={{
                 borderRadius: '12px', marginTop: '0px', ...actionStyle,
-                border: `2px solid ${conditionGroup === 'negative' ? '#f44336' : conditionGroup === 'positive' ? '#4caf50' : '#FFF'}`,
+                background: 'rgb(27 27 27 /95%)'
             }}>
                 <AccordionSummary
+                    style={{borderRadius: '12px'}}
                     expandIcon={<ArrowDownwardIcon/>}
-
                     aria-controls="panel1-content"
                     id="panel1-header"
                 >
