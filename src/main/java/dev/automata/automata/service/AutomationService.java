@@ -98,7 +98,7 @@ public class AutomationService {
         automationRepository.findById(id).ifPresent(a -> {
             a.setIsEnabled(enabled);
             automationRepository.save(a);
-            notificationService.sendNotification("Automation updated", "success");
+            notificationService.sendNotification("Automation updated", "success", a.getHomeId());
             orchestrator.invalidatePlan(id);
         });
         return "success";
@@ -119,7 +119,7 @@ public class AutomationService {
         if ("System".equals(deviceType)) {
             String key = payload.get("key").toString();
             String data = payload.get(key).toString();
-            if ("alert".equals(key)) notificationService.sendNotification("", data);
+            if ("alert".equals(key)) notificationService.sendNotification("", data, homeId);
             if ("app_notify".equals(key)) notificationService.sendNotify("Automation", data, "low");
             return "success";
         }
@@ -196,7 +196,7 @@ public class AutomationService {
     public String ackAction(String deviceId, Map<String, Object> payload) {
         if (payload.containsKey("actionAck")) {
             if (payload.containsKey("actionType"))
-                notificationService.sendNotification("Action sent to device", "success");
+                notificationService.sendNotification("Action sent to device", "success", "");
             if (payload.containsKey("_cid"))
                 deliveryTracker.confirm(payload.get("_cid").toString());
         }
@@ -438,7 +438,7 @@ public class AutomationService {
         } catch (Exception e) {
             log.error("❌ Plan compilation failed for '{}': {}", saved.getName(), e.getMessage(), e);
             notificationService.sendNotification(
-                    "Plan compilation failed for " + saved.getName(), "error");
+                    "Plan compilation failed for " + saved.getName(), "error", homeId);
         }
 
         // ── Reset runtime state ───────────────────────────────────────────
@@ -456,7 +456,7 @@ public class AutomationService {
         }
 
         automationVersionService.snapshot(saved, detail, "system", null);
-        notificationService.sendNotification("Automation saved successfully", "success");
+        notificationService.sendNotification("Automation saved successfully", "success", homeId);
         return "success";
     }
 
@@ -536,12 +536,12 @@ public class AutomationService {
             log.info("🗑️ Automation '{}' (id={}) deleted by '{}'",
                     automation.getName(), id, user);
             notificationService.sendNotification(
-                    "'" + automation.getName() + "' deleted", "success");
+                    "'" + automation.getName() + "' deleted", "success", homeId);
             return Map.of("status", "success", "deletedId", id);
 
         } catch (Exception e) {
             log.error("Delete failed for automation '{}': {}", id, e.getMessage(), e);
-            notificationService.sendNotification("Delete failed: " + e.getMessage(), "error");
+            notificationService.sendNotification("Delete failed: " + e.getMessage(), "error", homeId);
             return Map.of("status", "error", "reason", e.getMessage());
         }
     }
@@ -586,7 +586,7 @@ public class AutomationService {
 
         stateStore.forceWrite(saved.getId(), AutomationRuntimeState.idle());
         log.info("📋 '{}' copied to '{}' by {}", original.getName(), saved.getName(), user);
-        notificationService.sendNotification("'" + original.getName() + "' copied", "success");
+        notificationService.sendNotification("'" + original.getName() + "' copied", "success", homeId);
         return Map.of("status", "success", "newId", saved.getId(), "newName", saved.getName());
     }
 
@@ -602,12 +602,12 @@ public class AutomationService {
                         automationVersionService.snapshot(a, detail, user,
                                 "Rolled back to version " + targetVersion));
                 notificationService.sendNotification(
-                        "Rolled back to version " + targetVersion, "success");
+                        "Rolled back to version " + targetVersion, "success", homeId);
             }
             return result;
         } catch (Exception e) {
             log.error("Rollback failed for '{}': {}", automationId, e.getMessage(), e);
-            notificationService.sendNotification("Rollback failed: " + e.getMessage(), "error");
+            notificationService.sendNotification("Rollback failed: " + e.getMessage(), "error", homeId);
             return "error: " + e.getMessage();
         }
     }
@@ -691,7 +691,7 @@ public class AutomationService {
         try {
             new RestTemplate().getForObject(device.getAccessUrl() + "/restart", String.class);
         } catch (Exception e) {
-            notificationService.sendNotification("Reboot failed: " + device.getName(), "error");
+            notificationService.sendNotification("Reboot failed: " + device.getName(), "error", device.getHomeId());
         }
         return "Rebooting device";
     }

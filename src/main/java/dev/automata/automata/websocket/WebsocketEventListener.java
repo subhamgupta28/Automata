@@ -40,7 +40,7 @@ public class WebsocketEventListener {
             map.put("deviceConfig", device.get("deviceConfig"));
             messagingTemplate.convertAndSend("/topic/data", map);
             var de = (Device) device.get("deviceConfig");
-            notificationService.sendNotification(de.getName() + " went offline", "low");
+            notificationService.sendNotification(de.getName() + " went offline", "low", "SYSTEM");
         }
 
     }

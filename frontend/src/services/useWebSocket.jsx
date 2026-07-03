@@ -18,6 +18,10 @@ const useWebSocket = () => {
         console.warn("No auth token found — WebSocket connection aborted.");
         return;
     }
+    const switchHome = useCallback((newHomeId) => {
+        localStorage.setItem('selectedHomeId', newHomeId);
+        setHomeId(newHomeId);
+    }, []);
     useEffect(() => {
         if (!homeId) {
             console.warn("No homeId — WebSocket connection aborted.");
@@ -32,7 +36,7 @@ const useWebSocket = () => {
                 Authorization: `Bearer ${token}`,
             },
             onConnect: () => {
-                console.log("WebSocket connected");
+                console.log(`WebSocket connected — subscribed to home: ${homeId} for notifications`);
                 // setMessages({message: "Connected to server.", severity: "High"});
                 client.subscribe(`/topic/${homeId}/notification`, (message) => {
                     setMessages(JSON.parse(message.body));

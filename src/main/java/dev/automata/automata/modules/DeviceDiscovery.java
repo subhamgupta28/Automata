@@ -103,7 +103,7 @@ public class DeviceDiscovery {
 //                        "ESP32"
 //                );
 
-                notificationService.sendNotification("New ESP32 device found", "high");
+                notificationService.sendNotification("New ESP32 device found", "high", "SYSTEM");
             }
         }
     }
@@ -158,7 +158,7 @@ public class DeviceDiscovery {
 //                            "WLED"
 //                    );
 
-                    notificationService.sendNotification("New WLED light found", "high");
+                    notificationService.sendNotification("New WLED light found", "high", "SYSTEM");
                 }
 
             } catch (Exception e) {
@@ -169,7 +169,7 @@ public class DeviceDiscovery {
                 var existing = mainService.getDevice(deviceId);
                 if (existing == null) {
 //                    mainService.registerDevice(deviceId, ip, "WLED");
-                    notificationService.sendNotification("New WLED light found", "high");
+                    notificationService.sendNotification("New WLED light found", "high", "SYSTEM");
                 }
             }
         }

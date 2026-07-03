@@ -42,18 +42,19 @@ public class NotificationService {
         messagingTemplate.convertAndSend("/topic/alert", notification);
     }
 
-    public void sendNotification(String message, String severity) {
-        Notification notification = Notification.builder()
-                .message(message)
-                .severity(severity)
-                .timestamp(new Date())
-                .build();
-//        var notify = notificationRepository.save(notification);
-        if (severity.equals("high"))
-            sendNotify("Automata", message, severity);
-        messagingTemplate.convertAndSend("/topic/notification", notification);
-    }
 
+//    public void sendNotification(String message, String severity) {
+//        Notification notification = Notification.builder()
+//                .message(message)
+//                .severity(severity)
+//                .timestamp(new Date())
+//                .build();
+
+    /// /        var notify = notificationRepository.save(notification);
+//        if (severity.equals("high"))
+//            sendNotify("Automata", message, severity);
+//        messagingTemplate.convertAndSend("/topic/notification", notification);
+//    }
     public String notificationAction(String action, Map<String, Object> payload) {
         return switch (action) {
             case "stop_automation" -> stopAutomation(payload);
@@ -111,6 +112,7 @@ public class NotificationService {
                 .timestamp(new Date())
                 .build();
 //        var notify = notificationRepository.save(notification);
+        log.info("Notification sent: message= {} home id= {}", message, homeId);
         if (severity.equals("high"))
             sendNotify("Automata", message, severity);
         messagingTemplate.convertAndSend("/topic/" + homeId + "/notification", notification);
