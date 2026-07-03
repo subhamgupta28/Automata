@@ -117,7 +117,7 @@ export default function OptionsMenu({drawerOpen}) {
 
                 {/* Home selection */}
                 {!isGuest && homes.length > 1 && (
-                    <>
+                    <div>
                         <Box sx={{px: 2, pt: 1, pb: 0.5}}>
                             <Typography variant="caption" color="text.secondary">Switch Home</Typography>
                         </Box>
@@ -133,7 +133,7 @@ export default function OptionsMenu({drawerOpen}) {
                             </MenuItem>
                         ))}
                         <Divider/>
-                    </>
+                    </div>
                 )}
 
                 <MenuItem

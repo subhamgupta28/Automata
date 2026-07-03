@@ -208,9 +208,47 @@ public class AutomationOrchestrator {
                 }
             }
         }
+        // ── 1b. Redis miss — recompile from DB ───────────────────────────
         if (plan == null) {
-            log.warn("⏭️ [traceId={}] No plan for '{}' — skipping.", traceId, automationId);
-            return;
+            if (reconcileLock.tryAcquire(automationId)) {
+                try {
+                    log.warn("⚠️ [traceId={}] Plan for '{}' missing from both JVM and Redis — recompiling from DB",
+                            traceId, automationId);
+                    Automation automation = automationRepository.findById(automationId).orElse(null);
+                    if (automation == null || !automation.getIsEnabled()) {
+                        log.warn("⏭️ [traceId={}] Automation '{}' not found or disabled — skipping.",
+                                traceId, automationId);
+                        return;
+                    }
+                    plan = planCompiler.compile(automation);
+                    planCache.put(automationId, plan);
+                    stateStore.writePlan(automationId, plan);
+                    log.info("✅ [traceId={}] '{}' recompiled on-demand and cached", traceId, automationId);
+                } catch (Exception e) {
+                    log.error("❌ [traceId={}] On-demand recompile failed for '{}': {}",
+                            traceId, automationId, e.getMessage(), e);
+                    return;
+                } finally {
+                    reconcileLock.release(automationId);
+                }
+            } else {
+                // Another node is already recompiling — wait briefly and retry from Redis
+                log.debug("🔒 [traceId={}] '{}' recompile in progress on another node — retrying Redis",
+                        traceId, automationId);
+                try {
+                    Thread.sleep(300);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+                plan = stateStore.readPlan(automationId);
+                if (plan != null) {
+                    planCache.put(automationId, plan);
+                } else {
+                    log.warn("⏭️ [traceId={}] Still no plan for '{}' after lock wait — skipping.",
+                            traceId, automationId);
+                    return;
+                }
+            }
         }
 
         // ── 2. Snooze / timed-disable ─────────────────────────────────────
@@ -679,7 +717,7 @@ public class AutomationOrchestrator {
                         .thenRun(() -> {
                             log.info("🚀 [{}] Triggered", name);
 
-                            dispatcher.notifyTriggered(name);
+                            dispatcher.notifyTriggered(name, homeId);
                             publishLog(automationId, plan, user, payload, result);
                         });
             }
@@ -704,7 +742,7 @@ public class AutomationOrchestrator {
                             log.info("🌿 [{}] Branch triggered — {} action(s) dispatched",
                                     name, actions.size());
 
-                            dispatcher.notifyTriggered(name);
+                            dispatcher.notifyTriggered(name, homeId);
                             publishLog(automationId, plan, user, payload, result);
                         });
             }
@@ -719,7 +757,7 @@ public class AutomationOrchestrator {
                         .thenRun(() -> {
                             log.debug("[{}] — trigger condition lost", name);
                             notificationService.sendNotification(
-                                    name + " — trigger condition lost", "info");
+                                    name + " — trigger condition lost", "info", homeId);
                             publishLog(automationId, plan, user, payload, result);
                         });
             }

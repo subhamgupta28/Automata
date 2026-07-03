@@ -98,17 +98,17 @@ public class ActionDispatcher {
         sendToDevice(deviceId, map);
     }
 
-    public void notifyTriggered(String automationName) {
-        notificationService.sendNotification(automationName + " triggered", "success");
+    public void notifyTriggered(String automationName, String homeId) {
+        notificationService.sendNotification(automationName + " triggered", "success", homeId);
     }
 
-    public void notifyReverted(String automationName, String branchDesc) {
+    public void notifyReverted(String automationName, String branchDesc, String homeId) {
         notificationService.sendNotification(
-                automationName + " — " + branchDesc + " ended", "info");
+                automationName + " — " + branchDesc + " ended", "info", homeId);
     }
 
-    public void notifyError(String automationName) {
-        notificationService.sendNotification(automationName + " error", "error");
+    public void notifyError(String automationName, String homeId) {
+        notificationService.sendNotification(automationName + " error", "error", homeId);
     }
 
 

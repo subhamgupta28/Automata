@@ -199,7 +199,6 @@ function AutomationPill({icon, value, label, color, tooltip}) {
 
 // ─── Automation Summary Chips (inline, no fetch — data is passed in) ──────────
 function AutomationSummaryChips({summary}) {
-    console.log("summary", summary)
     if (!summary) return null;
     const {total, healthy, warnings, errors, totalUndelivered, totalSlowEvals} = summary;
 
