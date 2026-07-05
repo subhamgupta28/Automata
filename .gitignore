@@ -59,7 +59,7 @@ dist-ssr
 *.sln
 *.sw?
 
-build-steps.txt
+setup-automata.sh
 jenkins.txt
 LINKEDIN_POST.md
 .claude/**

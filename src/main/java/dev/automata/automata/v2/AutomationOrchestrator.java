@@ -114,7 +114,7 @@ public class AutomationOrchestrator {
 
         if (cached == null) {
             if (!reconcileLock.tryAcquire(id)) {
-                log.debug("🔒 [reconciler] '{}' missing but another node already recompiling", name);
+                log.debug("🔒 [reconciler] '{}' missing but another node already recompiling homeId={}", name, automation.getName());
                 return;
             }
             log.warn("⚠️ [reconciler] Plan missing for '{}' — recompiling", name);

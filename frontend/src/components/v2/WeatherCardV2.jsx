@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
-import {Avatar, Box, Card, Chip, Typography} from "@mui/material";
+import {Box, Card, Chip, Typography} from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import GridViewIcon from "@mui/icons-material/GridView";
 import AlarmIcon from "@mui/icons-material/Alarm";
@@ -440,6 +440,7 @@ function ForecastStrip({days = []}) {
 
 // ─── TopBar — UI unchanged ────────────────────────────────────────────────────
 export function TopBar({
+                           alertMessage,
                            userName = "Subham",
                            avatarLetter,
                            avatarColor = C.yellow,
@@ -468,7 +469,12 @@ export function TopBar({
         occupancy,
     });
     const alert = weather?.todayAlert ?? null;
-
+    const [alertMsg, setAlertMsg] = useState("");
+    useEffect(() => {
+        if (alertMessage.severity) {
+            setAlertMsg(alertMessage.message);
+        }
+    }, [alertMessage])
     const ALERT_COLORS = {
         thunderstorm: "#f59e0b",
         "rain showers": "#60a5fa",
@@ -554,20 +560,21 @@ export function TopBar({
                     </Chip>
                 )}
                 <Box sx={{display: "flex", alignItems: "center", gap: 1}}>
-                    <Avatar sx={{
-                        width: 32,
-                        height: 32,
-                        backgroundColor: avatarColor,
-                        color: "#111",
-                        fontSize: 14,
-                        fontWeight: 700
-                    }}>
-                        {avatarLetter ?? userName?.[0] ?? "?"}
-                    </Avatar>
-                    <Box sx={{textAlign: "right"}}>
-                        <Typography sx={{fontSize: 13, fontWeight: 600}}>{userName}</Typography>
-                        <Typography sx={{fontSize: 11, color: C.muted}}>{userRoom}</Typography>
-                    </Box>
+                    <Chip label={alertMsg}/>
+                    {/*<Avatar sx={{*/}
+                    {/*    width: 32,*/}
+                    {/*    height: 32,*/}
+                    {/*    backgroundColor: avatarColor,*/}
+                    {/*    color: "#111",*/}
+                    {/*    fontSize: 14,*/}
+                    {/*    fontWeight: 700*/}
+                    {/*}}>*/}
+                    {/*    {avatarLetter ?? userName?.[0] ?? "?"}*/}
+                    {/*</Avatar>*/}
+                    {/*<Box sx={{textAlign: "right"}}>*/}
+                    {/*    <Typography sx={{fontSize: 13, fontWeight: 600}}>{userName}</Typography>*/}
+                    {/*    <Typography sx={{fontSize: 11, color: C.muted}}>{userRoom}</Typography>*/}
+                    {/*</Box>*/}
                 </Box>
             </Box>
         </Box>
@@ -616,7 +623,7 @@ export function StatsRow({items}) {
  *   statsItemsFn   {fn}       optional (live, outdoor) => StatsRow items[]
  */
 export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) => {
-    const {messages} = useDeviceLiveData();
+    const {messages, alertMessages} = useDeviceLiveData();
     const {devices} = useCachedDevices();
 
     const [dataPoint, setDatapoint] = useState({});
@@ -824,6 +831,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
             )}
 
             <TopBar
+                alertMessage={alertMessages}
                 userName={topBarProps.userName}
                 avatarLetter={topBarProps.avatarLetter}
                 avatarColor={topBarProps.avatarColor}

@@ -14,10 +14,10 @@ public interface AutomationRepository extends MongoRepository<Automation, String
     List<Automation> findByTrigger_DeviceId(String deviceId);
 
     // Instead of full documents, project only what you need for the check
-    @Query(value = "{ 'isEnabled': true }", fields = "{ 'trigger': 1, 'conditions': 1, 'operators': 1, 'actions': 1, 'name': 1, 'triggerDeviceType': 1 }")
+    @Query(value = "{ 'isEnabled': true }", fields = "{ 'trigger': 1, 'conditions': 1, 'operators': 1, 'actions': 1, 'name': 1, 'triggerDeviceType': 1, 'homeId': 1 }")
     List<Automation> findEnabledForExecution();
 
-    @Query("{ 'trigger.sources.deviceId': ?0, 'isEnabled': true }")
+    @Query("{ 'trigger.sources.deviceId': ?0, 'isEnabled': true, 'homeId': 1 }")
     List<Automation> findByCoalitionMemberDeviceId(String deviceId);
 
     Optional<Automation> findByIdAndHomeId(String id, String homeId);

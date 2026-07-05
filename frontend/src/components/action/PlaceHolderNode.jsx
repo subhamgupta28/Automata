@@ -36,7 +36,7 @@ const NODE_META = {
 // parentType → which node types to suggest next
 const SUGGESTIONS = {
     trigger: ['condition'],
-    condition: ['action', 'and', 'or'],
+    condition: ['action'],
     action: [],                      // actions are leaf nodes; no suggestions
 };
 

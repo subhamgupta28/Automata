@@ -256,9 +256,9 @@ public class ExecutionPlanCompiler {
                 .triggerCoalition(coalition)
                 .build();
 
-        log.info("✅ Plan compiled for '{}': {} nodes, roots={}, {} stateless, {} fallback",
+        log.info("✅ Plan compiled for '{}': {} nodes, roots={}, {} stateless, {} fallback, homeId={}",
                 automation.getName(), nodeMap.size(), rootConditionNodeIds,
-                stateless.size(), fallback.size());
+                stateless.size(), fallback.size(), automation.getHomeId());
 
         return plan;
     }
