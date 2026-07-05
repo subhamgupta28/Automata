@@ -1312,37 +1312,36 @@ function ActionBoardDetailComponent() {
                             </Panel>
                         )}
                         <Controls orientation="horizontal" position="top-left"/>
-                        {hasSelected && (
-                            <Panel position="bottom-right" style={{marginBottom: '20px'}}>
+                        {/*{hasSelected && (*/}
+                        <Panel position="bottom-right" style={{marginBottom: '20px'}}>
 
-                                <Button
-                                    size="small"
-                                    onClick={onSave}
-                                    loading={loading}
-                                    loadingIndicator="Saving…"
-                                    variant="outlined"
-                                    // loadingPosition="end"
-                                    style={{marginLeft: '10px', width: '120px'}}
-                                >
-                                    Save
-                                </Button>
-                                <Button
-                                    size="small"
-                                    onClick={onValidate}
-                                    // loading={loading}
-                                    // loadingIndicator="Saving…"
-                                    variant="outlined"
-                                    // loadingPosition="end"
-                                    style={{marginLeft: '10px', width: '120px'}}
-                                >
-                                    Validate
-                                </Button>
-                                {/*<Button size="small" variant="outlined" onClick={onSave}*/}
-                                {/*        style={{marginLeft: '10px'}}>Save</Button>*/}
-                                <Button size="small" variant="outlined" onClick={clearBoard}
-                                        style={{marginLeft: '10px'}}>Clear</Button>
-                            </Panel>
-                        )}
+                            <Button
+                                size="small"
+                                onClick={onSave}
+                                loading={loading}
+                                loadingIndicator="Saving…"
+                                variant="outlined"
+                                // loadingPosition="end"
+                                style={{marginLeft: '10px', width: '120px'}}
+                            >
+                                Save
+                            </Button>
+                            <Button
+                                size="small"
+                                onClick={onValidate}
+                                // loading={loading}
+                                // loadingIndicator="Saving…"
+                                variant="outlined"
+                                // loadingPosition="end"
+                                style={{marginLeft: '10px', width: '120px'}}
+                            >
+                                Validate
+                            </Button>
+                            {/*<Button size="small" variant="outlined" onClick={onSave}*/}
+                            {/*        style={{marginLeft: '10px'}}>Save</Button>*/}
+                            <Button size="small" variant="outlined" onClick={clearBoard}
+                                    style={{marginLeft: '10px'}}>Clear</Button>
+                        </Panel>
 
 
                     </ReactFlow>

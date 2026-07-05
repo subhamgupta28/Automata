@@ -3,7 +3,6 @@ package dev.automata.automata.service;
 import dev.automata.automata.model.FeatureToggle;
 import dev.automata.automata.repository.FeatureToggleRepository;
 import lombok.RequiredArgsConstructor;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
@@ -31,7 +30,14 @@ public class FeatureService {
         return feature.isEnabled();
     }
 
-    public void createFeature(FeatureToggle featureToggle) {
+    //    @PostConstruct
+    public void createFeature() {
+        var featureToggle = FeatureToggle.builder()
+                .featureKey("PERIODIC_AUTOMATION_SERVICE")
+                .description("Automation service for env " + env)
+                .isEnabled(true)
+                .group("SYSTEM")
+                .env(env).build();
         repository.save(featureToggle);
     }
 }

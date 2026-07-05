@@ -181,7 +181,7 @@ public class ActionDispatcher {
 
         if ("alert".equals(action.getKey())) {
             notificationService.sendAlert(
-                    "Alert: " + action.getData().toUpperCase(Locale.ROOT), action.getData());
+                    automationName + " triggered and it's " + action.getData(), action.getData());
             // Alert has no device ACK — mark immediately
             logStream.updateDeliveryStatus(
                     traceId, AutomationLog.DeliveryStatus.NOT_APPLICABLE, new Date());

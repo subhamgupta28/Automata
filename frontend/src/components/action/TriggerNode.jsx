@@ -1,7 +1,7 @@
 import {Handle, Position, useNodes, useReactFlow} from "@xyflow/react";
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
-import {Button, Card, Divider, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
+import {Button, Card, Chip, Divider, FormControl, InputLabel, MenuItem, Select, TextField} from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
@@ -190,9 +190,9 @@ export const TriggerNode = ({id, data, isConnectable}) => {
 
     return (
         <Card style={{...triggerStyle, padding: '10px'}}>
-            <Typography variant="body1" fontWeight="bold" sx={{marginLeft: 1}}>
-                Trigger / Start
-            </Typography>
+            <Chip color="primary" variant="body1" fontWeight="bold" sx={{marginLeft: 1}} label="Trigger / Start">
+
+            </Chip>
             <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top: '0', right: '0'}}>
                 <DeleteIcon/>
             </IconButton>
