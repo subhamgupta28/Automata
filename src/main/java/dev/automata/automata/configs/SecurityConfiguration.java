@@ -211,11 +211,15 @@ public class SecurityConfiguration {
                 "http://localhost:5173",
                 "http://localhost:8010",
                 "http://192.168.1.54:8010",
+                "http://10.156.206.232:8010",
+                "http://10.156.206.18:8010",
                 "http://raspberry.local:8010",
                 "https://automata.realsubhamgupta.in",
                 "http://automata.realsubhamgupta.in",
                 "https://automata.subhamgupta.in",
-                "http://automata.subhamgupta.in"
+                "http://automata.subhamgupta.in",
+                "https://automata1.subhamgupta.in",
+                "http://automata1.subhamgupta.in"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
