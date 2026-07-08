@@ -1,103 +1,153 @@
 pipeline {
-    agent any
+    agent none
 
     environment {
-        SPRING_PROFILE = 'prod'
-        CONTAINER_NAME = 'automata' // Define a consistent container name
-        NETWORK_NAME = 'bridge' // Define the first network name
-        SECOND_NETWORK_NAME = 'automata-net' // Define the second network name
+        CONTAINER_NAME   = 'automata'
+        NETWORK_NAME     = 'bridge'
+        SECOND_NETWORK   = 'automata-net'
     }
 
     stages {
+
+        // ─────────────────────────────────────────────
+        // STAGE 1: Checkout on RPi
+        // ─────────────────────────────────────────────
         stage('Checkout Code') {
+            agent { label 'rpi' }
             steps {
-                // Checkout the code from Git
                 git 'https://github.com/subhamgupta28/Automata.git'
-            }
-        }
-        stage('Test') {
-            steps {
-                // Build the Docker image
-                echo "testing"
+                stash name: 'source', includes: '**/*', excludes: '.git/**'
             }
         }
 
-       stage('Build UI') {
-           tools {
-               nodejs 'NodeJs25'
-           }
-           steps {
-               dir('frontend') {
-                   sh 'npm install'
-                   sh 'npm run build || true'
-                   // Verify the actual output exists to confirm build succeeded
-                   sh 'test -f ../src/main/resources/static/index.html && echo "UI build verified"'
-               }
-           }
-       }
-
-        stage('Build') {
+        // ─────────────────────────────────────────────
+        // STAGE 2: Build React UI on RPi
+        // ─────────────────────────────────────────────
+        stage('Build UI') {
+            agent { label 'rpi' }
+            tools { nodejs 'NodeJs25' }
             steps {
-                // Build the Spring Boot app using Maven
+                unstash 'source'
+                dir('frontend') {
+                    sh 'npm install'
+                    sh 'npm run build || true'
+                    sh 'test -f ../src/main/resources/static/index.html && echo "UI build verified"'
+                }
+                stash name: 'source-with-ui', includes: '**/*', excludes: '.git/**'
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // STAGE 3: Build JAR on RPi
+        // ─────────────────────────────────────────────
+        stage('Build JAR') {
+            agent { label 'rpi' }
+            steps {
+                unstash 'source-with-ui'
                 sh 'mvn clean package -DskipTests'
+                stash name: 'build-output', includes: 'target/*.jar, Dockerfile, src/**'
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                // Build the Docker image
-                sh 'docker build -t myapp .'
-            }
-        }
+        // ─────────────────────────────────────────────
+        // STAGE 4: Parallel Deploy
+        // ─────────────────────────────────────────────
+        stage('Deploy') {
+            parallel {
 
-        stage('Ensure Networks Exist') {
-            steps {
-                // Ensure both Docker networks exist before running the container
-                sh 'docker network ls | grep -w ${NETWORK_NAME} || docker network create ${NETWORK_NAME}'
-                sh 'docker network ls | grep -w ${SECOND_NETWORK_NAME} || docker network create ${SECOND_NETWORK_NAME}'
-            }
-        }
+                // ── RPi Deploy ──────────────────────
+                stage('Deploy → RPi') {
+                    agent { label 'rpi' }
+                    environment {
+                        SPRING_PROFILE = 'prod'
+                    }
+                    steps {
+                        unstash 'build-output'
 
-        stage('Stop and Remove Old Docker Container') {
-            steps {
-                // Stop and remove any old container with the same name
-                sh 'docker ps -q -f name=${CONTAINER_NAME} | xargs -r docker stop'
-                sh 'docker ps -a -q -f name=${CONTAINER_NAME} | xargs -r docker rm'
-            }
-        }
+                        sh 'docker build -t myapp:prod .'
 
-        stage('Run Docker Container') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'spotify-client-id', variable: 'SPOTIFY_CLIENT_ID'),
-                    string(credentialsId: 'spotify-client-secret', variable: 'SPOTIFY_CLIENT_SECRET')
-                ]) {
-                    sh '''
-                    docker run -d --name ${CONTAINER_NAME} \
-                    --restart unless-stopped \
-                    --network ${NETWORK_NAME} \
-                    --add-host=host.docker.internal:host-gateway \
-                    -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILE} \
-                    -e SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID}" \
-                    -e SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET}" \
-                    -p 8010:8010 \
-                    myapp
-                    '''
+                        sh '''
+                            docker network ls | grep -w ${NETWORK_NAME} \
+                                || docker network create ${NETWORK_NAME}
+                            docker network ls | grep -w ${SECOND_NETWORK} \
+                                || docker network create ${SECOND_NETWORK}
+
+                            docker ps   -q -f name=${CONTAINER_NAME} | xargs -r docker stop
+                            docker ps -a -q -f name=${CONTAINER_NAME} | xargs -r docker rm
+                        '''
+
+                        withCredentials([
+                            string(credentialsId: 'spotify-client-id',    variable: 'SPOTIFY_CLIENT_ID'),
+                            string(credentialsId: 'spotify-client-secret', variable: 'SPOTIFY_CLIENT_SECRET')
+                        ]) {
+                            sh '''
+                                docker run -d --name ${CONTAINER_NAME} \
+                                    --restart unless-stopped \
+                                    --network ${NETWORK_NAME} \
+                                    --add-host=host.docker.internal:host-gateway \
+                                    -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILE} \
+                                    -e SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID}" \
+                                    -e SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET}" \
+                                    -p 8010:8010 \
+                                    myapp:prod
+                            '''
+                        }
+
+                        sh 'docker network connect ${SECOND_NETWORK} ${CONTAINER_NAME}'
+                    }
                 }
 
-                sh 'docker network connect ${SECOND_NETWORK_NAME} ${CONTAINER_NAME}'
+                // ── Radxa Deploy ────────────────────
+                stage('Deploy → Radxa') {
+                    agent { label 'radxa' }
+                    environment {
+                        SPRING_PROFILE = 'radxa'
+                    }
+                    steps {
+                        unstash 'build-output'
+
+                        sh 'docker build -t myapp:radxa .'
+
+                        sh '''
+                            docker network ls | grep -w ${SECOND_NETWORK} \
+                                || docker network create ${SECOND_NETWORK}
+
+                            docker ps   -q -f name=${CONTAINER_NAME} | xargs -r docker stop
+                            docker ps -a -q -f name=${CONTAINER_NAME} | xargs -r docker rm
+                        '''
+
+                        withCredentials([
+                            string(credentialsId: 'spotify-client-id',    variable: 'SPOTIFY_CLIENT_ID'),
+                            string(credentialsId: 'spotify-client-secret', variable: 'SPOTIFY_CLIENT_SECRET')
+                        ]) {
+                            sh '''
+                                docker run -d --name ${CONTAINER_NAME} \
+                                    --restart unless-stopped \
+                                    --network ${SECOND_NETWORK} \
+                                    --add-host=host.docker.internal:host-gateway \
+                                    -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILE} \
+                                    -e SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID}" \
+                                    -e SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET}" \
+                                    -p 8010:8010 \
+                                    myapp:radxa
+                            '''
+                        }
+                    }
+                }
+
             }
         }
     }
 
     post {
         success {
-            echo 'Deployment successful!'
+            echo '✅ Both RPi and Radxa deployed successfully!'
         }
-
         failure {
-            echo 'Deployment failed.'
+            echo '❌ Deployment failed — check stage logs above.'
+        }
+        unstable {
+            echo '⚠️ Build unstable — UI build may have warnings.'
         }
     }
 }
-
