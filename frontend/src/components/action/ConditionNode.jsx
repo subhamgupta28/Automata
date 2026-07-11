@@ -299,6 +299,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         <div
             style={{
                 borderRadius: '12px',
+                backdropFilter: 'blur(4px)',
                 boxShadow: 'rgb(230 230 200 / 20%) 0px 0px 86px 10px inset',
                 border: '2px solid rgb(230 230 200 / 38%)',
             }}
@@ -322,7 +323,13 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             </div>
 
             <Accordion
-                style={{background: 'rgb(27 27 27 /95%)', borderRadius: '12px', marginTop: '0px', ...conditionStyle}}>
+                style={{
+                    background: 'rgb(27 27 27 /95%)',
+                    borderRadius: '12px',
+                    marginTop: '0px', ...conditionStyle,
+                    marginBottom: '0px',
+                    paddingBottom: '4px'
+                }}>
                 <AccordionSummary expandIcon={<ArrowDownwardIcon/>}>
                     <Typography>{handleTitle()}</Typography>
                 </AccordionSummary>
@@ -566,7 +573,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
                         </div>
                     )}
-                    <FormControl fullWidth size="small" className='nodrag' sx={{mb: 2}}>
+                    <FormControl fullWidth size="small" className='nodrag'>
                         <InputLabel>Fanout Mode</InputLabel>
                         <Select
                             variant="outlined"
