@@ -5,6 +5,7 @@ pipeline {
         CONTAINER_NAME   = 'automata'
         NETWORK_NAME     = 'bridge'
         SECOND_NETWORK   = 'automata-net'
+        RADXA_NETWORK = 'homelab'
     }
 
     stages {
@@ -132,6 +133,7 @@ pipeline {
                                     myapp:radxa
                             '''
                         }
+                        sh 'docker network connect ${RADXA_NETWORK} ${CONTAINER_NAME}'
                     }
                 }
 

@@ -37,8 +37,8 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
                         "http://10.156.206.232:8010",
                         "http://10.156.206.18:8010",
                         "http://raspberry.local:8010",
-                        "https://automata.realsubhamgupta.in",
-                        "http://automata.realsubhamgupta.in",
+                        "http://space.subhamgupta.in",
+                        "https://space.subhamgupta.in",
                         "https://automata.subhamgupta.in",
                         "http://automata.subhamgupta.in",
                         "https://automata1.subhamgupta.in",
@@ -69,7 +69,6 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
                     String authHeader = accessor.getFirstNativeHeader("Authorization");
 
                     // ✅ Log what's arriving to debug
-                    System.out.println("WS CONNECT - Auth header: " + authHeader);
 
                     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                         throw new org.springframework.messaging.MessageDeliveryException(
@@ -80,7 +79,6 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
                     String token = authHeader.substring(7);
 
                     String username = jwtService.extractUsername(token);
-                    System.out.println("WS CONNECT - Extracted username: " + username);
 
                     if (username == null) {
                         throw new org.springframework.messaging.MessageDeliveryException(
@@ -105,8 +103,6 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
 
                     accessor.setUser(authentication);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                    System.out.println("WS CONNECT - Auth successful for: " + username);
                 }
 
                 return message;
