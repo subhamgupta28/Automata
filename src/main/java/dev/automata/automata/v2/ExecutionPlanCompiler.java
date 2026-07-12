@@ -64,23 +64,8 @@ public class ExecutionPlanCompiler {
                 .collect(Collectors.toSet());
 
         // ── Step 2: derive children from previousNodeRef ──────────────────
-        //
-        // For each enabled condition C, look at its previousNodeRef list.
-        // If a ref points to another enabled condition node (parentId ∈ conditionNodeIds),
-        // then C is a child of that parent. Record the edge direction.
-        //
-        // Edges to trigger nodes, operator nodes, or unknown nodes are intentionally
-        // ignored here — they do not create tree parent→child relationships.
-        //
-        // Handle: "cond-positive" → positive child
-        //         "cond-negative" → negative child
-        //         anything else   → positive child (legacy / unhandled handle strings)
-
         Map<String, List<String>> positiveChildrenByParent = new LinkedHashMap<>();
         Map<String, List<String>> negativeChildrenByParent = new LinkedHashMap<>();
-
-        // Also track which condition IDs appear as a child of any other condition.
-        // Used for root detection below.
         Set<String> conditionChildIds = new HashSet<>();
 
         for (Automation.Condition c : conditions) {
@@ -90,8 +75,6 @@ public class ExecutionPlanCompiler {
             for (NodeRef ref : c.getPreviousNodeRef()) {
                 String parentId = ref.getNodeId();
                 if (parentId == null) continue;
-
-                // Only wire condition→condition edges
                 if (!conditionNodeIds.contains(parentId)) continue;
 
                 String handle = ref.getHandle() != null ? ref.getHandle() : "";
@@ -102,8 +85,6 @@ public class ExecutionPlanCompiler {
                             .computeIfAbsent(parentId, k -> new ArrayList<>())
                             .add(c.getNodeId());
                 } else {
-                    // "cond-positive", "out:operator:..." (legacy gates now treated as positive),
-                    // or any unrecognised handle → positive child
                     positiveChildrenByParent
                             .computeIfAbsent(parentId, k -> new ArrayList<>())
                             .add(c.getNodeId());
@@ -111,7 +92,92 @@ public class ExecutionPlanCompiler {
             }
         }
 
-        // ── Step 3: compile each condition into a CompiledConditionNode ───
+        // ── Step 3a: per-node action lists + "own" negative-action flag ───
+        //
+        // Split out of node compilation so we know, for every node, whether it
+        // fires negative actions of its own — before we've decided the final
+        // stateful flag. This "own" flag feeds Step 3c's branch propagation.
+
+        Map<String, List<ExecutionPlan.CompiledAction>> posActionsByNode = new LinkedHashMap<>();
+        Map<String, List<ExecutionPlan.CompiledAction>> negActionsByNode = new LinkedHashMap<>();
+        Map<String, Boolean> ownHasNegative = new LinkedHashMap<>();
+
+        for (Automation.Condition c : conditions) {
+            if (!c.isEnabled()) continue;
+            String nodeId = c.getNodeId();
+
+            List<ExecutionPlan.CompiledAction> posActions =
+                    compileActionsForNode(actions, nodeId, "positive");
+            List<ExecutionPlan.CompiledAction> negActions =
+                    deduplicateActions(compileActionsForNode(actions, nodeId, "negative"));
+
+            posActionsByNode.put(nodeId, posActions);
+            negActionsByNode.put(nodeId, negActions);
+            ownHasNegative.put(nodeId, !negActions.isEmpty());
+        }
+
+        // ── Step 3b: root node detection (moved earlier — needed for propagation) ──
+        //
+        // Same logic as before: a node not present in conditionChildIds is a root.
+        // We compute this over the *enabled condition id set* directly (not nodeMap,
+        // which doesn't exist yet at this point) — equivalent result, just earlier.
+
+        List<String> rootConditionNodeIds = conditions.stream()
+                .filter(Automation.Condition::isEnabled)
+                .map(Automation.Condition::getNodeId)
+                .filter(id -> !conditionChildIds.contains(id))
+                .collect(Collectors.toList());
+
+        if (rootConditionNodeIds.isEmpty() && !conditionNodeIds.isEmpty()) {
+            log.error("❌ [{}] No root conditions found — possible cycle. Picking first node as fallback.",
+                    automation.getName());
+            rootConditionNodeIds = List.of(conditionNodeIds.iterator().next());
+        }
+
+        // ── Step 3c: propagate statefulness down each branch ───────────────
+        //
+        // A node's EFFECTIVE stateful flag is true if it (or ANY ancestor in its
+        // trigger→...→node chain) fires negative actions. This is what lets a
+        // node with zero negative actions of its own (e.g. node_condition_21)
+        // still get edge-detection (wasActive tracking) when it's downstream of
+        // a node that does have negatives (e.g. node_condition_1) — otherwise it
+        // gets misclassified as "pure stateless" and refires every tick.
+        //
+        // Pure stateless branches (trigger→...→action with NO negative actions
+        // anywhere in the chain) correctly keep effectiveStateful=false all the
+        // way down, since inherited starts false at the root and nothing ORs it
+        // true.
+
+        Map<String, Boolean> effectiveStateful = new LinkedHashMap<>();
+        Map<String, Boolean> inherited = new HashMap<>();
+        Deque<String> queue = new ArrayDeque<>();
+
+        for (String rootId : rootConditionNodeIds) {
+            inherited.put(rootId, false);
+            queue.add(rootId);
+        }
+
+        Set<String> visitedForPropagation = new HashSet<>(); // cycle guard
+        while (!queue.isEmpty()) {
+            String id = queue.poll();
+            if (!visitedForPropagation.add(id)) continue; // already processed — avoid infinite loop on cycles
+
+            boolean ownNeg = ownHasNegative.getOrDefault(id, false);
+            boolean parentInherited = inherited.getOrDefault(id, false);
+            boolean effective = ownNeg || parentInherited;
+            effectiveStateful.put(id, effective);
+
+            for (String child : positiveChildrenByParent.getOrDefault(id, List.of())) {
+                inherited.merge(child, effective, Boolean::logicalOr);
+                queue.add(child);
+            }
+            for (String child : negativeChildrenByParent.getOrDefault(id, List.of())) {
+                inherited.merge(child, effective, Boolean::logicalOr);
+                queue.add(child);
+            }
+        }
+
+        // ── Step 3d: compile each condition into a CompiledConditionNode ───
         Map<String, ExecutionPlan.CompiledConditionNode> nodeMap = new LinkedHashMap<>();
 
         for (Automation.Condition c : conditions) {
@@ -120,26 +186,22 @@ public class ExecutionPlanCompiler {
             String nodeId = c.getNodeId();
             ConditionMemoryPolicy memPolicy = buildMemoryPolicy(c);
 
-            List<ExecutionPlan.CompiledAction> posActions =
-                    compileActionsForNode(actions, nodeId, "positive");
-            List<ExecutionPlan.CompiledAction> negActions =
-                    deduplicateActions(compileActionsForNode(actions, nodeId, "negative"));
+            List<ExecutionPlan.CompiledAction> posActions = posActionsByNode.get(nodeId);
+            List<ExecutionPlan.CompiledAction> negActions = negActionsByNode.get(nodeId);
 
-            boolean stateful = !negActions.isEmpty();
+            // Branch-propagated statefulness — NOT just "!negActions.isEmpty()" anymore.
+            boolean stateful = effectiveStateful.getOrDefault(nodeId, ownHasNegative.getOrDefault(nodeId, false));
 
             List<String> posChildren =
                     positiveChildrenByParent.getOrDefault(nodeId, List.of());
             List<String> negChildren =
                     negativeChildrenByParent.getOrDefault(nodeId, List.of());
-            // Derive fanout purely from topology — never trust c.getFanoutMode() from the UI.
-            // This was the deeper root cause of BUG 4: even when fanoutMode WAS set on a
-            // node, isFanout was never set on CompiledConditionNode at all, so the
-            // evaluator's AND-path/OR-path branch in walkNode() never routed multi-child
-            // nodes to the OR fanout logic in the first place.
+
             boolean isFanout = posChildren.size() > 1;
             String derivedFanoutMode = isFanout
                     ? (isFirstMatchFanout(c) ? "FIRST_MATCH" : "ALL")
                     : null;
+
             nodeMap.put(nodeId, ExecutionPlan.CompiledConditionNode.builder()
                     .nodeId(nodeId)
                     .condition(compileCondition(c, automation.getTrigger().getDeviceId()))
@@ -155,44 +217,8 @@ public class ExecutionPlanCompiler {
                     .build());
         }
 
-        // ── Step 4: root node detection (BUG FIX) ─────────────────────────
-        //
-        // A condition is a ROOT if and only if it is NOT in conditionChildIds.
-        // conditionChildIds contains every nodeId that appears as a positive or
-        // negative child of some other enabled condition. If a node's ID is not
-        // in that set, nothing in the condition tree points to it as a child,
-        // so it must be a starting point (root).
-        //
-        // This correctly handles:
-        //   1. Conditions whose previousNodeRef → trigger node only (true root ✓)
-        //   2. Conditions whose previousNodeRef → operator node only (old gate model;
-        //      not a child of any condition → treated as root ✓, the walk will reach
-        //      them and their sub-trees)
-        //   3. Conditions with no previousNodeRef (disconnected; root ✓, observability
-        //      will warn about them)
-        //   4. Conditions whose previousNodeRef → another condition (child, NOT root ✓)
-        //
-        // Preserve insertion order (LinkedHashMap iteration order from nodeMap)
-        // so root evaluation is deterministic.
-        List<String> rootConditionNodeIds = nodeMap.keySet().stream()
-                .filter(id -> !conditionChildIds.contains(id))
-                .collect(Collectors.toList());
-
-        if (rootConditionNodeIds.isEmpty() && !nodeMap.isEmpty()) {
-            // Every node is someone's child — cycle in the graph.
-            // Pick the node with the fewest incoming edges as the best-guess root
-            // so evaluation degrades gracefully. The validator will report the cycle.
-            log.error("❌ [{}] No root conditions found — possible cycle. Picking first node as fallback.",
-                    automation.getName());
-            rootConditionNodeIds = List.of(nodeMap.keySet().iterator().next());
-        }
-
         log.debug("  roots={} (total nodes={})", rootConditionNodeIds, nodeMap.size());
 
-        // Log a warning for any conditions that ended up as roots but have a
-        // previousNodeRef pointing to an operator node — these are old gate conditions
-        // that have been promoted to roots after the operator model was removed.
-        // The user should re-save the automation in the editor to clean this up.
         for (String rootId : rootConditionNodeIds) {
             Automation.Condition c = conditions.stream()
                     .filter(x -> rootId.equals(x.getNodeId()))
