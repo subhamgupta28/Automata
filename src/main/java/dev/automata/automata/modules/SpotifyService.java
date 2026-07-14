@@ -35,7 +35,7 @@ public class SpotifyService {
     // ── OAuth ────────────────────────────────────────────────────────────────
 
     public String buildAuthUrl(String state) {
-        return UriComponentsBuilder.fromHttpUrl(ACCOUNTS_BASE + "/authorize")
+        return UriComponentsBuilder.fromUriString(ACCOUNTS_BASE + "/authorize")
                 .queryParam("client_id", props.getClientId())
                 .queryParam("response_type", "code")
                 .queryParam("redirect_uri", props.getRedirectUri())

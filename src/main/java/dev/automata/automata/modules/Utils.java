@@ -39,7 +39,7 @@ public class Utils {
      * @return WeatherResponse with temp, humidity, condition, windspeed, etc.
      */
     public WeatherResponse getCurrentWeather() throws Exception {
-        URI uri = UriComponentsBuilder.fromHttpUrl(OPEN_METEO_URL)
+        URI uri = UriComponentsBuilder.fromUriString(OPEN_METEO_URL)
                 .queryParam("latitude", LOCATION_LAT)
                 .queryParam("longitude", LOCATION_LONG)
                 .queryParam("current", String.join(",",
@@ -111,7 +111,7 @@ public class Utils {
     }
 
     public List<ForecastDay> getForecast(int days) throws Exception {
-        URI uri = UriComponentsBuilder.fromHttpUrl(OPEN_METEO_URL)
+        URI uri = UriComponentsBuilder.fromUriString(OPEN_METEO_URL)
                 .queryParam("latitude", LOCATION_LAT)
                 .queryParam("longitude", LOCATION_LONG)
                 .queryParam("daily", String.join(",",

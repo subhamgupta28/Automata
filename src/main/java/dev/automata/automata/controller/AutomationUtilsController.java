@@ -1,7 +1,7 @@
 package dev.automata.automata.controller;
 
-import dev.automata.automata.automation.AutomationAnalyticsService;
-import dev.automata.automata.automation.AutomationVersionService;
+import dev.automata.automata.automation_extras.AutomationAnalyticsService;
+import dev.automata.automata.automation_extras.AutomationVersionService;
 import dev.automata.automata.dto.AutomationAnalyticsDto;
 import dev.automata.automata.dto.AutomationAnalyticsSummaryDto;
 import dev.automata.automata.model.AutomationVersion;

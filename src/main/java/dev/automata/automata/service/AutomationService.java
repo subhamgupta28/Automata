@@ -1,8 +1,9 @@
 package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.automata.automata.automation.AutomationVersionService;
-import dev.automata.automata.automation.ScheduledAutomationManager;
+import dev.automata.automata.automation_engine.*;
+import dev.automata.automata.automation_extras.AutomationVersionService;
+import dev.automata.automata.automation_extras.ScheduledAutomationManager;
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.LiveEvent;
 import dev.automata.automata.model.*;
@@ -11,7 +12,6 @@ import dev.automata.automata.repository.AutomationDetailRepository;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import dev.automata.automata.repository.ExecutionPlanRepository;
-import dev.automata.automata.v2.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;

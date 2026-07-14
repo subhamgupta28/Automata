@@ -2,8 +2,8 @@ package dev.automata.automata.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.automata.automata.automation_engine.AutomationLogStream;
 import dev.automata.automata.model.AutomationLog;
-import dev.automata.automata.v2.AutomationLogStream;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
