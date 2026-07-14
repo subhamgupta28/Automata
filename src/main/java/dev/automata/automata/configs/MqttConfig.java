@@ -22,7 +22,6 @@ import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.MessagingException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -53,7 +52,6 @@ public class MqttConfig {
     private final String topicSys = "broker/status/#";
     private final String wledDeviceTopic = "automata-wled/#";
     private final String wledGroupTopic = "automata-wled/all";
-    private final List<String> topicList = List.of(topicDefault, topicAction, topicSendData, topicSendLiveData, topicAckAction, wledDeviceTopic, wledGroupTopic);
 
     private final MessageChannel mqttErrorChannel;
 
@@ -319,7 +317,6 @@ public class MqttConfig {
                                 .channelMapping(topicAction, "action")
                                 .channelMapping(topicAckAction, "ackAction")
                                 .channelMapping("sysData", "sysData")
-                                .defaultOutputChannel("mqttInputChannel")
                 )
                 .get();
     }

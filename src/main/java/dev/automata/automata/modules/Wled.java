@@ -8,6 +8,8 @@ import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.integration.mqtt.support.MqttHeaders;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Async;
@@ -54,14 +56,19 @@ public class Wled {
 
     private void sendToTopic(String topic, String payload) {
         try {
-            mqttOutboundChannel.send(
-                    MessageBuilder.withPayload(payload)
-                            .setHeader("mqtt_topic", topic)
-                            .build()
-            );
-            log.info("📤 Sent to {} => {}", topic, payload);
+            Message<String> msg = MessageBuilder.withPayload(payload)
+                    .setHeader(MqttHeaders.TOPIC, topic)
+                    .build();
+
+            log.info("📤 Sending to topic={} via header key={} value={}",
+                    topic,
+                    MqttHeaders.TOPIC,                          // what key is actually used
+                    msg.getHeaders().get(MqttHeaders.TOPIC));   // confirm it's set
+
+            boolean sent = mqttOutboundChannel.send(msg);
+            log.info("📤 send() returned: {} for topic={}", sent, topic);
         } catch (Exception e) {
-            log.error("WLED: sendToTopic", e);
+            log.error("WLED: sendToTopic failed", e);
         }
     }
 

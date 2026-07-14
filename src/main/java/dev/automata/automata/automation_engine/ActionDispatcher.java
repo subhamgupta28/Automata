@@ -226,7 +226,7 @@ public class ActionDispatcher {
     }
 
     private void sendToDevice(String deviceId, Map<String, Object> payload) {
-        messagingTemplate.convertAndSend("/topic/action." + deviceId, payload);
+        messagingTemplate.convertAndSend("/topic/action." + deviceId, Optional.ofNullable(payload));
         sendToMqtt("action/" + deviceId, payload);
     }
 
