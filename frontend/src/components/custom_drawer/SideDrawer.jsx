@@ -428,56 +428,61 @@ export default function SideDrawer() {
                 <Box sx={{flexGrow: 1, overflow: 'auto'}}>
                     <AppCacheProvider>
                         <ReactFlowProvider>
-                            <Suspense fallback={<PageLoader/>}>
-                                <Routes location={location} key={location.pathname}>
-                                    {/* Public */}
-                                    <Route path="/welcome" element={<Welcome/>}/>
-                                    <Route path="/mob" element={<MobileView/>}/>
-                                    <Route path="/exp" element={<Exp/>}/>
-                                    <Route path="spotify" element={<SpotifyPlayer/>}/>
-                                    <Route path="signup" element={<SignUp/>}/>
-                                    <Route path="signin" element={<SignIn/>}/>
-                                    {/* Protected */}
-                                    <Route index element={<PrivateRoute path="/" element={<DashboardV2/>}/>}/>
-                                    <Route path="analytics"
-                                           element={<PrivateRoute path="/analytics" element={<AnalyticsView/>}/>}/>
-                                    <Route path="automation-analytics"
-                                           element={<PrivateRoute path="/automation-analytics"
-                                                                  element={<AutomationLiveInspector/>}/>}/>
-                                    <Route path="presentation"
-                                           element={<PrivateRoute path="/presentation" element={<Presentation/>}/>}/>
-                                    <Route path="virtual"
-                                           element={<PrivateRoute path="/virtual" element={<VirtualDeviceForm/>}/>}/>
-                                    <Route path="dashboard"
-                                           element={<PrivateRoute path="/dashboard" element={<DeviceNodes/>}/>}/>
-                                    <Route path="actions"
-                                           element={<PrivateRoute path="/actions" element={<ActionBoard/>}/>}/>
-                                    <Route path="exp" element={<PrivateRoute path="/exp" element={<Exp/>}/>}/>
-                                    <Route path="devices"
-                                           element={<PrivateRoute path="/devices" element={<Devices/>}/>}/>
-                                    <Route path="recording"
-                                           element={<PrivateRoute path="/recording" element={<Recordings/>}/>}/>
-                                    <Route path="map" element={<PrivateRoute path="/map" element={<MapDevices/>}/>}/>
-                                    <Route path="configure"
-                                           element={<PrivateRoute path="/configure" element={<ConfigurationView/>}/>}/>
-                                    <Route path="home-management"
-                                           element={<PrivateRoute path="/home-management"
-                                                                  element={<HomeManagement/>}/>}/>
-                                    <Route path="admin/login-analytics"
-                                           element={<PrivateRoute path="/admin/login-analytics"
-                                                                  element={<AdminLoginDashboard/>}
-                                                                  requiredRole="ADMIN"/>}/>
-                                </Routes>
-                            </Suspense>
+                            <SnackbarProvider maxSnack={3} preventDuplicate>
+                                <Suspense fallback={<PageLoader/>}>
+                                    <Routes location={location} key={location.pathname}>
+                                        {/* Public */}
+                                        <Route path="/welcome" element={<Welcome/>}/>
+                                        <Route path="/mob" element={<MobileView/>}/>
+                                        <Route path="/exp" element={<Exp/>}/>
+                                        <Route path="spotify" element={<SpotifyPlayer/>}/>
+                                        <Route path="signup" element={<SignUp/>}/>
+                                        <Route path="signin" element={<SignIn/>}/>
+                                        {/* Protected */}
+                                        <Route index element={<PrivateRoute path="/" element={<DashboardV2/>}/>}/>
+                                        <Route path="analytics"
+                                               element={<PrivateRoute path="/analytics" element={<AnalyticsView/>}/>}/>
+                                        <Route path="automation-analytics"
+                                               element={<PrivateRoute path="/automation-analytics"
+                                                                      element={<AutomationLiveInspector/>}/>}/>
+                                        <Route path="presentation"
+                                               element={<PrivateRoute path="/presentation"
+                                                                      element={<Presentation/>}/>}/>
+                                        <Route path="virtual"
+                                               element={<PrivateRoute path="/virtual"
+                                                                      element={<VirtualDeviceForm/>}/>}/>
+                                        <Route path="dashboard"
+                                               element={<PrivateRoute path="/dashboard" element={<DeviceNodes/>}/>}/>
+                                        <Route path="actions"
+                                               element={<PrivateRoute path="/actions" element={<ActionBoard/>}/>}/>
+                                        <Route path="exp" element={<PrivateRoute path="/exp" element={<Exp/>}/>}/>
+                                        <Route path="devices"
+                                               element={<PrivateRoute path="/devices" element={<Devices/>}/>}/>
+                                        <Route path="recording"
+                                               element={<PrivateRoute path="/recording" element={<Recordings/>}/>}/>
+                                        <Route path="map"
+                                               element={<PrivateRoute path="/map" element={<MapDevices/>}/>}/>
+                                        <Route path="configure"
+                                               element={<PrivateRoute path="/configure"
+                                                                      element={<ConfigurationView/>}/>}/>
+                                        <Route path="home-management"
+                                               element={<PrivateRoute path="/home-management"
+                                                                      element={<HomeManagement/>}/>}/>
+                                        <Route path="admin/login-analytics"
+                                               element={<PrivateRoute path="/admin/login-analytics"
+                                                                      element={<AdminLoginDashboard/>}
+                                                                      requiredRole="ADMIN"/>}/>
+                                    </Routes>
+                                </Suspense>
+                                {!isEmpty(user) && (
+                                    <Notifications/>
+                                )}
+                            </SnackbarProvider>
                         </ReactFlowProvider>
                     </AppCacheProvider>
                 </Box>
 
-                {!isEmpty(user) && (
-                    <SnackbarProvider maxSnack={3} preventDuplicate>
-                        <Notifications/>
-                    </SnackbarProvider>
-                )}
+
             </Box>
         </Box>
     );

@@ -225,7 +225,7 @@ public class AutomationService {
             keyJoiner.add(a.getId());
         }
         payload.put("keys", keyJoiner.toString());
-        messagingTemplate.convertAndSend("/topic/action." + deviceId, payload);
+        messagingTemplate.convertAndSend("/topic/action." + deviceId, Optional.of(payload));
         sendToTopic(TOPIC_ACTION + deviceId, payload);
         return payload;
     }
@@ -251,7 +251,7 @@ public class AutomationService {
     // SCHEDULED JOBS
     // ═════════════════════════════════════════════════════════════════════
 
-    @Scheduled(fixedRate = 12_000)
+    @Scheduled(fixedRate = 5_000)
     public void triggerPeriodicAutomations() {
         if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) {
             log.warn("Automations are disabled, enable it from feature flags");
@@ -686,7 +686,7 @@ public class AutomationService {
         if (device == null) return "Device not found";
         Map<String, Object> map = Map.of(
                 "deviceId", device.getId(), "reboot", true, "key", "reboot");
-        messagingTemplate.convertAndSend("/topic/action." + device.getId(), map);
+        messagingTemplate.convertAndSend("/topic/action." + device.getId(), Optional.of(map));
         sendToTopic(TOPIC_ACTION + device.getId(), map);
         try {
             new RestTemplate().getForObject(device.getAccessUrl() + "/restart", String.class);

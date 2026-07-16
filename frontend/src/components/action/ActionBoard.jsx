@@ -66,6 +66,7 @@ import {
     VersionHistoryDialog
 } from "./AutomationFeatures.jsx";
 import {PlaceholderNode} from "./PlaceHolderNode.jsx";
+import {useSnackbar} from "notistack";
 
 // ─── Node palette styles ──────────────────────────────────────────────────────
 const triggerStyle = {padding: '10px', borderRadius: '5px', width: '100%', border: '2px solid #6DBF6D', cursor: 'grab'};
@@ -1027,7 +1028,8 @@ function ActionBoardDetailComponent() {
     const [sceneOpen, setSceneOpen] = useState(false);
     const [abTestOpen, setAbTestOpen] = useState(false);
     const [versionOpen, setVersionOpen] = useState(false);
-    const [loading, setLoading] = useState(false)
+    const [loading, setLoading] = useState(false);
+    const {enqueueSnackbar} = useSnackbar();
 
     const fetchData = async () => {
         try {
@@ -1076,9 +1078,19 @@ function ActionBoardDetailComponent() {
     const onSave = useCallback(() => {
         setLoading(true);
         const cleanFlow = buildAutomation(rfInstance, automationDetail);
-        saveAutomationDetail(cleanFlow).then(() => {
-            fetchData().then(() => setLoading(false));
-        });
+        saveAutomationDetail(cleanFlow)
+            .then(fetchData)
+            .then(() => {
+                setLoading(false);
+            })
+            .catch((error) => {
+                enqueueSnackbar(
+                    error.response?.data?.error || "Save failed",
+                    {variant: "error"}
+                );
+
+                setLoading(false);
+            });
         // localStorage.setItem('flow', JSON.stringify(cleanFlow));
     }, [rfInstance, automationDetail]);
 

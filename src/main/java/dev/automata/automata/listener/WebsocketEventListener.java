@@ -14,6 +14,7 @@ import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.util.HashMap;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -38,7 +39,7 @@ public class WebsocketEventListener {
             var map = new HashMap<String, Object>();
             map.put("deviceId", deviceId);
             map.put("deviceConfig", device.get("deviceConfig"));
-            messagingTemplate.convertAndSend("/topic/data", map);
+            messagingTemplate.convertAndSend("/topic/data", Optional.of(map));
             var de = (Device) device.get("deviceConfig");
             notificationService.sendNotification(de.getName() + " went offline", "low", "SYSTEM");
         }
