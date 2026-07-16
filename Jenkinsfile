@@ -46,7 +46,7 @@ pipeline {
             steps {
                 unstash 'source-with-ui'
                 sh 'mvn clean package -DskipTests'
-                stash name: 'build-output', includes: 'target/*.jar, Dockerfile, src/**'
+                stash name: 'build-output', includes: 'target/*.jar, Dockerfile'
             }
         }
 
@@ -86,6 +86,8 @@ pipeline {
                                     --restart unless-stopped \
                                     --network ${NETWORK_NAME} \
                                     --add-host=host.docker.internal:host-gateway \
+                                    --health-cmd="wget -qO- http://localhost:8010/actuator/health || exit 1" \
+                                    --health-interval=30s --health-timeout=5s --health-retries=3 \
                                     -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILE} \
                                     -e SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID}" \
                                     -e SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET}" \
@@ -126,6 +128,8 @@ pipeline {
                                     --restart unless-stopped \
                                     --network ${SECOND_NETWORK} \
                                     --add-host=host.docker.internal:host-gateway \
+                                    --health-cmd="wget -qO- http://localhost:8010/actuator/health || exit 1" \
+                                    --health-interval=30s --health-timeout=5s --health-retries=3 \
                                     -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILE} \
                                     -e SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID}" \
                                     -e SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET}" \
