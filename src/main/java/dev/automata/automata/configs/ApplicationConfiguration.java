@@ -4,17 +4,19 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import dev.automata.automata.firmware_builder.FirmwareService;
 import dev.automata.automata.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,6 +26,9 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.support.RestClientAdapter;
+import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -127,6 +132,21 @@ public class ApplicationConfiguration {
         return new org.springframework.integration.channel.DirectChannel();
     }
 
+    @Bean
+    public FirmwareService firmwareService(
+            @Value("${app.firmware-builder.host}") String host,
+            @Value("${app.firmware-builder.port}") int port) {
+
+        RestClient restClient = RestClient.builder()
+                .baseUrl(host + ":" + port + "/api")
+                .build();
+
+        HttpServiceProxyFactory factory = HttpServiceProxyFactory
+                .builderFor(RestClientAdapter.create(restClient))
+                .build();
+
+        return factory.createClient(FirmwareService.class);
+    }
 //    @Bean
 //    @ServiceActivator(inputChannel = "mqttErrorChannel")
 //    public MessageHandler mqttErrorHandler() {
@@ -147,11 +167,11 @@ public class ApplicationConfiguration {
 //    }
 
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory, ObjectMapper objectMapper) {
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
 
-        Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer<>(objectMapper, Object.class);
+        JacksonJsonRedisSerializer<Object> jackson2JsonRedisSerializer = new JacksonJsonRedisSerializer<>(Object.class);
 
         template.setKeySerializer(new StringRedisSerializer());
         template.setValueSerializer(jackson2JsonRedisSerializer);
