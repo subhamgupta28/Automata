@@ -9,7 +9,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -22,7 +21,6 @@ import java.util.Map;
 public class MqttService {
 
 
-    private final SimpMessagingTemplate messagingTemplate;
     private final MainService mainService;
     private final AutomationService actionService;
     private final ApplicationEventPublisher publisher;

@@ -1,8 +1,8 @@
 package dev.automata.automata.controller;
 
+import dev.automata.automata.automation_engine.*;
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.ConditionMemory;
-import dev.automata.automata.v2.*;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;

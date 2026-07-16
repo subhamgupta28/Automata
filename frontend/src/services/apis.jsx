@@ -353,15 +353,14 @@ export const validateAutomation = async (payload) => {
     });
     return response.data;
 }
-export const saveAutomationDetail = async (payload) => {
-    const response = await api.post("action/saveAutomationDetail", payload, {
+export const saveAutomationDetail = (payload) => {
+    return api.post("action/saveAutomationDetail", payload, {
         headers: {
             'Content-Type': 'application/json', // Specify the content type if necessary
             // Add any other headers if needed, e.g., Authorization
 
         },
     });
-    return response.data;
 }
 export const getLastData = async (deviceId) => {
     const response = await api.get("main/lastData/" + deviceId, {

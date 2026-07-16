@@ -169,12 +169,12 @@ public class AutomationUtils {
 
     private void broadcastSnoozeState(String automationId, String state, int remainingMinutes) {
         messagingTemplate.convertAndSend("/topic/automation.snooze",
-                Map.of(
+                Optional.of(Map.of(
                         "automationId", automationId,
                         "state", state,
                         "remainingMinutes", remainingMinutes,
                         "timestamp", System.currentTimeMillis()
-                ));
+                )));
     }
 
     private void refreshCacheForAutomation(Automation automation) {

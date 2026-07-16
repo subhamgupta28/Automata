@@ -1,6 +1,6 @@
 package dev.automata.automata.configs;
 
-import dev.automata.automata.mqtt.SafeJsonTransformer;
+import dev.automata.automata.listener.SafeJsonTransformer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;

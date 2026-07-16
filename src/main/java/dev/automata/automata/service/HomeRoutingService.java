@@ -6,6 +6,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +28,7 @@ public class HomeRoutingService {
         payload.put("deviceId", deviceId);
         payload.put("homeId", homeId);
 
-        ws.convertAndSend("/topic/home/" + homeId + "/" + subTopic, payload);
+        ws.convertAndSend("/topic/home/" + homeId + "/" + subTopic, Optional.of(payload));
     }
 
     public void routeEvent(String deviceId, String eventType, Object eventPayload) {
@@ -35,7 +36,7 @@ public class HomeRoutingService {
         if (homeId == null) return;
         ws.convertAndSend(
                 "/topic/home/" + homeId + "/events",
-                Map.of("type", eventType, "deviceId", deviceId, "payload", eventPayload)
+                Optional.of(Map.of("type", eventType, "deviceId", deviceId, "payload", eventPayload))
         );
     }
 }

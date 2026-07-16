@@ -9,7 +9,6 @@ import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import dev.automata.automata.repository.ParameterRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import oshi.SystemInfo;
@@ -34,7 +33,6 @@ public class ScheduleTasks {
     private final DeviceRepository deviceRepository;
     private final DataHistRepository dataHistRepository;
     private final ParameterRepository parameterRepository;
-    private final SimpMessagingTemplate messagingTemplate;
 
     //1 hour interval
 //    @Scheduled(fixedRate = 10000)

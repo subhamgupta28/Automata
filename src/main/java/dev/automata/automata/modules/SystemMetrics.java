@@ -19,10 +19,7 @@ import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
 
 import java.net.URI;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -329,7 +326,7 @@ public class SystemMetrics {
             var map = new HashMap<String, Object>();
             map.put("deviceId", deviceId);
             map.put("data", data);
-            messagingTemplate.convertAndSend("/topic/data", map);
+            messagingTemplate.convertAndSend("/topic/data", Optional.of(map));
         }
 
     }

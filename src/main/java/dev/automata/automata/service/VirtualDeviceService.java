@@ -451,7 +451,7 @@ public class VirtualDeviceService {
         for (var device : virtualDevice) {
 //            var energyStat = getLastEnergyStat(device);
             var energyStat = getStatsList(device.getDeviceIds());
-            messagingTemplate.convertAndSend("/topic/data", Map.of("deviceId", device.getId(), "data", energyStat));
+            messagingTemplate.convertAndSend("/topic/data", Optional.of(Map.of("deviceId", device.getId(), "data", energyStat)));
         }
     }
 

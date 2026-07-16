@@ -8,10 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Manages the lifecycle of recording sessions.
@@ -302,6 +299,6 @@ public class RecordingSessionService {
 
     private void broadcastSessionEvent(RecordingSession session, String event) {
         messagingTemplate.convertAndSend("/topic/recording",
-                Map.of("event", event, "session", session));
+                Optional.of(Map.of("event", event, "session", session)));
     }
 }

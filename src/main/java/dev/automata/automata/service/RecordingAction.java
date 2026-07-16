@@ -1,7 +1,7 @@
 package dev.automata.automata.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.automata.automata.v2.ExecutionPlan;
+import dev.automata.automata.automation_engine.ExecutionPlan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

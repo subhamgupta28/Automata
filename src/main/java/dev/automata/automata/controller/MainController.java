@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RequestMapping("/api/v1/main")
 @Controller
@@ -161,7 +162,7 @@ public class MainController {
         var map = new HashMap<String, Object>();
         map.put("key", action);
         map.put("value", value);
-        messagingTemplate.convertAndSend("/topic/action", map);
+        messagingTemplate.convertAndSend("/topic/action", Optional.of(map));
 
         return ResponseEntity.ok("sent");
     }
@@ -265,7 +266,7 @@ public class MainController {
         map.put("deviceConfig", device);
         map.put("data", new HashMap<>());
 
-        messagingTemplate.convertAndSend("/topic/data", map);
+        messagingTemplate.convertAndSend("/topic/data", Optional.of(map));
         return ResponseEntity.ok(device);
     }
 
@@ -306,7 +307,7 @@ public class MainController {
     @GetMapping("/updateDevice/{deviceId}")
     public ResponseEntity<String> devicesWs(@PathVariable String deviceId) {
         var device = mainService.setStatus(deviceId, Status.ONLINE);
-        messagingTemplate.convertAndSend("/topic/data", device);
+        messagingTemplate.convertAndSend("/topic/data", Optional.ofNullable(device));
         return ResponseEntity.ok("Success");
     }
 
