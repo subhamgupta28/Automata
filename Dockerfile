@@ -12,8 +12,8 @@ COPY --from=builder /app/extracted/spring-boot-loader/ ./
 COPY --from=builder /app/extracted/snapshot-dependencies/ ./
 COPY --from=builder /app/extracted/application/ ./
 RUN java -XX:ArchiveClassesAtExit=app.jsa \
-         org.springframework.boot.loader.launch.JarLauncher \
-         --spring.context.exit=onRefresh
+         -Dspring.context.exit=onRefresh \
+         -jar app.jar
 
 # ---- Stage 3: Minimal runtime image ----
 FROM eclipse-temurin:21-jre-alpine
@@ -23,7 +23,6 @@ RUN addgroup -S automata && adduser -S automata -G automata
 WORKDIR /app
 
 COPY --from=cds --chown=automata:automata /app/ ./
-COPY --from=cds --chown=automata:automata /app/app.jsa ./app.jsa
 
 USER automata
 EXPOSE 8010
@@ -32,4 +31,4 @@ ENTRYPOINT ["java", \
   "-XX:SharedArchiveFile=app.jsa", \
   "-XX:+UseParallelGC", \
   "-XX:MaxRAMPercentage=75.0", \
-  "org.springframework.boot.loader.launch.JarLauncher"]
+  "-jar", "app.jar"]
