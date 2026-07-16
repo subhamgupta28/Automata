@@ -1,16 +1,35 @@
+# ---- Stage 1: Extract layers from the pre-built jar ----
+FROM eclipse-temurin:21-jdk-alpine AS builder
+WORKDIR /app
+COPY target/Automata-0.0.1-SNAPSHOT.jar app.jar
+RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
-# Use the official OpenJDK image to build the application
-FROM eclipse-temurin:21-jdk AS builder
+# ---- Stage 2: Build a CDS archive using the extracted layers ----
+FROM eclipse-temurin:21-jdk-alpine AS cds
+WORKDIR /app
+COPY --from=builder /app/extracted/dependencies/ ./
+COPY --from=builder /app/extracted/spring-boot-loader/ ./
+COPY --from=builder /app/extracted/snapshot-dependencies/ ./
+COPY --from=builder /app/extracted/application/ ./
+RUN java -XX:ArchiveClassesAtExit=app.jsa \
+         org.springframework.boot.loader.launch.JarLauncher \
+         --spring.context.exit=onRefresh
+
+# ---- Stage 3: Minimal runtime image ----
+FROM eclipse-temurin:21-jre-alpine
 ENV TZ=Asia/Kolkata
-# Set the working directory
+
+RUN addgroup -S automata && adduser -S automata -G automata
 WORKDIR /app
 
-# Copy the built JAR file into the container
-COPY target/Automata-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=cds --chown=automata:automata /app/ ./
+COPY --from=cds --chown=automata:automata /app/app.jsa ./app.jsa
 
-# Expose the port the app runs on
+USER automata
 EXPOSE 8010
 
-# Run the Spring Boot application
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
-
+ENTRYPOINT ["java", \
+  "-XX:SharedArchiveFile=app.jsa", \
+  "-XX:+UseParallelGC", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "org.springframework.boot.loader.launch.JarLauncher"]
