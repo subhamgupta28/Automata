@@ -1,0 +1,9 @@
+https://github.com/subhamgupta28/Matrix
+https://github.com/subhamgupta28/SeedC3
+https://github.com/subhamgupta28/KnobDisplay
+https://github.com/subhamgupta28/GPS
+https://github.com/subhamgupta28/AutomataENV
+https://github.com/subhamgupta28/AutomataM5
+https://github.com/subhamgupta28/AutomataBattery
+https://github.com/subhamgupta28/ESPC3_FAN
+https://github.com/subhamgupta28/AutomataCapsule
