@@ -1,28 +1,28 @@
 package dev.automata.automata.firmware_builder;
 
-import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.annotation.PostExchange;
 
 import java.util.List;
 
-@Service
-@HttpExchange(url = "${app.firmware-builder.host}:${app.firmware-builder.port}/api")
+@HttpExchange(url = "${app.firmware-builder.host}:${app.firmware-builder.port}/api", accept = "application/json")
 public interface FirmwareService {
 
     @PostExchange("/devices")
-    DeviceRegisterReq registerDevice(DeviceRegisterReq registerReq);
+    DeviceRegisterReq registerDevice(@RequestBody DeviceRegisterReq registerReq);
 
     @GetExchange("/devices")
     List<DeviceRegisterReq> getAllDevices();
 
     @GetExchange("/devices/{id}")
-    List<DeviceRegisterReq> getDevice(String id);
+    DeviceRegisterReq getDevice(@PathVariable String id);
 
     @GetExchange("/build/{id}")
-    BuildRequest startBuild(String id);
+    BuildRequest startBuild(@PathVariable String id);
 
     @GetExchange("/build/status/{id}")
-    BuildRequest getBuildStatus(String id);
+    BuildRequest getBuildStatus(@PathVariable String id);
 }
