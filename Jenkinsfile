@@ -30,7 +30,7 @@ pipeline {
                 unstash 'source'
                 script {
                     def mvnVersion = sh(
-                        script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout",
+                        script: "grep -m1 '<version>' pom.xml | sed 's/.*<version>\\(.*\\)<\\/version>.*/\\1/' | tr -d '[:space:]'",
                         returnStdout: true
                     ).trim()
 
