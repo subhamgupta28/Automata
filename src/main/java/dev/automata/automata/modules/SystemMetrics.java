@@ -8,6 +8,7 @@ import dev.automata.automata.model.Status;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -29,7 +30,8 @@ public class SystemMetrics {
     private final MainService mainService;
     private static String deviceId = "";
     private final SimpMessagingTemplate messagingTemplate;
-    private RestTemplate restTemplate;
+    @Value("${application.env}")
+    private String env;
 
     private void registerSystemMetrics() {
         var device = RegisterDevice.builder()
@@ -321,14 +323,15 @@ public class SystemMetrics {
 //    }
     @Scheduled(fixedRate = 10000)
     public void getInfo() {
-        var data = getData();
-        if (data != null) {
-            var map = new HashMap<String, Object>();
-            map.put("deviceId", deviceId);
-            map.put("data", data);
-            messagingTemplate.convertAndSend("/topic/data", Optional.of(map));
+        if (env.equals("prod") || env.equals("radxa")) {
+            var data = getData();
+            if (data != null) {
+                var map = new HashMap<String, Object>();
+                map.put("deviceId", deviceId);
+                map.put("data", data);
+                messagingTemplate.convertAndSend("/topic/data", Optional.of(map));
+            }
         }
-
     }
 
 

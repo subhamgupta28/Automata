@@ -91,6 +91,7 @@ public class SecurityConfiguration {
             "/sse",
             "/sse/**",
             "/mcp/**",
+            "/actuator/health",
     };
 
     private final JwtAuthenticationFilter jwtAuthFilter;
