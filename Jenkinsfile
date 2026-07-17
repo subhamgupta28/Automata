@@ -5,7 +5,7 @@ pipeline {
         CONTAINER_NAME   = 'automata'
         NETWORK_NAME     = 'bridge'
         SECOND_NETWORK   = 'automata-net'
-        RADXA_NETWORK = 'homelab'
+        RADXA_NETWORK    = 'homelab'
     }
 
     stages {
@@ -22,7 +22,35 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────
-        // STAGE 2: Build React UI on RPi
+        // STAGE 2: Resolve Version
+        // ─────────────────────────────────────────────
+        stage('Resolve Version') {
+            agent { label 'rpi' }
+            steps {
+                unstash 'source'
+                script {
+                    def mvnVersion = sh(
+                        script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout",
+                        returnStdout: true
+                    ).trim()
+
+                    def shortSha = sh(
+                        script: "git rev-parse --short HEAD",
+                        returnStdout: true
+                    ).trim()
+
+                    def branch = env.GIT_BRANCH?.replaceAll('origin/', '')?.replaceAll('[^a-zA-Z0-9_.-]', '-') ?: 'unknown'
+
+                    // e.g. automata:1.0.0-main-ab3f91c
+                    env.IMAGE_TAG = "${mvnVersion}-${branch}-${shortSha}"
+
+                    echo "Image tag resolved: ${env.IMAGE_TAG}"
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // STAGE 3: Build React UI on RPi
         // ─────────────────────────────────────────────
         stage('Build UI') {
             agent { label 'rpi' }
@@ -39,7 +67,7 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────
-        // STAGE 3: Build JAR on RPi
+        // STAGE 4: Build JAR on RPi
         // ─────────────────────────────────────────────
         stage('Build JAR') {
             agent { label 'rpi' }
@@ -51,7 +79,7 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────
-        // STAGE 4: Parallel Deploy
+        // STAGE 5: Parallel Deploy
         // ─────────────────────────────────────────────
         stage('Deploy') {
             parallel {
@@ -61,11 +89,12 @@ pipeline {
                     agent { label 'rpi' }
                     environment {
                         SPRING_PROFILE = 'prod'
+                        FULL_IMAGE     = "automata:${IMAGE_TAG}-rpi"
                     }
                     steps {
                         unstash 'build-output'
 
-                        sh 'docker build -t myapp:prod .'
+                        sh 'docker build -t ${FULL_IMAGE} .'
 
                         sh '''
                             docker network ls | grep -w ${NETWORK_NAME} \
@@ -91,8 +120,9 @@ pipeline {
                                     -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILE} \
                                     -e SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID}" \
                                     -e SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET}" \
+                                    -l automata.version="${IMAGE_TAG}" \
                                     -p 8010:8010 \
-                                    myapp:prod
+                                    ${FULL_IMAGE}
                             '''
                         }
 
@@ -105,11 +135,12 @@ pipeline {
                     agent { label 'radxa' }
                     environment {
                         SPRING_PROFILE = 'radxa'
+                        FULL_IMAGE     = "automata:${IMAGE_TAG}-radxa"
                     }
                     steps {
                         unstash 'build-output'
 
-                        sh 'docker build -t myapp:radxa .'
+                        sh 'docker build -t ${FULL_IMAGE} .'
 
                         sh '''
                             docker network ls | grep -w ${SECOND_NETWORK} \
@@ -133,10 +164,12 @@ pipeline {
                                     -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILE} \
                                     -e SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID}" \
                                     -e SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET}" \
+                                    -l automata.version="${IMAGE_TAG}" \
                                     -p 8010:8010 \
-                                    myapp:radxa
+                                    ${FULL_IMAGE}
                             '''
                         }
+
                         sh 'docker network connect ${RADXA_NETWORK} ${CONTAINER_NAME}'
                     }
                 }
@@ -147,7 +180,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Both RPi and Radxa deployed successfully!'
+            echo "✅ Both RPi and Radxa deployed successfully! [${IMAGE_TAG}]"
         }
         failure {
             echo '❌ Deployment failed — check stage logs above.'

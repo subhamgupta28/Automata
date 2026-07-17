@@ -9,18 +9,19 @@ export default defineConfig(({command, mode, isSsrBuild, isPreview}) => {
             global: 'window',
         },
         build: {
+            chunkSizeWarningLimit: 900,
             outDir: '../src/main/resources/static',
             rolldownOptions: {
                 output: {
-                    manualChunks: (id) => {
-                        if (id.includes('node_modules')) {
-                            if (id.includes('react-router-dom')) return 'router';
-                            if (id.includes('@stomp') || id.includes('sockjs-client')) return 'ws';
-                            if (id.includes('@mui/x-charts') || id.includes('recharts')) return 'charts';
-                            if (id.includes('@mui')) return 'mui';
-                            if (id.includes('@xyflow')) return 'flow';
-                            if (id.includes('react-dom') || id.includes('react/')) return 'vendor';
-                        }
+                    codeSplitting: {
+                        groups: [
+                            {name: 'router', test: /node_modules\/react-router-dom/},
+                            {name: 'ws', test: /node_modules\/(@stomp|sockjs-client)/},
+                            {name: 'charts', test: /node_modules\/(@mui\/x-charts|recharts)/},
+                            {name: 'mui', test: /node_modules\/@mui/},
+                            {name: 'flow', test: /node_modules\/@xyflow/},
+                            {name: 'vendor', test: /node_modules\/(react-dom|react)\//},
+                        ]
                     }
                 }
             }
