@@ -74,6 +74,7 @@ pipeline {
             steps {
                 unstash 'source-with-ui'
                 sh 'mvn clean package -DskipTests'
+                sh 'cp target/*.jar target/app.jar'
                 stash name: 'build-output', includes: 'target/*.jar, Dockerfile'
             }
         }
@@ -93,7 +94,7 @@ pipeline {
                     }
                     steps {
                         unstash 'build-output'
-
+                        sh 'ls -la target/'
                         sh 'docker build -t ${FULL_IMAGE} .'
 
                         sh '''
@@ -139,7 +140,7 @@ pipeline {
                     }
                     steps {
                         unstash 'build-output'
-
+                        sh 'ls -la target/'
                         sh 'docker build -t ${FULL_IMAGE} .'
 
                         sh '''
