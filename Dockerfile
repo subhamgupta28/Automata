@@ -1,7 +1,7 @@
 # ---- Stage 1: Extract layers ----
 FROM eclipse-temurin:21-jdk-alpine AS builder
 WORKDIR /app
-COPY target/Automata-0.0.1-SNAPSHOT.jar app.jar
+COPY target/app.jar app.jar
 RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
 
 # ---- Stage 2: Runtime image ----
