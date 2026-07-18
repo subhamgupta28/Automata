@@ -75,7 +75,7 @@ export function useSpotify() {
     };
 
     const handleLogin = () => {
-        window.location.href = 'https://automata.realsubhamgupta.in/api/v1/spotify/login';
+        window.location.href = 'https://automata.subhamgupta.in/api/v1/spotify/login';
     };
 
     return {

@@ -609,7 +609,7 @@ export default function Welcome() {
                             fontSize: '11px'
                         }}>
                             Public: /auth/** · /ws · /healthCheck · Allowed origins: localhost:5173,
-                            raspberry.local:8010, automata.realsubhamgupta.in
+                            raspberry.local:8010, automata.subhamgupta.in
                         </div>
                     </div>
 
