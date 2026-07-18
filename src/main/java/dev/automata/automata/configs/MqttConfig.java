@@ -337,7 +337,6 @@ public class MqttConfig {
                         }
                 ))
                 .channel("wledChannel")
-                .handle(message -> log.debug("WLED received: {}", message.getPayload()))
                 .get();
     }
 }

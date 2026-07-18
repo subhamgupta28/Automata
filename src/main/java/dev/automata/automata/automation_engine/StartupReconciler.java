@@ -5,6 +5,8 @@ import dev.automata.automata.model.Automation;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.RedisService;
+import dev.automata.automata.utils.Feature;
+import dev.automata.automata.utils.FeatureEnabled;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -121,6 +123,7 @@ public class StartupReconciler {
             });
 
     @EventListener(ApplicationReadyEvent.class)
+    @FeatureEnabled(value = Feature.AUTOMATION_STARTUP_COMPILER)
     public void onApplicationReady() {
         scheduler.submit(this::reconcileActiveAutomations);
     }

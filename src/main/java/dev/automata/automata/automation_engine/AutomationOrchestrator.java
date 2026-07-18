@@ -6,6 +6,8 @@ import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationLog;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.service.NotificationService;
+import dev.automata.automata.utils.Feature;
+import dev.automata.automata.utils.FeatureEnabled;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -81,6 +83,7 @@ public class AutomationOrchestrator {
     // ─────────────────────────────────────────────────────────────────────
 
     @Scheduled(fixedDelay = 4 * 60 * 60 * 1_000)
+    @FeatureEnabled(value = Feature.PERIODIC_AUTOMATION_SERVICE)
     public void reconcile() {
         List<Automation> enabled = automationRepository.findEnabledForExecution();
         if (enabled.isEmpty()) return;

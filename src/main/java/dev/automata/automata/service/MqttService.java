@@ -141,10 +141,10 @@ public class MqttService {
             var data = wled.convertToMap(response, device.getId());
 
             mainService.saveData(device.getId(), data);
-            homeRoutingService.routeToHome(
-                    device.getId(), "data",
-                    Map.of("deviceId", device.getId(), "data", data)
-            );
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("deviceId", device.getId());
+            payload.put("data", data);
+            homeRoutingService.routeToHome(device.getId(), "data", payload);
             deliveryTracker.confirmWled(device.getId(), deviceName);
             log.info("WLED Response for [{}] data: [{}]", device.getName(), response);
         }
