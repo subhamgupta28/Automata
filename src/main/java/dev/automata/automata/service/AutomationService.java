@@ -12,6 +12,8 @@ import dev.automata.automata.repository.AutomationDetailRepository;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import dev.automata.automata.repository.ExecutionPlanRepository;
+import dev.automata.automata.utils.Feature;
+import dev.automata.automata.utils.FeatureEnabled;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -252,12 +254,8 @@ public class AutomationService {
     // ═════════════════════════════════════════════════════════════════════
 
     @Scheduled(fixedRate = 5_000)
+    @FeatureEnabled(value = Feature.PERIODIC_AUTOMATION_SERVICE)
     public void triggerPeriodicAutomations() {
-        if (!featureService.isFeatureEnabled("PERIODIC_AUTOMATION_SERVICE")) {
-            log.warn("Automations are disabled, enable it from feature flags");
-            return;
-        }
-
         automationRepository.findEnabledForExecution().stream()
                 .filter(scheduledAutomationManager::hasAnyScheduledConditions)
                 .forEach(a -> {
