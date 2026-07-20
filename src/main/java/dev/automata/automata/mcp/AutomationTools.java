@@ -1,7 +1,7 @@
 package dev.automata.automata.mcp;
 
+import dev.automata.automata.automation_engine.AutomationService;
 import dev.automata.automata.model.Automation;
-import dev.automata.automata.service.AutomationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;

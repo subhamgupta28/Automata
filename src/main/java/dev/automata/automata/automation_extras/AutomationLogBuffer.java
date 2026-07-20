@@ -1,4 +1,4 @@
-package dev.automata.automata.service;
+package dev.automata.automata.automation_extras;
 
 
 import dev.automata.automata.model.AutomationLog;

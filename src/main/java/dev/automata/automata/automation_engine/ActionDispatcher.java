@@ -1,14 +1,14 @@
 package dev.automata.automata.automation_engine;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.automata.automata.automation_extras.ActionDeliveryTracker;
+import dev.automata.automata.cache.DeviceMetaCache;
 import dev.automata.automata.model.AutomationLog;
 import dev.automata.automata.model.DeviceActionState;
 import dev.automata.automata.modules.Spotify;
 import dev.automata.automata.modules.SpotifyService;
 import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.DeviceActionStateRepository;
-import dev.automata.automata.repository.DeviceRepository;
-import dev.automata.automata.service.ActionDeliveryTracker;
 import dev.automata.automata.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +35,7 @@ public class ActionDispatcher {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final MessageChannel mqttOutboundChannel;
-    private final DeviceRepository deviceRepository;
+
     private final DeviceActionStateRepository deviceActionStateRepository;
     private final NotificationService notificationService;
     private final ActionDeliveryTracker deliveryTracker;
@@ -45,6 +45,7 @@ public class ActionDispatcher {
     private final AutomationLogStream logStream;
     private final AutomationLivePublisher livePublisher;   // ← ADDED
     private final SpotifyService spotifyService;
+    private final DeviceMetaCache deviceMetaCache;
 
     private static final long ACTION_TIMEOUT_SECONDS = 30;
 
@@ -230,15 +231,6 @@ public class ActionDispatcher {
         sendToMqtt("action/" + deviceId, payload);
     }
 
-    private void dispatchWled(String deviceId, Map<String, Object> payload, String user) {
-        deviceRepository.findById(deviceId).ifPresent(device -> {
-            try {
-                new Wled(mqttOutboundChannel, device).handleAction(payload);
-            } catch (Exception e) {
-                log.error("WLED dispatch error for '{}': {}", deviceId, e.getMessage());
-            }
-        });
-    }
 
     private void dispatchMedia(String deviceId,
                                Map<String, Object> payload,
@@ -248,7 +240,7 @@ public class ActionDispatcher {
                                String traceId,
                                String homeId
     ) {
-        deviceRepository.findByIdAndHomeId(deviceId, homeId).ifPresent(device -> {
+        deviceMetaCache.getDevice(deviceId).ifPresent(device -> {
             try {
                 new Spotify(spotifyService, device.getId()).handleAction(payload);
                 deliveryTracker.registerWled(
@@ -271,12 +263,9 @@ public class ActionDispatcher {
                               String traceId,
                               String homeId
     ) {
-        deviceRepository.findById(deviceId).ifPresent(device -> {
+        deviceMetaCache.getDevice(deviceId).ifPresent(device -> {
             try {
                 new Wled(mqttOutboundChannel, device).handleAction(payload);
-
-                // Register for WLED delivery tracking instead of NOT_APPLICABLE.
-                // Confirmation arrives via handleWled() when WLED publishes /v.
                 deliveryTracker.registerWled(
                         deviceId, automationId, automationName, device.getName(), payload, traceId);
 

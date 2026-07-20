@@ -1,4 +1,4 @@
-package dev.automata.automata.service;
+package dev.automata.automata.automation_extras;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.AutomationCache;
@@ -6,6 +6,8 @@ import dev.automata.automata.dto.AutomationState;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.Users;
 import dev.automata.automata.repository.AutomationRepository;
+import dev.automata.automata.service.NotificationService;
+import dev.automata.automata.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
