@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
@@ -182,16 +183,7 @@ public class AutomationLivePublisher {
                 boolean isActive = "ACTIVE".equals(nodeState) || "HOLDING".equals(nodeState);
 
                 // Fan-out role
-                String fanoutRole = null;
-                if (n.isFanout()) {
-                    fanoutRole = n.isFirstMatch() ? "OR_FIRST_MATCH" : "OR_ALL";
-                } else if (n.getPositiveChildNodeIds() != null
-                        && n.getPositiveChildNodeIds().size() == 1) {
-                    fanoutRole = "AND";
-                } else if (n.getPositiveChildNodeIds() == null
-                        || n.getPositiveChildNodeIds().isEmpty()) {
-                    fanoutRole = "LEAF";
-                }
+                String fanoutRole = getFanoutRole(n);
 
                 condNodes.add(LiveConditionNode.builder()
                         .nodeId(nodeId)
@@ -261,7 +253,7 @@ public class AutomationLivePublisher {
                         Boolean nodeResult = condResults.get(n.getNodeId());
                         String reason = nodeResult == null
                                 ? "parent node was not evaluated"
-                                : Boolean.FALSE.equals(nodeResult)
+                                : !nodeResult
                                   ? "parent node condition was false"
                                   : "action was deduplicated or filtered";
                         skippedActions.add(SkippedAction.builder()
@@ -324,6 +316,20 @@ public class AutomationLivePublisher {
                 .build();
     }
 
+    private static @Nullable String getFanoutRole(ExecutionPlan.CompiledConditionNode n) {
+        String fanoutRole = null;
+        if (n.isFanout()) {
+            fanoutRole = n.isFirstMatch() ? "OR_FIRST_MATCH" : "OR_ALL";
+        } else if (n.getPositiveChildNodeIds() != null
+                && n.getPositiveChildNodeIds().size() == 1) {
+            fanoutRole = "AND";
+        } else if (n.getPositiveChildNodeIds() == null
+                || n.getPositiveChildNodeIds().isEmpty()) {
+            fanoutRole = "LEAF";
+        }
+        return fanoutRole;
+    }
+
     private LiveEvalSummary buildSummary(ExecutionPlan plan,
                                          AutomationEvaluator.EvalResult result) {
         return LiveEvalSummary.builder()
@@ -372,8 +378,9 @@ public class AutomationLivePublisher {
             String current = stack.pop();
             if (!reachable.add(current)) continue; // already visited — cycle-safe
             ExecutionPlan.CompiledConditionNode node = nodeMap.get(current);
-            if (node == null || node.getPositiveChildNodeIds() == null) continue;
-            stack.addAll(node.getPositiveChildNodeIds());
+            if (node == null) continue;
+            if (node.getPositiveChildNodeIds() != null) stack.addAll(node.getPositiveChildNodeIds());
+            if (node.getNegativeChildNodeIds() != null) stack.addAll(node.getNegativeChildNodeIds());
         }
 
         return reachable;

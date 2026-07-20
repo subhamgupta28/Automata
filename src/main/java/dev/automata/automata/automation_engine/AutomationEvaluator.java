@@ -390,6 +390,54 @@ public class AutomationEvaluator {
             List<ExecutionPlan.CompiledAction> negActions = new ArrayList<>();
             if (wasActive && node.getNegativeActions() != null)
                 negActions.addAll(node.getNegativeActions());
+
+            // ── Walk negative-branch children ──────────────────────────────────
+            // A node can have children gated on IT being false (cond-negative handle).
+            // These were previously compiled but never traversed. Walk them now: if
+            // ALL of them independently evaluate true, treat this subtree as PASSED,
+            // combining this node's own negativeActions (e.g. "dim down") with the
+            // negative-child's positiveActions (e.g. "turn off entirely"). If any
+            // negative child itself fails, fall through to the normal failed() path,
+            // accumulating that child's negatives too.
+            if (node.getNegativeChildNodeIds() != null && !node.getNegativeChildNodeIds().isEmpty()) {
+                List<ExecutionPlan.CompiledAction> negChildPosActions = new ArrayList<>();
+                Map<String, Boolean> negChildCondResults = new LinkedHashMap<>();
+                boolean allNegChildrenPassed = true;
+
+                for (String childId : node.getNegativeChildNodeIds()) {
+                    ExecutionPlan.CompiledConditionNode child = nodeMap.get(childId);
+                    if (child == null) {
+                        log.warn("⚠️ [{}] Negative-child node '{}' referenced by '{}' not found in nodeMap",
+                                automationName, childId, node.getNodeId());
+                        continue;
+                    }
+                    TreeWalkResult childResult = walkNode(child, nodeMap, payload, state,
+                            automationId, now, automationName, memoryUpdates, visited,
+                            intervalNodesToArm);
+                    negChildCondResults.putAll(childResult.conditionResults);
+
+                    if (childResult.passed) {
+                        negChildPosActions.addAll(childResult.positiveActionsToFire);
+                    } else {
+                        allNegChildrenPassed = false;
+                        negActions.addAll(childResult.negativeActionsToFire);
+                    }
+                }
+
+                condResults.putAll(negChildCondResults);
+
+                if (allNegChildrenPassed && !negChildPosActions.isEmpty()) {
+                    log.debug("🌙 [{}] Node '{}' false — negative-branch child chain passed, "
+                                    + "combining {} own negative + {} child action(s)",
+                            automationName, node.getNodeId(), negActions.size(), negChildPosActions.size());
+                    List<ExecutionPlan.CompiledAction> combined = new ArrayList<>(negActions);
+                    combined.addAll(negChildPosActions);
+                    return TreeWalkResult.passed(combined, condResults);
+                }
+                // else: at least one negative-branch child failed — fall through below
+                // with accumulated negatives from this node and its failed child(ren).
+            }
+
             return TreeWalkResult.failed(node.getNodeId(), negActions, condResults);
         }
 
