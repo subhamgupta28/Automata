@@ -1,4 +1,4 @@
-package dev.automata.automata.service;
+package dev.automata.automata.cache;
 
 import dev.automata.automata.model.Device;
 import dev.automata.automata.repository.DeviceRepository;

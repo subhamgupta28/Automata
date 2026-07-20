@@ -1,4 +1,4 @@
-package dev.automata.automata.service;
+package dev.automata.automata.automation_extras;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

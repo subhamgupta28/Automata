@@ -1,9 +1,10 @@
 package dev.automata.automata.automation_engine;
 
+import dev.automata.automata.cache.DeviceMetaCache;
 import dev.automata.automata.dto.NodeRef;
 import dev.automata.automata.model.Automation;
+import dev.automata.automata.model.Device;
 import dev.automata.automata.model.TriggerSource;
-import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -42,8 +43,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ExecutionPlanCompiler {
 
-    private final MainService mainService;
-
+    private final DeviceMetaCache deviceMetaCache;
 
     // ─────────────────────────────────────────────────────────────────────
     // ENTRY POINT
@@ -479,8 +479,9 @@ public class ExecutionPlanCompiler {
 
     private String resolveDeviceType(String deviceId) {
         try {
-            var d = mainService.getDevice(deviceId);
-            return d != null ? d.getType() : "sensor";
+            return deviceMetaCache.getDevice(deviceId)
+                    .map(Device::getType)
+                    .orElse("sensor");
         } catch (Exception e) {
             return "sensor";
         }

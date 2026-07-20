@@ -1,8 +1,8 @@
 package dev.automata.automata.mcp;
 
+import dev.automata.automata.automation_engine.AutomationService;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Users;
-import dev.automata.automata.service.AutomationService;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

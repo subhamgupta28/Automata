@@ -2,7 +2,6 @@ package dev.automata.automata.automation_engine;
 
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.ConditionMemory;
-import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,7 +72,7 @@ public class AutomationEvaluator {
 
     private final RedisService redisService;
     private final AutomationStateStore stateStore;
-    private final MainService mainService;
+    private final StaleDeviceLookupCache staleDeviceLookupCache;
 
     @Value("${app.location.lat}")
     private String LOCATION_LAT;
@@ -695,7 +694,13 @@ public class AutomationEvaluator {
         long dbStart = System.currentTimeMillis();
 
         try {
-            var data = mainService.getLastFullData(deviceId);
+            var data = staleDeviceLookupCache.getLastFullData(deviceId);
+            if (data == null) {
+                // Timed out, failed, or genuinely never-seen — same semantics as
+                // "no data resolvable" that the caller already handles.
+                cache.put(deviceId, Map.of());
+                return null;
+            }
             long dbMs = System.currentTimeMillis() - dbStart;
             if (dbMs > 200)
                 log.warn("⚠️ [{}] DB fallback for '{}' took {}ms", automationId, deviceId, dbMs);
