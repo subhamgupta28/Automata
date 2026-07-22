@@ -27,7 +27,7 @@ const actionStyle = {
     // border: '2px solid #0288D1',
     // background: 'transparent',
     // backdropFilter: 'blur(6px)',
-    backgroundColor: 'rgb(0 0 0 / 28%)',
+    backgroundColor: 'rgb(0 0 0 / 68%)',
     overflow: 'visible'
 };
 
@@ -263,7 +263,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 justifyContent: 'center',
                 gap: '6px',
                 margin: '4px',
-                alignItems: 'center'
+                alignItems: 'center',
+                background: 'rgb(27 27 27)'
             }}>
                 <Chip color="primary" size="small" label={"Action"}> </Chip>
                 <Chip size="small" label={"Order: " + order}> </Chip>
@@ -274,10 +275,12 @@ export const ActionNode = ({id, data, isConnectable}) => {
             </div>
             <Accordion style={{
                 borderRadius: '12px', marginTop: '0px', ...actionStyle,
-                background: 'rgb(27 27 27 /95%)'
+                background: 'rgb(27 27 27)'
             }}>
                 <AccordionSummary
-                    style={{borderRadius: '12px'}}
+                    style={{
+                        borderRadius: '12px',
+                    }}
                     expandIcon={<ArrowDownwardIcon/>}
                     aria-controls="panel1-content"
                     id="panel1-header"

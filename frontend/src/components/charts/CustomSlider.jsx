@@ -4,12 +4,12 @@ import {sendAction} from "../../services/apis.jsx";
 import {styled} from "@mui/material/styles";
 
 
-const HomeAssistantSlider = styled(Slider)({
-    color: 'orange', // Blue color like Home Assistant slider
-    height: 35, // Adjust the height of the slider bar
+const CSlider = styled(Slider)({
+    color: 'primary', // Blue color like Home Assistant slider
+    height: 12, // Adjust the height of the slider bar
     borderRadius: 10,
-    padding: '15px 0',
-    marginBottom: 1,
+    padding: '5px 0',
+    // marginBottom: 1,
     '& .MuiSlider-rail': {
         opacity: 0.2, // Make the rail more subtle
         backgroundColor: '#fff', // Light grey color for the rail
@@ -26,20 +26,20 @@ const HomeAssistantSlider = styled(Slider)({
         display: 'none'
     },
     '& .MuiSlider-thumb': {
-        backgroundColor: '#d0d0d0', // White thumb, matching the Home Assistant style
-        // border: '2px solid orange', // Blue border around the thumb
-        height: 42,
-        width: 6,
-        // left: '50%',
-        borderRadius: '4px',
-        // marginLeft: '6px',
-        transform: 'translate(-60%, -50%)',
-        '&:hover': {
-            backgroundColor: '#fce02b', // Change thumb color when hovered
-        },
-        '&:active': {
-            backgroundColor: '#fce02b', // Darker blue when active
-        },
+        //     backgroundColor: '#d0d0d0', // White thumb, matching the Home Assistant style
+        //     // border: '2px solid orange', // Blue border around the thumb
+        height: 22,
+        width: 22,
+        //     // left: '50%',
+        //     borderRadius: '4px',
+        //     // marginLeft: '6px',
+        //     transform: 'translate(-60%, -50%)',
+        //     '&:hover': {
+        //         backgroundColor: '#fce02b', // Change thumb color when hovered
+        //     },
+        //     '&:active': {
+        //         backgroundColor: '#fce02b', // Darker blue when active
+        //     },
     },
 });
 
@@ -77,7 +77,7 @@ export const CustomSlider = React.memo(({value, deviceId, displayName, data, typ
 
     return (
         <div className="nodrag">
-            <HomeAssistantSlider
+            <CSlider
                 className="nodrag nopan nowheel"
                 onPointerDown={(e) => {
                     console.log("pointer down");
@@ -95,7 +95,7 @@ export const CustomSlider = React.memo(({value, deviceId, displayName, data, typ
                 marks={[
                     {
                         value: data.extras.max / 2,
-                        label: displayName,
+                        // label: displayName,
                     },
                 ]}
             />

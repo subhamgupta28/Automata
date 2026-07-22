@@ -60,13 +60,13 @@ public class Wled {
                     .setHeader(MqttHeaders.TOPIC, topic)
                     .build();
 
-            log.info("📤 Sending to topic={} via header key={} value={}",
-                    topic,
-                    MqttHeaders.TOPIC,                          // what key is actually used
-                    msg.getHeaders().get(MqttHeaders.TOPIC));   // confirm it's set
+//            log.info("📤 Sending to topic={} via header key={} value={}",
+//                    topic,
+//                    MqttHeaders.TOPIC,                          // what key is actually used
+//                    msg.getHeaders().get(MqttHeaders.TOPIC));   // confirm it's set
 
             boolean sent = mqttOutboundChannel.send(msg);
-            log.info("📤 send() returned: {} for topic={}", sent, topic);
+//            log.info("📤 send() returned: {} for topic={}", sent, topic);
         } catch (Exception e) {
             log.error("WLED: sendToTopic failed", e);
         }
