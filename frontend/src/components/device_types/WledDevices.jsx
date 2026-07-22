@@ -67,7 +67,7 @@ const Wled = ({device, messages, lastData}) => {
         }
         const dt = grouped.sliderData.filter(s => s.deviceId = device.id);
         setSlider(dt[0])
-        console.log("grouped", dt[0]);
+        // console.log("grouped", dt[0]);
 
         return grouped;
     }, [device.attributes, lastData]);
@@ -90,9 +90,9 @@ const Wled = ({device, messages, lastData}) => {
             {switchButtons.map((s) => (
                 <div className="nodrag">
                     <LightBulbCard onClick={handleClick} key={s.key} data={s} lastOnline={device.lastOnline}
-                                   value={liveData?.[s.key]}
+                                   value={liveData?.[s.key]} percent={liveData?.bright}
                                    name={device.name} deviceId={device.id} type={device.type}/>
-                    <div style={{marginLeft: '22px', marginRight: '22px'}}>
+                    <div style={{marginLeft: '32px', marginRight: '32px'}}>
                         {sliderData.map((s) => (
                             <CustomSlider
                                 key={s.key}

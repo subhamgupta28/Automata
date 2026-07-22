@@ -1,14 +1,19 @@
 import * as React from "react";
 import {Box, IconButton, Typography} from "@mui/material";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
-import {sendAction} from "../../services/apis.jsx";
+import {getLastData, sendAction} from "../../services/apis.jsx";
 
-export default function LightBulbCard({value, name, type, deviceId, data, lastOnline, onClick}) {
+export default function LightBulbCard({value, name, type, deviceId, data, lastOnline, onClick, percent}) {
     const [isOn, setIsOn] = React.useState(Boolean(value));
+    const [bright, setBright] = React.useState(percent);
 
     // Sync external value → local UI
     React.useEffect(() => {
-        setIsOn(Boolean(value));
+        getLastData(deviceId).then(res => {
+            setBright(res?.bright);
+            setIsOn(Boolean(res?.onOff));
+        });
+
     }, [value]);
 
     const send = async () => {
@@ -76,7 +81,7 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
                         fontSize="14px"
                         color={isOn ? "text.primary" : "text.secondary"}
                     >
-                        {isOn ? "On" : "Off"}
+                        {isOn ? `${parseInt(((bright / 255) * 100).toString())}%` : "Off"}
                     </Typography>
                     {/*<Typography variant="body2" color="text.secondary">*/}
                     {/*    {dayjs(lastOnline).fromNow()}*/}
