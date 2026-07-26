@@ -1,0 +1,169 @@
+.snackbar-stack {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1400;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.snackbar-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 320px;
+    max-width: 420px;
+    border: 0.5px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+    animation: snack-in 0.2s ease;
+}
+
+@keyframes snack-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Severity accent stripe */
+.snackbar-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: 12px 0 0 12px;
+}
+
+.snackbar-info::before {
+    background: var(--fill-accent);
+}
+
+.snackbar-success::before {
+    background: var(--fill-success);
+}
+
+.snackbar-warning::before {
+    background: var(--fill-warning);
+}
+
+.snackbar-error::before {
+    background: var(--fill-danger);
+}
+
+.snackbar-automation::before {
+    background: #7F77DD;
+}
+
+/* Icon badge */
+.snackbar-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+}
+
+.snackbar-info .snackbar-icon {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+}
+
+.snackbar-success .snackbar-icon {
+    background: var(--bg-success);
+    color: var(--text-success);
+}
+
+.snackbar-warning .snackbar-icon {
+    background: var(--bg-warning);
+    color: var(--text-warning);
+}
+
+.snackbar-error .snackbar-icon {
+    background: var(--bg-danger);
+    color: var(--text-danger);
+}
+
+.snackbar-automation .snackbar-icon {
+    background: #EEEDFE;
+    color: #534AB7;
+}
+
+/* Body */
+.snackbar-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.snackbar-header {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.snackbar-message {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Action buttons */
+.snackbar-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.snackbar-btn {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 0.5px solid var(--border-strong);
+    background: var(--surface-1);
+    color: var(--text-primary);
+}
+
+.snackbar-btn:hover {
+    background: var(--surface-0);
+}
+
+.snackbar-btn.primary {
+    background: var(--fill-accent);
+    color: var(--on-accent);
+    border-color: transparent;
+}
+
+/* Close */
+.snackbar-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 2px;
+    font-size: 14px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+}
+
+.snackbar-close:hover {
+    color: var(--text-secondary);
+    background: var(--surface-1);
+}

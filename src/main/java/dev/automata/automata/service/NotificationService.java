@@ -42,6 +42,18 @@ public class NotificationService {
         messagingTemplate.convertAndSend("/topic/alert", notification);
     }
 
+    public void sendNotification(String message, String severity, String header, String homeId) {
+        Notification notification = Notification.builder()
+                .message(message)
+                .severity(severity)
+                .header(header)
+                .timestamp(new Date())
+                .build();
+        log.info("Notification sent: message={} severity={} homeId={}", message, severity, homeId);
+        if ("high".equals(severity))
+            sendNotify("Automata", message, severity);
+        messagingTemplate.convertAndSend("/topic/" + homeId + "/notification", notification);
+    }
 
 //    public void sendNotification(String message, String severity) {
 //        Notification notification = Notification.builder()
@@ -105,6 +117,7 @@ public class NotificationService {
         }
     }
 
+    @Deprecated
     public void sendNotification(String message, String severity, String homeId) {
         Notification notification = Notification.builder()
                 .message(message)
