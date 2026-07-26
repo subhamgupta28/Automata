@@ -384,6 +384,25 @@ public class AutomationOrchestrator {
     // BUG 1 FIX — STRANDED DESCENDANT NEGATIVE ACTIONS
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * True if some other node in {@code strandedIds} is reachable from {@code node}
+     * by following positiveChildNodeIds — i.e. a deeper, more specific stranded
+     * node exists further down this node's chain. Used by RULE A so an ancestor's
+     * own negativeActions are suppressed in favor of the deepest active descendant.
+     */
+    private boolean hasStrandedDescendant(ExecutionPlan.CompiledConditionNode node,
+                                          Map<String, ExecutionPlan.CompiledConditionNode> nodeById,
+                                          Set<String> strandedIds,
+                                          Set<String> visited) {
+        if (node.getPositiveChildNodeIds() == null || !visited.add(node.getNodeId())) return false;
+        for (String childId : node.getPositiveChildNodeIds()) {
+            if (strandedIds.contains(childId)) return true;
+            ExecutionPlan.CompiledConditionNode child = nodeById.get(childId);
+            if (child != null && hasStrandedDescendant(child, nodeById, strandedIds, visited)) return true;
+        }
+        return false;
+    }
+
     private AutomationEvaluator.EvalResult foldInStrandedNegativeActions(
             AutomationEvaluator.EvalResult result,
             ExecutionPlan plan,
@@ -398,11 +417,26 @@ public class AutomationOrchestrator {
         List<ExecutionPlan.CompiledAction> existing =
                 result.getActionsToFire() != null ? result.getActionsToFire() : List.of();
 
-        Set<String> seen = existing.stream()
-                .map(a -> a.getDeviceId() + "|" + a.getKey() + "|" + a.getData())
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        // RULE B: resolve by deviceId+key, NOT deviceId+key+data. Two stranded
+        // nodes firing different values for the same device/key (e.g. bright=5
+        // from one ancestor and bright=1 from another) used to both slip through
+        // because the old key included the value itself. "existing" (this tick's
+        // freshly-walked result) is always authoritative and seeds the map first.
+        Map<String, ExecutionPlan.CompiledAction> resolved = new LinkedHashMap<>();
+        for (ExecutionPlan.CompiledAction a : existing) {
+            resolved.put(a.getDeviceId() + "|" + a.getKey() + "|" + a.getData(), a);
+        }
 
-        List<ExecutionPlan.CompiledAction> stranded = new ArrayList<>();
+        // RULE A applied to stranding: build the id → node map once so we can tell,
+        // for two stranded nodes on the same chain, which one is the deeper/more
+        // specific descendant. Only the deepest stranded node in a chain fires its
+        // own negativeActions — an ancestor's "dim" action must not stack on top
+        // of a descendant's "off" action just because both happened to be ACTIVE
+        // when their common root failed.
+        Map<String, ExecutionPlan.CompiledConditionNode> nodeById = plan.getConditionTree().stream()
+                .collect(Collectors.toMap(ExecutionPlan.CompiledConditionNode::getNodeId, n -> n));
+
+        List<ExecutionPlan.CompiledConditionNode> strandedCandidates = new ArrayList<>();
         Map<String, Boolean> extendedResults = new LinkedHashMap<>(walkedThisTick);
         long nowMs = System.currentTimeMillis();
 
@@ -410,8 +444,25 @@ public class AutomationOrchestrator {
             if (!node.isStateful()) continue;
             boolean wasActive = prevState.isNodeActive(node.getNodeId());
             boolean walkedThisNode = walkedThisTick.containsKey(node.getNodeId());
+            if (wasActive && !walkedThisNode) strandedCandidates.add(node);
+        }
+        Set<String> strandedIds = strandedCandidates.stream()
+                .map(ExecutionPlan.CompiledConditionNode::getNodeId)
+                .collect(Collectors.toSet());
 
-            if (!wasActive || walkedThisNode) continue; // not stranded
+        // A stranded node is "superseded" if any other stranded node is reachable
+        // from it via positiveChildNodeIds — i.e. a deeper stranded node exists
+        // further down the same chain.
+        Set<String> superseded = new HashSet<>();
+        for (ExecutionPlan.CompiledConditionNode node : strandedCandidates) {
+            if (hasStrandedDescendant(node, nodeById, strandedIds, new HashSet<>())) {
+                superseded.add(node.getNodeId());
+            }
+        }
+
+        for (ExecutionPlan.CompiledConditionNode node : strandedCandidates) {
+            boolean walkedThisNode = walkedThisTick.containsKey(node.getNodeId());
+            if (walkedThisNode) continue; // not stranded
 
             ExecutionPlan.CompiledCondition c = node.getCondition();
             boolean hasGrace = c != null
@@ -441,6 +492,17 @@ public class AutomationOrchestrator {
                 }
             }
 
+            extendedResults.put(node.getNodeId(), false);
+
+            if (superseded.contains(node.getNodeId())) {
+                // RULE A: a deeper stranded descendant already speaks for this
+                // device/branch — this ancestor's own negativeActions are stale
+                // and must not be dispatched alongside the descendant's.
+                log.debug("🧩 Stranded node '{}' superseded by a deeper stranded descendant — "
+                        + "its own negative actions are skipped", node.getNodeId());
+                continue;
+            }
+
             log.debug("🧩 Stranded descendant '{}' was active but not walked this tick — "
                             + "firing its {} negative action(s)",
                     node.getNodeId(), node.getNegativeActions() != null
@@ -448,17 +510,24 @@ public class AutomationOrchestrator {
 
             if (node.getNegativeActions() != null) {
                 for (ExecutionPlan.CompiledAction a : node.getNegativeActions()) {
-                    String key = a.getDeviceId() + "|" + a.getKey() + "|" + a.getData();
-                    if (seen.add(key)) stranded.add(a);
+                    String dedupeKey = a.getDeviceId() + "|" + a.getKey();
+                    // RULE B: "existing" (this tick's live result) always wins;
+                    // among stranded nodes, first writer per device/key wins and
+                    // any later collision is logged rather than silently applied.
+                    ExecutionPlan.CompiledAction prior = resolved.putIfAbsent(dedupeKey, a);
+                    if (prior != null && prior != a) {
+                        log.warn("⚠️ Stranded action collision on '{}': keeping '{}'={} from an earlier "
+                                        + "node, dropping '{}'={} from '{}'",
+                                dedupeKey, prior.getNodeId(), prior.getData(),
+                                a.getNodeId(), a.getData(), node.getNodeId());
+                    }
                 }
             }
-            extendedResults.put(node.getNodeId(), false);
         }
 
-        if (stranded.isEmpty() && extendedResults.size() == walkedThisTick.size()) return result;
+        if (resolved.size() == existing.size() && extendedResults.size() == walkedThisTick.size()) return result;
 
-        List<ExecutionPlan.CompiledAction> combined = new ArrayList<>(existing);
-        combined.addAll(stranded);
+        List<ExecutionPlan.CompiledAction> combined = new ArrayList<>(resolved.values());
 
         return result.toBuilder()
                 .actionsToFire(combined)
@@ -694,6 +763,36 @@ public class AutomationOrchestrator {
     // DISPATCH
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * RULE B (global action resolution) — final safety net applied right before
+     * dispatch, regardless of outcome. Actions can be combined from multiple
+     * condition nodes (OR fan-out siblings, stranded-descendant folding, a
+     * negative-branch child's result) by earlier stages; this collapses any
+     * remaining deviceId+key collisions to a single winner (first occurrence —
+     * upstream stages already order actions from most-specific to least) instead
+     * of letting the dispatcher fire two different values for the same
+     * device/key back-to-back, where the final on-device state would otherwise
+     * depend on declaration order rather than intent.
+     */
+    private List<ExecutionPlan.CompiledAction> resolveFinalActions(List<ExecutionPlan.CompiledAction> actions) {
+        if (actions == null || actions.isEmpty()) return actions == null ? List.of() : actions;
+        if (actions.size() == 1) return actions;
+
+        Map<String, ExecutionPlan.CompiledAction> byDeviceKey = new LinkedHashMap<>();
+        for (ExecutionPlan.CompiledAction a : actions) {
+            String dedupeKey = a.getDeviceId() + "|" + a.getKey();
+            ExecutionPlan.CompiledAction prior = byDeviceKey.putIfAbsent(dedupeKey, a);
+            if (prior != null && !Objects.equals(prior.getData(), a.getData())) {
+                log.warn("⚠️ Global action resolve: conflicting values for device '{}' key '{}' — "
+                                + "keeping {}='{}' (node '{}'), dropping {}='{}' (node '{}')",
+                        a.getDeviceId(), a.getKey(),
+                        a.getKey(), prior.getData(), prior.getNodeId(),
+                        a.getKey(), a.getData(), a.getNodeId());
+            }
+        }
+        return new ArrayList<>(byDeviceKey.values());
+    }
+
     private void dispatchResult(AutomationEvaluator.EvalResult result,
                                 ExecutionPlan plan,
                                 Map<String, Object> payload,
@@ -705,7 +804,8 @@ public class AutomationOrchestrator {
 
         switch (result.getOutcome()) {
 
-            case STATELESS_FIRE, FALLBACK -> dispatcher.dispatch(result.getActionsToFire(), payload, user,
+            case STATELESS_FIRE, FALLBACK -> dispatcher.dispatch(
+                            resolveFinalActions(result.getActionsToFire()), payload, user,
                             automationId, name, traceId, homeId)
                     .thenRun(() -> publishLog(automationId, plan, user, payload, result));
 
@@ -716,7 +816,7 @@ public class AutomationOrchestrator {
                                 : (plan.getTopLevelPositiveActions() != null
                                    ? plan.getTopLevelPositiveActions() : List.of());
                 armDurationWindows(result, automationId);
-                dispatcher.dispatch(actions, payload, user, automationId, name, traceId, homeId)
+                dispatcher.dispatch(resolveFinalActions(actions), payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
                             log.info("🚀 [{}] Triggered", name);
 
@@ -740,7 +840,7 @@ public class AutomationOrchestrator {
                     return;
                 }
                 armDurationWindows(result, automationId);
-                dispatcher.dispatch(actions, payload, user, automationId, name, traceId, homeId)
+                dispatcher.dispatch(resolveFinalActions(actions), payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
                             log.info("🌿 [{}] Branch triggered — {} action(s) dispatched",
                                     name, actions.size());
@@ -753,14 +853,18 @@ public class AutomationOrchestrator {
             case C1_NEGATIVE -> {
                 // BUG 1 fix: actionsToFire already includes stranded descendant
                 // negative actions, folded in by foldInStrandedNegativeActions().
-                List<ExecutionPlan.CompiledAction> toFire = result.getActionsToFire() != null
-                        ? new ArrayList<>(result.getActionsToFire()) : new ArrayList<>();
+                List<ExecutionPlan.CompiledAction> toFire = resolveFinalActions(
+                        result.getActionsToFire() != null
+                                ? new ArrayList<>(result.getActionsToFire()) : new ArrayList<>());
 
                 dispatcher.dispatch(toFire, payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
                             log.debug("[{}] — trigger condition lost", name);
                             notificationService.sendNotification(
-                                    name + " — trigger condition lost", "info", homeId);
+                                    "Trigger condition is no longer met",
+                                    "warning",       // was "info" — yellow stripe fits better
+                                    name,            // automation name as header
+                                    homeId);
                             publishLog(automationId, plan, user, payload, result);
                         });
             }

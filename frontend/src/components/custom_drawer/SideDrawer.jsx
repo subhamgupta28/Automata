@@ -45,7 +45,8 @@ import Recordings from "../integrations/AutomataRecordings.jsx";
 import {Bot, Disc3Icon, Map, StoreIcon} from "lucide-react";
 import {MapDevices} from "../device_types/MapDevices.jsx";
 import HomeManagement from "../home/HomeManagement.jsx";
-import LoadingScreen from "../../utils/LoadingScreen.jsx"; // Import the new component
+import LoadingScreen from "../../utils/LoadingScreen.jsx";
+import AutomataSnackbar from "../AutomataSnackbar.jsx"; // Import the new component
 
 // Lazy-load heavy route components
 const DeviceNodes = lazy(() => import("../home/DeviceNodes.jsx"));
@@ -428,7 +429,14 @@ export default function SideDrawer() {
                 <Box sx={{flexGrow: 1, overflow: 'auto'}}>
                     <AppCacheProvider>
                         <ReactFlowProvider>
-                            <SnackbarProvider maxSnack={3} preventDuplicate>
+                            <SnackbarProvider maxSnack={3} preventDuplicate
+                                              Components={{
+                                                  info: AutomataSnackbar,
+                                                  success: AutomataSnackbar,
+                                                  warning: AutomataSnackbar,
+                                                  error: AutomataSnackbar,
+                                                  automation: AutomataSnackbar,
+                                              }}>
                                 <Suspense fallback={<PageLoader/>}>
                                     <Routes location={location} key={location.pathname}>
                                         {/* Public */}

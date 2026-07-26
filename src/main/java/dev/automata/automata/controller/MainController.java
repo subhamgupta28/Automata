@@ -112,7 +112,7 @@ public class MainController {
 
     @GetMapping
     public ResponseEntity<String> status(@AuthenticationPrincipal Users user, @RequestHeader("X-Home-Id") String homeId) {
-        notificationService.sendNotification("hello", "medium", homeId);
+        notificationService.sendNotification("hello", "medium", "Automation", homeId);
         return ResponseEntity.ok("success");
     }
 

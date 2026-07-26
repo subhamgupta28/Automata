@@ -408,7 +408,7 @@ public class VirtualDeviceService {
         device.setHeight(Math.floor(Double.parseDouble(height)));
 
         virtualDeviceRepository.save(device);
-        notificationService.sendNotification("Devices positions updated", "success", homeId);
+        notificationService.sendNotification("Devices positions updated", "success", "Automation", homeId);
         return "success";
     }
 
@@ -528,7 +528,7 @@ public class VirtualDeviceService {
         if (device != null) {
             device.setActive(isShow);
             virtualDeviceRepository.save(device);
-            notificationService.sendNotification("Device is" + (isShow ? " visible " : " not visible ") + "in dashboard", "success", homeId);
+            notificationService.sendNotification("Device is" + (isShow ? " visible " : " not visible ") + "in dashboard", "success", "Automation", homeId);
             return "success";
         }
 

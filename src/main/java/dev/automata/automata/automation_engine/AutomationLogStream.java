@@ -186,7 +186,7 @@ public class AutomationLogStream {
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Flushes all buffered entries to MongoDB every 5 seconds.
+     * Flushes all buffered entries to MongoDB every 30 seconds.
      * <p>
      * Strategy:
      * 1. Drain pendingEntries in a single pass (snapshot + clear).
@@ -199,7 +199,7 @@ public class AutomationLogStream {
      * entries published during the flush are NOT included in this batch —
      * they will be picked up on the next flush cycle.
      */
-    @Scheduled(fixedRate = 5_000)
+    @Scheduled(fixedRate = 30_000)
     public void flush() {
         if (pendingEntries.isEmpty()) return;
 

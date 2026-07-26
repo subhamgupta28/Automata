@@ -100,16 +100,27 @@ public class ActionDispatcher {
     }
 
     public void notifyTriggered(String automationName, String homeId) {
-        notificationService.sendNotification(automationName + " triggered", "success", homeId);
+        notificationService.sendNotification(
+                automationName + " is running",
+                "automation",          // renders with robot icon + Stop/Snooze buttons
+                "Automation",        // header
+                homeId);
     }
 
     public void notifyReverted(String automationName, String branchDesc, String homeId) {
         notificationService.sendNotification(
-                automationName + " — " + branchDesc + " ended", "info", homeId);
+                branchDesc + " ended",
+                "info",
+                "Automation",
+                homeId);
     }
 
     public void notifyError(String automationName, String homeId) {
-        notificationService.sendNotification(automationName + " error", "error", homeId);
+        notificationService.sendNotification(
+                "Something went wrong while running this automation",
+                "error",
+                "Automation",
+                homeId);
     }
 
 
