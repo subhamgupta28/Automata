@@ -7,8 +7,8 @@ export default function Notifications() {
     const {messages} = useWebSocket();
     const {enqueueSnackbar} = useSnackbar();
 
-    const handleStop = () => notificationAction("stop_automation", {action: "stop"});
-    const handleSnooze = () => notificationAction("stop_automation", {action: "snooze for 1 hr"});
+    const handleDisable = (automationId) => notificationAction("automation_disable", {action: "disable", automationId});
+    const handleSnooze = (automationId) => notificationAction("automation_snooze", {action: "snooze", automationId});
 
     useEffect(() => {
         if (!messages?.message) return;
@@ -21,7 +21,8 @@ export default function Notifications() {
             autoHideDuration: 5000,
             // custom props forwarded to AutomataSnackbar
             header: messages.header ?? null,
-            onStop: handleStop,
+            automationId: messages.automationId,
+            onDisable: handleDisable,
             onSnooze: handleSnooze,
         });
     }, [messages]);

@@ -16,10 +16,18 @@ const SEVERITY = {
     success: {icon: CheckCircleOutlineIcon, color: "#9ccc65", label: "Done"},
     warning: {icon: WarningAmberIcon, color: "#f8e697", label: "Warning"},
     error: {icon: ErrorOutlineIcon, color: "#e57373", label: "Error"},
-    automation: {icon: SmartToyOutlinedIcon, color: "rgb(162,157,81)", label: "Automation"},
+    automation: {icon: SmartToyOutlinedIcon, color: "rgb(255 255 255)", label: "Automation"},
 };
 
-const AutomataSnackbar = React.forwardRef(({id, message, header, variant = "info", onStop, onSnooze}, ref) => {
+const AutomataSnackbar = React.forwardRef(({
+                                               id,
+                                               message,
+                                               header,
+                                               variant = "info",
+                                               onDisable,
+                                               onSnooze,
+                                               automationId
+                                           }, ref) => {
     const {closeSnackbar} = useSnackbar();
     const cfg = SEVERITY[variant] ?? SEVERITY.info;
     const Icon = cfg.icon;
@@ -76,23 +84,23 @@ const AutomataSnackbar = React.forwardRef(({id, message, header, variant = "info
                         <Button
                             size="small"
                             onClick={() => {
-                                onStop?.();
+                                onDisable?.(automationId);
                                 closeSnackbar(id);
                             }}
                             sx={{
                                 fontSize: 11, fontWeight: 500,
                                 px: "10px", py: "3px",
-                                backgroundColor: "#f8e697", color: "#161616",
+                                backgroundColor: "#b13b3b", color: "#161616",
                                 border: "none",
-                                "&:hover": {backgroundColor: "#e7d372"},
+                                "&:hover": {backgroundColor: "#b13b3b"},
                             }}
                         >
-                            Stop
+                            Disable
                         </Button>
                         <Button
                             size="small"
                             onClick={() => {
-                                onSnooze?.();
+                                onSnooze?.(automationId);
                                 closeSnackbar(id);
                             }}
                             sx={{

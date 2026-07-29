@@ -820,7 +820,7 @@ public class AutomationOrchestrator {
                         .thenRun(() -> {
                             log.info("🚀 [{}] Triggered", name);
 
-                            dispatcher.notifyTriggered(name, homeId);
+                            dispatcher.notifyTriggered(name, homeId, automationId);
                             publishLog(automationId, plan, user, payload, result);
                         });
             }
@@ -845,7 +845,7 @@ public class AutomationOrchestrator {
                             log.info("🌿 [{}] Branch triggered — {} action(s) dispatched",
                                     name, actions.size());
 
-                            dispatcher.notifyTriggered(name, homeId);
+                            dispatcher.notifyTriggered(name, homeId, automationId);
                             publishLog(automationId, plan, user, payload, result);
                         });
             }
@@ -864,7 +864,7 @@ public class AutomationOrchestrator {
                                     "Trigger condition is no longer met",
                                     "warning",       // was "info" — yellow stripe fits better
                                     name,            // automation name as header
-                                    homeId);
+                                    homeId, automationId);
                             publishLog(automationId, plan, user, payload, result);
                         });
             }

@@ -2,11 +2,13 @@ package dev.automata.automata.controller;
 
 import dev.automata.automata.dto.WledPresets;
 import dev.automata.automata.model.Notification;
+import dev.automata.automata.model.Users;
 import dev.automata.automata.modules.Utils;
 import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.NotificationService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -51,8 +53,10 @@ public class UtilityController {
     }
 
     @PostMapping("/action/{action}")
-    public ResponseEntity<String> notificationAction(@PathVariable("action") String action, @RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(notificationService.notificationAction(action, body));
+    public ResponseEntity<String> notificationAction(@PathVariable String action, @RequestBody Map<String, Object> body,
+                                                     @RequestHeader("X-Home-Id") String homeId, @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(notificationService.notificationAction(action, body, homeId, user));
     }
 
     @PostMapping("/wledDevices")

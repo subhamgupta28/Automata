@@ -604,7 +604,7 @@ public class AutomationService {
                         automationVersionService.snapshot(a, detail, user,
                                 "Rolled back to version " + targetVersion));
                 notificationService.sendNotification(
-                        "Rolled back to version " + targetVersion, "success", homeId);
+                        "Rolled back to version " + targetVersion, "success", homeId, automationId);
             }
             return result;
         } catch (Exception e) {
