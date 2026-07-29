@@ -3,6 +3,7 @@ package dev.automata.automata.automation_extras;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.AutomationCache;
 import dev.automata.automata.dto.AutomationState;
+import dev.automata.automata.dto.NotificationAction;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.Users;
 import dev.automata.automata.repository.AutomationRepository;
@@ -10,6 +11,7 @@ import dev.automata.automata.service.NotificationService;
 import dev.automata.automata.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +34,17 @@ public class AutomationUtils {
     private static final String SNOOZE_KEY = "SNOOZE:";   // SNOOZE:{automationId}
     private static final String DISABLE_KEY = "TIMED_DISABLE:"; // TIMED_DISABLE:{automationId}
     // ─── SNOOZE ───────────────────────────────────────────────────────────────
+
+    @EventListener
+    public void onEvent(NotificationAction action) {
+        var id = action.getPayload().get("automationId").toString();
+        if (action.getAction().equals("automation_snooze")) {
+            snoozeAutomation(id, 60, action.getUser(), action.getHomeId());
+        } else if (action.getAction().equals("automation_disable")) {
+            timedDisableAutomation(id, -1, action.getUser(), action.getHomeId());
+        }
+
+    }
 
     public String snoozeAutomation(String automationId, int durationMinutes, Users user, String homeId) {
         automationRepository.findById(automationId).ifPresent(a -> {
@@ -75,7 +88,7 @@ public class AutomationUtils {
                 automationRepository.save(a);
                 refreshCacheForAutomation(a);
                 notificationService.sendNotification(
-                        "🚫 " + a.getName() + " disabled", "info", "Automation", homeId);
+                        "🚫 " + a.getName() + " disabled", "success", "Automation", homeId);
                 broadcastSnoozeState(automationId, "DISABLED", 0);
                 return;
             }
@@ -98,7 +111,7 @@ public class AutomationUtils {
             }
 
             notificationService.sendNotification(
-                    "🚫 " + a.getName() + " disabled for " + durationMinutes + " min", "info", "Automation", homeId);
+                    "🚫 " + a.getName() + " disabled for " + durationMinutes + " min", "success", "Automation", homeId);
 
             log.info("🚫 Timed-disabled automation '{}' for {} minutes", a.getName(), durationMinutes);
             broadcastSnoozeState(automationId, "TIMED_DISABLED", durationMinutes);

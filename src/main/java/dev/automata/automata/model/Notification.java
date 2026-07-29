@@ -18,6 +18,7 @@ public class Notification {
     @Id
     private String id;
     private String message;
+    private String automationId;
     private String severity;   // "info" | "success" | "warning" | "error" | "automation"
     private String header;     // new — maps to snackbar title
     @Indexed

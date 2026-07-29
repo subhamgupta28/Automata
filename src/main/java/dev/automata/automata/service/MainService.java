@@ -7,6 +7,7 @@ import dev.automata.automata.repository.*;
 import dev.automata.automata.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
@@ -65,6 +66,8 @@ public class MainService {
      *         uuid = random
      *         timestamp = 1234567890
      * */
+    @Value("${application.node-id}")
+    private String nodeId;
 
     public AttributeType createAttributeType(AttributeType attributeType) {
         return attributeTypeRepository.save(attributeType);
@@ -75,6 +78,7 @@ public class MainService {
         log.info("Registering device: {}", registerDevice);
 
         Device device = buildDevice(registerDevice);
+        device.setOriginNode(nodeId);
 
         return deviceRepository.findByMacAddr(registerDevice.getMacAddr())
                 .stream()
