@@ -3,7 +3,7 @@ package dev.automata.automata.automation_engine;
 import lombok.Builder;
 import lombok.Value;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -37,7 +37,7 @@ public class ExecutionPlan {
     String automationName;
     String triggerDeviceId;
     int schemaVersion;
-    Date compiledAt;
+    Instant compiledAt;
     String homeId;
 
     // ── Coalition ─────────────────────────────────────────────────────────

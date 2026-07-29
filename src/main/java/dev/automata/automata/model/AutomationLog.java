@@ -4,11 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -248,4 +250,8 @@ public class AutomationLog {
          */
         private String suppressedByOperatorNodeId;
     }
+
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }

@@ -28,6 +28,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -343,7 +344,7 @@ public class AutomationService {
 
     private Automation buildAutomation(AutomationDetail detail, String homeId) {
         var automationBuilder = Automation.builder()
-                .isEnabled(true).updateDate(new Date()).isActive(false);
+                .isEnabled(true).updateDate(Instant.now()).isActive(false);
         if (detail.getId() != null && !detail.getId().isEmpty())
             automationBuilder.id(detail.getId());
         detail.setHomeId(homeId);
@@ -427,7 +428,7 @@ public class AutomationService {
 
         Automation saved = automationRepository.save(automation);
         detail.setId(saved.getId());
-        detail.setUpdateDate(new Date());
+        detail.setUpdateDate(Instant.now());
         automationDetailRepository.save(detail);
 
         // ── Compile ExecutionPlan ─────────────────────────────────────────
@@ -565,7 +566,7 @@ public class AutomationService {
                 .conditions(original.getConditions())
                 .actions(original.getActions())
                 .operators(List.of())   // operators no longer used
-                .isEnabled(false).isActive(false).updateDate(new Date())
+                .isEnabled(false).isActive(false).updateDate(Instant.now())
                 .build();
         Automation saved = automationRepository.save(copy);
 
@@ -575,7 +576,7 @@ public class AutomationService {
             dc.setNodes(d.getNodes());
             dc.setEdges(d.getEdges());
             dc.setViewport(d.getViewport());
-            dc.setUpdateDate(new Date());
+            dc.setUpdateDate(Instant.now());
             automationDetailRepository.save(dc);
         });
 
@@ -597,7 +598,7 @@ public class AutomationService {
             AutomationVersionService.RollbackResult rollback =
                     automationVersionService.rollback(automationId, targetVersion);
             AutomationDetail detail = rollback.detail();
-            detail.setUpdateDate(new Date());
+            detail.setUpdateDate(Instant.now());
             String result = saveAutomationDetailInternal(detail, user, homeId);
             if ("success".equals(result)) {
                 automationRepository.findById(automationId).ifPresent(a ->

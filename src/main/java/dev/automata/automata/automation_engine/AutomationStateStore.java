@@ -181,7 +181,7 @@ public class AutomationStateStore {
             // on every evaluation. Stamped as compiledAt's epoch millis so it's
             // monotonic with the plan itself (no separate counter to keep in sync).
             String versionKey = VERSION_PREFIX + automationId;
-            long stamp = plan.getCompiledAt() != null ? plan.getCompiledAt().getTime() : 0L;
+            long stamp = plan.getCompiledAt() != null ? plan.getCompiledAt().getEpochSecond() : 0L;
             redisTemplate.opsForValue().set(versionKey, String.valueOf(stamp));
             registerKey(automationId, versionKey);
         } catch (Exception e) {

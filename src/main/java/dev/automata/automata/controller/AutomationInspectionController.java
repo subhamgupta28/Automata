@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -375,7 +376,7 @@ public class AutomationInspectionController {
         String automationId;
         String automationName;
         int schemaVersion;
-        Date compiledAt;
+        Instant compiledAt;
         String topLevelState;
         boolean isTopLevelActive;
         boolean hasBranches;
@@ -440,7 +441,7 @@ public class AutomationInspectionController {
         String automationId;
         String automationName;
         int schemaVersion;
-        Date compiledAt;
+        Instant compiledAt;
         String triggerDeviceId;
         List<String> rootConditionNodeIds;
         List<Map<String, Object>> conditionNodes;

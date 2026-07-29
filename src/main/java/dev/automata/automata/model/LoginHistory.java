@@ -2,6 +2,8 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
@@ -33,4 +35,7 @@ public class LoginHistory {
     private Instant loginTime;
     private Instant logoutTime; // Optional: track logout
     private long sessionDurationSeconds; // Duration of session
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }

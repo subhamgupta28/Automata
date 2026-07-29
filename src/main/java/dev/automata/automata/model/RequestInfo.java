@@ -3,7 +3,11 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.Instant;
 
 @Document(collection = "requestInfo")
 @Getter
@@ -21,4 +25,7 @@ public class RequestInfo {
     private String requestURL;
     private String method;
     private String queryString;
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }

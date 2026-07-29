@@ -2,6 +2,8 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
@@ -20,4 +22,7 @@ public class SpotifyToken {
     private String accessToken;
     private String refreshToken;
     private Instant expiresAt;
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }

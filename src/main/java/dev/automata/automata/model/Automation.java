@@ -4,11 +4,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.automata.automata.dto.NodeRef;
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 
 @Document(collection = "automations")
@@ -30,7 +32,9 @@ public class Automation {
     private Boolean isActive;
     private Long snoozeTime;
     private String triggerDeviceType;
-    private Date updateDate;
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
     private List<String> subscriberDeviceIds;
     private String homeId;
 

@@ -2,6 +2,8 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
@@ -20,4 +22,7 @@ public class Home {
     private String ownerId;          // denormalized for fast owner checks
     private String timezone;
     private Instant createdAt;
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }

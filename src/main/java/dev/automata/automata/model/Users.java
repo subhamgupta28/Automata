@@ -2,6 +2,8 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -59,4 +61,8 @@ public class Users implements UserDetails {
     public boolean isEnabled() {
         return true;
     }
+
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }
