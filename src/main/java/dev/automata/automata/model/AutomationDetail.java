@@ -5,9 +5,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.automata.automata.dto.NodeRef;
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 
 @Document(collection = "automationDetail")
@@ -29,7 +31,9 @@ public class AutomationDetail {
     @JsonProperty("viewport")
     private Viewport viewport;
     private String homeId;
-    private Date updateDate;
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 
     @Getter
     @Setter

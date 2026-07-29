@@ -2,9 +2,11 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -33,4 +35,7 @@ public class VirtualDevice {
     private List<String> deviceIds;
     private Map<String, List<Attribute>> attributes;
     private Map<String, Object> recentData;
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }

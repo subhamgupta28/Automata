@@ -3,8 +3,10 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 
@@ -25,4 +27,7 @@ public class DeviceActionState {
     private Date timestamp;
     private Map<String, Object> deviceCurrentState;
 
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }

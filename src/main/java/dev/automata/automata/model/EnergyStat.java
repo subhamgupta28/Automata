@@ -2,11 +2,11 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
-import java.util.Date;
 
 @Document(collection = "energyStat")
 @Getter
@@ -23,6 +23,7 @@ public class EnergyStat {
     private String deviceId;
     private Long timestamp;
     @Indexed
+    @LastModifiedDate
     private Instant updateDate;
 
     private String status;

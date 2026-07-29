@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -130,8 +131,8 @@ public class AutomationOrchestrator {
             return;
         }
 
-        Date updatedAt = automation.getUpdateDate();
-        Date compiledAt = cached.getCompiledAt();
+        Instant updatedAt = automation.getUpdateDate();
+        Instant compiledAt = cached.getCompiledAt();
 
         if (isStale(updatedAt, compiledAt)) {
             if (!reconcileLock.tryAcquire(id)) {
@@ -156,9 +157,9 @@ public class AutomationOrchestrator {
         log.info("✅ [reconciler] '{}' recompiled — reason: {}", automation.getName(), reason);
     }
 
-    private boolean isStale(Date updatedAt, Date compiledAt) {
+    private boolean isStale(Instant updatedAt, Instant compiledAt) {
         if (updatedAt == null || compiledAt == null) return true;
-        return updatedAt.getTime() > compiledAt.getTime() + 2_000;
+        return updatedAt.isAfter(compiledAt.plusSeconds(5));
     }
 
 
@@ -200,7 +201,7 @@ public class AutomationOrchestrator {
             }
         } else {
             long remoteVersion = stateStore.readPlanVersion(automationId);
-            long localVersion = plan.getCompiledAt() != null ? plan.getCompiledAt().getTime() : 0L;
+            long localVersion = plan.getCompiledAt() != null ? plan.getCompiledAt().getEpochSecond() : 0L;
             if (remoteVersion > 0 && remoteVersion != localVersion) {
                 log.info("♻️ [traceId={}] '{}' local plan stale — refreshing from Redis",
                         traceId, automationId);

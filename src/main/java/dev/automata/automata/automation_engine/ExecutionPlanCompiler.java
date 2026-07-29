@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -271,7 +272,7 @@ public class ExecutionPlanCompiler {
                 .homeId(automation.getHomeId())
                 .triggerDeviceId(automation.getTrigger().getDeviceId())
                 .schemaVersion(ExecutionPlan.CURRENT_SCHEMA_VERSION)
-                .compiledAt(new Date())
+                .compiledAt(Instant.now())
                 .conditionTree(new ArrayList<>(nodeMap.values()))
                 .rootConditionNodeIds(rootConditionNodeIds)
                 .statelessActions(stateless)

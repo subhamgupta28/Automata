@@ -2,9 +2,11 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Document(collection = "notifications")
@@ -23,5 +25,7 @@ public class Notification {
     private String header;     // new — maps to snackbar title
     @Indexed
     private Date timestamp;
-
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }

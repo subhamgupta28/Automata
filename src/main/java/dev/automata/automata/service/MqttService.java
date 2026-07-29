@@ -65,11 +65,11 @@ public class MqttService {
 
     @ServiceActivator(inputChannel = "action")
     public void action(Map<String, Object> payload) {
-        System.out.println("📡 Action: " + payload);
-        System.err.println("got action message: " + payload);
-        String deviceId = payload.get("device_id").toString();
-        if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("Device Id not found");
+        log.info("📡 Action: {}", payload);
+        log.info("got action message: {}", payload);
+        String deviceId = payload.getOrDefault("device_id", "").toString();
+        if (deviceId.equals("null") || deviceId.isBlank()) {
+            log.error("Device Id not found");
         }
         actionService.handleAction(deviceId, payload, "", "device", "SYSTEM");
     }

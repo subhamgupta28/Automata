@@ -2,6 +2,7 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -26,4 +27,7 @@ public class Invite {
 
     @Indexed(expireAfter = "7d")
     private Instant ttl;             // MongoDB TTL index auto-deletes after expiry
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }

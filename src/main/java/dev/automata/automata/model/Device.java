@@ -3,8 +3,11 @@ package dev.automata.automata.model;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -44,6 +47,10 @@ public class Device {
     private String mqttTopic;
     private String deviceSecretHash;
     private String originNode;
+
+    @Indexed
+    @LastModifiedDate
+    private Instant updateDate;
 }
 
 /*
