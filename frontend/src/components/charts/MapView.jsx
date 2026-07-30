@@ -1,8 +1,9 @@
 import {MapContainer, Marker, Polyline, Popup, TileLayer, useMap} from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import React, {useEffect, useMemo} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import './MapView.css'
+import {getRecentDeviceData} from "../../services/apis.jsx";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -155,10 +156,11 @@ const RecenterMap = ({position}) => {
     const map = useMap();
 
     useEffect(() => {
+        if (!position || (position[0] === 0 && position[1] === 0)) return;
         map.setView(position, map.getZoom(), {
             animate: true,
         });
-    }, [position, map]);
+    }, [position?.[0], position?.[1], map]);
 
     return null;
 };
@@ -210,8 +212,31 @@ const GradientRoute = ({route, routeSpeeds}) => {
  * Pass a subset (e.g. every Nth point) from the caller to avoid marker clutter —
  * MapView does not down-sample points itself.
  */
-export const MapView = React.memo(({lat, lng, h, w, route, points, routeSpeeds, centerMap = false}) => {
-    const position = [lat || 0, lng || 0];
+export const MapView = React.memo(({lat, lng, h, w, route, points, routeSpeeds, centerMap = true, deviceIds}) => {
+    // Fallback: if no valid lat/lng was passed in (e.g. before the first live
+    // update arrives), fetch the last known location for the given device(s)
+    // so the marker doesn't sit at 0,0.
+    const [fallbackPos, setFallbackPos] = useState(null);
+    const hasValidLatLng = lat != null && lng != null && !(lat === 0 && lng === 0);
+
+    useEffect(() => {
+        if (hasValidLatLng || !deviceIds || deviceIds.length === 0) return;
+        let cancelled = false;
+        getRecentDeviceData(deviceIds).then(res => {
+            if (cancelled) return;
+            const lastKnown = deviceIds
+                .map(id => res?.[id])
+                .find(d => d && d.LAT != null && d.LONG != null);
+            if (lastKnown) {
+                setFallbackPos([lastKnown.LAT, lastKnown.LONG]);
+            }
+        }).catch(err => console.warn("Failed to fetch last known device location:", err));
+        return () => {
+            cancelled = true;
+        };
+    }, [hasValidLatLng, deviceIds]);
+
+    const position = hasValidLatLng ? [lat, lng] : (fallbackPos || [0, 0]);
     const hasRoute = route && route.length > 1;
     const hasPoints = points && points.length > 0;
 
@@ -229,7 +254,7 @@ export const MapView = React.memo(({lat, lng, h, w, route, points, routeSpeeds, 
             }}
             className="nodrag"
         >
-            {centerMap && <RecenterMap position={position}/>}
+            {centerMap && !hasRoute && <RecenterMap position={position}/>}
 
             <TileLayer
                 url="https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"

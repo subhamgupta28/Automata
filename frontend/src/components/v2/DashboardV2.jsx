@@ -14,7 +14,6 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import {VirtualDevice} from "./VirtualDevice.jsx";
-import {EnergyNode} from "./EnergyNode.jsx";
 import NodeInspector from "../home/NodeInspector.jsx";
 import {Edit} from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
@@ -22,12 +21,15 @@ import {WeatherCardV2} from "./WeatherCardV2.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import {CustomModal} from "../home/CustomModal.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
+import {EnergyConsumptionCarouselNode} from "./EnergyConsumptionCarouselNode.jsx";
+import {EnergyBatteryChartNode} from "./EnergyBatteryChartNode.jsx";
 
 
 const nodeTypes = {
     virtualDeviceNode: VirtualDevice,
     weatherNode: WeatherCardV2,
-    energyNode: EnergyNode,
+    energyNodeCarousel: EnergyConsumptionCarouselNode,
+    energyNodeChart: EnergyBatteryChartNode,
     // energyChildNode: EnergyChildNode
 };
 
@@ -37,10 +39,24 @@ const createNodes = (virtualDevices) => {
     let nodes = [];
 
     virtualDevices.map(device => {
-        const tp = (device.tag === "Energy") ? "energyNode" : (device.tag === "Weather") ? "weatherNode" : "virtualDeviceNode";
+        let type = "";
+        switch (device.tag) {
+            case "EnergyCarousel":
+                type = "energyNodeCarousel";
+                break;
+            case "EnergyChart":
+                type = "energyNodeChart";
+                break;
+            case "Weather":
+                type = "weatherNode";
+                break;
+            default:
+                type = "virtualDeviceNode";
+                break;
+        }
         nodes.push({
             id: device.id,
-            type: tp,
+            type: type,
             position: {x: device.x, y: device.y},
             data: {value: {...device}},
         });

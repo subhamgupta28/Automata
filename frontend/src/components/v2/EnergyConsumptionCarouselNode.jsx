@@ -1,0 +1,231 @@
+import React, {useEffect, useRef, useState} from "react";
+import {Card} from "@mui/material";
+import Typography from "@mui/material/Typography";
+import {useCachedDevices} from "../../services/AppCacheContext.jsx";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import Stack from "@mui/material/Stack";
+import Box from "@mui/material/Box";
+import {useAnimatedNumber} from "../../utils/Helper.jsx";
+import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
+import {getEnergyStats} from "../../services/apis.jsx";
+import Carousel from "./Carousel.jsx";
+import IconButton from "@mui/material/IconButton";
+import SettingsIcon from "@mui/icons-material/Settings";
+import {CustomModal} from "../home/CustomModal.jsx";
+import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
+import '../../App.css'
+import {C} from "./WeatherCardV2.jsx";
+
+export const EnergyConsumptionCarouselNode = React.memo(({id, data, isConnectable, selected}) => {
+    const {devices} = useCachedDevices();
+    const {messages} = useDeviceLiveData();
+    const [deviceList, setDeviceList] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const cardRef = useRef(null);
+    useCardGlowEffect(cardRef, true);
+
+    const {
+        deviceIds,
+        height,
+        name,
+        width,
+    } = data.value;
+
+    useEffect(() => {
+        if (devices) {
+            const focusIds = new Set(deviceIds);
+            const focusDevices = devices?.filter(d => focusIds.has(d.id));
+            setDeviceList(focusDevices);
+        }
+    }, [devices]);
+
+    const slides = deviceIds.map(m => ({
+        component: ConsumptionCard,
+        props: {
+            deviceId: m,
+            messages,
+            vid: id,
+            name: devices?.filter(d => m === d.id)[0]?.name
+        }
+    }));
+
+    const handleOpenModal = () => setIsModalOpen(true);
+    const handleCloseModal = () => setIsModalOpen(false);
+
+    return (
+        <Card
+            ref={cardRef}
+            className="card-glow-container"
+            variant="elevated" style={{
+            background: 'transparent',
+            border: `1px solid ${C.border}`,
+            backgroundColor: 'rgb(0 0 0 / 0%)',
+            minHeight: height,
+            height: '100%',
+            minWidth: width,
+            padding: '10px',
+            borderRadius: '12px'
+        }}>
+            {/*<NodeResizer*/}
+            {/*    color="#ff0000"*/}
+            {/*    isVisible={selected}*/}
+            {/*    minWidth={width}*/}
+            {/*    minHeight={height}*/}
+            {/*/>*/}
+            <div className="card-glow"/>
+            <div style={{display: 'flex'}}>
+                <Typography
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginLeft: '12px',
+                        marginTop: '6px',
+                        width: '100%',
+                        fontWeight: 'bold',
+                        fontSize: '18px',
+                        marginRight: '10px'
+                    }}
+                >
+                    {name}
+                </Typography>
+                <IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}} size="small">
+                    <SettingsIcon style={{fontSize: '18px'}}/>
+                </IconButton>
+            </div>
+            {isModalOpen && (
+                <CustomModal
+                    map={null}
+                    isOpen={isModalOpen}
+                    messages={messages}
+                    onClose={handleCloseModal}
+                    devices={deviceList}
+                    version="v2"
+                />
+            )}
+            <Carousel
+                slides={slides}
+                autoPlay
+                width={760}
+                interval={8000}
+                height={140}
+            />
+        </Card>
+    );
+});
+
+const ConsumptionCard = ({deviceId, messages, vid, name}) => {
+    const [statsData, setStatsData] = useState(() => ({
+        totalWh: 0,
+        peakWh: 0,
+        lowestWh: 0,
+        chargeTotalWh: 0,
+        chargePeakWh: 0,
+        chargeLowestWh: 0,
+        percent: 0,
+        status: "",
+        totalWhTrend: 0,
+        peakWhTrend: 0,
+        lowestWhTrend: 0,
+        percentTrend: 0,
+    }));
+    const [live, setLive] = useState({});
+
+    useEffect(() => {
+        const get = async () => {
+            const res = await getEnergyStats(deviceId);
+            setStatsData(res);
+        }
+        get();
+    }, [])
+
+    useEffect(() => {
+        if (messages && messages.data) {
+            if (messages.deviceId === vid) {
+                const data = messages.data;
+                setStatsData(data.filter(d => d.deviceId === deviceId)[0]);
+            }
+            if (messages.deviceId === deviceId) {
+                setLive(messages.data);
+            }
+        }
+    }, [messages])
+
+    return (
+        <>
+            <div style={{
+                paddingTop: '6px',
+                width: '100%',
+                marginLeft: '12px'
+            }}>
+                <Typography variant="caption" color="primary">
+                    {name}
+                </Typography>
+                <Typography
+                    variant="caption"
+                    sx={{marginLeft: "20px", color: statsData.status === "CHARGING" ? "success.main" : "error.main"}}
+                >
+                    {"Status: "} {statsData.status.toLowerCase()}
+                    {", Realtime Power Utilization: "}{live["power"]}{" W"}
+                </Typography>
+            </div>
+            <Stack direction="row" spacing={4} style={{padding: '14px', width: '100%'}}>
+                {(statsData.status === "CHARGING") ? (
+                    <>
+                        <StatItem label="Total charged today" value={statsData.chargeTotalWh}
+                                  prevValue={statsData.totalWhTrend} unit="Wh"/>
+                        <StatItem label="Peak hour consumption" value={statsData.chargePeakWh}
+                                  prevValue={statsData.peakWhTrend} unit="Wh"/>
+                        <StatItem label="Lowest hourly usage" value={statsData.chargeLowestWh}
+                                  prevValue={statsData.lowestWhTrend} unit="Wh"/>
+                    </>
+                ) : (
+                    <>
+                        <StatItem label="Total usage today" value={statsData.totalWh} prevValue={statsData.totalWhTrend}
+                                  unit="Wh"/>
+                        <StatItem label="Peak hour consumption" value={statsData.peakWh}
+                                  prevValue={statsData.peakWhTrend} unit="Wh"/>
+                        <StatItem label="Lowest hourly usage" value={statsData.lowestWh}
+                                  prevValue={statsData.lowestWhTrend} unit="Wh"/>
+                    </>
+                )}
+                <StatItem label="Percent" value={statsData.percent} prevValue={statsData.percentTrend} unit="%"/>
+            </Stack>
+        </>
+    )
+}
+
+const StatItem = ({label, value = 0, prevValue = 0, unit}) => {
+    const animated = useAnimatedNumber(value);
+    const hasTrend = prevValue !== null && prevValue !== undefined && prevValue !== 0;
+    const positive = prevValue > 0;
+    const absDiff = Math.abs(prevValue);
+    const percentChange = value !== 0 ? (absDiff / Math.abs(value)) * 100 : 0;
+
+    return (
+        <Box>
+            <Typography variant="h4" fontWeight={600}>
+                {animated.toFixed(2)}{" "}
+                <Typography component="span" variant="body2" color="text.secondary">
+                    {unit}
+                </Typography>
+            </Typography>
+            {hasTrend && (
+                <Box display="flex" alignItems="center" gap={0.5}>
+                    {positive ? (
+                        <ArrowUpwardIcon sx={{fontSize: 16, color: "success.main"}}/>
+                    ) : (
+                        <ArrowDownwardIcon sx={{fontSize: 16, color: "error.main"}}/>
+                    )}
+                    <Typography variant="caption" sx={{fontSize: 14, color: positive ? "success.main" : "error.main"}}>
+                        {absDiff.toFixed(2)} {unit} ({percentChange.toFixed(1)}%)
+                    </Typography>
+                </Box>
+            )}
+            <Typography variant="body2" color="text.secondary">
+                {label}
+            </Typography>
+        </Box>
+    );
+};

@@ -4,6 +4,8 @@ import React from 'react';
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
 import BatteryWidget from "../device_types/BatteryWidget.jsx";
+import {ChartsContainer} from '@mui/x-charts/ChartsContainer';
+import {BarPlot} from '@mui/x-charts/BarChart';
 
 
 const BatteryBar = styled(LinearProgress)(({theme, value}) => {
@@ -75,6 +77,7 @@ const Exp = () => {
             {/*<AutomationAnalyticsList/>*/}
             {/*<AutomationFlowInspector/>*/}
             {/*// Single pin (existing behavior)*/}
+            <TinyBarChart/>
 
             <BatteryWidget
                 batteryPercent={51}
@@ -103,3 +106,27 @@ const Exp = () => {
 };
 
 export default Exp;
+
+const uData = [4000, 3000, 2000, 2780, 1890, 2390, 3490];
+const xLabels = [
+    'Page A',
+    'Page B',
+    'Page C',
+    'Page D',
+    'Page E',
+    'Page F',
+    'Page G',
+];
+
+function TinyBarChart() {
+    return (
+        <ChartsContainer
+            width={500}
+            height={300}
+            series={[{data: uData, label: 'uv', type: 'bar'}]}
+            xAxis={[{scaleType: 'band', data: xLabels}]}
+        >
+            <BarPlot/>
+        </ChartsContainer>
+    );
+}
