@@ -38,7 +38,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import isEmpty from "../../utils/Helper.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
 import {Dashboard, GridView, TrendingUp} from "@mui/icons-material";
-import AppIcon from "../../../public/icon-color.png"
+import AppIcon from "../../../public/icons/animated.svg"
 import AutomationLiveInspector from "../automation/AutomationInspector.jsx";
 import {ConfigurationView} from "../dashboard/ConfigurationView.jsx";
 import Recordings from "../integrations/AutomataRecordings.jsx";
@@ -395,7 +395,7 @@ export default function SideDrawer() {
                             <IconButton onClick={handleDrawerClose}>
                                 {open
                                     ? <ChevronLeftIcon/>
-                                    : <img src={AppIcon} alt="home" style={{height: '28px'}}/>
+                                    : <img src={AppIcon} alt="home" style={{height: '36px'}}/>
                                 }
                             </IconButton>
                         </DrawerHeader>

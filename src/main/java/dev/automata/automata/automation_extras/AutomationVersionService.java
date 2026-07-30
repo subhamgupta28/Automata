@@ -22,7 +22,7 @@ public class AutomationVersionService {
     /**
      * Maximum number of versions retained per automation.
      */
-    private static final int MAX_VERSIONS = 20;
+    private static final int MAX_VERSIONS = 10;
 
     // ─────────────────────────────────────────────────────────────────────────
     // SNAPSHOT ON SAVE

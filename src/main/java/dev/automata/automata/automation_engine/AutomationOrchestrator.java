@@ -893,6 +893,7 @@ public class AutomationOrchestrator {
     public void updatePlan(String automationId, ExecutionPlan plan) {
         planCache.put(automationId, plan);
         nameCache.put(automationId, plan.getAutomationName());
+        stateStore.writePlan(automationId, plan);
         redisTemplate.convertAndSend(PLAN_INVALIDATE_CHANNEL, automationId);
         log.info("📡 Plan updated and invalidation published for '{}'", automationId);
     }
