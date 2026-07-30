@@ -11,7 +11,6 @@ import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.AutomationDetailRepository;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.DeviceRepository;
-import dev.automata.automata.repository.ExecutionPlanRepository;
 import dev.automata.automata.service.FeatureService;
 import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.NotificationService;
@@ -60,7 +59,6 @@ public class AutomationService {
     private final AutomationDetailRepository automationDetailRepository;
     private final AutomationVersionService automationVersionService;
     private final ExecutionPlanCompiler planCompiler;
-    private final ExecutionPlanRepository planRepository;
     private final AutomationOrchestrator orchestrator;
     private final AutomationStateStore stateStore;
     private final AutomationLogStream logStream;
@@ -436,7 +434,6 @@ public class AutomationService {
         try {
             plan = planCompiler.compile(saved);
             orchestrator.updatePlan(saved.getId(), plan);
-            planRepository.save(plan);
             log.info("✅ ExecutionPlan compiled for '{}'", saved.getName());
         } catch (Exception e) {
             log.error("❌ Plan compilation failed for '{}': {}", saved.getName(), e.getMessage(), e);
