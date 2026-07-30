@@ -1,6 +1,7 @@
 package dev.automata.automata.modules;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +14,9 @@ import java.util.UUID;
 public class SpotifyController {
 
     private final SpotifyService spotifyService;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     public SpotifyController(SpotifyService spotifyService) {
         this.spotifyService = spotifyService;
@@ -47,13 +51,13 @@ public class SpotifyController {
         if (error != null) {
             // Redirect back to frontend with error flag
             return ResponseEntity.status(302)
-                    .location(URI.create("http://localhost:5173?spotify_error=" + error))
+                    .location(URI.create(frontendUrl + "?spotify_error=" + error))
                     .build();
         }
         spotifyService.exchangeCode(code);
         // Redirect back to the frontend page that opened the login
         return ResponseEntity.status(302)
-                .location(URI.create("http://localhost:5173?spotify_connected=true"))
+                .location(URI.create(frontendUrl + "?spotify_connected=true"))
                 .build();
     }
 

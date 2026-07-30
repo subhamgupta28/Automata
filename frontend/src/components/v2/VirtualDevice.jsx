@@ -110,6 +110,8 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
         return grouped;
     }, [deviceList]);
 
+    const mapDeviceIds = useMemo(() => mapDevices.map(d => d.id), [mapDevices]);
+
     useEffect(() => {
         if (deviceIds.length > 1)
             return;
@@ -117,6 +119,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
             if (messages.data) setLiveData(messages.data);
         }
     }, [messages, deviceIds]);
+
 
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
@@ -179,7 +182,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                         width: '100%',
                         // display:'flex',
                         alignItems: 'center',
-                        padding: '2px',
+                        padding: '0px',
                         // paddingBottom: '6px',
                         justifyContent: 'center'
                     }}>
@@ -207,7 +210,8 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                         )}
                     </div>
                     {mapDevices.length > 0 && (
-                        <MapView lat={liveData.LAT} lng={liveData.LONG} h={height} w={width}/>
+                        <MapView lat={liveData.LAT} lng={liveData.LONG} h={height} w={width}
+                                 deviceIds={mapDeviceIds}/>
                     )}
                     {chartDevices.map(device => (
                         <div key={device.id}>
@@ -238,6 +242,3 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
         </>
     )
 });
-
-
-

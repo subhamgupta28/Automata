@@ -39,6 +39,8 @@ export function useSpotify() {
     }, []);
 
     // ── Poll player state ──────────────────────────────────────────────────────
+    const consecutiveErrorsRef = useRef(0);
+
     const fetchPlayer = useCallback(async () => {
         try {
             const [playerData, devicesData] = await Promise.all([
@@ -48,8 +50,27 @@ export function useSpotify() {
             setPlayer(playerData);
             setDevices(devicesData?.devices ?? []);
             setError(null);
+            consecutiveErrorsRef.current = 0;
         } catch (e) {
             setError(e.message);
+            consecutiveErrorsRef.current += 1;
+
+            // A few polls failing in a row usually means the backend's token is
+            // dead (e.g. refresh token was invalidated/reset). Re-check auth
+            // status rather than silently continuing to show stale track data.
+            if (consecutiveErrorsRef.current >= 3) {
+                consecutiveErrorsRef.current = 0;
+                try {
+                    const {authenticated: stillAuthed} = await getSpotifyStatus();
+                    if (!stillAuthed) {
+                        setAuthenticated(false);
+                        setPlayer(null);
+                        setDevices([]);
+                    }
+                } catch {
+                    // status check itself failed; leave state as-is, will retry next cycle
+                }
+            }
         }
     }, []);
 

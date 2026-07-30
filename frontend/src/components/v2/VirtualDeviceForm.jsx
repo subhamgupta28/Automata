@@ -200,7 +200,8 @@ const DashboardEditor = ({change, existingDevice}) => {
                     onChange={(e) => handleChange("tag", e.target.value)}
                     variant='outlined'>
                     <MenuItem key={'Weather'} value={'Weather'}>Weather</MenuItem>
-                    <MenuItem key={'Energy'} value={'Energy'}> Energy </MenuItem>
+                    <MenuItem key={'EnergyCarousel'} value={'EnergyCarousel'}> Energy Carousel</MenuItem>
+                    <MenuItem key={'EnergyChart'} value={'EnergyChart'}> Energy Chart</MenuItem>
                     <MenuItem key={'Sensors'} value={'Sensors'}> Sensors </MenuItem>
                     <MenuItem key={'Lights'} value={'Lights'}> Lights </MenuItem>
                     <MenuItem key={'Actions'} value={'Actions'}> Actions </MenuItem>

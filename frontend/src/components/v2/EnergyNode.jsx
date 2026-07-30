@@ -10,7 +10,6 @@ import {useAnimatedNumber} from "../../utils/Helper.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {getEnergyStats} from "../../services/apis.jsx";
 import Carousel from "./Carousel.jsx";
-import {CompactWeeklyEnergyRadarWidget} from "../charts/CompactWeeklyEnergyRadarWidget.jsx";
 import IconButton from "@mui/material/IconButton";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {CustomModal} from "../home/CustomModal.jsx";
@@ -219,7 +218,7 @@ export const EnergyNode = React.memo(({id, data, isConnectable, selected}) => {
 
                     </Stack>
                     {/*<CustomLineChart vid={id}/>*/}
-                    <CompactWeeklyEnergyRadarWidget vid={id} status="CHARGING"/>
+                    {/*<CompactWeeklyEnergyRadarWidget vid={id} status="CHARGING"/>*/}
                 </Stack>
             </Card>
         </>

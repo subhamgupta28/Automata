@@ -441,10 +441,10 @@ function ForecastStrip({days = []}) {
 // ─── TopBar — UI unchanged ────────────────────────────────────────────────────
 export function TopBar({
                            alertMessage,
-                           userName = "Subham",
+                           userName = "",
                            avatarLetter,
                            avatarColor = C.yellow,
-                           userRoom = "Living room",
+                           userRoom = "",
                            time,
                            weather,
                            homeStats,
@@ -527,7 +527,7 @@ export function TopBar({
 
                     <Typography
                         variant="title"
-                        sx={{color: C.muted, fontSize: 12, lineHeight: 1.4, maxWidth: 420}}
+                        sx={{color: C.muted, fontSize: 12, lineHeight: 1.4, maxWidth: 400}}
                     >
                         {message}
                     </Typography>
@@ -542,7 +542,7 @@ export function TopBar({
             </Box>
 
             {/* ── Right column (avatar + automation pills — unchanged) ── */}
-            <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, width: "30%"}}>
+            <Box sx={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1, width: "25%"}}>
                 {(chips.length > 0 || automationSummary) && (
                     <Box sx={{display: "flex", gap: 0.8, flexWrap: "wrap", justifyContent: "flex-end"}}>
                         <AutomationSummaryChips summary={automationSummary}/>
