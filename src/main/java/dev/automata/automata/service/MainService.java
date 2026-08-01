@@ -169,7 +169,14 @@ public class MainService {
         Map<String, Attribute> existing = attributeRepository
                 .findByDeviceId(deviceId)
                 .stream()
-                .collect(Collectors.toMap(Attribute::getKey, a -> a));
+                .collect(Collectors.toMap(
+                        Attribute::getKey,
+                        Function.identity(),
+                        (a, b) -> {
+                            log.warn("Duplicate attribute '{}' found for device {}. Keeping {} and discarding {}",
+                                    a.getKey(), deviceId, a.getId(), b.getId());
+                            return a;   // or choose the newer one
+                        }));
 
         Map<String, Attribute> incomingMap = incoming.stream()
                 .collect(Collectors.toMap(Attribute::getKey, a -> a));

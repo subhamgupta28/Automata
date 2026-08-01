@@ -3,7 +3,7 @@ package dev.automata.automata.configs;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+//import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import dev.automata.automata.firmware_builder.FirmwareService;
 import dev.automata.automata.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
@@ -103,7 +103,7 @@ public class ApplicationConfiguration {
     public ObjectMapper objectMapper() {
         return JsonMapper.builder()
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .build().registerModule(new ParameterNamesModule()).findAndRegisterModules();
+                .build().findAndRegisterModules();
     }
 //    @Bean
 //    @Primary

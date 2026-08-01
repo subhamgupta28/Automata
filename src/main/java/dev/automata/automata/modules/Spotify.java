@@ -1,10 +1,10 @@
 package dev.automata.automata.modules;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Status;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.JsonNode;
 
 import java.util.HashMap;
 import java.util.List;
