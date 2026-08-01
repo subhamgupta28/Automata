@@ -149,6 +149,9 @@ public class AutomationDetail {
                 String coalitionMode;      // "ANY" | "ALL" | "SEQUENCE" — defaults to "ANY" if null
                 int coalitionWindowSeconds; // defaults to 60 if 0
 
+                @JsonProperty("firingMode")
+                FiringMode firingMode = FiringMode.ON_STATE_CHANGE;   // EVERY_TICK | ON_STATE_CHANGE
+                int minResendIntervalSeconds;   // only used when firingMode == EVERY_TICK default e.g. 300 (5 min) if unset/0
 
                 @Getter
                 @Setter

@@ -509,4 +509,19 @@ public class AutomationStateStore {
         redisTemplate.delete("TIMED_DISABLE:" + automationId);
         log.info("✅ Timed-disable cleared for '{}'", automationId);
     }
+
+    private String throttleKey(String automationId, String nodeId) {
+        return "THROTTLE:" + automationId + ":" + nodeId;
+    }
+
+    public boolean throttleKeyExists(String automationId, String nodeId) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(throttleKey(automationId, nodeId)));
+    }
+
+    public void setThrottleKey(String automationId, String nodeId, long ttlSeconds) {
+        String key = throttleKey(automationId, nodeId);
+        redisService.setWithExpiry(key, "sent", ttlSeconds);
+        registerKey(automationId, key);
+        log.debug("🔑 SET throttleKey '{}' TTL={}s", key, ttlSeconds);
+    }
 }

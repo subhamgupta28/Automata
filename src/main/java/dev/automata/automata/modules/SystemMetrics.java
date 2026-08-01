@@ -19,7 +19,9 @@ import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
 
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.*;
 
 @Service
@@ -34,13 +36,26 @@ public class SystemMetrics {
     private String env;
 
     private void registerSystemMetrics() {
+        InetAddress localhost = null;
+        try {
+            localhost = InetAddress.getLocalHost();
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+        String hostName = "";
+        String hostAddr = "";
+        if (localhost != null) {
+            hostName = localhost.getHostName();
+            hostAddr = localhost.getHostAddress();
+        }
+        log.info("HostName: {}, HostAddr: {}", hostName, hostAddr);
         var device = RegisterDevice.builder()
-                .name("System")
+                .name(hostName)
                 .sleep(false)
                 .reboot(false)
-                .host("raspberry.local")
-                .macAddr("")
-                .accessUrl("http://raspberry.local:8010")
+                .host(hostName)
+                .macAddr(env)
+                .accessUrl("http://" + hostAddr + ":8010")
                 .type("System")
                 .status(Status.ONLINE)
                 .updateInterval(190000L)
@@ -339,7 +354,7 @@ public class SystemMetrics {
     public void handleApplicationReadyEvent(ApplicationReadyEvent event) {
         log.info("ready...");
         registerSystemMetrics();
-        var device = mainService.getDeviceByName("System");
+        var device = mainService.getDeviceByEnv(env);
         if (device == null) {
             registerSystemMetrics();
         } else {

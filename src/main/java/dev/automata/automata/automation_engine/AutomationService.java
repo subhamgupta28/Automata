@@ -255,6 +255,41 @@ public class AutomationService {
     // ═════════════════════════════════════════════════════════════════════
     // SCHEDULED JOBS
     // ═════════════════════════════════════════════════════════════════════
+    @Scheduled(fixedRate = 5_000)
+    @FeatureEnabled(value = Feature.PERIODIC_AUTOMATION_SERVICE)
+    public void triggerPeriodicDataDrivenAutomations() {
+        automationRepository.findEnabledForExecution().stream()
+                .filter(scheduledAutomationManager::isPurelyDataDriven)
+                .forEach(a -> {
+                    String deviceId = a.getTrigger().getDeviceId();
+                    Map<String, Object> recentData = redisService.getRecentDeviceData(deviceId);
+                    boolean hasRedisData = recentData != null && !recentData.isEmpty();
+
+                    if (!hasRedisData) {
+                        checkRedisDeviceData(a, deviceId);
+                        return;
+                    }
+
+                    prewarmSecondaryDevices(a);
+                    orchestrator.execute(a.getId(), recentData, "scheduler");
+                });
+    }
+
+    private void checkRedisDeviceData(Automation a, String deviceId) {
+        if (planHasStaleCondition(a.getId())) {
+            Map<String, Object> dbPayload = buildDbFallbackPayload(
+                    deviceId, a.getName());
+            log.info("🐕 [{}] Redis empty — running stale check with DB payload",
+                    a.getName());
+            prewarmSecondaryDevices(a);
+            orchestrator.execute(a.getId(), dbPayload, "scheduler");
+            return;
+        }
+
+        log.warn("⚠️ [{}] Skipping — no cached data for device '{}'",
+                a.getName(), deviceId);
+        return;
+    }
 
     @Scheduled(fixedRate = 5_000)
     @FeatureEnabled(value = Feature.PERIODIC_AUTOMATION_SERVICE)
@@ -268,19 +303,7 @@ public class AutomationService {
 
                     if (!hasRedisData && planHasDataDrivenTrigger(a.getId())) {
 
-                        if (planHasStaleCondition(a.getId())) {
-                            Map<String, Object> dbPayload = buildDbFallbackPayload(
-                                    deviceId, a.getName());
-                            log.info("🐕 [{}] Redis empty — running stale check with DB payload",
-                                    a.getName());
-                            prewarmSecondaryDevices(a);
-                            orchestrator.execute(a.getId(), dbPayload, "scheduler");
-                            return;
-                        }
-
-                        log.warn("⚠️ [{}] Skipping — no cached data for device '{}'",
-                                a.getName(), deviceId);
-                        return;
+                        checkRedisDeviceData(a, deviceId);
                     }
 
                     prewarmSecondaryDevices(a);
@@ -356,6 +379,10 @@ public class AutomationService {
                             t.getName(), t.getPriority(), t.getNodeId(), t.getSources(),
                             t.getCoalitionMode(), t.getCoalitionWindowSeconds()
                     ));
+                    int throttle = t.getMinResendIntervalSeconds() > 0
+                            ? t.getMinResendIntervalSeconds() : 300; // 5 min default
+                    automationBuilder.minResendIntervalSeconds(throttle);
+                    automationBuilder.firingMode(t.getFiringMode());
                     automationBuilder.name(t.getName());
                 });
 

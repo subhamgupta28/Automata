@@ -9,6 +9,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Component;
 
@@ -32,10 +33,14 @@ public class ScheduledAutomationManager {
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
-    // automationId → list of running futures (one automation can have multiple jobs)
-//    private final Map<String, List<ScheduledFuture<?>>> scheduledJobs = new ConcurrentHashMap<>();
+    // FIX 1: automationId → ALL futures owned by that automation (was a single
+    // ScheduledFuture, but range/solar registration can produce 2+ jobs per
+    // automation — the old single-value map silently dropped all but one).
+    private final Map<String, List<ScheduledFuture<?>>> scheduledJobs = new ConcurrentHashMap<>();
 
-    private final Map<String, ScheduledFuture<?>> scheduledJobs = new ConcurrentHashMap<>();
+    // FIX 3: interval (seconds) for the mixed data+schedule periodic re-check tick.
+    private static final long MIXED_AUTOMATION_TICK_MS = 15_000L;
+
     // ── Startup: register all schedule-only automations ──────────────────
 
     @EventListener(ApplicationReadyEvent.class)
@@ -45,8 +50,9 @@ public class ScheduledAutomationManager {
                 .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
                 .filter(this::hasOnlyScheduledConditions)
                 .forEach(this::register);
-        log.info("ScheduledAutomationManager: {} automations registered",
-                scheduledJobs.size());
+        log.info("ScheduledAutomationManager: {} automation(s) registered with {} total job(s)",
+                scheduledJobs.size(),
+                scheduledJobs.values().stream().mapToInt(List::size).sum());
     }
 
 
@@ -64,12 +70,24 @@ public class ScheduledAutomationManager {
         }
     }
 
+    /**
+     * FIX 1: cancels EVERY job owned by this automation, not just one.
+     * Previously scheduledJobs was never populated by register(), so this
+     * was always a no-op for cron/interval/solar jobs created there — every
+     * refresh() silently piled up new duplicate jobs on top of old ones.
+     */
     public void cancel(String automationId) {
-        ScheduledFuture<?> job = scheduledJobs.remove(automationId);
-        if (job != null && !job.isDone()) {
-            job.cancel(false);
-            log.info("🛑 Cancelled scheduled job for automation '{}'", automationId);
+        List<ScheduledFuture<?>> jobs = scheduledJobs.remove(automationId);
+        if (jobs == null || jobs.isEmpty()) return;
+
+        int cancelled = 0;
+        for (ScheduledFuture<?> job : jobs) {
+            if (job != null && !job.isDone()) {
+                job.cancel(false);
+                cancelled++;
+            }
         }
+        log.info("🛑 Cancelled {} scheduled job(s) for automation '{}'", cancelled, automationId);
     }
 
 
@@ -94,15 +112,15 @@ public class ScheduledAutomationManager {
         }
 
         if (!futures.isEmpty()) {
-//            scheduledJobs.put(automation.getId(), futures);
+            // FIX 1: actually store the futures — this line was commented out
+            // before, so cancel()/refresh() could never stop these jobs.
+            scheduledJobs.put(automation.getId(), futures);
             log.info("Registered {} job(s) for '{}'", futures.size(), automation.getName());
         }
     }
 
 
     // ── Exact time ("at") ─────────────────────────────────────────────────
-    // Uses a daily cron expression.  Spring's CronTrigger handles day-of-week
-    // via the days list so we don't need to compute that ourselves.
 
     private void registerExact(Automation automation, Automation.Condition c,
                                List<ScheduledFuture<?>> futures) {
@@ -112,7 +130,6 @@ public class ScheduledAutomationManager {
             return;
         }
 
-        // cron: second minute hour * * DAY_OF_WEEK
         String cron = String.format("%d %d %d * * %s",
                 t.getSecond(), t.getMinute(), t.getHour(),
                 toCronDays(c.getDays()));
@@ -127,8 +144,6 @@ public class ScheduledAutomationManager {
 
 
     // ── Time range ("range") ──────────────────────────────────────────────
-    // Two cron jobs: one fires at fromTime (enter), one at toTime (exit).
-    // AutomationService handles state via ACTIVE/IDLE — we just fire at both edges.
 
     private void registerRange(Automation automation, Automation.Condition c,
                                List<ScheduledFuture<?>> futures) {
@@ -141,14 +156,12 @@ public class ScheduledAutomationManager {
 
         String cronDays = toCronDays(c.getDays());
 
-        // Enter edge — fire checkAndExecute; condition will be TRUE, state → ACTIVE
         String cronEnter = String.format("%d %d %d * * %s",
                 from.getSecond(), from.getMinute(), from.getHour(), cronDays);
         futures.add(taskScheduler.schedule(
                 () -> fireAutomation(automation, "range enter " + c.getFromTime()),
                 new CronTrigger(cronEnter, IST)));
 
-        // Exit edge — fire checkAndExecute; condition will be FALSE, state → IDLE
         String cronExit = String.format("%d %d %d * * %s",
                 to.getSecond(), to.getMinute(), to.getHour(), cronDays);
         futures.add(taskScheduler.schedule(
@@ -160,8 +173,6 @@ public class ScheduledAutomationManager {
 
 
     // ── Interval ──────────────────────────────────────────────────────────
-    // Schedules at fixed rate. Duration (if any) is handled by AutomationService
-    // via the RUNNING Redis key — no change needed there.
 
     private void registerInterval(Automation automation, Automation.Condition c,
                                   List<ScheduledFuture<?>> futures) {
@@ -170,12 +181,9 @@ public class ScheduledAutomationManager {
             return;
         }
 
-        long rateMs = c.getIntervalMinutes() * 60_000L;
-
-        // Start immediately, repeat every intervalMinutes
         ScheduledFuture<?> future = taskScheduler.scheduleAtFixedRate(
                 () -> fireAutomation(automation, "interval/" + c.getIntervalMinutes() + "min"),
-                Instant.now().plusSeconds(5),   // small initial delay to let app fully start
+                Instant.now().plusSeconds(5),
                 Duration.ofMinutes(c.getIntervalMinutes()));
 
         futures.add(future);
@@ -184,20 +192,14 @@ public class ScheduledAutomationManager {
 
 
     // ── Solar ─────────────────────────────────────────────────────────────
-    // Solar times change daily. We schedule a daily job at midnight that
-    // fetches sunrise/sunset, computes the adjusted time, then schedules
-    // a one-shot job for that day.
 
     private void registerSolar(Automation automation, Automation.Condition c,
                                List<ScheduledFuture<?>> futures) {
-        // Daily midnight job to re-schedule for today's solar time
-        // cron: 0 0 0 * * * (every day at midnight)
         ScheduledFuture<?> midnightJob = taskScheduler.schedule(
                 () -> scheduleSolarFireForToday(automation, c),
                 new CronTrigger("0 0 0 * * *", IST));
         futures.add(midnightJob);
 
-        // Also schedule for today immediately on startup (don't wait until midnight)
         scheduleSolarFireForToday(automation, c);
 
         log.debug("'{}' — solar {} +{}min registered", automation.getName(),
@@ -222,11 +224,16 @@ public class ScheduledAutomationManager {
                 return;
             }
 
-            // One-shot job for today
-            taskScheduler.schedule(
+            ScheduledFuture<?> oneShot = taskScheduler.schedule(
                     () -> fireAutomation(automation, "solar/" + c.getSolarType()
                             + " +" + c.getOffsetMinutes() + "min"),
                     fireAt.toInstant());
+
+            // FIX 1 (secondary): today's one-shot solar job is now also tracked,
+            // appended to the existing list rather than lost. Without this, a
+            // cancel() right before the solar fire time would leave today's
+            // one-shot still armed.
+            scheduledJobs.computeIfAbsent(automation.getId(), k -> new ArrayList<>()).add(oneShot);
 
             log.info("'{}' — solar fire scheduled for {}", automation.getName(), fireAt);
         } catch (Exception e) {
@@ -235,9 +242,6 @@ public class ScheduledAutomationManager {
         }
     }
 
-    /**
-     * Reads sunrise/sunset from the Redis cache populated by AutomationService.
-     */
     private LocalTime getSunTimeFromRedis(String solarType) {
         String key = "SUN_TIME:" + solarType + "-" + LocalDate.now(IST);
         Object val = redisService.get(key);
@@ -248,6 +252,55 @@ public class ScheduledAutomationManager {
             }
         }
         return null;
+    }
+
+
+    // ── FIX 3: periodic re-check for MIXED data+schedule automations ──────
+    //
+    // hasOnlyScheduledConditions() only registers pure-schedule automations
+    // above (init()/register()). An automation like "Light On" — a DURATION
+    // distance gate feeding three scheduled leaf branches — is neither pure
+    // schedule (fails hasOnlyScheduledConditions, the gate is data-driven)
+    // nor purely data-driven (hasAnyScheduledConditions is true). Without a
+    // periodic tick, its internal schedule windows (e.g. node_condition_16
+    // closing at 01:40 AM) only get re-evaluated whenever the distance sensor
+    // happens to publish a new reading — which could be minutes or hours
+    // late relative to the actual window boundary.
+    //
+    // This tick finds exactly that middle category and re-fires them on a
+    // short fixed interval using the existing PeriodicCheckEvent path, with
+    // the automation's last known trigger-device payload (so DURATION/edge
+    // memory isn't disturbed by a synthetic empty payload).
+
+    @Scheduled(fixedRate = MIXED_AUTOMATION_TICK_MS)
+    public void tickMixedAutomations() {
+        List<Automation> mixed = automationRepository.findAll().stream()
+                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
+                .filter(this::isMixedDataAndSchedule)
+                .toList();
+
+        if (mixed.isEmpty()) return;
+
+        for (Automation automation : mixed) {
+            try {
+                fireAutomation(automation, "periodic-mixed-tick");
+            } catch (Exception e) {
+                log.error("❌ [mixed-tick] Failed for '{}': {}",
+                        automation.getName(), e.getMessage(), e);
+            }
+        }
+        log.debug("⏱️ [mixed-tick] Re-checked {} mixed data+schedule automation(s)", mixed.size());
+    }
+
+    /**
+     * True if the automation has at least one scheduled condition AND at
+     * least one non-scheduled (data-driven) condition somewhere in its tree —
+     * i.e. it falls in the gap between hasOnlyScheduledConditions() (pure
+     * schedule, handled by cron jobs above) and isPurelyDataDriven() (handled
+     * by live device events only).
+     */
+    private boolean isMixedDataAndSchedule(Automation a) {
+        return hasAnyScheduledConditions(a) && !hasOnlyScheduledConditions(a);
     }
 
 
@@ -269,32 +322,48 @@ public class ScheduledAutomationManager {
     // ── Helpers ───────────────────────────────────────────────────────────
 
     /**
-     * Returns true if ALL enabled trigger conditions (non-gate) are "scheduled".
+     * Returns true if ALL enabled trigger conditions (non-gate/root) are "scheduled".
      * These automations don't need sensor data — they run purely on time.
      */
     public boolean hasOnlyScheduledConditions(Automation automation) {
         if (automation.getConditions() == null || automation.getConditions().isEmpty())
             return false;
 
-        Set<String> operatorIds = automation.getOperators() == null ? Set.of() :
-                automation.getOperators().stream()
-                .map(Automation.Operator::getNodeId)
-                .collect(Collectors.toSet());
-
-        List<Automation.Condition> triggerConditions = automation.getConditions().stream()
-                .filter(Automation.Condition::isEnabled)
-                .filter(c -> !isGateCondition(c, operatorIds))
-                .toList();
+        List<Automation.Condition> triggerConditions = getRootConditions(automation);
 
         return !triggerConditions.isEmpty()
                 && triggerConditions.stream()
                 .allMatch(c -> "scheduled".equals(c.getCondition()));
     }
 
-    private boolean isGateCondition(Automation.Condition c, Set<String> operatorIds) {
-        return c.getPreviousNodeRef() != null &&
-                c.getPreviousNodeRef().stream()
-                        .anyMatch(ref -> operatorIds.contains(ref.getNodeId()));
+    /**
+     * FIX 2: root/trigger conditions are now those whose previousNodeRef does
+     * NOT point at another enabled condition — matching ExecutionPlanCompiler's
+     * actual root-detection logic (see ExecutionPlanCompiler Step 3b), not the
+     * old operator-node model. The old isGateCondition() only recognized a
+     * condition as "gated" if its parent was an operator node; automations
+     * saved under the current condition→condition chaining model (e.g. "Light
+     * On": node_condition_16/21/33 → previousNodeRef points at node_condition_1,
+     * a condition, not an operator) were misclassified as independent root
+     * triggers instead of children of the distance gate.
+     */
+    private List<Automation.Condition> getRootConditions(Automation automation) {
+        Set<String> enabledConditionIds = automation.getConditions().stream()
+                .filter(Automation.Condition::isEnabled)
+                .map(Automation.Condition::getNodeId)
+                .collect(Collectors.toSet());
+
+        return automation.getConditions().stream()
+                .filter(Automation.Condition::isEnabled)
+                .filter(c -> !isChildOfAnotherCondition(c, enabledConditionIds))
+                .toList();
+    }
+
+    private boolean isChildOfAnotherCondition(Automation.Condition c, Set<String> enabledConditionIds) {
+        if (c.getPreviousNodeRef() == null) return false;
+        return c.getPreviousNodeRef().stream()
+                .anyMatch(ref -> ref.getNodeId() != null
+                        && enabledConditionIds.contains(ref.getNodeId()));
     }
 
     /**
@@ -324,52 +393,29 @@ public class ScheduledAutomationManager {
         }
     }
 
-    public void register(String automationId, ScheduledFuture<?> future) {
-        ScheduledFuture<?> existing = scheduledJobs.put(automationId, future);
-        if (existing != null && !existing.isDone()) {
-            existing.cancel(false);
-        }
-    }
-
-
     public boolean isScheduled(String automationId) {
-        ScheduledFuture<?> job = scheduledJobs.get(automationId);
-        return job != null && !job.isDone();
+        List<ScheduledFuture<?>> jobs = scheduledJobs.get(automationId);
+        return jobs != null && jobs.stream().anyMatch(j -> !j.isDone());
     }
 
 
     // ── Condition type helpers ────────────────────────────────────────────
 
     /**
-     * Returns true if the automation has AT LEAST ONE scheduled condition.
-     * <p>
-     * Use this to include an automation in the periodic evaluation tick —
-     * automations with scheduled gates need to be polled continuously so
-     * that time-based conditions (interval, range, solar) are evaluated
-     * even when no device event has arrived.
-     * <p>
-     * Example automations that return true:
-     * "Periodic Bat 500 charging" — node_condition_1 is scheduled/interval
-     * "TESTING" — node_condition_8 (interval) and node_condition_10 (range)
-     * "Light On" — node_condition_16 (range) and node_condition_21 (range)
-     * <p>
-     * Example automations that return false:
-     * "Emergency Bat 500 Charging" — only data-driven condition (below 30)
-     * "Charging stop at 100" — only data-driven condition (equal 100)
+     * Returns true if the automation has AT LEAST ONE scheduled condition
+     * anywhere in its tree (root or child).
      */
     public boolean hasAnyScheduledConditions(Automation a) {
         if (a.getConditions() == null || a.getConditions().isEmpty()) return false;
         return a.getConditions().stream()
+                .filter(Automation.Condition::isEnabled)
                 .anyMatch(c -> "scheduled".equals(c.getCondition()));
     }
 
-
     /**
-     * Returns true if the automation is purely data-driven — no scheduled conditions.
-     * Such automations should ONLY be evaluated on live device events, never polled.
-     * <p>
-     * This is the logical complement of hasAnyScheduledConditions().
-     * Provided for clarity at call sites that want the "exclude from periodic" check.
+     * Returns true if the automation is purely data-driven — no scheduled
+     * conditions anywhere. Such automations should ONLY be evaluated on live
+     * device events, never polled.
      */
     public boolean isPurelyDataDriven(Automation a) {
         return !hasAnyScheduledConditions(a);

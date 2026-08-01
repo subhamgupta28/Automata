@@ -92,7 +92,7 @@ const Wled = ({device, messages, lastData}) => {
                     <LightBulbCard onClick={handleClick} key={s.key} data={s} lastOnline={device.lastOnline}
                                    value={liveData?.[s.key]} percent={liveData?.bright}
                                    name={device.name} deviceId={device.id} type={device.type}/>
-                    <div style={{marginLeft: '32px', marginRight: '32px'}}>
+                    <div style={{marginLeft: '32px', marginRight: '22px'}}>
                         {sliderData.map((s) => (
                             <CustomSlider
                                 key={s.key}

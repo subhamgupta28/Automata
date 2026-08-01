@@ -1,7 +1,6 @@
 package dev.automata.automata.service;
 
 
-import dev.automata.automata.model.Data;
 import dev.automata.automata.model.Parameter;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.repository.DataHistRepository;
@@ -9,6 +8,7 @@ import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import dev.automata.automata.repository.ParameterRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import oshi.SystemInfo;
@@ -24,6 +24,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Date;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ScheduleTasks {
@@ -61,7 +62,7 @@ public class ScheduleTasks {
 //                parameterRepository.save(lastParameter);
 //                System.err.println("Last parameter updated: " + lastParameter);
 
-                var data = dataRepository.findByDeviceIdAndUpdateDateBetween(device.getId(), Date.from(startTimestamp), Date.from(endTimestamp));
+                var data = dataRepository.findByDeviceIdAndUpdateDateBetween(device.getId(), startTimestamp, endTimestamp);
                 if (data != null) {
                     System.err.println(device.getName());
                     System.err.println(data.size());
@@ -84,25 +85,20 @@ public class ScheduleTasks {
 
     }
 
-    @Scheduled(fixedRate = 180000) // runs every 60*3 seconds
+    @Scheduled(fixedRate = 300_000) // runs every 5 mins
     public void checkAndUpdateStatus() {
         var devices = deviceRepository.findAll();
-
         Instant now = Instant.now();
-//        System.err.println("Starting consolidation...");
         for (var device : devices) {
-            var entity = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(device.getId()).orElse(new Data());
-            if (entity.getTimestamp() != null) {
-//                System.err.println(entity);
+            var entity = dataRepository.getFirstDataByDeviceIdOrderByTimestampDesc(device.getId()).orElse(null);
+            if (entity != null) {
                 Duration diff = Duration.between(entity.getUpdateDate(), now);
                 var newStatus = diff.toMinutes() <= 10 ? Status.ONLINE : Status.OFFLINE;
-//                System.err.println(diff.toMinutes());
                 if (!device.getStatus().equals(newStatus))
                     mainService.setStatus(device.getId(), newStatus);
-//                System.err.println("ID: " + entity.getId() + ", Status: " + newStatus);
+//                log.info("Device: {}, status: {}, diff: {}", device.getName(), newStatus, diff.toMinutes());
             }
         }
-//        System.err.println("Consolidation done.");
     }
 
     //    @Scheduled(fixedRate = 30000)

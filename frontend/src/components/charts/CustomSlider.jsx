@@ -20,7 +20,7 @@ const CSlider = styled(Slider)({
         backgroundColor: '#ffffff', // Use the blue color for the active track
     },
     '& .MuiSlider-markLabel': {
-        top: 55
+        top: 20
     },
     '& .MuiSlider-mark': {
         display: 'none'
@@ -95,7 +95,7 @@ export const CustomSlider = React.memo(({value, deviceId, displayName, data, typ
                 marks={[
                     {
                         value: data.extras.max / 2,
-                        // label: displayName,
+                        label: displayName,
                     },
                 ]}
             />

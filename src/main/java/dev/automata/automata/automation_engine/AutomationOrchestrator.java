@@ -794,6 +794,17 @@ public class AutomationOrchestrator {
         return new ArrayList<>(byDeviceKey.values());
     }
 
+    private void armResendThrottles(AutomationEvaluator.EvalResult result, ExecutionPlan plan, String automationId) {
+        if (plan.getConditionTree() == null || result.getConditionResults() == null) return;
+        for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
+            if (!Boolean.TRUE.equals(result.getConditionResults().get(node.getNodeId()))) continue;
+            if (node.hasMemoryPolicy()) continue;              // only EVERY_TICK leaves
+            if (node.getMinResendIntervalSeconds() <= 0) continue;
+            if (node.getPositiveActions() == null || node.getPositiveActions().isEmpty()) continue;
+            stateStore.setThrottleKey(automationId, node.getNodeId(), node.getMinResendIntervalSeconds());
+        }
+    }
+
     private void dispatchResult(AutomationEvaluator.EvalResult result,
                                 ExecutionPlan plan,
                                 Map<String, Object> payload,
@@ -817,11 +828,13 @@ public class AutomationOrchestrator {
                                 : (plan.getTopLevelPositiveActions() != null
                                    ? plan.getTopLevelPositiveActions() : List.of());
                 armDurationWindows(result, automationId);
+                armResendThrottles(result, plan, automationId);
                 dispatcher.dispatch(resolveFinalActions(actions), payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
                             log.info("🚀 [{}] Triggered", name);
 
-                            dispatcher.notifyTriggered(name, homeId, automationId);
+                            dispatcher.notifyTriggered(name, homeId, automationId,
+                                    buildTriggerDescription(result, plan));
                             publishLog(automationId, plan, user, payload, result);
                         });
             }
@@ -841,12 +854,14 @@ public class AutomationOrchestrator {
                     return;
                 }
                 armDurationWindows(result, automationId);
+                armResendThrottles(result, plan, automationId);
                 dispatcher.dispatch(resolveFinalActions(actions), payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
                             log.info("🌿 [{}] Branch triggered — {} action(s) dispatched",
                                     name, actions.size());
 
-                            dispatcher.notifyTriggered(name, homeId, automationId);
+                            dispatcher.notifyTriggered(name, homeId, automationId,
+                                    buildTriggerDescription(result, plan));
                             publishLog(automationId, plan, user, payload, result);
                         });
             }
@@ -862,7 +877,7 @@ public class AutomationOrchestrator {
                         .thenRun(() -> {
                             log.debug("[{}] — trigger condition lost", name);
                             notificationService.sendNotification(
-                                    "Trigger condition is no longer met",
+                                    name + ": Trigger condition is no longer met",
                                     "warning",       // was "info" — yellow stripe fits better
                                     name,            // automation name as header
                                     homeId, automationId);
@@ -954,5 +969,55 @@ public class AutomationOrchestrator {
                 automationRepository.findById(id)
                         .map(Automation::getName)
                         .orElse(id));
+    }
+
+    /**
+     * Builds a human-readable description of which condition(s) actually fired,
+     * for use in the "automation is running" notification. Falls back to a
+     * generic message if no matched condition can be described.
+     */
+    private String buildTriggerDescription(AutomationEvaluator.EvalResult result, ExecutionPlan plan) {
+        if (plan.getConditionTree() == null || result.getConditionResults() == null) return null;
+
+        Map<String, Boolean> condResults = result.getConditionResults();
+
+        // Prefer the deepest/most-specific matched node — walk in reverse-declared
+        // order so leaf/child conditions (more specific) win over root gates.
+        for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
+            if (!Boolean.TRUE.equals(condResults.get(node.getNodeId()))) continue;
+            // Skip pure gate nodes that only exist to fan out to children —
+            // we want the node whose OWN positive actions actually dispatched.
+            if (node.getPositiveActions() == null || node.getPositiveActions().isEmpty()) continue;
+
+            return describeCondition(node);
+        }
+        return null;
+    }
+
+    private String describeCondition(ExecutionPlan.CompiledConditionNode node) {
+        ExecutionPlan.CompiledCondition c = node.getCondition();
+        if (c == null) return null;
+
+        return switch (c.getConditionType()) {
+            case "scheduled" -> switch (c.getScheduleType() != null ? c.getScheduleType() : "") {
+                case "range" -> String.format("scheduled window %s–%s", c.getFromTime(), c.getToTime());
+                case "solar" -> String.format("%s%s",
+                        c.getSolarType() != null ? c.getSolarType() : "solar event",
+                        c.getOffsetMinutes() != 0 ? " (" + c.getOffsetMinutes() + "min offset)" : "");
+                case "interval" -> String.format("every %dmin", c.getIntervalMinutes());
+                case "at" -> String.format("scheduled time %s", c.getTime());
+                default -> "schedule condition";
+            };
+            case "range" -> node.hasMemoryPolicy()
+                    && node.getMemoryPolicy().getType() == ConditionMemoryPolicy.MemoryType.DURATION
+                    ? String.format("%s in range %s–%s for %ds",
+                    c.getTriggerKey(), c.getAbove(), c.getBelow(), node.getMemoryPolicy().getRequiredDurationSeconds())
+                    : String.format("%s in range %s–%s", c.getTriggerKey(), c.getAbove(), c.getBelow());
+            case "above" -> String.format("%s above %s", c.getTriggerKey(), c.getValue());
+            case "below" -> String.format("%s below %s", c.getTriggerKey(), c.getValue());
+            case "equal" -> String.format("%s = %s", c.getTriggerKey(), c.getValue());
+            case "stale" -> String.format("%s stale (>%smin)", c.getTriggerKey(), c.getValue());
+            default -> c.getConditionType();
+        };
     }
 }
