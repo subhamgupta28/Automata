@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.lang.Nullable;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -16,7 +17,7 @@ public interface DataRepository extends MongoRepository<Data, String> {
     @Nullable
     Data getFirstByDeviceIdOrderByTimestampDesc(String deviceId);
 
-    List<Data> findByDeviceIdAndUpdateDateBetween(String deviceId, Date updateDate, Date updateDate2);
+    List<Data> findByDeviceIdAndUpdateDateBetween(String deviceId, Instant updateDate, Instant updateDate2);
 
     Data findByDeviceId(String deviceId);
 

@@ -5,7 +5,6 @@ import {Button, Card, Chip, Divider, FormControl, InputLabel, MenuItem, Select, 
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
-import NumberSpinner from "../charts/NumberSpinner.jsx";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 
 const triggerStyle = {
@@ -36,6 +35,8 @@ export const TriggerNode = ({id, data, isConnectable}) => {
         coalitionMode: 'ANY',
         coalitionWindowSeconds: 60,
         sources: [],        // NEW: [{ deviceId, keys: [string], role: 'primary'|'secondary' }]
+        firingMode: "ON_STATE_CHANGE",
+        minResendIntervalSeconds: 300
     };
 
     const {updateNodeData, setEdges, setNodes} = useReactFlow();
@@ -52,6 +53,8 @@ export const TriggerNode = ({id, data, isConnectable}) => {
     const [coalitionWindowSeconds, setCoalitionWindowSeconds] = useState(
         initialTriggerData.coalitionWindowSeconds
     );
+    const [firingMode, setFiringMode] = useState(initialTriggerData.firingMode);
+    const [minResendIntervalSeconds, setMinResendIntervalSeconds] = useState(initialTriggerData.minResendIntervalSeconds);
     // NEW: secondary devices — each entry: { deviceId: string, key: string }
     const [secondaryDevices, setSecondaryDevices] = useState(
         () => {
@@ -132,6 +135,8 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                 subscriberDeviceIds,
                 coalitionMode,                    // NEW
                 coalitionWindowSeconds,
+                firingMode,
+                minResendIntervalSeconds
             }
         };
 
@@ -140,7 +145,11 @@ export const TriggerNode = ({id, data, isConnectable}) => {
             lastDataRef.current = serialized;
             updateNodeData(id, newData);
         }
-    }, [selectedDevice?.id, triggerKeys, name, type, priority, secondaryDevices, coalitionMode, coalitionWindowSeconds]);
+    }, [
+        selectedDevice?.id, triggerKeys, name,
+        type, priority, secondaryDevices, coalitionMode,
+        coalitionWindowSeconds, firingMode, minResendIntervalSeconds
+    ]);
 
     const selectTriggerDevice = (e) => {
         const dev = devices.find(d => d.id === e.target.value);
@@ -365,7 +374,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                         onClick={addSecondaryDevice}
                         className="nodrag"
                     >
-                        <Typography>Add secondary device</Typography>
+                        <Typography>Add device</Typography>
                     </Button>
                     {/* Only show coalition config when there are secondary devices */}
                     {secondaryDevices.length > 0 && (
@@ -409,14 +418,44 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                             )}
                         </>
                     )}
-                    <NumberSpinner
-                        label="Priority"
-                        min={0}
-                        max={10}
-                        value={priority}
-                        size="small"
-                        onChange={setPriority}
-                    />
+                    <FormControl fullWidth size="small" className='nodrag' sx={{mt: 2, mb: 1}}>
+                        <InputLabel>Firing Mode</InputLabel>
+                        <Select
+                            variant="outlined"
+                            value={firingMode}
+                            label="Firing Mode"
+                            onChange={(e) => setFiringMode(e.target.value)}
+                        >
+                            <MenuItem value="ON_STATE_CHANGE">When state changes</MenuItem>
+                            <MenuItem value="EVERY_TICK">Fire every time with a gap in between while the condition is
+                                true</MenuItem>
+                        </Select>
+                    </FormControl>
+                    {firingMode === "EVERY_TICK" && (
+                        <TextField
+                            size='small'
+                            label="Resend Gap (mins)"
+                            type="number"
+                            fullWidth
+                            name="Resend Gap"
+                            value={minResendIntervalSeconds}
+                            inputProps={{
+                                min: 0,
+                                max: 5000,
+                                step: 1
+                            }}
+                            onChange={(e) => setMinResendIntervalSeconds(parseInt(e.target.value) || 1)}
+                            sx={{marginBottom: 1}}
+                        />
+                    )}
+                    {/*<NumberSpinner*/}
+                    {/*    label="Priority"*/}
+                    {/*    min={0}*/}
+                    {/*    max={10}*/}
+                    {/*    value={priority}*/}
+                    {/*    size="small"*/}
+                    {/*    onChange={setPriority}*/}
+                    {/*/>*/}
                 </div>
             )}
 

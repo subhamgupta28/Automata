@@ -325,7 +325,18 @@ public class AutomationEvaluator {
         log.debug("  📊 [{}] Node '{}' ({}) wasActive={} → {}",
                 automationName, node.getNodeId(),
                 node.getCondition().getConditionType(), wasActive, result);
-
+        // FIX: a memory-policy "no pass" (e.g. EDGE_RISING with no new edge) is NOT
+        // the same as the underlying condition going false. rawResult still reflects
+        // reality; only rawResult==false should be eligible to trigger negativeActions.
+        // Without this, an EDGE_RISING leaf silently re-fires its own negative actions
+        // one tick after it fires, because wasActive=true + result=false (steady-state,
+        // no edge) falls through into the failed-node negative-action path below.
+        if (!result && rawResult && node.hasMemoryPolicy() && wasActive) {
+            log.debug("  ⏸️ [{}] Node '{}' steady-state true (no edge/policy re-trigger) — "
+                            + "no-op, skipping negative actions",
+                    automationName, node.getNodeId());
+            return TreeWalkResult.passed(List.of(), condResults);
+        }
         // BUG 2 fix: record interval nodes with a duration window that
         // evaluated true this tick, so the orchestrator can arm RUNNING
         // after a successful dispatch.
@@ -444,6 +455,18 @@ public class AutomationEvaluator {
         if (node.getPositiveChildNodeIds() == null || node.getPositiveChildNodeIds().isEmpty()) {
             List<ExecutionPlan.CompiledAction> posActions =
                     node.getPositiveActions() != null ? node.getPositiveActions() : List.of();
+
+            // EVERY_TICK throttle: if this leaf has no memory policy (meaning it's
+            // running in EVERY_TICK mode, not ON_STATE_CHANGE/EDGE_RISING) and has
+            // a resend throttle configured, suppress actions if we fired recently.
+            if (!node.hasMemoryPolicy() && node.getMinResendIntervalSeconds() > 0) {
+                if (stateStore.throttleKeyExists(automationId, node.getNodeId())) {
+                    log.debug("🕑 [{}] Node '{}' throttled — suppressing repeat actions this tick",
+                            automationName, node.getNodeId());
+                    return TreeWalkResult.passed(List.of(), condResults); // passed=true but no actions
+                }
+            }
+
             return TreeWalkResult.passed(posActions, condResults);
         }
 
@@ -491,7 +514,8 @@ public class AutomationEvaluator {
             Map<String, Boolean> allChildCondResults = new LinkedHashMap<>();
             boolean anyPassed = false;
             boolean firstMatch = node.isFirstMatch();
-
+            log.debug("🔀 [{}] Fanout node '{}' firstMatch={} children={}",
+                    automationName, node.getNodeId(), firstMatch, node.getPositiveChildNodeIds());
             for (String childId : node.getPositiveChildNodeIds()) {
                 ExecutionPlan.CompiledConditionNode child = nodeMap.get(childId);
                 if (child == null) {
@@ -504,7 +528,8 @@ public class AutomationEvaluator {
                 allChildCondResults.putAll(childResult.conditionResults);
 
                 log.debug("{} Child {} result={}", automationName, childId, childResult.passed());
-
+                log.debug("🔀 [{}] Child '{}' passed={} — breaking={}",
+                        automationName, childId, childResult.passed(), firstMatch && childResult.passed());
                 if (childResult.passed) {
                     allPositiveActions.addAll(childResult.positiveActionsToFire);
                     anyPassed = true;

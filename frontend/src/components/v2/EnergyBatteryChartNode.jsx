@@ -6,7 +6,7 @@ import {getEnergyAnalytics} from "../../services/apis.jsx";
 import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import '../../App.css'
 import {C} from "./WeatherCardV2.jsx";
-import {BarChart} from "recharts";
+import {BarChart} from "@mui/x-charts/BarChart";
 
 function valueFormatter(v) {
     if (v === null) {
@@ -111,15 +111,21 @@ export const EnergyBatteryChartNode = React.memo(({id, data, isConnectable, sele
                             disableTicks: true,
                             tickLabelStyle: {fontSize: 9, fill: 'rgba(255,255,255,0.45)'},
                         }]}
-                        yAxis={[{disableLine: true, disableTicks: true, tickLabelStyle: {fontSize: 0}}]}
+                        yAxis={[{
+                            position: 'none',
+                            disableLine: true,
+                            disableTicks: true,
+                            tickLabelStyle: {fontSize: 0}
+                        }]}
                         borderRadius={2}
                         grid={{horizontal: false, vertical: false}}
                         slotProps={{legend: {hidden: true}}}
                         sx={{
                             '& .MuiChartsAxis-line': {stroke: 'rgba(255,255,255,0.12)'},
                             '& .MuiBarElement-root': {maxWidth: 10},
+                            marginTop: 1
                         }}
-                        margin={{top: 8, bottom: 20, left: 4, right: 4}}
+                        // margin={{top: 8, bottom: 8, left: 8, right: 8}}
                     />
                 )}
             </Box>

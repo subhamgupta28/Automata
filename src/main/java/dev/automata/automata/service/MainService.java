@@ -93,7 +93,7 @@ public class MainService {
                                        RegisterDevice registerDevice) {
         incoming.setId(existing.getId());
         incoming.setHomeId(existing.getHomeId());
-        incoming.setStatus(existing.getStatus());
+        incoming.setStatus(Status.ONLINE);
         incoming.setCreatedBy(existing.getCreatedBy());
 
         // Merge — preserves attribute IDs and user overrides
@@ -200,9 +200,11 @@ public class MainService {
 
         // Remove keys no longer reported (skip last_seen — it's system-managed)
         existing.forEach((key, attr) -> {
-            if (!incomingMap.containsKey(key) && !key.equals("last_seen")) {
-                log.info("Attribute '{}' removed for device {}", key, deviceId);
-                toDelete.add(attr.getId());
+            if (!incomingMap.containsKey(key)) {
+                if (key.equals("last_seen")) {
+                    toSave.add(attr);          // <-- carry it through untouched
+                } else
+                    toDelete.add(attr.getId());
             }
         });
 
@@ -231,7 +233,7 @@ public class MainService {
     }
 
     private Attribute buildLastSeen(String deviceId) {
-        return Attribute.builder()
+        var last_seenAt = Attribute.builder()
                 .deviceId(deviceId)
                 .key("last_seen")
                 .displayName("Last Seen")
@@ -239,6 +241,8 @@ public class MainService {
                 .type("DATA|AUX")
                 .visible(true)
                 .build();
+        log.info("Setting last seen attribute for deviceId={}, {}", deviceId, last_seenAt);
+        return last_seenAt;
     }
 
 
@@ -533,6 +537,10 @@ public class MainService {
 
     public Device getDeviceByName(String name) {
         return deviceRepository.findByName(name);
+    }
+
+    public Device getDeviceByEnv(String env) {
+        return deviceRepository.findByMacAddr(env).getFirst();
     }
 
     public String showCharts(String deviceId, String isVisible) {

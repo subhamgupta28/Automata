@@ -87,7 +87,7 @@ public class ExecutionPlan {
     public static class CompiledConditionNode {
         String nodeId;
         CompiledCondition condition;
-
+        int minResendIntervalSeconds;
         /**
          * Actions fired when this node's condition passes.
          */

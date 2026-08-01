@@ -99,11 +99,14 @@ public class ActionDispatcher {
         sendToDevice(deviceId, map);
     }
 
-    public void notifyTriggered(String automationName, String homeId, String automationId) {
+    public void notifyTriggered(String automationName, String homeId, String automationId, String reason) {
+        String message = reason != null
+                ? automationName + " running — " + reason
+                : automationName + " is running";
         notificationService.sendNotification(
-                automationName + " is running",
-                "automation",          // renders with robot icon + Stop/Snooze buttons
-                "Automation",        // header
+                message,
+                "automation",
+                "Automation",
                 homeId,
                 automationId
         );

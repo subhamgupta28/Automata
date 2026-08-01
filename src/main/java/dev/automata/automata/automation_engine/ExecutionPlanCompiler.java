@@ -4,6 +4,7 @@ import dev.automata.automata.cache.DeviceMetaCache;
 import dev.automata.automata.dto.NodeRef;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.Device;
+import dev.automata.automata.model.FiringMode;
 import dev.automata.automata.model.TriggerSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -116,7 +117,24 @@ public class ExecutionPlanCompiler {
             negActionsByNode.put(nodeId, negActions);
             ownHasNegative.put(nodeId, !negActions.isEmpty());
         }
-
+        // ── Step 3a.5: identify "leaf action nodes" ─────────────────────────────
+        //
+        // A leaf action node is a node with no positive children (i.e. it's a
+        // terminal point in the tree) AND has its own positive actions attached.
+        // These are the nodes whose firing behavior the user actually perceives —
+        // gate/intermediate nodes (like node_condition_1 in an AND chain) should
+        // NOT get an auto-injected edge policy; only the terminal node whose
+        // positive actions dispatch should be debounced.
+        Set<String> leafActionNodeIds = new HashSet<>();
+        for (Automation.Condition c : conditions) {
+            if (!c.isEnabled()) continue;
+            String nodeId = c.getNodeId();
+            boolean isLeaf = positiveChildrenByParent.getOrDefault(nodeId, List.of()).isEmpty();
+            boolean hasOwnPositiveActions = !posActionsByNode.getOrDefault(nodeId, List.of()).isEmpty();
+            if (isLeaf && hasOwnPositiveActions) {
+                leafActionNodeIds.add(nodeId);
+            }
+        }
         // ── Step 3b: root node detection (moved earlier — needed for propagation) ──
         //
         // Same logic as before: a node not present in conditionChildIds is a root.
@@ -186,6 +204,7 @@ public class ExecutionPlanCompiler {
 
             String nodeId = c.getNodeId();
             ConditionMemoryPolicy memPolicy = buildMemoryPolicy(c);
+//            ConditionMemoryPolicy memPolicy = resolveEffectiveMemoryPolicy(c, automation, leafActionNodeIds); // will check in future
 
             List<ExecutionPlan.CompiledAction> posActions = posActionsByNode.get(nodeId);
             List<ExecutionPlan.CompiledAction> negActions = negActionsByNode.get(nodeId);
@@ -206,6 +225,7 @@ public class ExecutionPlanCompiler {
             nodeMap.put(nodeId, ExecutionPlan.CompiledConditionNode.builder()
                     .nodeId(nodeId)
                     .condition(compileCondition(c, automation.getTrigger().getDeviceId()))
+                    .minResendIntervalSeconds(automation.getMinResendIntervalSeconds())
                     .positiveActions(posActions)
                     .negativeActions(negActions)
                     .positiveChildNodeIds(posChildren)
@@ -288,6 +308,39 @@ public class ExecutionPlanCompiler {
                 stateless.size(), fallback.size(), automation.getHomeId());
 
         return plan;
+    }
+
+    /**
+     * Resolves the effective memory policy for a node:
+     * 1. An explicit per-node memoryPolicy always wins — user/UI opted in
+     * to something specific, never override it.
+     * 2. Otherwise, if the automation's firingMode is ON_STATE_CHANGE and
+     * this node is a leaf action node (terminal, fires positive actions,
+     * no positive children), auto-inject EDGE_RISING so it fires once on
+     * the false -> true transition instead of every tick.
+     * 3. Otherwise (EVERY_TICK, or a non-leaf/gate node), no policy — the
+     * node is freely re-evaluable every tick, exactly as gate/AND-chain
+     * roots need to be so they don't get stuck (see EDGE_BOTH root bug).
+     */
+    private ConditionMemoryPolicy resolveEffectiveMemoryPolicy(
+            Automation.Condition c,
+            Automation automation,
+            Set<String> leafActionNodeIds) {
+
+        ConditionMemoryPolicy explicit = buildMemoryPolicy(c);
+        if (explicit != null) return explicit;
+
+        FiringMode mode = automation.getFiringMode() != null
+                ? automation.getFiringMode() : FiringMode.ON_STATE_CHANGE;
+
+        if (mode == FiringMode.ON_STATE_CHANGE
+                && leafActionNodeIds.contains(c.getNodeId())) {
+            return ConditionMemoryPolicy.builder()
+                    .type(ConditionMemoryPolicy.MemoryType.EDGE_RISING)
+                    .build();
+        }
+
+        return null;
     }
 
     /**

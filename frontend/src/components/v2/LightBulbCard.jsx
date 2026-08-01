@@ -47,7 +47,7 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
 
             style={{
                 margin: '6px',
-                width: 230,
+                width: "100%",
                 borderRadius: "8px",
                 padding: "8px 6px",
                 boxShadow: "0px 1px 4px rgba(0,0,0,0.12)"

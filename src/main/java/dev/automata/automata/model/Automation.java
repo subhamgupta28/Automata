@@ -37,7 +37,8 @@ public class Automation {
     private Instant updateDate;
     private List<String> subscriberDeviceIds;
     private String homeId;
-
+    FiringMode firingMode = FiringMode.ON_STATE_CHANGE;   // EVERY_TICK | ON_STATE_CHANGE
+    int minResendIntervalSeconds;   // only used when firingMode == EVERY_TICK default e.g. 300 (5 min) if unset/0
     private List<String> targetDeviceIds;
 
     @JsonProperty("trigger")
