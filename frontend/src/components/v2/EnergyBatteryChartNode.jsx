@@ -50,7 +50,7 @@ export const EnergyBatteryChartNode = React.memo(({id, data, isConnectable, sele
         series.map((item) => ({
             ...item,
             valueFormatter,
-            color: status === "DISCHARGE" ? "#D85A30" : "#1D9E75",
+            // color: status === "DISCHARGE" ? "#D85A30" : "#1D9E75",
         }));
 
     const chartHeight = Math.max((height || 200) - 60, 100);
@@ -103,7 +103,7 @@ export const EnergyBatteryChartNode = React.memo(({id, data, isConnectable, sele
             <Box style={{display: 'flex', justifyContent: 'center'}}>
                 {series.length > 0 && labels.length > 0 && series.every(s => s.data && s.data.length === labels.length) && (
                     <BarChart
-                        height={chartHeight}
+                        height="200"
                         series={withOptions(series)}
                         xAxis={[{
                             scaleType: 'band',

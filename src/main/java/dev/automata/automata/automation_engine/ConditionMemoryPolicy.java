@@ -2,6 +2,7 @@ package dev.automata.automata.automation_engine;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
 /**
  * Optional memory policy attached to a CompiledConditionNode.
@@ -40,6 +41,7 @@ import lombok.Value;
  */
 @Value
 @Builder
+@Jacksonized
 public class ConditionMemoryPolicy {
 
     public enum MemoryType {

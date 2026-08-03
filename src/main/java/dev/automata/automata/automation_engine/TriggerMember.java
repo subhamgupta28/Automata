@@ -2,6 +2,7 @@ package dev.automata.automata.automation_engine;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
 import java.util.List;
 
@@ -32,6 +33,7 @@ import java.util.List;
  */
 @Value
 @Builder
+@Jacksonized
 public class TriggerMember {
 
     /**

@@ -2,6 +2,7 @@ package dev.automata.automata.automation_engine;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
  */
 @Value
 @Builder
+@Jacksonized
 public class TriggerCoalition {
 
     public enum CoalitionMode {ANY, ALL, SEQUENCE}
