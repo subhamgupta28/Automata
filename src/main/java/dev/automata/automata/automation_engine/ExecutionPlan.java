@@ -2,6 +2,7 @@ package dev.automata.automata.automation_engine;
 
 import lombok.Builder;
 import lombok.Value;
+import lombok.extern.jackson.Jacksonized;
 
 import java.time.Instant;
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.List;
  */
 @Value
 @Builder(toBuilder = true)
+@Jacksonized
 public class ExecutionPlan {
 
     public static final int CURRENT_SCHEMA_VERSION = 5;   // bumped from 4
@@ -84,6 +86,7 @@ public class ExecutionPlan {
 
     @Value
     @Builder
+    @Jacksonized
     public static class CompiledConditionNode {
         String nodeId;
         CompiledCondition condition;
@@ -160,6 +163,7 @@ public class ExecutionPlan {
 
     @Value
     @Builder
+    @Jacksonized
     public static class CompiledCondition {
         String nodeId;
         String conditionType;
@@ -188,6 +192,7 @@ public class ExecutionPlan {
 
     @Value
     @Builder
+    @Jacksonized
     public static class CompiledAction {
         String nodeId;
         String deviceId;
