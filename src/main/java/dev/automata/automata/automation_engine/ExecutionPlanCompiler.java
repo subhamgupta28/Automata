@@ -195,7 +195,25 @@ public class ExecutionPlanCompiler {
                 queue.add(child);
             }
         }
+        // After BFS: promote roots that gate stateful subtrees
+        // ── Step 3c.5: promote roots that gate stateful subtrees ──────────────
 
+        // The BFS propagates statefulness downward (parent → child), but a root
+        // node with no negative actions of its own starts with inherited=false and
+        // ends up effectiveStateful=false even when every one of its children is
+        // stateful. That root is still the entry-point gate: when it goes false,
+        // wasActive must be true for negative actions downstream to fire.
+        // Promote any such root now so applyPerNodeActiveFlags() tracks it.
+        for (String rootId : rootConditionNodeIds) {
+            if (!effectiveStateful.getOrDefault(rootId, false)) {
+                if (hasStatefulDescendant(rootId, positiveChildrenByParent,
+                        negativeChildrenByParent, effectiveStateful, new HashSet<>())) {
+                    effectiveStateful.put(rootId, true);
+                    log.debug("  📌 [{}] Root '{}' promoted to stateful — gates a stateful subtree",
+                            automation.getName(), rootId);
+                }
+            }
+        }
         // ── Step 3d: compile each condition into a CompiledConditionNode ───
         Map<String, ExecutionPlan.CompiledConditionNode> nodeMap = new LinkedHashMap<>();
 
@@ -203,8 +221,8 @@ public class ExecutionPlanCompiler {
             if (!c.isEnabled()) continue;
 
             String nodeId = c.getNodeId();
-            ConditionMemoryPolicy memPolicy = buildMemoryPolicy(c);
-//            ConditionMemoryPolicy memPolicy = resolveEffectiveMemoryPolicy(c, automation, leafActionNodeIds); // will check in future
+//            ConditionMemoryPolicy memPolicy = buildMemoryPolicy(c);
+            ConditionMemoryPolicy memPolicy = resolveEffectiveMemoryPolicy(c, automation, leafActionNodeIds); // will check in future
 
             List<ExecutionPlan.CompiledAction> posActions = posActionsByNode.get(nodeId);
             List<ExecutionPlan.CompiledAction> negActions = negActionsByNode.get(nodeId);
@@ -330,11 +348,9 @@ public class ExecutionPlanCompiler {
         ConditionMemoryPolicy explicit = buildMemoryPolicy(c);
         if (explicit != null) return explicit;
 
-        FiringMode mode = automation.getFiringMode() != null
-                ? automation.getFiringMode() : FiringMode.ON_STATE_CHANGE;
-
-        if (mode == FiringMode.ON_STATE_CHANGE
-                && leafActionNodeIds.contains(c.getNodeId())) {
+        FiringMode mode = automation.getFiringMode(); // null = not set, do NOT default to ON_STATE_CHANGE
+        if (mode == FiringMode.ON_STATE_CHANGE && leafActionNodeIds.contains(c.getNodeId())
+                && !"scheduled".equals(c.getCondition())) {
             return ConditionMemoryPolicy.builder()
                     .type(ConditionMemoryPolicy.MemoryType.EDGE_RISING)
                     .build();
@@ -539,5 +555,44 @@ public class ExecutionPlanCompiler {
         } catch (Exception e) {
             return "sensor";
         }
+    }
+
+    /**
+     * Returns true if any node reachable from {@code nodeId} via positive or negative
+     * child edges has effectiveStateful=true.
+     * <p>
+     * Used after the BFS in Step 3c to promote root nodes that gate stateful subtrees.
+     * A root with no negative actions of its own (ownNeg=false) and no stateful parent
+     * (inherited=false) gets effectiveStateful=false from the BFS — but it is still the
+     * entry-point gate for all stateful descendants, so it must be tracked as ACTIVE in
+     * state when it passes. Without this promotion, wasActive is always false for the root,
+     * and when it later goes false none of the downstream negative actions fire.
+     *
+     * @param nodeId                   starting node to search from
+     * @param positiveChildrenByParent compiled positive-edge adjacency map
+     * @param negativeChildrenByParent compiled negative-edge adjacency map
+     * @param effectiveStateful        the stateful map computed by the BFS (read-only here)
+     * @param visited                  cycle guard — pass a fresh {@code new HashSet<>()} per call
+     */
+    private boolean hasStatefulDescendant(
+            String nodeId,
+            Map<String, List<String>> positiveChildrenByParent,
+            Map<String, List<String>> negativeChildrenByParent,
+            Map<String, Boolean> effectiveStateful,
+            Set<String> visited) {
+
+        if (!visited.add(nodeId)) return false; // cycle guard
+
+        for (String childId : positiveChildrenByParent.getOrDefault(nodeId, List.of())) {
+            if (effectiveStateful.getOrDefault(childId, false)) return true;
+            if (hasStatefulDescendant(childId, positiveChildrenByParent,
+                    negativeChildrenByParent, effectiveStateful, visited)) return true;
+        }
+        for (String childId : negativeChildrenByParent.getOrDefault(nodeId, List.of())) {
+            if (effectiveStateful.getOrDefault(childId, false)) return true;
+            if (hasStatefulDescendant(childId, positiveChildrenByParent,
+                    negativeChildrenByParent, effectiveStateful, visited)) return true;
+        }
+        return false;
     }
 }
