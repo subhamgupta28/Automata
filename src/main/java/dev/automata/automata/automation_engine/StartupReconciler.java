@@ -134,6 +134,19 @@ public class StartupReconciler {
     }
 
     void reconcileActiveAutomations() {
+        // BUG FIX C6: PlanCache.warmAll() was never called anywhere.
+        // On a fresh node start with a warm Redis, the JVM cache was cold for
+        // ALL automations. Every first evaluation hit the executeInternal() Redis
+        // fallback path (one extra GET per automation). Warm the cache now,
+        // before reconcileActiveAutomations dispatches any evaluations, so
+        // every execution lands on the O(1) JVM cache from the very first tick.
+        try {
+            planCache.warmAll();
+        } catch (Exception e) {
+            log.warn("⚠️ [startup-reconcile] PlanCache.warmAll() failed: {} — continuing without warm cache",
+                    e.getMessage());
+        }
+
         List<Automation> enabled;
         try {
             enabled = automationRepository.findEnabledForExecution();

@@ -707,8 +707,24 @@ public class AutomationOrchestrator {
             }
             case C1_NEGATIVE -> {
                 next.setTopLevelState("IDLE");
-                next.resetAllNodeStates();
-//                applyPerNodeActiveFlags(next, plan, result.getConditionResults());
+                // Pass 1: apply conditionResults so nodes walked this tick get their
+                // actual result. Stranded nodes folded in as false by
+                // foldInStrandedNegativeActions are also covered here.
+                applyPerNodeActiveFlags(next, plan, result.getConditionResults());
+                // Pass 2: force-IDLE any stateful node still ACTIVE after pass 1.
+                // Intermediate nodes that evaluated true this tick (e.g. node_condition_11
+                // passed while node_condition_5 was the failing root) are left ACTIVE by
+                // pass 1 because conditionResults has them as true. Leaving them ACTIVE
+                // causes anyWasActive=true on the next tick -> another C1_NEGATIVE ->
+                // duplicate notification. Since topLevelState is now IDLE, no node should
+                // remain ACTIVE.
+                if (plan.getConditionTree() != null) {
+                    for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
+                        if (node.isStateful() && next.isNodeActive(node.getNodeId())) {
+                            next.setNodeState(node.getNodeId(), "IDLE");
+                        }
+                    }
+                }
             }
             // SKIPPED, NOT_MET, FALLBACK, STATELESS_FIRE — no state change
             default -> {
@@ -873,14 +889,24 @@ public class AutomationOrchestrator {
                         result.getActionsToFire() != null
                                 ? new ArrayList<>(result.getActionsToFire()) : new ArrayList<>());
 
+                // Only notify on the FIRST negative transition — i.e. when at least one
+                // node was previously ACTIVE before this tick's state write. Subsequent
+                // C1_NEGATIVE ticks (condition still false, all nodes now IDLE) produce
+                // anyWasActive=false via the evaluator, so they come through as NOT_MET
+                // and never reach here. But if grace timers or stranded folding keeps a
+                // node ACTIVE across multiple ticks, this guard prevents repeat alerts.
+                boolean wasFirstTransition = result.isAnyWasActive();
+
                 dispatcher.dispatch(toFire, payload, user, automationId, name, traceId, homeId)
                         .thenRun(() -> {
                             log.debug("[{}] — trigger condition lost", name);
-                            notificationService.sendNotification(
-                                    name + ": Trigger condition is no longer met",
-                                    "warning",       // was "info" — yellow stripe fits better
-                                    name,            // automation name as header
-                                    homeId, automationId);
+                            if (wasFirstTransition) {
+                                notificationService.sendNotification(
+                                        name + ": Trigger condition is no longer met",
+                                        "warning",
+                                        name,
+                                        homeId, automationId);
+                            }
                             publishLog(automationId, plan, user, payload, result);
                         });
             }
@@ -1004,7 +1030,7 @@ public class AutomationOrchestrator {
                 case "solar" -> String.format("%s%s",
                         c.getSolarType() != null ? c.getSolarType() : "solar event",
                         c.getOffsetMinutes() != 0 ? " (" + c.getOffsetMinutes() + "min offset)" : "");
-                case "interval" -> String.format("every %dmin", c.getIntervalMinutes());
+                case "interval" -> String.format("will run for %dmin", c.getDurationMinutes());
                 case "at" -> String.format("scheduled time %s", c.getTime());
                 default -> "schedule condition";
             };

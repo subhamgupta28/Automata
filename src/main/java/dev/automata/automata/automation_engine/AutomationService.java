@@ -255,7 +255,7 @@ public class AutomationService {
     // ═════════════════════════════════════════════════════════════════════
     // SCHEDULED JOBS
     // ═════════════════════════════════════════════════════════════════════
-    @Scheduled(fixedRate = 5_000)
+    @Scheduled(fixedRate = 10_000)
     @FeatureEnabled(value = Feature.PERIODIC_AUTOMATION_SERVICE)
     public void triggerPeriodicDataDrivenAutomations() {
         automationRepository.findEnabledForExecution().stream()
