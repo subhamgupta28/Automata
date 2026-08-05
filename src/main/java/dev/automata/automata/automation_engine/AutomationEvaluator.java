@@ -17,7 +17,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.stream.Stream;
 
 /**
  * Pure evaluation component — NO Redis writes, NO action dispatch.
@@ -476,6 +475,8 @@ public class AutomationEvaluator {
         if (!node.isFanout()) {
             // ── AND path: all children must pass ──────────────────────────
             List<ExecutionPlan.CompiledAction> allChildNegActions = new ArrayList<>();
+            // ✅ Accumulate actions from walk results, not from the node map
+            List<ExecutionPlan.CompiledAction> allChildPosActions = new ArrayList<>();
             Map<String, Boolean> allChildCondResults = new LinkedHashMap<>();
 
             for (String childId : node.getPositiveChildNodeIds()) {
@@ -496,17 +497,13 @@ public class AutomationEvaluator {
                     return TreeWalkResult.failed(childResult.failedNodeId,
                             allChildNegActions, condResults);
                 }
+
+                // ✅ Use what the recursive walk actually returned
+                allChildPosActions.addAll(childResult.positiveActionsToFire);
             }
 
             condResults.putAll(allChildCondResults);
-            List<ExecutionPlan.CompiledAction> allPos = node.getPositiveChildNodeIds().stream()
-                    .map(nodeMap::get)
-                    .filter(Objects::nonNull)
-                    .flatMap(n -> n.getPositiveActions() != null
-                            ? n.getPositiveActions().stream() : Stream.empty())
-                    .toList();
-            return TreeWalkResult.passed(allPos, condResults);
-
+            return TreeWalkResult.passed(allChildPosActions, condResults);
         } else {
             // ── OR fan-out path ────────────────────────────────────────────
             List<ExecutionPlan.CompiledAction> allPositiveActions = new ArrayList<>();

@@ -3,7 +3,6 @@ import React from 'react';
 // Dummy data following the EnergyStat Java model (one entry per day)
 import {Box, Card, CardContent, LinearProgress, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
-import BatteryWidget from "../device_types/BatteryWidget.jsx";
 import {ChartsContainer} from '@mui/x-charts/ChartsContainer';
 import {BarPlot} from '@mui/x-charts/BarChart';
 
@@ -77,13 +76,13 @@ const Exp = () => {
             {/*<AutomationAnalyticsList/>*/}
             {/*<AutomationFlowInspector/>*/}
             {/*// Single pin (existing behavior)*/}
-            <TinyBarChart/>
 
-            <BatteryWidget
-                batteryPercent={51}
-                remainingTime="2.5 hours left"
-                // timeLabel="for full charge"
-            />
+
+            {/*<BatteryWidget*/}
+            {/*    batteryPercent={51}*/}
+            {/*    remainingTime="2.5 hours left"*/}
+            {/*    // timeLabel="for full charge"*/}
+            {/*/>*/}
             {/*// With route*/}
             {/*<MapView*/}
             {/*    lat={17.385}*/}

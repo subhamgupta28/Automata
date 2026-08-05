@@ -979,3 +979,15 @@ export const getUnclaimedDevices = (homeId) =>
 
 export const getHomeInvites = (homeId) =>
     api.get(`/invites/${homeId}/invites`).then(r => r.data);
+
+export const getFeatures = () =>
+    api.get("/feature").then(r => r.data);
+
+export const createFeature = (payload) =>
+    api.post("/feature", payload).then(r => r.data);
+
+export const toggleFeature = (id) =>
+    api.patch(`/feature/${id}/toggle`).then(r => r.data);
+
+export const deleteFeature = (id) =>
+    api.delete(`/feature/${id}`).then(r => r.data);

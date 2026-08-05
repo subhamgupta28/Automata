@@ -18,7 +18,8 @@ import java.time.Instant;
 public class FeatureToggle {
     @Id
     private String id;
-    private boolean isEnabled;
+    @Builder.Default
+    private boolean isEnabled = false;
     private String description;
     private String featureKey;
     private String env;
