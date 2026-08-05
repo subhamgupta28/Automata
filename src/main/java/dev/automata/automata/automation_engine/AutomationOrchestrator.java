@@ -425,7 +425,7 @@ public class AutomationOrchestrator {
         // freshly-walked result) is always authoritative and seeds the map first.
         Map<String, ExecutionPlan.CompiledAction> resolved = new LinkedHashMap<>();
         for (ExecutionPlan.CompiledAction a : existing) {
-            resolved.put(a.getDeviceId() + "|" + a.getKey() + "|" + a.getData(), a);
+            resolved.put(a.getDeviceId() + "|" + a.getKey(), a);
         }
 
         // RULE A applied to stranding: build the id → node map once so we can tell,

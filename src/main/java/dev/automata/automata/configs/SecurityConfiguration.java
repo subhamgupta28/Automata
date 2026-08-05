@@ -222,7 +222,7 @@ public class SecurityConfiguration {
                 "https://automata1.subhamgupta.in",
                 "http://automata1.subhamgupta.in"
         ));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);  // ← required for SockJS
         configuration.setMaxAge(3600L);

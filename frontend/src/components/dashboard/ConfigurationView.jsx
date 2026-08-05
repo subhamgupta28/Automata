@@ -5,6 +5,7 @@ import {getWiFiDetails, saveWiFiList} from "../../services/apis.jsx";
 import Paper from "@mui/material/Paper";
 import {styled} from "@mui/material/styles";
 import {WLEDDiscovery} from "../../services/WLEDDiscovery.jsx";
+import FeatureManager from "./FeatureManager.jsx";
 
 const WiFiSettings = () => {
     const [wifiList, setWifiList] = useState([
@@ -102,7 +103,10 @@ const WiFiSettings = () => {
 const SystemSetting = () => {
 
     return (
-        <Card>
+        <Card style={{
+            marginLeft: '28px',
+            marginRight: '28px'
+        }}>
             <CardContent>
                 Shutdown Safely<Switch></Switch>
                 System will shutdown when the battery reaches critical level
@@ -126,13 +130,13 @@ const Item = styled(Paper)(({theme}) => ({
 export function ConfigurationView() {
 
     return (
-        <div style={{paddingTop: '10px', paddingRight: '12px', paddingLeft: '12px', height: '100dvh'}}>
+        <div style={{padding: '18px', height: '100dvh'}}>
 
-            <WiFiSettings/>
+            {/*<WiFiSettings/>*/}
             <WLEDDiscovery/>
 
-            <SystemSetting/>
-
+            {/*<SystemSetting/>*/}
+            <FeatureManager/>
 
         </div>
     )
