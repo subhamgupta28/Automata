@@ -202,5 +202,6 @@ public class ExecutionPlan {
         int order;
         int delaySeconds;
         String name;
+        String conditionGroup;
     }
 }

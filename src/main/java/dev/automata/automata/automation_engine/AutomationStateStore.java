@@ -2,6 +2,8 @@ package dev.automata.automata.automation_engine;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.AutomationRuntimeState;
+import dev.automata.automata.model.AutomationStateSnapshot;
+import dev.automata.automata.repository.AutomationStateSnapshotRepository;
 import dev.automata.automata.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,7 +63,7 @@ public class AutomationStateStore {
     private final RedisService redisService;
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;           // ← injected, not new
-
+    private final AutomationStateSnapshotRepository stateSnapshotRepository;
     private static final String STATE_PREFIX = "AUTOMATION_STATE:";
     private static final String DEF_PREFIX = "AUTOMATION_DEF:";
     private static final String KEYS_PREFIX = "AUTOMATION_KEYS:";
@@ -105,13 +107,24 @@ public class AutomationStateStore {
     public AutomationRuntimeState read(String automationId) {
         try {
             Object raw = redisService.get(STATE_PREFIX + automationId);
-            if (raw == null) return AutomationRuntimeState.idle();
-            return objectMapper.readValue(raw.toString(), AutomationRuntimeState.class);
+            if (raw != null)
+                return objectMapper.readValue(raw.toString(), AutomationRuntimeState.class);
         } catch (Exception e) {
-            log.warn("⚠️ Failed to read state for '{}': {} — returning IDLE",
-                    automationId, e.getMessage());
-            return AutomationRuntimeState.idle();
+            log.warn("⚠️ Redis read failed for '{}': {}", automationId, e.getMessage());
         }
+
+        AutomationRuntimeState persisted = stateSnapshotRepository.findById(automationId)
+                .map(AutomationStateSnapshot::toRuntimeState)
+                .orElse(null);
+
+        if (persisted != null) {
+            log.info("♻️ State restored from MongoDB for '{}' (savedAt={})",
+                    automationId, persisted.getSavedAt());
+            forceWrite(automationId, persisted);
+            return persisted;
+        }
+
+        return AutomationRuntimeState.idle();
     }
 
 
