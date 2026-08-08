@@ -138,7 +138,9 @@ const ConsumptionCard = ({deviceId, messages, vid, name}) => {
             setStatsData(res);
         }
         get();
-    }, [])
+        const id = setInterval(get, 30_000);
+        return () => clearInterval(id);
+    }, [deviceId])
 
     useEffect(() => {
         if (messages && messages.data) {

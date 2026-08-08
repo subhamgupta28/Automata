@@ -9,6 +9,8 @@ import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationLog;
 import dev.automata.automata.repository.AutomationLogRepository;
 import dev.automata.automata.repository.AutomationRepository;
+import dev.automata.automata.service.FeatureService;
+import dev.automata.automata.utils.Feature;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
@@ -35,6 +37,7 @@ public class AutomationAnalyticsService {
     private final AutomationRepository automationRepository;
     private final AutomationLogRepository automationLogRepository;
     private final MongoTemplate mongoTemplate;
+    private final FeatureService featureService;
 
     /**
      * Get comprehensive analytics for an automation
@@ -500,7 +503,7 @@ public class AutomationAnalyticsService {
 
     public AutomationAnalyticsSummaryDto getSummary() {
         List<AutomationAnalyticsDto> rows = getAnalytics();
-
+        var isEnabled = featureService.isFeatureEnabled(Feature.PERIODIC_AUTOMATION_SERVICE.toString());
         int healthy = (int) rows.stream().filter(this::isHealthy).count();
         int warnings = (int) rows.stream().filter(this::isWarning).count();
         int errors = (int) rows.stream().filter(this::isError).count();
@@ -516,6 +519,10 @@ public class AutomationAnalyticsService {
                 .errors(errors)
                 .totalUndelivered(totalUndelivered)
                 .totalSlowEvals(totalSlowEvals)
+                .status(Map.of(
+                        "isEnabled", isEnabled,
+                        "type", "PERIODIC_AUTOMATION_SERVICE"
+                ))
                 .build();
     }
 

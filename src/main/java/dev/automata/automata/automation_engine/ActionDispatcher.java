@@ -17,17 +17,11 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 
-/**
- * Dispatches compiled actions to devices.
- * <p>
- * Change vs previous version:
- * - Injects AutomationLivePublisher and calls publishActionFired() after every
- * successful (or failed) single-action dispatch so the inspector's Actions
- * Fired tab receives live events on /topic/automation.{id}.actions.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -43,24 +37,26 @@ public class ActionDispatcher {
     private final Executor actionDispatchExecutor;
     private final ScheduledExecutorService actionDelayScheduler;
     private final AutomationLogStream logStream;
-    private final AutomationLivePublisher livePublisher;   // ← ADDED
+    private final AutomationLivePublisher livePublisher;
     private final SpotifyService spotifyService;
     private final DeviceMetaCache deviceMetaCache;
 
     private static final long ACTION_TIMEOUT_SECONDS = 30;
+    private static final long RECORD_TTL_DAYS = 30;
 
 
     // ─────────────────────────────────────────────────────────────────────
     // PUBLIC API
     // ─────────────────────────────────────────────────────────────────────
 
-    public CompletableFuture<Boolean> dispatch(List<ExecutionPlan.CompiledAction> actions,
-                                               Map<String, Object> payload,
-                                               String user,
-                                               String automationId,
-                                               String automationName,
-                                               String traceId,
-                                               String homeId
+    public CompletableFuture<Boolean> dispatch(
+            List<ExecutionPlan.CompiledAction> actions,
+            Map<String, Object> payload,
+            String user,
+            String automationId,
+            String automationName,
+            String traceId,
+            String homeId
     ) {
         if (actions == null || actions.isEmpty()) {
             // No trackable actions — resolve delivery immediately as NOT_APPLICABLE
@@ -103,29 +99,17 @@ public class ActionDispatcher {
         String message = reason != null
                 ? automationName + " running — " + reason
                 : automationName + " is running";
-        notificationService.sendNotification(
-                message,
-                "automation",
-                "Automation",
-                homeId,
-                automationId
-        );
+        notificationService.sendNotification(message, "automation", "Automation", homeId, automationId);
     }
 
     public void notifyReverted(String automationName, String branchDesc, String homeId) {
-        notificationService.sendNotification(
-                branchDesc + " ended",
-                "info",
-                "Automation",
-                homeId);
+        notificationService.sendNotification(branchDesc + " ended", "info", "Automation", homeId);
     }
 
     public void notifyError(String automationName, String homeId) {
         notificationService.sendNotification(
                 "Something went wrong while running this automation",
-                "error",
-                "Automation",
-                homeId);
+                "error", "Automation", homeId);
     }
 
 
@@ -133,13 +117,14 @@ public class ActionDispatcher {
     // CHAIN BUILDER
     // ─────────────────────────────────────────────────────────────────────
 
-    private CompletableFuture<Boolean> buildChain(List<ExecutionPlan.CompiledAction> actions,
-                                                  Map<String, Object> payload,
-                                                  String user,
-                                                  String automationId,
-                                                  String automationName,
-                                                  String traceId,
-                                                  String homeId
+    private CompletableFuture<Boolean> buildChain(
+            List<ExecutionPlan.CompiledAction> actions,
+            Map<String, Object> payload,
+            String user,
+            String automationId,
+            String automationName,
+            String traceId,
+            String homeId
     ) {
         CompletableFuture<Boolean> chain = CompletableFuture.completedFuture(true);
 
@@ -185,61 +170,154 @@ public class ActionDispatcher {
     // SINGLE ACTION
     // ─────────────────────────────────────────────────────────────────────
 
-    private void dispatchSingle(ExecutionPlan.CompiledAction action,
-                                Map<String, Object> livePayload,
-                                String user,
-                                String automationId,
-                                String automationName,
-                                String traceId,
-                                String homeId
+    private void dispatchSingle(
+            ExecutionPlan.CompiledAction action,
+            Map<String, Object> livePayload,
+            String user,
+            String automationId,
+            String automationName,
+            String traceId,
+            String homeId
     ) {
         Object parsedData = parseData(action.getData());
-        Map<String, Object> payload = Map.of(action.getKey(), parsedData, "key", action.getKey());
+        Date now = new Date();
+        Date expireAt = Date.from(Instant.now().plus(RECORD_TTL_DAYS, ChronoUnit.DAYS));
 
+        // ── alert ──────────────────────────────────────────────────────────
         if ("alert".equals(action.getKey())) {
             notificationService.sendAlert(
-                    automationName + " triggered and it's " + action.getData(), action.getData());
-            // Alert has no device ACK — mark immediately
-            logStream.updateDeliveryStatus(
-                    traceId, AutomationLog.DeliveryStatus.NOT_APPLICABLE, new Date());
+                    automationName + " triggered and it's " + action.getData(),
+                    action.getData());
+            logStream.updateDeliveryStatus(traceId,
+                    AutomationLog.DeliveryStatus.NOT_APPLICABLE, now);
+
+            saveRecord(automationId, automationName, traceId, user,
+                    "system_alert", action, Map.of(), now, expireAt,
+                    DeviceActionState.DispatchOutcome.NOT_APPLICABLE, ""
+            );
             return;
         }
+
+        // ── app_notify ─────────────────────────────────────────────────────
         if ("app_notify".equals(action.getKey())) {
             notificationService.sendNotify("Automation", action.getData(), "low");
-            logStream.updateDeliveryStatus(
-                    traceId, AutomationLog.DeliveryStatus.NOT_APPLICABLE, new Date());
+            logStream.updateDeliveryStatus(traceId,
+                    AutomationLog.DeliveryStatus.NOT_APPLICABLE, now);
+
+            saveRecord(automationId, automationName, traceId, user,
+                    "system_app_notify", action, Map.of(), now, expireAt,
+                    DeviceActionState.DispatchOutcome.NOT_APPLICABLE, ""
+            );
             return;
         }
+
+        // ── WLED ───────────────────────────────────────────────────────────
         if ("WLED".equals(action.getDeviceType())) {
-            dispatchWled(action.getDeviceId(), new HashMap<>(payload), user, automationId, automationName, traceId, homeId);
-            // WLED has no ACK path currently — mark NOT_APPLICABLE
-            logStream.updateDeliveryStatus(
-                    traceId, AutomationLog.DeliveryStatus.NOT_APPLICABLE, new Date());
+            Map<String, Object> wledPayload = new HashMap<>(
+                    Map.of(action.getKey(), parsedData, "key", action.getKey()));
+            boolean wledOk = dispatchWled(action.getDeviceId(), wledPayload,
+                    user, automationId, automationName, traceId, homeId);
+
+            logStream.updateDeliveryStatus(traceId,
+                    AutomationLog.DeliveryStatus.NOT_APPLICABLE, now);
+            saveRecord(automationId, automationName, traceId, user,
+                    "WLED", action, wledPayload, now, expireAt,
+                    wledOk ? DeviceActionState.DispatchOutcome.NOT_APPLICABLE
+                            : DeviceActionState.DispatchOutcome.DELIVERY_FAILED,
+                    wledOk ? null : "WLED dispatch threw exception"
+            );
             return;
         }
+
+        // ── MEDIA ──────────────────────────────────────────────────────────
         if ("MEDIA".equals(action.getDeviceType())) {
-            dispatchMedia(action.getDeviceId(), new HashMap<>(payload), user, automationId, automationName, traceId, homeId);
-            logStream.updateDeliveryStatus(
-                    traceId, AutomationLog.DeliveryStatus.NOT_APPLICABLE, new Date());
+            Map<String, Object> mediaPayload = new HashMap<>(
+                    Map.of(action.getKey(), parsedData, "key", action.getKey()));
+            boolean mediaOk = dispatchMedia(action.getDeviceId(), mediaPayload,
+                    user, automationId, automationName, traceId, homeId);
+
+            logStream.updateDeliveryStatus(traceId,
+                    AutomationLog.DeliveryStatus.NOT_APPLICABLE, now);
+            saveRecord(automationId, automationName, traceId, user,
+                    "MEDIA", action, mediaPayload, now, expireAt,
+                    mediaOk ? DeviceActionState.DispatchOutcome.NOT_APPLICABLE
+                            : DeviceActionState.DispatchOutcome.DELIVERY_FAILED,
+                    mediaOk ? null : "MEDIA dispatch threw exception"
+            );
             return;
         }
 
         // Standard device — correlation tracked via _cid
         String correlationId = UUID.randomUUID().toString();
-        Map<String, Object> trackedPayload = new HashMap<>(payload);
+        Map<String, Object> trackedPayload = new HashMap<>(
+                Map.of(action.getKey(), parsedData, "key", action.getKey()));
         trackedPayload.put("_cid", correlationId);
 
-        deviceActionStateRepository.save(DeviceActionState.builder()
-                .user(user).deviceId(action.getDeviceId())
-                .timestamp(new Date()).payload(trackedPayload).deviceType("sensor").build());
+        // Save record first with PENDING — ActionDeliveryTracker fills ackedAt + ACKED
+        // (or DELIVERY_FAILED on timeout) by calling updateDeliveryOutcome() below.
+
+        DeviceActionState saved = saveRecord(automationId, automationName, traceId, user,
+                action.getDeviceType(), action, trackedPayload, now, expireAt,
+                DeviceActionState.DispatchOutcome.PENDING, ""
+        );
 
         sendToDevice(action.getDeviceId(), trackedPayload);
 
-        // Register delivery tracking — now also carries traceId so that when the
-        // device ACKs, ActionDeliveryTracker can call logStream.updateDeliveryStatus()
-        deliveryTracker.register(correlationId, automationId, automationName,
-                action.getDeviceId(), action.getName(), trackedPayload,
-                traceId);
+        // Register with delivery tracker — passes saved record id so the tracker
+        // can call updateDeliveryOutcome(id, ACKED, ackedAt) on ACK.
+        deliveryTracker.register(
+                correlationId,
+                automationId,
+                automationName,
+                action.getDeviceId(),
+                action.getName(),
+                trackedPayload,
+                traceId, saved != null ? saved.getId() : null);  // ← new param
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────────────────────
+
+    private DeviceActionState saveRecord(
+            String automationId,
+            String automationName,
+            String traceId,
+            String user,
+            String deviceType,
+            ExecutionPlan.CompiledAction action,
+            Map<String, Object> payload,
+            Date now, Date expireAt,
+            DeviceActionState.DispatchOutcome outcome,
+            String errorReason
+    ) {
+        DeviceActionState record = DeviceActionState.builder()
+                .automationId(automationId)
+                .automationName(automationName)
+                .traceId(traceId)
+                .deviceId(action.getDeviceId())
+                .deviceName(action.getName())
+                .deviceType(deviceType)
+                .key(action.getKey())
+                .data(action.getData())
+                .order(action.getOrder())
+                .delaySeconds(action.getDelaySeconds())
+                .conditionGroup(action.getConditionGroup())
+                .user(user)
+                .payload(payload)
+                .dispatchedAt(now)
+                .outcome(outcome)
+                .expireAt(expireAt)
+                .errorReason(errorReason)
+                .build();
+        try {
+            return deviceActionStateRepository.save(record);
+        } catch (Exception e) {
+            log.error("❌ Failed to save DeviceActionState for traceId={}: {}",
+                    record.getTraceId(), e.getMessage());
+            return null;
+        }
     }
 
     private void sendToDevice(String deviceId, Map<String, Object> payload) {
@@ -247,51 +325,46 @@ public class ActionDispatcher {
         sendToMqtt("action/" + deviceId, payload);
     }
 
-
-    private void dispatchMedia(String deviceId,
-                               Map<String, Object> payload,
-                               String user,
-                               String automationId,
-                               String automationName,
-                               String traceId,
-                               String homeId
-    ) {
-        deviceMetaCache.getDevice(deviceId).ifPresent(device -> {
-            try {
-                new Spotify(spotifyService, device.getId()).handleAction(payload);
-                deliveryTracker.registerWled(
-                        deviceId, automationId, automationName, device.getName(), payload, traceId);
-
-            } catch (Exception e) {
-                log.error("MEDIA dispatch error for '{}': {}", deviceId, e.getMessage());
-                // Dispatch itself failed — mark immediately
-                logStream.updateDeliveryStatus(
-                        traceId, AutomationLog.DeliveryStatus.DELIVERY_FAILED, new Date());
-            }
-        });
+    /**
+     * Returns true if dispatch succeeded, false if it threw.
+     */
+    private boolean dispatchWled(String deviceId, Map<String, Object> payload,
+                                 String user, String automationId,
+                                 String automationName, String traceId, String homeId) {
+        try {
+            deviceMetaCache.getDevice(deviceId).ifPresent(device -> {
+                new Wled(mqttOutboundChannel, device).handleAction(payload);
+                deliveryTracker.registerWled(deviceId, automationId,
+                        automationName, device.getName(), payload, traceId);
+            });
+            return true;
+        } catch (Exception e) {
+            log.error("WLED dispatch error for '{}': {}", deviceId, e.getMessage());
+            logStream.updateDeliveryStatus(traceId,
+                    AutomationLog.DeliveryStatus.DELIVERY_FAILED, new Date());
+            return false;
+        }
     }
 
-    private void dispatchWled(String deviceId,
-                              Map<String, Object> payload,
-                              String user,
-                              String automationId,
-                              String automationName,
-                              String traceId,
-                              String homeId
-    ) {
-        deviceMetaCache.getDevice(deviceId).ifPresent(device -> {
-            try {
-                new Wled(mqttOutboundChannel, device).handleAction(payload);
-                deliveryTracker.registerWled(
-                        deviceId, automationId, automationName, device.getName(), payload, traceId);
-
-            } catch (Exception e) {
-                log.error("WLED dispatch error for '{}': {}", deviceId, e.getMessage());
-                // Dispatch itself failed — mark immediately
-                logStream.updateDeliveryStatus(
-                        traceId, AutomationLog.DeliveryStatus.DELIVERY_FAILED, new Date());
-            }
-        });
+    /**
+     * Returns true if dispatch succeeded, false if it threw.
+     */
+    private boolean dispatchMedia(String deviceId, Map<String, Object> payload,
+                                  String user, String automationId,
+                                  String automationName, String traceId, String homeId) {
+        try {
+            deviceMetaCache.getDevice(deviceId).ifPresent(device -> {
+                new Spotify(spotifyService, device.getId()).handleAction(payload);
+                deliveryTracker.registerWled(deviceId, automationId,
+                        automationName, device.getName(), payload, traceId);
+            });
+            return true;
+        } catch (Exception e) {
+            log.error("MEDIA dispatch error for '{}': {}", deviceId, e.getMessage());
+            logStream.updateDeliveryStatus(traceId,
+                    AutomationLog.DeliveryStatus.DELIVERY_FAILED, new Date());
+            return false;
+        }
     }
 
     private void sendToMqtt(String topic, Map<String, Object> payload) {

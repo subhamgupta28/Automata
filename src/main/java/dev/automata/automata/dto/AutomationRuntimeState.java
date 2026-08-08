@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -18,7 +19,7 @@ public class AutomationRuntimeState {
 
     // ── Top-level state ────────────────────────────────────────────────────
     private String topLevelState = "IDLE";
-
+    private Instant savedAt;
     /**
      * Unified per-node state map. Replaces both the old branchStates and
      * nodeActiveStates maps. Every condition node that has negative actions
@@ -27,20 +28,6 @@ public class AutomationRuntimeState {
      */
     private Map<String, String> nodeStates = new HashMap<>();
 
-    /**
-     * @deprecated kept only for backward-compat deserialization of old Redis
-     * blobs. New code must use nodeStates. Reads fall back to this map if
-     * nodeStates does not contain the key.
-     */
-    @Deprecated
-    private Map<String, String> branchStates = new HashMap<>();
-
-    /**
-     * @deprecated kept only for backward-compat deserialization of old Redis
-     * blobs. New code must use nodeStates.
-     */
-    @Deprecated
-    private Map<String, Boolean> nodeActiveStates = new HashMap<>();
 
     // ── Condition memory (DURATION / CONSECUTIVE / EDGE policies) ─────────
     private Map<String, ConditionMemory> conditionMemories = new HashMap<>();
@@ -74,9 +61,6 @@ public class AutomationRuntimeState {
         next.version = this.version + 1;
         next.topLevelState = this.topLevelState;
         next.nodeStates = new HashMap<>(this.nodeStates);
-        // carry deprecated maps for blobs that may still have them
-        next.branchStates = new HashMap<>(this.branchStates);
-        next.nodeActiveStates = new HashMap<>(this.nodeActiveStates);
         next.conditionMemories = new HashMap<>(this.conditionMemories);
         next.triggerMemberLastFired = new HashMap<>(this.triggerMemberLastFired);
         next.sequenceProgress = this.sequenceProgress;
@@ -106,18 +90,11 @@ public class AutomationRuntimeState {
      */
     public boolean isNodeActive(String nodeId) {
         String s = nodeStates.get(nodeId);
-        if (s != null) return "ACTIVE".equals(s) || "HOLDING".equals(s);
-        // legacy fallback — branchStates used by old branch automations
-        s = branchStates.get(nodeId);
-        if (s != null) return "ACTIVE".equals(s) || "HOLDING".equals(s);
-        // legacy fallback — nodeActiveStates used by old tree nodes
-        return Boolean.TRUE.equals(nodeActiveStates.get(nodeId));
+        return ("ACTIVE".equals(s) || "HOLDING".equals(s));
     }
 
     public String getNodeStateStr(String nodeId) {
         String s = nodeStates.get(nodeId);
-        if (s != null) return s;
-        s = branchStates.get(nodeId);
         if (s != null) return s;
         return "IDLE";
     }
@@ -131,9 +108,6 @@ public class AutomationRuntimeState {
      */
     public void resetAllNodeStates() {
         nodeStates.replaceAll((k, v) -> "IDLE");
-        // also clear deprecated maps so old blobs don't leave stale state
-        branchStates.replaceAll((k, v) -> "IDLE");
-        nodeActiveStates.replaceAll((k, v) -> false);
     }
 
 

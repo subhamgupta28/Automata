@@ -4,10 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.automation_engine.AutomationLogStream;
 import dev.automata.automata.model.AutomationLog;
+import dev.automata.automata.model.DeviceActionState;
+import dev.automata.automata.repository.DeviceActionStateRepository;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -34,6 +35,7 @@ public class ActionDeliveryTracker {
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
     private final AutomationLogStream logStream;
+    private final DeviceActionStateRepository deviceActionStateRepository;
 
     private static final String PREFIX = "DELIVERY:";
     private static final long TTL_SEC = 60L;
@@ -47,12 +49,15 @@ public class ActionDeliveryTracker {
      * Register a pending delivery. Called by ActionDispatcher after sending
      * the action payload to the device.
      */
-    public void register(String correlationId,
-                         String automationId,
-                         String automationName,
-                         String deviceId,
-                         String deviceName,
-                         Map<String, Object> payload, String traceId) {
+    public void register(
+            String correlationId,
+            String automationId,
+            String automationName,
+            String deviceId,
+            String deviceName,
+            Map<String, Object> payload, String traceId,
+            String recordId
+    ) {
         try {
             DeliveryRecord record = DeliveryRecord.builder()
                     .correlationId(correlationId)
@@ -63,6 +68,7 @@ public class ActionDeliveryTracker {
                     .payload(payload)
                     .registeredAt(new Date())
                     .traceId(traceId)
+                    .recordId(recordId)
                     .build();
 
             String json = objectMapper.writeValueAsString(record);
@@ -86,11 +92,13 @@ public class ActionDeliveryTracker {
      * @param deviceName     for logging
      * @param traceId        from the originating execute() call
      */
-    public void registerWled(String deviceId,
-                             String automationId,
-                             String automationName,
-                             String deviceName,
-                             Map<String, Object> payload, String traceId) {
+    public void registerWled(
+            String deviceId,
+            String automationId,
+            String automationName,
+            String deviceName,
+            Map<String, Object> payload, String traceId
+    ) {
 
         try {
             DeliveryRecord record = DeliveryRecord.builder()
@@ -124,6 +132,7 @@ public class ActionDeliveryTracker {
      * Any node in the cluster can handle this ack.
      */
     public void confirm(String correlationId) {
+
         try {
             // GETDEL — Redis 6.2+; falls back to GET+DEL if unavailable
             String raw = redisTemplate.opsForValue().getAndDelete(PREFIX + correlationId);
@@ -132,19 +141,42 @@ public class ActionDeliveryTracker {
                 log.debug("📭 Ack received for unknown/expired cid='{}'", correlationId);
                 return;
             }
-
+            Date now = new Date();
             DeliveryRecord record = objectMapper.readValue(raw, DeliveryRecord.class);
-            long latencyMs = new Date().getTime() - record.getRegisteredAt().getTime();
+            long latencyMs = now.getTime() - record.getRegisteredAt().getTime();
             logStream.updateDeliveryStatus(
                     record.getTraceId(),
                     AutomationLog.DeliveryStatus.DELIVERED,
-                    new Date());
+                    now);
+            updateDeliveryOutcome(record.getRecordId(), DeviceActionState.DispatchOutcome.ACKED, now, "");
             log.info("✅ Action delivered: automation='{}' device='{}' latency={}ms cid='{}'",
                     record.getAutomationName(), record.getDeviceName(), latencyMs, correlationId);
 
         } catch (Exception e) {
             log.warn("Failed to confirm delivery for cid='{}': {}", correlationId, e.getMessage());
         }
+    }
+    // ─────────────────────────────────────────────────────────────────────
+    // DELIVERY OUTCOME UPDATE  (called by ActionDeliveryTracker on ACK)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Called by ActionDeliveryTracker when a device ACK arrives (matched by _cid)
+     * or when the ACK window times out.
+     */
+    public void updateDeliveryOutcome(
+            String recordId,
+            DeviceActionState.DispatchOutcome outcome,
+            Date ackedAt,
+            String errorReason
+    ) {
+        if (recordId == null) return;
+        deviceActionStateRepository.findById(recordId).ifPresent(record -> {
+            record.setOutcome(outcome);
+            record.setAckedAt(ackedAt);
+            record.setErrorReason(errorReason);
+            deviceActionStateRepository.save(record);
+        });
     }
 
     /**
@@ -161,17 +193,17 @@ public class ActionDeliveryTracker {
                 log.debug("📭 Ack received for unknown/expired cid='{}'", deviceId);
                 return;
             }
-
+            Date now = new Date();
             DeliveryRecord record = objectMapper.readValue(raw, DeliveryRecord.class);
-            long latencyMs = new Date().getTime() - record.getRegisteredAt().getTime();
+            long latencyMs = now.getTime() - record.getRegisteredAt().getTime();
             log.info("✅ WLED delivered: automation='{}' device='{}' latency={}ms traceId={}",
                     record.getAutomationName(), deviceName,
                     latencyMs, record.getTraceId());
-
+            updateDeliveryOutcome(record.getRecordId(), DeviceActionState.DispatchOutcome.ACKED, now, "");
             logStream.updateDeliveryStatus(
                     record.getTraceId(),
                     AutomationLog.DeliveryStatus.DELIVERED,
-                    new Date());
+                    now);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -179,7 +211,7 @@ public class ActionDeliveryTracker {
 
     }
 
-    @Scheduled(fixedRate = 30_000)
+    //    @Scheduled(fixedRate = 30_000)
     public void evictExpired() {
         long now = System.currentTimeMillis();
         long timeoutMs = 60_000; // match ACTION_TIMEOUT_SECONDS in ActionDispatcher
@@ -218,5 +250,6 @@ public class ActionDeliveryTracker {
         private Map<String, Object> payload;
         private Date registeredAt;
         String traceId;
+        String recordId;
     }
 }

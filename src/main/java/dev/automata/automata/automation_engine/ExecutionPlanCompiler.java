@@ -146,7 +146,12 @@ public class ExecutionPlanCompiler {
                 .map(Automation.Condition::getNodeId)
                 .filter(id -> !conditionChildIds.contains(id))
                 .collect(Collectors.toList());
-
+        if (rootConditionNodeIds.size() > 1) {
+            log.error("❌ [{}] {} root condition nodes found ({}) — only the first will ever "
+                            + "evaluate (single-trigger invariant violated). Re-save in the editor "
+                            + "or inspect for a disconnected condition node.",
+                    automation.getName(), rootConditionNodeIds.size(), rootConditionNodeIds);
+        }
         if (rootConditionNodeIds.isEmpty() && !conditionNodeIds.isEmpty()) {
             log.error("❌ [{}] No root conditions found — possible cycle. Picking first node as fallback.",
                     automation.getName());
@@ -278,7 +283,7 @@ public class ExecutionPlanCompiler {
         // ── Step 5: global action groups ──────────────────────────────────
         List<ExecutionPlan.CompiledAction> informational = compileByGroup(actions, "informational");
         List<ExecutionPlan.CompiledAction> fallback = compileByGroup(actions, "fallback");
-        List<ExecutionPlan.CompiledAction> stateless = compileStatelessActions(actions);
+        List<ExecutionPlan.CompiledAction> stateless = compileStatelessActions(actions, "stateless");
 
         List<ExecutionPlan.CompiledAction> topLevelPositive =
                 nodeMap.values().stream()
@@ -421,7 +426,7 @@ public class ExecutionPlanCompiler {
                         .comparingInt((Automation.Action a) ->
                                 a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE)
                         .thenComparing(Automation.Action::getNodeId))
-                .map(this::compileAction)
+                .map(a -> compileAction(a, group))
                 .collect(Collectors.toList());
     }
 
@@ -434,12 +439,12 @@ public class ExecutionPlanCompiler {
                         .comparingInt((Automation.Action a) ->
                                 a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE)
                         .thenComparing(Automation.Action::getNodeId))
-                .map(this::compileAction)
+                .map(a -> compileAction(a, group))
                 .collect(Collectors.toList());
     }
 
     private List<ExecutionPlan.CompiledAction> compileStatelessActions(
-            List<Automation.Action> actions) {
+            List<Automation.Action> actions, String group) {
         return actions.stream()
                 .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
                 .filter(a -> "none".equalsIgnoreCase(a.getConditionGroup()))
@@ -447,11 +452,11 @@ public class ExecutionPlanCompiler {
                         .comparingInt((Automation.Action a) ->
                                 a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE)
                         .thenComparing(Automation.Action::getNodeId))
-                .map(this::compileAction)
+                .map(a -> compileAction(a, group))
                 .collect(Collectors.toList());
     }
 
-    private ExecutionPlan.CompiledAction compileAction(Automation.Action a) {
+    private ExecutionPlan.CompiledAction compileAction(Automation.Action a, String group) {
         return ExecutionPlan.CompiledAction.builder()
                 .nodeId(a.getNodeId())
                 .deviceId(a.getDeviceId())
@@ -461,6 +466,7 @@ public class ExecutionPlanCompiler {
                 .delaySeconds(a.getDelaySeconds())
                 .name(a.getName())
                 .deviceType(resolveDeviceType(a.getDeviceId()))
+                .conditionGroup(group)
                 .build();
     }
 
@@ -523,17 +529,36 @@ public class ExecutionPlanCompiler {
         List<TriggerSource> sources = automation.getTrigger().getSources();
         if (sources == null || sources.size() <= 1) return null;
 
-        TriggerCoalition.CoalitionMode mode = TriggerCoalition.CoalitionMode.ANY;
-        int windowSeconds = 60;
+        var declaredMode = automation.getTrigger().getCoalitionMode();
+        TriggerCoalition.CoalitionMode mode = switch (declaredMode) {
+            case "SEQUENCE" -> TriggerCoalition.CoalitionMode.SEQUENCE;
+            case "ALL" -> TriggerCoalition.CoalitionMode.ALL;
+            default -> TriggerCoalition.CoalitionMode.ANY;
+        };
+        if (mode == TriggerCoalition.CoalitionMode.ANY) {
+            log.warn("⚠️ [{}] Unknown coalitionMode '{}' — defaulting to ANY", automation.getName(), declaredMode);
+        }
+        int declaredWindow = automation.getTrigger().getCoalitionWindowSeconds();
+        int windowSeconds = declaredWindow > 0 ? declaredWindow : 60;   // 0/unset = editor default
 
-        List<TriggerMember> members = sources.stream()
-                .map(s -> TriggerMember.builder()
-                        .deviceId(s.getDeviceId())
-                        .keys(s.getKeys())
-                        .role(s.getRole())
-                        .sequenceIndex(0)
-                        .build())
-                .toList();
+        List<TriggerMember> members = new ArrayList<>();
+        for (int i = 0; i < sources.size(); i++) {
+            TriggerSource s = sources.get(i);
+            members.add(TriggerMember.builder()
+                    .deviceId(s.getDeviceId())
+                    .keys(s.getKeys())
+                    .role(s.getRole())
+                    // Falls back to declared array order until TriggerSource carries
+                    // its own explicit sequenceIndex from the editor — see note below.
+                    .sequenceIndex(i)
+                    .build());
+        }
+
+        if (mode == TriggerCoalition.CoalitionMode.SEQUENCE) {
+            log.info("🔗 [{}] Coalition compiled in SEQUENCE mode using source-array "
+                            + "order as sequence index — verify source order matches intended firing order",
+                    automation.getName());
+        }
 
         return TriggerCoalition.builder()
                 .mode(mode)

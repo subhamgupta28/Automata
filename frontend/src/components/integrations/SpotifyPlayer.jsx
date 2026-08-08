@@ -139,7 +139,7 @@ export default function SpotifyPlayer() {
     // Tick progress locally while playing
     useEffect(() => {
         if (!isPlaying) return;
-        const id = setInterval(() => setProgress(p => Math.min(p + 1000, duration)), 1000);
+        const id = setInterval(() => setProgress(p => Math.min(p + 1000, duration)), 5000);
         return () => clearInterval(id);
     }, [isPlaying, duration]);
 

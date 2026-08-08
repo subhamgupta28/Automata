@@ -200,51 +200,63 @@ function AutomationPill({icon, value, label, color, tooltip}) {
 // ─── Automation Summary Chips (inline, no fetch — data is passed in) ──────────
 function AutomationSummaryChips({summary}) {
     if (!summary) return null;
-    const {total, healthy, warnings, errors, totalUndelivered, totalSlowEvals} = summary;
+    const {total, healthy, warnings, errors, totalUndelivered, totalSlowEvals, status} = summary;
 
     return (
         <>
-            <AutomationPill
-                icon={<CheckCircleOutline sx={{fontSize: 13}}/>}
-                value={`${healthy}/${total}`}
-                label="healthy"
-                color="#22c55e"
-                tooltip="Automations with no errors or delivery failures"
-            />
-            {warnings > 0 && (
-                <AutomationPill
-                    icon={<WarningAmberOutlined sx={{fontSize: 13}}/>}
-                    value={warnings}
-                    label="warn"
-                    color="#f59e0b"
-                    tooltip="Automations with slow evaluations or minor issues"
-                />
-            )}
-            {errors > 0 && (
+            {status.isEnabled ? (
+                <>
+                    <AutomationPill
+                        icon={<CheckCircleOutline sx={{fontSize: 13}}/>}
+                        value={`${healthy}/${total}`}
+                        label="healthy"
+                        color="#22c55e"
+                        tooltip="Automations with no errors or delivery failures"
+                    />
+                    {warnings > 0 && (
+                        <AutomationPill
+                            icon={<WarningAmberOutlined sx={{fontSize: 13}}/>}
+                            value={warnings}
+                            label="warn"
+                            color="#f59e0b"
+                            tooltip="Automations with slow evaluations or minor issues"
+                        />
+                    )}
+                    {errors > 0 && (
+                        <AutomationPill
+                            icon={<ErrorOutline sx={{fontSize: 13}}/>}
+                            value={errors}
+                            label="err"
+                            color="#ef4444"
+                            tooltip="Automations with dispatch errors or evaluation exceptions"
+                        />
+                    )}
+                    {totalUndelivered > 0 && (
+                        <AutomationPill
+                            icon={<SignalWifiStatusbarConnectedNoInternet4 sx={{fontSize: 13}}/>}
+                            value={totalUndelivered}
+                            label="undelivered"
+                            color="#f59e0b"
+                            tooltip="Total actions with no device ACK"
+                        />
+                    )}
+                    {totalSlowEvals > 0 && (
+                        <AutomationPill
+                            icon={<WarningAmberOutlined sx={{fontSize: 13}}/>}
+                            value={totalSlowEvals}
+                            label="slow"
+                            color="#60a5fa"
+                            tooltip="Evaluations exceeding the 200ms threshold"
+                        />
+                    )}
+                </>
+            ) : (
                 <AutomationPill
                     icon={<ErrorOutline sx={{fontSize: 13}}/>}
-                    value={errors}
-                    label="err"
+                    value="Automations are disabled"
+                    label=""
                     color="#ef4444"
-                    tooltip="Automations with dispatch errors or evaluation exceptions"
-                />
-            )}
-            {totalUndelivered > 0 && (
-                <AutomationPill
-                    icon={<SignalWifiStatusbarConnectedNoInternet4 sx={{fontSize: 13}}/>}
-                    value={totalUndelivered}
-                    label="undelivered"
-                    color="#f59e0b"
-                    tooltip="Total actions with no device ACK"
-                />
-            )}
-            {totalSlowEvals > 0 && (
-                <AutomationPill
-                    icon={<WarningAmberOutlined sx={{fontSize: 13}}/>}
-                    value={totalSlowEvals}
-                    label="slow"
-                    color="#60a5fa"
-                    tooltip="Evaluations exceeding the 200ms threshold"
+                    tooltip="Automations are disabled"
                 />
             )}
         </>

@@ -4,7 +4,9 @@ import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.ConditionMemory;
 import dev.automata.automata.model.Automation;
 import dev.automata.automata.model.AutomationLog;
+import dev.automata.automata.model.AutomationStateSnapshot;
 import dev.automata.automata.repository.AutomationRepository;
+import dev.automata.automata.repository.AutomationStateSnapshotRepository;
 import dev.automata.automata.service.NotificationService;
 import dev.automata.automata.utils.Feature;
 import dev.automata.automata.utils.FeatureEnabled;
@@ -20,10 +22,13 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import static dev.automata.automata.automation_engine.AutomationEvaluator.EvalOutcome.*;
 
 /**
  * Core automation orchestrator.
@@ -71,6 +76,7 @@ public class AutomationOrchestrator {
     private final AutomationLivePublisher livePublisher;
     private final ReconcileLock reconcileLock;
     private final CoalitionGuard coalitionGuard;
+    private final AutomationStateSnapshotRepository stateSnapshotRepository;
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
     private static final int CAS_MAX_RETRIES = 2;
@@ -327,7 +333,7 @@ public class AutomationOrchestrator {
 
         // ── 6. No state change — persist memory + snapshot ────────────────
         if (!result.hasChanges()) {
-            writePostCasMemoryUpdates(automationId, result);
+            writePostCasMemoryUpdates(automationId, result, state);
             writeEvalSnapshot(automationId, plan, result, state);
             livePublisher.publish(plan, result, state, payload);
             publishLog(automationId, plan, user, payload, result);
@@ -349,7 +355,7 @@ public class AutomationOrchestrator {
                         result = foldInStrandedNegativeActions(result, plan, state, automationId);
                     }
                     if (!result.hasChanges()) {
-                        writePostCasMemoryUpdates(automationId, result);
+                        writePostCasMemoryUpdates(automationId, result, state);
                         writeEvalSnapshot(automationId, plan, result, state);
                         publishLog(automationId, plan, user, payload, result);
                         return;
@@ -377,6 +383,19 @@ public class AutomationOrchestrator {
         writePostCasScheduleKeys(result, automationId, plan);
         writeEvalSnapshot(automationId, plan, result, nextState);
         livePublisher.publish(plan, result, nextState, payload);
+
+        if (result.getOutcome() == TRIGGERED
+                || result.getOutcome() == BRANCH_TRIGGERED
+                || result.getOutcome() == C1_NEGATIVE) {
+            AutomationStateSnapshot snap = AutomationStateSnapshot.from(automationId, nextState, Instant.now());
+            CompletableFuture.runAsync(() -> {
+                try {
+                    stateSnapshotRepository.save(snap);
+                } catch (Exception e) {
+                    log.warn("⚠️ Failed to persist state snapshot for '{}': {}", automationId, e.getMessage());
+                }
+            });
+        }
         dispatchResult(result, plan, payload, user, automationId);
     }
 
@@ -565,13 +584,16 @@ public class AutomationOrchestrator {
     // MEMORY UPDATE POST-CAS
     // ─────────────────────────────────────────────────────────────────────
 
-    private void writePostCasMemoryUpdates(String automationId,
-                                           AutomationEvaluator.EvalResult result) {
+    private void writePostCasMemoryUpdates(
+            String automationId,
+            AutomationEvaluator.EvalResult result,
+            AutomationRuntimeState current
+    ) {
         Map<String, ConditionMemory> updates = result.getMemoryUpdates();
         if (updates == null || updates.isEmpty()) return;
-        AutomationRuntimeState latest = stateStore.read(automationId);
-        updates.forEach(latest::setConditionMemory);
-        stateStore.forceWrite(automationId, latest);
+        // Use the state already in hand — don't re-read from Redis/MongoDB
+        updates.forEach(current::setConditionMemory);
+        stateStore.forceWrite(automationId, current);
     }
 
 
@@ -612,9 +634,9 @@ public class AutomationOrchestrator {
                 snapshot.setConditionMemorySummaries(summaries);
             }
 
-            AutomationRuntimeState latest = stateStore.read(automationId);
-            latest.setLastEvalSnapshot(snapshot);
-            stateStore.forceWrite(automationId, latest);
+//            AutomationRuntimeState latest = stateStore.read(automationId);
+            currentState.setLastEvalSnapshot(snapshot);
+            stateStore.forceWrite(automationId, currentState);
         } catch (Exception e) {
             log.warn("⚠️ Failed to write eval snapshot for '{}': {}", automationId, e.getMessage());
         }
