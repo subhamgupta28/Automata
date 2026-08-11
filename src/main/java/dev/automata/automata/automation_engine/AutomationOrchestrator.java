@@ -490,7 +490,7 @@ public class AutomationOrchestrator {
                     && !"scheduled".equals(c.getConditionType());
 
             if (hasGrace) {
-                long durationMs = c.getDurationMinutes() * 60_000L;
+                long durationMs = c.getDurationMinutes() * 1000L;
                 Long armedAt = stateStore.getGraceArmedAtEpochMs(automationId, node.getNodeId());
 
                 if (armedAt == null) {
@@ -499,7 +499,7 @@ public class AutomationOrchestrator {
                     // and don't mark it IDLE in extendedResults (leaving it unset means
                     // applyPerNodeActiveFlags() leaves the node's state untouched = still ACTIVE).
                     stateStore.armGrace(automationId, node.getNodeId(), nowMs,
-                            c.getDurationMinutes() * 60L + 30);
+                            c.getDurationMinutes() * 5L);
                     log.info("⏳ Stranded node '{}' — parent false, honoring {}min child grace before negative actions",
                             node.getNodeId(), c.getDurationMinutes());
                     continue;

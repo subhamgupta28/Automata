@@ -362,7 +362,10 @@ public class AutomationEvaluator {
 // ── Generic negative-action grace (any condition with durationMinutes>0) ──
         if (hasNegativeGraceDuration(node.getCondition())) {
             long nowMs = now.toInstant().toEpochMilli();
-            long durationMs = node.getCondition().getDurationMinutes() * 60_000L;
+            // For non-scheduled conditions, durationMinutes is seconds, not minutes —
+            // see hasNegativeGraceDuration(). Scheduled+interval keeps minute granularity
+            // via isIntervalWithDuration, which is mutually exclusive with this branch.
+            long durationMs = node.getCondition().getDurationMinutes() * 1000L;
 
             if (result) {
                 // Condition recovered (or never failed) — clear any stale grace timer
@@ -376,7 +379,7 @@ public class AutomationEvaluator {
                         // First false tick after being active — start the grace clock,
                         // and hold this tick as "true" so the negative path doesn't fire yet.
                         stateStore.armGrace(automationId, node.getNodeId(), nowMs,
-                                node.getCondition().getDurationMinutes() * 60L + 30);
+                                node.getCondition().getDurationMinutes() * 5L);
                         log.info("⏳ [{}] Node '{}' went false — arming {}min grace before negative actions",
                                 automationName, node.getNodeId(), node.getCondition().getDurationMinutes());
                         result = true;

@@ -12,6 +12,7 @@ import '../../App.css'
 import {MapView} from "../charts/MapView.jsx";
 import {C} from "./WeatherCardV2.jsx";
 import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
+import RadarRoomView from "../device_types/RadarRoomView.jsx";
 
 export const combineAttributes = (attributesByDevice) => {
     const map = new Map();
@@ -85,7 +86,8 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
         chartDevices,
         otherDevices,
         mapDevices,
-        mediaDevices
+        mediaDevices,
+        radarDevices,
     } = useMemo(() => {
         const grouped = {
             hvacDevices: [],
@@ -94,7 +96,8 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
             chartDevices: [],
             otherDevices: [],
             mapDevices: [],
-            mediaDevices: []
+            mediaDevices: [],
+            radarDevices: [],
         };
 
         for (const attr of deviceList) {
@@ -104,6 +107,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
             else if (attr.type === 'CHART') grouped.chartDevices.push(attr);
             else if (attr.category === 'SENSOR|GPS') grouped.mapDevices.push(attr);
             else if (attr.category === 'MEDIA') grouped.mediaDevices.push(attr);
+            else if (attr.category === 'RADAR') grouped.radarDevices.push(attr);
             else grouped.otherDevices.push(attr);
         }
 
@@ -212,6 +216,9 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                     {mapDevices.length > 0 && (
                         <MapView lat={liveData.LAT} lng={liveData.LONG} h={height} w={width}
                                  deviceIds={mapDeviceIds}/>
+                    )}
+                    {radarDevices.length > 0 && (
+                        <RadarRoomView sensorData={liveData}/>
                     )}
                     {chartDevices.map(device => (
                         <div key={device.id}>
