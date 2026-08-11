@@ -27,7 +27,7 @@ dayjs.extend(customParseFormat);
 
 const conditionStyle = {
     borderRadius: '10px',
-    width: '320px',
+    width: '360px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     // background: 'transparent',
     // backdropFilter: 'blur(6px)',
@@ -324,7 +324,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
             <Accordion
                 style={{
-                    background: 'rgb(27 27 27 /95%)',
+                    background: 'rgb(27 27 27 /99%)',
                     borderRadius: '12px',
                     marginTop: '0px', ...conditionStyle,
                     marginBottom: '0px',
@@ -428,15 +428,17 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                     )}
 
                                     {scheduleType === 'interval' && (
-                                        <TextField size="small" label="Run every (minutes)" type="number"
-                                                   value={intervalMinutes}
-                                                   onChange={(e) => setIntervalMinutes(Number(e.target.value))}/>
+                                        <>
+                                            <TextField size="small" label="Run every (minutes)" type="number"
+                                                       value={intervalMinutes}
+                                                       onChange={(e) => setIntervalMinutes(Number(e.target.value))}/>
+                                            <TextField size="small" label="Run for (minutes)" type="number"
+                                                       value={durationMinutes}
+                                                       onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                                                       sx={{mt: 2}}/>
+                                        </>
                                     )}
 
-                                    <TextField size="small" label="Run for (minutes)" type="number"
-                                               value={durationMinutes}
-                                               onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                                               sx={{mt: 2}}/>
 
                                     <FormControl className='nodrag' fullWidth size="small" sx={{mt: 2}}>
                                         <InputLabel>Days</InputLabel>
@@ -511,6 +513,14 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                             </div>
                                         )}
                                     </LocalizationProvider>
+                                    <TextField
+                                        size="small" fullWidth type="number"
+                                        label="Wait before turning off (seconds)"
+                                        value={durationMinutes}
+                                        onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                                        helperText="Grace period after this condition goes false before negative actions fire. Stays as-is if it becomes true again within this window. 0 = fire immediately."
+                                        sx={{mt: 2}}
+                                    />
                                 </div>
                             )}
                         </div>
@@ -525,7 +535,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                                     : 'Memory Policy (optional)'}
                             </Typography>
 
-                            <FormControl fullWidth size="small" className='nodrag' sx={{mb: 2}}>
+                            <FormControl fullWidth size="small" className='nodrag' sx={{mb: 2, mt: 2}}>
                                 <InputLabel>Policy</InputLabel>
                                 <Select
                                     variant="outlined"
