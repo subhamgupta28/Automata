@@ -200,11 +200,11 @@ function AutomationPill({icon, value, label, color, tooltip}) {
 // ─── Automation Summary Chips (inline, no fetch — data is passed in) ──────────
 function AutomationSummaryChips({summary}) {
     if (!summary) return null;
-    const {total, healthy, warnings, errors, totalUndelivered, totalSlowEvals, status} = summary;
+    const {total, healthy, warnings, errors, totalUndelivered, totalSlowEvals, periodicServiceEnabled} = summary;
 
     return (
         <>
-            {status.isEnabled ? (
+            {periodicServiceEnabled ? (
                 <>
                     <AutomationPill
                         icon={<CheckCircleOutline sx={{fontSize: 13}}/>}

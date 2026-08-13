@@ -12,6 +12,8 @@ public class AutomationAnalyticsSummaryDto {
     private int healthy;
     private int warnings;
     private int errors;
+    private int inactive;
+    private boolean periodicServiceEnabled;
     private long totalUndelivered;
     private long totalSlowEvals;
     private Map<String, Object> status;

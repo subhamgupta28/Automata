@@ -198,7 +198,8 @@ public class AutomationLog {
          * CAS conflicts are not persisted (too noisy).
          */
         SKIP_REASON,
-        USER_OVERRIDE
+        USER_OVERRIDE,
+        ERROR
     }
 
     public enum DeliveryStatus {

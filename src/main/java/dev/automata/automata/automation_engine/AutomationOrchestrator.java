@@ -265,13 +265,13 @@ public class AutomationOrchestrator {
         if (stateStore.isSnoozed(automationId)) {
             long rem = Optional.ofNullable(stateStore.snoozeTTL(automationId)).orElse(0L);
             publishSkippedLog(automationId, plan, user, payload,
-                    "Snoozed — " + rem / 60 + "min remaining", traceId);
+                    "Snoozed — " + rem / 60 + "min remaining", traceId, AutomationLog.LogStatus.SUPPRESSED);
             return;
         }
         if (stateStore.isTimedDisabled(automationId)) {
             long rem = Optional.ofNullable(stateStore.timedDisableTTL(automationId)).orElse(0L);
             publishSkippedLog(automationId, plan, user, payload,
-                    "Timed-disabled — " + rem / 60 + "min remaining", traceId);
+                    "Timed-disabled — " + rem / 60 + "min remaining", traceId, AutomationLog.LogStatus.SUPPRESSED);
             return;
         }
 
@@ -295,7 +295,7 @@ public class AutomationOrchestrator {
                 stateStore.forceWrite(automationId, stateWithMember);
                 publishSkippedLog(automationId, plan, user, payload,
                         "Coalition " + coalitionResult.status() + ": " + coalitionResult.reason(),
-                        traceId);
+                        traceId, AutomationLog.LogStatus.NOT_MET);
                 return;
             }
 
@@ -319,7 +319,7 @@ public class AutomationOrchestrator {
         } catch (Exception e) {
             log.error("❌ [traceId={}] Evaluation failed: {}", traceId, e.getMessage(), e);
             publishSkippedLog(automationId, plan, user, payload,
-                    "Evaluation error: " + e.getMessage(), traceId);
+                    "Evaluation error: " + e.getMessage(), traceId, AutomationLog.LogStatus.ERROR);
             return;
         }
 
@@ -365,7 +365,7 @@ public class AutomationOrchestrator {
                     log.error("❌ [traceId={}] Evaluation failed on retry {}: {}",
                             traceId, attempt, e.getMessage(), e);
                     publishSkippedLog(automationId, plan, user, payload,
-                            "Evaluation error on retry: " + e.getMessage(), traceId);
+                            "Evaluation error on retry: " + e.getMessage(), traceId, AutomationLog.LogStatus.ERROR);
                     return;
                 }
             }
@@ -375,7 +375,7 @@ public class AutomationOrchestrator {
         if (!written) {
             log.warn("⚡ [traceId={}] CAS conflict unresolved after {} attempts", traceId, CAS_MAX_RETRIES);
             publishSkippedLog(automationId, plan, user, payload,
-                    "CAS conflict — concurrent state update", traceId);
+                    "CAS conflict — concurrent state update", traceId, AutomationLog.LogStatus.ERROR);
             return;
         }
 
@@ -993,7 +993,8 @@ public class AutomationOrchestrator {
 
     private void publishSkippedLog(String automationId, ExecutionPlan plan,
                                    String user, Map<String, Object> payload,
-                                   String reason, String traceId) {
+                                   String reason, String traceId,
+                                   AutomationLog.LogStatus status) {
         logStream.publish(AutomationLog.builder()
                 .automationId(automationId)
                 .automationName(resolveAutomationName(automationId))
@@ -1001,7 +1002,7 @@ public class AutomationOrchestrator {
                 .triggerDeviceId(plan != null ? plan.getTriggerDeviceId() : "")
                 .timestamp(new Date())
                 .payload(payload != null ? payload : Map.of())
-                .status(AutomationLog.LogStatus.SKIPPED)
+                .status(status)
                 .reason(reason)
                 .traceId(traceId)
                 .build());
