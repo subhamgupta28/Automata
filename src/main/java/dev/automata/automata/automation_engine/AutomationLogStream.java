@@ -109,7 +109,7 @@ public class AutomationLogStream {
     private boolean shouldPersist(AutomationLog.LogStatus status) {
         if (status == null) return false;
         return switch (status) {
-            case TRIGGERED, RESTORED, TRIGGER_FALSE, SKIP_REASON -> true;
+            case TRIGGERED, RESTORED, TRIGGER_FALSE, SKIP_REASON, ERROR -> true;
             case SKIPPED, NOT_MET, SUPPRESSED, USER_OVERRIDE -> false;
         };
     }

@@ -361,6 +361,9 @@ public class AutomationEvaluator {
         }
 // ── Generic negative-action grace (any condition with durationMinutes>0) ──
         if (hasNegativeGraceDuration(node.getCondition())) {
+            log.info("⏳ [{}] Node '{}' grace check — result={} wasActive={} durationRaw={}",
+                    automationName, node.getNodeId(), result, wasActive,
+                    node.getCondition().getDurationMinutes());
             long nowMs = now.toInstant().toEpochMilli();
             // For non-scheduled conditions, durationMinutes is seconds, not minutes —
             // see hasNegativeGraceDuration(). Scheduled+interval keeps minute granularity
@@ -378,10 +381,11 @@ public class AutomationEvaluator {
                     if (wasActive) {
                         // First false tick after being active — start the grace clock,
                         // and hold this tick as "true" so the negative path doesn't fire yet.
-                        stateStore.armGrace(automationId, node.getNodeId(), nowMs,
-                                node.getCondition().getDurationMinutes() * 5L);
-                        log.info("⏳ [{}] Node '{}' went false — arming {}min grace before negative actions",
-                                automationName, node.getNodeId(), node.getCondition().getDurationMinutes());
+                        long graceDurationSeconds = durationMs / 1000L; // named badly, actually seconds
+                        long ttlSeconds = graceDurationSeconds + 5L; // 5s buffer for clock jitter between ticks
+                        stateStore.armGrace(automationId, node.getNodeId(), nowMs, ttlSeconds);
+                        log.info("⏳ [{}] Node '{}' went false — arming {} milliseconds grace before negative actions",
+                                automationName, node.getNodeId(), durationMs);
                         result = true;
                         condResults.put(node.getNodeId(), true);
                     }
@@ -561,7 +565,7 @@ public class AutomationEvaluator {
         return c != null
                 && c.getDurationMinutes() > 0
                 && !isIntervalWithDuration(c)
-                && !"scheduled".equals(c.getConditionType());  // ← exclude ALL scheduled conditions
+                && !"scheduled".equals(c.getConditionType());  // ← range/above/below/equal/stale all pass this
     }
 
     private boolean isIntervalWithDuration(ExecutionPlan.CompiledCondition c) {

@@ -460,11 +460,21 @@ public class AutomationAnalyticsService {
                                 1, 0
                         ))
                 ))
-
-                // errors — status = TRIGGER_FALSE (c1 turned false while a branch was active)
-                .append("errors", new Document("$sum",
+                // deactivations — normal operation signal: how often the trigger condition went
+                // false (TRIGGER_FALSE / C1_NEGATIVE). Useful to see, but NOT a health flag.
+                .append("deactivations", new Document("$sum",
                         new Document("$cond", Arrays.asList(
                                 new Document("$eq", Arrays.asList("$status", "TRIGGER_FALSE")),
+                                1, 0
+                        ))
+                ))
+                // errors — genuine execution failures only. See AutomationOrchestrator's ERROR-
+                // tagged publishSkippedLog calls (evaluation exceptions, unresolved CAS conflicts).
+                // Deliberate non-fires (snooze/timed-disable/coalition-not-yet) stay SKIPPED and
+                // are intentionally NOT counted here.
+                .append("errors", new Document("$sum",
+                        new Document("$cond", Arrays.asList(
+                                new Document("$eq", Arrays.asList("$status", "ERROR")),
                                 1, 0
                         ))
                 ))
@@ -503,26 +513,42 @@ public class AutomationAnalyticsService {
 
     public AutomationAnalyticsSummaryDto getSummary() {
         List<AutomationAnalyticsDto> rows = getAnalytics();
+        Map<String, AutomationAnalyticsDto> rowsByAutomationId = rows.stream()
+                .collect(Collectors.toMap(AutomationAnalyticsDto::getAutomationId, r -> r, (a, b) -> a));
+
+        List<Automation> enabled = automationRepository.findEnabledForExecution();
         var isEnabled = featureService.isFeatureEnabled(Feature.PERIODIC_AUTOMATION_SERVICE.toString());
-        int healthy = (int) rows.stream().filter(this::isHealthy).count();
-        int warnings = (int) rows.stream().filter(this::isWarning).count();
-        int errors = (int) rows.stream().filter(this::isError).count();
-        long totalUndelivered = rows.stream()
-                .mapToLong(AutomationAnalyticsDto::getUndelivered).sum();
-        long totalSlowEvals = rows.stream()
-                .mapToLong(AutomationAnalyticsDto::getSlowEvals).sum();
+
+        int healthy = 0, warnings = 0, errors = 0, inactive = 0;
+        for (Automation automation : enabled) {
+            AutomationAnalyticsDto row = rowsByAutomationId.get(automation.getId());
+            if (row == null) {
+                // No log activity in the lookback window at all. Could be a genuinely
+                // quiet rule, or a broken one (dead trigger device, unsatisfiable
+                // condition, accidentally-disabled downstream logic). Kept separate
+                // rather than folded into "healthy" — silence isn't verified health.
+                inactive++;
+            } else if (isError(row)) {
+                errors++;
+            } else if (isWarning(row)) {
+                warnings++;
+            } else {
+                healthy++;
+            }
+        }
+
+        long totalUndelivered = rows.stream().mapToLong(AutomationAnalyticsDto::getUndelivered).sum();
+        long totalSlowEvals = rows.stream().mapToLong(AutomationAnalyticsDto::getSlowEvals).sum();
 
         return AutomationAnalyticsSummaryDto.builder()
-                .total(rows.size())
+                .total(enabled.size())              // was: rows.size() — silently excluded quiet automations
                 .healthy(healthy)
                 .warnings(warnings)
                 .errors(errors)
+                .inactive(inactive)                  // NEW
                 .totalUndelivered(totalUndelivered)
                 .totalSlowEvals(totalSlowEvals)
-                .status(Map.of(
-                        "isEnabled", isEnabled,
-                        "type", "PERIODIC_AUTOMATION_SERVICE"
-                ))
+                .periodicServiceEnabled(isEnabled)   // NEW typed field, replaces the status map
                 .build();
     }
 
