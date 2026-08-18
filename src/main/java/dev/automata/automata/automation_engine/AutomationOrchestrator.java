@@ -1,5 +1,8 @@
 package dev.automata.automata.automation_engine;
 
+import dev.automata.automata.automation_engine.enums.EvalOutcome;
+import dev.automata.automata.automation_engine.enums.NodeState;
+import dev.automata.automata.automation_engine.helpers.ActionResolver;
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.ConditionMemory;
 import dev.automata.automata.model.Automation;
@@ -28,7 +31,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static dev.automata.automata.automation_engine.AutomationEvaluator.EvalOutcome.*;
+import static dev.automata.automata.automation_engine.enums.EvalOutcome.*;
 
 /**
  * Core automation orchestrator.
@@ -77,6 +80,7 @@ public class AutomationOrchestrator {
     private final ReconcileLock reconcileLock;
     private final CoalitionGuard coalitionGuard;
     private final AutomationStateSnapshotRepository stateSnapshotRepository;
+    private final ActionResolver actionResolver;
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
     private static final int CAS_MAX_RETRIES = 2;
@@ -308,7 +312,7 @@ public class AutomationOrchestrator {
         }
 
         // ── 5. Evaluate ───────────────────────────────────────────────────
-        AutomationEvaluator.EvalResult result;
+        EvalResult result;
         try {
             result = evaluator.evaluate(plan, payload, state, automationId, traceId);
             log.debug("Automation {} final result getConditionResults={} getActionsToFire={} outcome={}",
@@ -324,7 +328,7 @@ public class AutomationOrchestrator {
         }
 
         // BUG 1 fix: fold in negative actions for stranded descendants
-        if (result.getOutcome() == AutomationEvaluator.EvalOutcome.C1_NEGATIVE) {
+        if (result.getOutcome() == EvalOutcome.C1_NEGATIVE) {
             result = foldInStrandedNegativeActions(result, plan, state, automationId);
         }
 
@@ -332,7 +336,7 @@ public class AutomationOrchestrator {
                 traceId, result.getOutcome(), result.isC1True(), result.isAnyWasActive());
 
         // ── 6. No state change — persist memory + snapshot ────────────────
-        if (!result.hasChanges()) {
+        if (result.hasNoChanges()) {
             writePostCasMemoryUpdates(automationId, result, state);
             writeEvalSnapshot(automationId, plan, result, state);
             livePublisher.publish(plan, result, state, payload);
@@ -351,10 +355,10 @@ public class AutomationOrchestrator {
                 try {
                     state = stateStore.read(automationId);
                     result = evaluator.evaluate(plan, payload, state, automationId, traceId);
-                    if (result.getOutcome() == AutomationEvaluator.EvalOutcome.C1_NEGATIVE) {
+                    if (result.getOutcome() == EvalOutcome.C1_NEGATIVE) {
                         result = foldInStrandedNegativeActions(result, plan, state, automationId);
                     }
-                    if (!result.hasChanges()) {
+                    if (result.hasNoChanges()) {
                         writePostCasMemoryUpdates(automationId, result, state);
                         writeEvalSnapshot(automationId, plan, result, state);
                         publishLog(automationId, plan, user, payload, result);
@@ -423,8 +427,8 @@ public class AutomationOrchestrator {
         return false;
     }
 
-    private AutomationEvaluator.EvalResult foldInStrandedNegativeActions(
-            AutomationEvaluator.EvalResult result,
+    private EvalResult foldInStrandedNegativeActions(
+            EvalResult result,
             ExecutionPlan plan,
             AutomationRuntimeState prevState,
             String automationId) {
@@ -442,10 +446,7 @@ public class AutomationOrchestrator {
         // from one ancestor and bright=1 from another) used to both slip through
         // because the old key included the value itself. "existing" (this tick's
         // freshly-walked result) is always authoritative and seeds the map first.
-        Map<String, ExecutionPlan.CompiledAction> resolved = new LinkedHashMap<>();
-        for (ExecutionPlan.CompiledAction a : existing) {
-            resolved.put(a.getDeviceId() + "|" + a.getKey(), a);
-        }
+        List<ExecutionPlan.CompiledAction> candidates = new ArrayList<>(existing);
 
         // RULE A applied to stranding: build the id → node map once so we can tell,
         // for two stranded nodes on the same chain, which one is the deeper/more
@@ -529,25 +530,13 @@ public class AutomationOrchestrator {
                             ? node.getNegativeActions().size() : 0);
 
             if (node.getNegativeActions() != null) {
-                for (ExecutionPlan.CompiledAction a : node.getNegativeActions()) {
-                    String dedupeKey = a.getDeviceId() + "|" + a.getKey();
-                    // RULE B: "existing" (this tick's live result) always wins;
-                    // among stranded nodes, first writer per device/key wins and
-                    // any later collision is logged rather than silently applied.
-                    ExecutionPlan.CompiledAction prior = resolved.putIfAbsent(dedupeKey, a);
-                    if (prior != null && prior != a) {
-                        log.warn("⚠️ Stranded action collision on '{}': keeping '{}'={} from an earlier "
-                                        + "node, dropping '{}'={} from '{}'",
-                                dedupeKey, prior.getNodeId(), prior.getData(),
-                                a.getNodeId(), a.getData(), node.getNodeId());
-                    }
-                }
+                candidates.addAll(node.getNegativeActions());
             }
         }
 
-        if (resolved.size() == existing.size() && extendedResults.size() == walkedThisTick.size()) return result;
+        if (candidates.size() == existing.size() && extendedResults.size() == walkedThisTick.size()) return result;
 
-        List<ExecutionPlan.CompiledAction> combined = new ArrayList<>(resolved.values());
+        List<ExecutionPlan.CompiledAction> combined = new ArrayList<>(actionResolver.resolve(candidates));
 
         return result.toBuilder()
                 .actionsToFire(combined)
@@ -586,7 +575,7 @@ public class AutomationOrchestrator {
 
     private void writePostCasMemoryUpdates(
             String automationId,
-            AutomationEvaluator.EvalResult result,
+            EvalResult result,
             AutomationRuntimeState current
     ) {
         Map<String, ConditionMemory> updates = result.getMemoryUpdates();
@@ -603,7 +592,7 @@ public class AutomationOrchestrator {
 
     private void writeEvalSnapshot(String automationId,
                                    ExecutionPlan plan,
-                                   AutomationEvaluator.EvalResult result,
+                                   EvalResult result,
                                    AutomationRuntimeState currentState) {
         try {
             AutomationRuntimeState.EvalSnapshot snapshot = new AutomationRuntimeState.EvalSnapshot();
@@ -647,13 +636,13 @@ public class AutomationOrchestrator {
     // POST-CAS SCHEDULE KEYS
     // ─────────────────────────────────────────────────────────────────────
 
-    private void writePostCasScheduleKeys(AutomationEvaluator.EvalResult result,
+    private void writePostCasScheduleKeys(EvalResult result,
                                           String automationId,
                                           ExecutionPlan plan) {
         // Write schedule keys for both TRIGGERED and BRANCH_TRIGGERED outcomes —
         // both represent a successful positive dispatch that arms cooldown timers.
-        if (result.getOutcome() != AutomationEvaluator.EvalOutcome.TRIGGERED
-                && result.getOutcome() != AutomationEvaluator.EvalOutcome.BRANCH_TRIGGERED) return;
+        if (result.getOutcome() != EvalOutcome.TRIGGERED
+                && result.getOutcome() != EvalOutcome.BRANCH_TRIGGERED) return;
         if (plan.getConditionTree() == null) return;
 
         Map<String, Boolean> condResults = result.getConditionResults();
@@ -704,7 +693,7 @@ public class AutomationOrchestrator {
      * negative actions are warranted).
      */
     private AutomationRuntimeState computeNextState(AutomationRuntimeState current,
-                                                    AutomationEvaluator.EvalResult result,
+                                                    EvalResult result,
                                                     ExecutionPlan plan) {
         AutomationRuntimeState next = current.withNextVersion();
 
@@ -714,7 +703,7 @@ public class AutomationOrchestrator {
 
         switch (result.getOutcome()) {
             case TRIGGERED -> {
-                next.setTopLevelState("ACTIVE");
+                next.setTopLevelState(NodeState.ACTIVE);
                 next.setLastExecutionTime(new Date());
                 applyPerNodeActiveFlags(next, plan, result.getConditionResults());
             }
@@ -723,12 +712,12 @@ public class AutomationOrchestrator {
                 // The top-level state stays ACTIVE (it was already set, or if this
                 // is the very first branch to fire it should also become ACTIVE).
                 // We deliberately do NOT call next.setTopLevelState("IDLE") here.
-                next.setTopLevelState("ACTIVE");
+                next.setTopLevelState(NodeState.ACTIVE);
                 next.setLastExecutionTime(new Date());
                 applyPerNodeActiveFlags(next, plan, result.getConditionResults());
             }
             case C1_NEGATIVE -> {
-                next.setTopLevelState("IDLE");
+                next.setTopLevelState(NodeState.IDLE);
                 // Pass 1: apply conditionResults so nodes walked this tick get their
                 // actual result. Stranded nodes folded in as false by
                 // foldInStrandedNegativeActions are also covered here.
@@ -743,7 +732,7 @@ public class AutomationOrchestrator {
                 if (plan.getConditionTree() != null) {
                     for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
                         if (node.isStateful() && next.isNodeActive(node.getNodeId())) {
-                            next.setNodeState(node.getNodeId(), "IDLE");
+                            next.setNodeState(node.getNodeId(), NodeState.IDLE);
                         }
                     }
                 }
@@ -767,7 +756,7 @@ public class AutomationOrchestrator {
             if (!node.isStateful()) continue;
             Boolean walkedResult = conditionResults.get(node.getNodeId());
             if (walkedResult == null) continue; // not walked this tick — leave as-is
-            next.setNodeState(node.getNodeId(), walkedResult ? "ACTIVE" : "IDLE");
+            next.setNodeState(node.getNodeId(), walkedResult ? NodeState.ACTIVE : NodeState.IDLE);
         }
     }
 
@@ -776,7 +765,7 @@ public class AutomationOrchestrator {
     // BUG 2 FIX — DURATION WINDOW ARMING
     // ─────────────────────────────────────────────────────────────────────
 
-    private void armDurationWindows(AutomationEvaluator.EvalResult result, String automationId) {
+    private void armDurationWindows(EvalResult result, String automationId) {
         Set<String> toArm = result.getIntervalNodesToArm();
         if (toArm == null || toArm.isEmpty()) return;
 
@@ -817,22 +806,22 @@ public class AutomationOrchestrator {
         if (actions == null || actions.isEmpty()) return actions == null ? List.of() : actions;
         if (actions.size() == 1) return actions;
 
-        Map<String, ExecutionPlan.CompiledAction> byDeviceKey = new LinkedHashMap<>();
-        for (ExecutionPlan.CompiledAction a : actions) {
-            String dedupeKey = a.getDeviceId() + "|" + a.getKey();
-            ExecutionPlan.CompiledAction prior = byDeviceKey.putIfAbsent(dedupeKey, a);
-            if (prior != null && !Objects.equals(prior.getData(), a.getData())) {
-                log.warn("⚠️ Global action resolve: conflicting values for device '{}' key '{}' — "
-                                + "keeping {}='{}' (node '{}'), dropping {}='{}' (node '{}')",
-                        a.getDeviceId(), a.getKey(),
-                        a.getKey(), prior.getData(), prior.getNodeId(),
-                        a.getKey(), a.getData(), a.getNodeId());
-            }
-        }
-        return new ArrayList<>(byDeviceKey.values());
+//        Map<String, ExecutionPlan.CompiledAction> byDeviceKey = new LinkedHashMap<>();
+//        for (ExecutionPlan.CompiledAction a : actions) {
+//            String dedupeKey = a.getDeviceId() + "|" + a.getKey();
+//            ExecutionPlan.CompiledAction prior = byDeviceKey.putIfAbsent(dedupeKey, a);
+//            if (prior != null && !Objects.equals(prior.getData(), a.getData())) {
+//                log.warn("⚠️ Global action resolve: conflicting values for device '{}' key '{}' — "
+//                                + "keeping {}='{}' (node '{}'), dropping {}='{}' (node '{}')",
+//                        a.getDeviceId(), a.getKey(),
+//                        a.getKey(), prior.getData(), prior.getNodeId(),
+//                        a.getKey(), a.getData(), a.getNodeId());
+//            }
+//        }
+        return new ArrayList<>(actionResolver.resolve(actions));
     }
 
-    private void armResendThrottles(AutomationEvaluator.EvalResult result, ExecutionPlan plan, String automationId) {
+    private void armResendThrottles(EvalResult result, ExecutionPlan plan, String automationId) {
         if (plan.getConditionTree() == null || result.getConditionResults() == null) return;
         for (ExecutionPlan.CompiledConditionNode node : plan.getConditionTree()) {
             if (!Boolean.TRUE.equals(result.getConditionResults().get(node.getNodeId()))) continue;
@@ -843,7 +832,7 @@ public class AutomationOrchestrator {
         }
     }
 
-    private void dispatchResult(AutomationEvaluator.EvalResult result,
+    private void dispatchResult(EvalResult result,
                                 ExecutionPlan plan,
                                 Map<String, Object> payload,
                                 String user,
@@ -968,7 +957,7 @@ public class AutomationOrchestrator {
 
     private void publishLog(String automationId, ExecutionPlan plan,
                             String user, Map<String, Object> payload,
-                            AutomationEvaluator.EvalResult result) {
+                            EvalResult result) {
         AutomationLog.LogStatus status = switch (result.getOutcome()) {
             // BUG 4 fix: BRANCH_TRIGGERED is a successful dispatch — map to TRIGGERED
             case TRIGGERED, BRANCH_TRIGGERED, STATELESS_FIRE, FALLBACK -> AutomationLog.LogStatus.TRIGGERED;
@@ -1025,7 +1014,7 @@ public class AutomationOrchestrator {
      * for use in the "automation is running" notification. Falls back to a
      * generic message if no matched condition can be described.
      */
-    private String buildTriggerDescription(AutomationEvaluator.EvalResult result, ExecutionPlan plan) {
+    private String buildTriggerDescription(EvalResult result, ExecutionPlan plan) {
         if (plan.getConditionTree() == null || result.getConditionResults() == null) return null;
 
         Map<String, Boolean> condResults = result.getConditionResults();

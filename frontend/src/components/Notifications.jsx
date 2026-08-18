@@ -12,7 +12,7 @@ export default function Notifications() {
 
     useEffect(() => {
         if (!messages?.message) return;
-        console.log("notify", messages)
+        // console.log("notify", messages)
         const severity = messages.severity ?? "info";
 
         enqueueSnackbar(messages.message, {
@@ -22,6 +22,7 @@ export default function Notifications() {
             // custom props forwarded to AutomataSnackbar
             header: messages.header ?? null,
             automationId: messages.automationId,
+            timestamp: messages.timestamp,
             onDisable: handleDisable,
             onSnooze: handleSnooze,
         });

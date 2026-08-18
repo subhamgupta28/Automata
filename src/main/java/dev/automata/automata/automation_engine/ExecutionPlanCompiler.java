@@ -1,5 +1,6 @@
 package dev.automata.automata.automation_engine;
 
+import dev.automata.automata.automation_engine.helpers.ActionResolver;
 import dev.automata.automata.cache.DeviceMetaCache;
 import dev.automata.automata.dto.NodeRef;
 import dev.automata.automata.model.Automation;
@@ -46,6 +47,7 @@ import java.util.stream.Collectors;
 public class ExecutionPlanCompiler {
 
     private final DeviceMetaCache deviceMetaCache;
+    private final ActionResolver actionResolver;
 
     // ─────────────────────────────────────────────────────────────────────
     // ENTRY POINT
@@ -111,7 +113,7 @@ public class ExecutionPlanCompiler {
             List<ExecutionPlan.CompiledAction> posActions =
                     compileActionsForNode(actions, nodeId, "positive");
             List<ExecutionPlan.CompiledAction> negActions =
-                    deduplicateActions(compileActionsForNode(actions, nodeId, "negative"));
+                    actionResolver.resolveExact((compileActionsForNode(actions, nodeId, "negative")));
 
             posActionsByNode.put(nodeId, posActions);
             negActionsByNode.put(nodeId, negActions);
@@ -297,7 +299,7 @@ public class ExecutionPlanCompiler {
                         .collect(Collectors.toList());
 
         List<ExecutionPlan.CompiledAction> topLevelNegative =
-                deduplicateActions(
+                actionResolver.resolveExact(
                         nodeMap.values().stream()
                                 .filter(n -> n.getNegativeActions() != null)
                                 .flatMap(n -> n.getNegativeActions().stream())
@@ -505,19 +507,6 @@ public class ExecutionPlanCompiler {
                 .intervalMinutes(c.getIntervalMinutes())
                 .durationMinutes(c.getDurationMinutes())
                 .build();
-    }
-
-
-    // ─────────────────────────────────────────────────────────────────────
-    // DEDUPLICATION
-    // ─────────────────────────────────────────────────────────────────────
-
-    private List<ExecutionPlan.CompiledAction> deduplicateActions(
-            List<ExecutionPlan.CompiledAction> actions) {
-        Set<String> seen = new LinkedHashSet<>();
-        return actions.stream()
-                .filter(a -> seen.add(a.getDeviceId() + "|" + a.getKey() + "|" + a.getData()))
-                .collect(Collectors.toList());
     }
 
 

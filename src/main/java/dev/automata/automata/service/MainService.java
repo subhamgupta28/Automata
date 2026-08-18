@@ -482,10 +482,14 @@ public class MainService {
     public String updateAttrCharts(String deviceId, String attribute, String isVisible, String homeId, Users user) {
         var isShow = Boolean.parseBoolean(isVisible);
         var attr = attributeRepository.findByKeyAndDeviceId(attribute, deviceId);
-        System.err.println(attr);
+        if (attr == null) {
+            log.error("Attribute {} not found for deviceId {}", attribute, deviceId);
+            notificationService.sendNotification("Attribute updated and now " + (isShow ? " visible in charts" : " not visible in charts"), "error", "Chart Update", homeId);
+            return "error";
+        }
         var deviceChart = dashboardChartsRepository.findByDeviceIdAndAttributeKey(deviceId, attribute);
-        if (attr != null && deviceChart == null) {
-            System.err.println("Device chart not found");
+        if (deviceChart == null) {
+            log.error("No entry for device charts, deviceId={} creating new {}", attribute, deviceId);
             var dc = DeviceCharts.builder()
                     .attributeKey(attribute)
                     .showChart(isShow)
@@ -495,14 +499,6 @@ public class MainService {
             deviceChart.setShowChart(isShow);
             dashboardChartsRepository.save(deviceChart);
         }
-
-//        if (attr == null) {
-//            System.err.println("Attribute not found");
-//            return "Attribute not found";
-//        }
-//        System.err.println(attr);
-//        attr.setVisible(!Boolean.parseBoolean(isVisible));
-//        attributeRepository.save(attr);
         notificationService.sendNotification("Attribute updated and now " + (isShow ? " visible in charts" : " not visible in charts"), "success", "Automation", homeId);
         return "success";
     }

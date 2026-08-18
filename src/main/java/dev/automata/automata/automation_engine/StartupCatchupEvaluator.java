@@ -96,7 +96,7 @@ public class StartupCatchupEvaluator implements ApplicationListener<ApplicationR
         String traceId = "catchup-" + id.substring(0, Math.min(8, id.length()))
                 + "-" + System.currentTimeMillis();
 
-        AutomationEvaluator.EvalResult result;
+        EvalResult result;
         try {
             result = evaluator.evaluate(plan, catchupPayload, state, id, traceId);
         } catch (Exception e) {
@@ -104,7 +104,7 @@ public class StartupCatchupEvaluator implements ApplicationListener<ApplicationR
             return false;
         }
 
-        if (!result.hasChanges()) {
+        if (result.hasNoChanges()) {
             log.debug("⏸️ [catchup] '{}' — no change needed (outcome={})",
                     automation.getName(), result.getOutcome());
             return false;

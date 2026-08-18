@@ -3,7 +3,6 @@ package dev.automata.automata.configs;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-//import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import dev.automata.automata.firmware_builder.FirmwareService;
 import dev.automata.automata.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,11 +26,14 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+
+//import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 
 @RequiredArgsConstructor
 @Configuration
@@ -146,6 +148,11 @@ public class ApplicationConfiguration {
                 .build();
 
         return factory.createClient(FirmwareService.class);
+    }
+
+    @Bean
+    public RestTemplate createRestTemplate() {
+        return new RestTemplate();
     }
 //    @Bean
 //    @ServiceActivator(inputChannel = "mqttErrorChannel")
