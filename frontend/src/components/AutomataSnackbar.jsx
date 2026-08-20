@@ -38,7 +38,7 @@ const AutomataSnackbar = React.forwardRef(({
             sx={{
                 display: "flex",
                 flexDirection: 'column',
-                gap: "12px",
+                // gap: "12px",
                 backgroundColor: "#1e1e1e",
                 border: "1px solid #2a2a2a",
                 borderRadius: "10px",
@@ -57,8 +57,7 @@ const AutomataSnackbar = React.forwardRef(({
                 },
             }}>
             <Typography style={{
-                fontSize: 10,
-                marginLeft: '4px'
+                fontSize: 10
             }}>
                 {timestamp}
             </Typography>
@@ -70,18 +69,18 @@ const AutomataSnackbar = React.forwardRef(({
                 }}
             >
                 {/* Icon badge */}
-                <Box
-                    sx={{
-                        width: 30, height: 30,
-                        borderRadius: "7px",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        flexShrink: 0,
-                        backgroundColor: `${cfg.color}1f`,
-                        color: cfg.color,
-                    }}
-                >
-                    <Icon sx={{fontSize: 16}}/>
-                </Box>
+                {/*<Box*/}
+                {/*    sx={{*/}
+                {/*        width: 30, height: 30,*/}
+                {/*        borderRadius: "7px",*/}
+                {/*        display: "flex", alignItems: "center", justifyContent: "center",*/}
+                {/*        flexShrink: 0,*/}
+                {/*        backgroundColor: `${cfg.color}1f`,*/}
+                {/*        color: cfg.color,*/}
+                {/*    }}*/}
+                {/*>*/}
+                {/*    <Icon sx={{fontSize: 16}}/>*/}
+                {/*</Box>*/}
 
                 {/* Body */}
                 <Box sx={{flex: 1, minWidth: 0}}>

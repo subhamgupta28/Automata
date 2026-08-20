@@ -43,7 +43,7 @@ public class MqttConfig {
     @Value("${application.env}")
     private String env;
 
-    private final String clientId = "springboot-client-" + UUID.randomUUID();
+    private final String clientId = "springboot-client-" + env + "-" + UUID.randomUUID();
     private final String topicDefault = "status";
     private final String topicAction = "action";
     private final String topicSendData = "sendData";

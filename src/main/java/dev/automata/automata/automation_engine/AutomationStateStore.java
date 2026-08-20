@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -117,11 +118,14 @@ public class AutomationStateStore {
                 .map(AutomationStateSnapshot::toRuntimeState)
                 .orElse(null);
 
-        if (persisted != null) {
+        var now = Instant.now();
+        if (persisted != null && Duration.between(persisted.getSavedAt(), now).getSeconds() <= 3600 * 2) { // 2 hours
             log.info("♻️ State restored from MongoDB for '{}' (savedAt={})",
                     automationId, persisted.getSavedAt());
             forceWrite(automationId, persisted);
             return persisted;
+        } else {
+            log.warn("♻️ State could not be restored from MongoDB either due to stale or null for '{}'", automationId);
         }
 
         return AutomationRuntimeState.idle();

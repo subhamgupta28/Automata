@@ -46,11 +46,4 @@ public class EvalResult {
         return actionsToFire != null && !actionsToFire.isEmpty();
     }
 
-    public boolean hasNoChanges() {
-        return outcome != EvalOutcome.TRIGGERED
-                && outcome != EvalOutcome.BRANCH_TRIGGERED  // ← BUG 4 fix
-                && outcome != EvalOutcome.C1_NEGATIVE
-                && outcome != EvalOutcome.STATELESS_FIRE
-                && outcome != EvalOutcome.FALLBACK;
-    }
 }

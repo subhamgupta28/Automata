@@ -19,6 +19,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Pure evaluation component — NO Redis writes, NO action dispatch.
@@ -273,6 +275,45 @@ public class AutomationEvaluator {
                 .toBuilder().intervalNodesToArm(Set.of()).build();
     }
 
+    /**
+     * Shared iteration for all three child-walk loops in walkNode() (AND path,
+     * OR fan-out, negative-branch children). Walks each childId in order,
+     * recurses via walkNode(), merges conditionResults, and lets `accumulator`
+     * decide what to collect and whether to stop early.
+     */
+    private Map<String, Boolean> walkChildren(List<String> childIds,
+                                              Map<String, ExecutionPlan.CompiledConditionNode> nodeMap,
+                                              Map<String, Object> payload,
+                                              AutomationRuntimeState state,
+                                              String automationId,
+                                              ZonedDateTime now,
+                                              String automationName,
+                                              Map<String, ConditionMemory> memoryUpdates,
+                                              Set<String> visited,
+                                              Set<String> intervalNodesToArm,
+                                              ChildAccumulator accumulator) {
+        Map<String, Boolean> merged = new LinkedHashMap<>();
+        for (String childId : childIds) {
+            ExecutionPlan.CompiledConditionNode child = nodeMap.get(childId);
+            if (child == null) {
+                log.warn("⚠️ [{}] Child node '{}' not found in nodeMap", automationName, childId);
+                continue;
+            }
+            TreeWalkResult childResult = walkNode(child, nodeMap, payload, state,
+                    automationId, now, automationName, memoryUpdates, visited, intervalNodesToArm);
+            merged.putAll(childResult.conditionResults());
+            if (accumulator.accept(childResult)) break; // short-circuit: AND-fail-fast / FIRST_MATCH
+        }
+        return merged;
+    }
+
+    @FunctionalInterface
+    private interface ChildAccumulator {
+        /**
+         * Called once per child result, in declared order. Return true to stop iterating.
+         */
+        boolean accept(TreeWalkResult childResult);
+    }
 
     private TreeWalkResult walkNode(ExecutionPlan.CompiledConditionNode node,
                                     Map<String, ExecutionPlan.CompiledConditionNode> nodeMap,
@@ -415,32 +456,24 @@ public class AutomationEvaluator {
             // accumulating that child's negatives too.
             if (node.getNegativeChildNodeIds() != null && !node.getNegativeChildNodeIds().isEmpty()) {
                 List<ExecutionPlan.CompiledAction> negChildPosActions = new ArrayList<>();
-                Map<String, Boolean> negChildCondResults = new LinkedHashMap<>();
-                boolean allNegChildrenPassed = true;
+                AtomicBoolean allNegChildrenPassed = new AtomicBoolean(true);
 
-                for (String childId : node.getNegativeChildNodeIds()) {
-                    ExecutionPlan.CompiledConditionNode child = nodeMap.get(childId);
-                    if (child == null) {
-                        log.warn("⚠️ [{}] Negative-child node '{}' referenced by '{}' not found in nodeMap",
-                                automationName, childId, node.getNodeId());
-                        continue;
-                    }
-                    TreeWalkResult childResult = walkNode(child, nodeMap, payload, state,
-                            automationId, now, automationName, memoryUpdates, visited,
-                            intervalNodesToArm);
-                    negChildCondResults.putAll(childResult.conditionResults());
-
-                    if (childResult.passed()) {
-                        negChildPosActions.addAll(childResult.positiveActionsToFire());
-                    } else {
-                        allNegChildrenPassed = false;
-                        negActions.addAll(childResult.negativeActionsToFire());
-                    }
-                }
+                Map<String, Boolean> negChildCondResults = walkChildren(
+                        node.getNegativeChildNodeIds(), nodeMap, payload, state, automationId, now,
+                        automationName, memoryUpdates, visited, intervalNodesToArm,
+                        childResult -> {
+                            if (childResult.passed()) {
+                                negChildPosActions.addAll(childResult.positiveActionsToFire());
+                            } else {
+                                allNegChildrenPassed.set(false);
+                                negActions.addAll(childResult.negativeActionsToFire());
+                            }
+                            return false; // walk every negative-branch child — never short-circuits
+                        });
 
                 condResults.putAll(negChildCondResults);
 
-                if (allNegChildrenPassed && !negChildPosActions.isEmpty()) {
+                if (allNegChildrenPassed.get() && !negChildPosActions.isEmpty()) {
                     log.debug("🌙 [{}] Node '{}' false — negative-branch child chain passed, "
                                     + "combining {} own negative + {} child action(s)",
                             automationName, node.getNodeId(), negActions.size(), negChildPosActions.size());
@@ -479,70 +512,56 @@ public class AutomationEvaluator {
 
         if (!node.isFanout()) {
             // ── AND path: all children must pass ──────────────────────────
-            // ✅ Accumulate actions from walk results, not from the node map
             List<ExecutionPlan.CompiledAction> allChildPosActions = new ArrayList<>();
-            Map<String, Boolean> allChildCondResults = new LinkedHashMap<>();
+            AtomicReference<TreeWalkResult> failure = new AtomicReference<>();
 
-            for (String childId : node.getPositiveChildNodeIds()) {
-                ExecutionPlan.CompiledConditionNode child = nodeMap.get(childId);
-                if (child == null) {
-                    log.warn("⚠️ [{}] Child node '{}' referenced by '{}' not found in nodeMap",
-                            automationName, childId, node.getNodeId());
-                    continue;
-                }
-                TreeWalkResult childResult = walkNode(child, nodeMap, payload, state,
-                        automationId, now, automationName, memoryUpdates, visited,
-                        intervalNodesToArm);
-                allChildCondResults.putAll(childResult.conditionResults());
-
-                if (!childResult.passed()) {
-                    List<ExecutionPlan.CompiledAction> allChildNegActions = new ArrayList<>(childResult.negativeActionsToFire());
-                    condResults.putAll(allChildCondResults);
-                    return TreeWalkResult.failed(childResult.failedNodeId(),
-                            allChildNegActions, condResults);
-                }
-
-                // ✅ Use what the recursive walk actually returned
-                allChildPosActions.addAll(childResult.positiveActionsToFire());
-            }
+            Map<String, Boolean> allChildCondResults = walkChildren(
+                    node.getPositiveChildNodeIds(), nodeMap, payload, state, automationId, now,
+                    automationName, memoryUpdates, visited, intervalNodesToArm,
+                    childResult -> {
+                        if (!childResult.passed()) {
+                            failure.set(childResult);
+                            return true; // AND fails fast — stop walking remaining siblings
+                        }
+                        allChildPosActions.addAll(childResult.positiveActionsToFire());
+                        return false;
+                    });
 
             condResults.putAll(allChildCondResults);
+
+            if (failure.get() != null) {
+                return TreeWalkResult.failed(failure.get().failedNodeId(),
+                        failure.get().negativeActionsToFire(), condResults);
+            }
             return TreeWalkResult.passed(allChildPosActions, condResults);
         } else {
             // ── OR fan-out path ────────────────────────────────────────────
             List<ExecutionPlan.CompiledAction> allPositiveActions = new ArrayList<>();
             List<ExecutionPlan.CompiledAction> allNegativeActions = new ArrayList<>();
-            Map<String, Boolean> allChildCondResults = new LinkedHashMap<>();
-            boolean anyPassed = false;
+            AtomicBoolean anyPassed = new AtomicBoolean(false);
             boolean firstMatch = node.isFirstMatch();
             log.debug("🔀 [{}] Fanout node '{}' firstMatch={} children={}",
                     automationName, node.getNodeId(), firstMatch, node.getPositiveChildNodeIds());
-            for (String childId : node.getPositiveChildNodeIds()) {
-                ExecutionPlan.CompiledConditionNode child = nodeMap.get(childId);
-                if (child == null) {
-                    log.warn("⚠️ [{}] Fan-out child '{}' not found in nodeMap", automationName, childId);
-                    continue;
-                }
-                TreeWalkResult childResult = walkNode(child, nodeMap, payload, state,
-                        automationId, now, automationName, memoryUpdates, visited,
-                        intervalNodesToArm);
-                allChildCondResults.putAll(childResult.conditionResults());
 
-                log.debug("{} Child {} result={}", automationName, childId, childResult.passed());
-                log.debug("🔀 [{}] Child '{}' passed={} — breaking={}",
-                        automationName, childId, childResult.passed(), firstMatch && childResult.passed());
-                if (childResult.passed()) {
-                    allPositiveActions.addAll(childResult.positiveActionsToFire());
-                    anyPassed = true;
-                    if (firstMatch) break;
-                } else {
-                    allNegativeActions.addAll(childResult.negativeActionsToFire());
-                }
-            }
+            Map<String, Boolean> allChildCondResults = walkChildren(
+                    node.getPositiveChildNodeIds(), nodeMap, payload, state, automationId, now,
+                    automationName, memoryUpdates, visited, intervalNodesToArm,
+                    childResult -> {
+                        log.debug("🔀 [{}] Child passed={} — breaking={}",
+                                automationName, childResult.passed(), firstMatch && childResult.passed());
+                        if (childResult.passed()) {
+                            allPositiveActions.addAll(childResult.positiveActionsToFire());
+                            anyPassed.set(true);
+                            return firstMatch; // FIRST_MATCH stops at the first passing branch
+                        } else {
+                            allNegativeActions.addAll(childResult.negativeActionsToFire());
+                            return false;
+                        }
+                    });
 
             condResults.putAll(allChildCondResults);
 
-            if (!anyPassed) {
+            if (!anyPassed.get()) {
                 return TreeWalkResult.failed("fanout@" + node.getNodeId(),
                         allNegativeActions, condResults);
             }
