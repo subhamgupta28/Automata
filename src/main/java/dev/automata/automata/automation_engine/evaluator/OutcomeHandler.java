@@ -22,4 +22,13 @@ public interface OutcomeHandler {
      * Same responsibility as one case-block in the old dispatchResult() switch.
      */
     void dispatch(EvalResult result, ExecutionPlan plan, DispatchContext ctx);
+
+    default boolean persistsSnapshot() {
+        return false;
+    }
+
+    // Mongo-snapshot outcome == TRIGGERED||BRANCH_TRIGGERED||C1_NEGATIVE check.
+    default boolean armsScheduleKeys() {
+        return false;
+    }
 }

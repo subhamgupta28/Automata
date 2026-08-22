@@ -17,6 +17,7 @@ import java.util.Optional;
 public class DbFallbackPayloadResolver implements PayloadResolver {
 
     private final StaleDeviceLookupCache staleDeviceLookupCache;
+    private final InMemoryCache inMemoryCache;
 
     @Override
     public Optional<Map<String, Object>> resolve(String deviceId, boolean isStaleCondition, String automationId) {
@@ -37,7 +38,7 @@ public class DbFallbackPayloadResolver implements PayloadResolver {
         if (data.getData() != null) result.putAll(data.getData());
         if (data.getUpdateDate() != null)
             result.put("last_seen", data.getUpdateDate().getEpochSecond() * 1000L);
-
+        inMemoryCache.setValue(deviceId, result);
         return Optional.of(result);
     }
 }

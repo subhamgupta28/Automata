@@ -407,49 +407,33 @@ public class ExecutionPlanCompiler {
     // ACTION COMPILATION
     // ─────────────────────────────────────────────────────────────────────
 
+    private List<ExecutionPlan.CompiledAction> compileStatelessActions(List<Automation.Action> actions, String group) {
+        return buildActionList(actions, group, a -> "none".equalsIgnoreCase(a.getConditionGroup()));
+    }
+
+    private List<ExecutionPlan.CompiledAction> compileByGroup(List<Automation.Action> actions, String group) {
+        return buildActionList(actions, group, a -> group.equalsIgnoreCase(a.getConditionGroup()));
+    }
+
     private List<ExecutionPlan.CompiledAction> compileActionsForNode(
             List<Automation.Action> actions, String nodeId, String group) {
-        return actions.stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> {
-                    if (a.getPreviousNodeRef() == null) return false;
-                    return a.getPreviousNodeRef().stream().anyMatch(ref -> {
-                        if (!nodeId.equals(ref.getNodeId())) return false;
-                        String handle = ref.getHandle() != null ? ref.getHandle() : "";
-                        if (handle.contains("cond-positive"))
-                            return "positive".equals(group);
-                        if (handle.contains("cond-negative"))
-                            return "negative".equals(group);
-                        // Fallback: use conditionGroup field for legacy actions
-                        return group.equalsIgnoreCase(a.getConditionGroup());
-                    });
-                })
-                .sorted(Comparator
-                        .comparingInt((Automation.Action a) ->
-                                a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE)
-                        .thenComparing(Automation.Action::getNodeId))
-                .map(a -> compileAction(a, group))
-                .collect(Collectors.toList());
+        return buildActionList(actions, group, a -> {
+            if (a.getPreviousNodeRef() == null) return false;
+            return a.getPreviousNodeRef().stream().anyMatch(ref -> {
+                if (!nodeId.equals(ref.getNodeId())) return false;
+                String handle = ref.getHandle() != null ? ref.getHandle() : "";
+                if (handle.contains("cond-positive")) return "positive".equals(group);
+                if (handle.contains("cond-negative")) return "negative".equals(group);
+                return group.equalsIgnoreCase(a.getConditionGroup());
+            });
+        });
     }
 
-    private List<ExecutionPlan.CompiledAction> compileByGroup(
-            List<Automation.Action> actions, String group) {
+    private List<ExecutionPlan.CompiledAction> buildActionList(
+            List<Automation.Action> actions, String group, java.util.function.Predicate<Automation.Action> filter) {
         return actions.stream()
                 .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> group.equalsIgnoreCase(a.getConditionGroup()))
-                .sorted(Comparator
-                        .comparingInt((Automation.Action a) ->
-                                a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE)
-                        .thenComparing(Automation.Action::getNodeId))
-                .map(a -> compileAction(a, group))
-                .collect(Collectors.toList());
-    }
-
-    private List<ExecutionPlan.CompiledAction> compileStatelessActions(
-            List<Automation.Action> actions, String group) {
-        return actions.stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> "none".equalsIgnoreCase(a.getConditionGroup()))
+                .filter(filter)
                 .sorted(Comparator
                         .comparingInt((Automation.Action a) ->
                                 a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE)

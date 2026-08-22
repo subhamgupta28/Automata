@@ -3,9 +3,11 @@ package dev.automata.automata.automation_engine;
 import dev.automata.automata.automation_engine.condition_operator_strategy.ConditionOperatorRegistry;
 import dev.automata.automata.automation_engine.condition_schedule_strategy.ScheduleRegistry;
 import dev.automata.automata.automation_engine.device_data.ChainedPayloadResolver;
+import dev.automata.automata.automation_engine.device_data.InMemoryCache;
 import dev.automata.automata.automation_engine.dto.MemoryPolicyResult;
 import dev.automata.automata.automation_engine.dto.TreeWalkResult;
 import dev.automata.automata.automation_engine.enums.EvalOutcome;
+import dev.automata.automata.automation_engine.grace.GraceWindowEvaluator;
 import dev.automata.automata.automation_engine.memory_policy_strategy.MemoryPolicyRegistry;
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.ConditionMemory;
@@ -13,11 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -78,15 +77,12 @@ public class AutomationEvaluator {
     private final ScheduleRegistry scheduleRegistry;
     private final MemoryPolicyRegistry memoryPolicyStrategy;
     private final ChainedPayloadResolver chainedPayloadResolver;
+    private final GraceWindowEvaluator graceWindowEvaluator;
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
 
-    /**
-     * Per-evaluation in-memory cache for secondary device data.
-     * Keyed by deviceId → payload map. Created fresh for each evaluate() call.
-     */
-    public static final ThreadLocal<Map<String, Map<String, Object>>> SECONDARY_CACHE =
-            ThreadLocal.withInitial(HashMap::new);
+
+    private final InMemoryCache inMemoryCache;
 
 
     // ─────────────────────────────────────────────────────────────────────
@@ -102,41 +98,46 @@ public class AutomationEvaluator {
         long evalStart = System.currentTimeMillis();
         ZonedDateTime now = ZonedDateTime.now(IST);
 
-        SECONDARY_CACHE.get().clear();
+        inMemoryCache.clear();
 
-        EvalResult.EvalResultBuilder result = EvalResult.builder()
-                .automationId(automationId)
-                .evaluatedAt(Date.from(now.toInstant()))
-                .traceId(traceId);
+        try {
+            EvalResult.EvalResultBuilder result = EvalResult.builder()
+                    .automationId(automationId)
+                    .evaluatedAt(Date.from(now.toInstant()))
+                    .traceId(traceId);
 
-        Map<String, ConditionMemory> memoryUpdates = new LinkedHashMap<>();
+            Map<String, ConditionMemory> memoryUpdates = new LinkedHashMap<>();
 
-        EvalResult built;
+            EvalResult built;
 
-        if (plan.getStatelessActions() != null && !plan.getStatelessActions().isEmpty()) {
-            built = result
-                    .outcome(EvalOutcome.STATELESS_FIRE)
-                    .actionsToFire(plan.getStatelessActions())
-                    .c1True(true)
+            if (plan.getStatelessActions() != null && !plan.getStatelessActions().isEmpty()) {
+                built = result
+                        .outcome(EvalOutcome.STATELESS_FIRE)
+                        .actionsToFire(plan.getStatelessActions())
+                        .c1True(true)
+                        .build();
+            } else if (plan.hasConditionTree()) {
+                built = walkConditionTree(plan, payload, state, automationId, now, result, memoryUpdates);
+            } else {
+                built = handleActivate(plan, state, result.c1True(true), now);
+            }
+
+            built = built.toBuilder()
+                    .memoryUpdates(memoryUpdates)
+                    .evalDurationMs(System.currentTimeMillis() - evalStart)
                     .build();
-        } else if (plan.hasConditionTree()) {
-            built = walkConditionTree(plan, payload, state, automationId, now, result, memoryUpdates);
-        } else {
-            built = handleActivate(plan, state, result.c1True(true), now);
+
+            if (built.getEvalDurationMs() > 200)
+                log.warn("⚠️ [{}] Slow evaluation: {}ms (traceId={})",
+                        plan.getAutomationName(), built.getEvalDurationMs(), traceId);
+
+            return built;
+        } finally {
+            // Runs even if walkConditionTree/handleActivate throws — prevents stale
+            // secondary-device data from leaking into the next evaluation reusing
+            // this pooled thread.
+            inMemoryCache.clear();
         }
-
-        built = built.toBuilder()
-                .memoryUpdates(memoryUpdates)
-                .evalDurationMs(System.currentTimeMillis() - evalStart)
-                .build();
-
-        if (built.getEvalDurationMs() > 200)
-            log.warn("⚠️ [{}] Slow evaluation: {}ms (traceId={})",
-                    plan.getAutomationName(), built.getEvalDurationMs(), traceId);
-
-        SECONDARY_CACHE.get().clear();
-
-        return built;
     }
 
 
@@ -398,46 +399,22 @@ public class AutomationEvaluator {
             result = true;
             condResults.put(node.getNodeId(), true);
         }
-// ── Generic negative-action grace (any condition with durationMinutes>0) ──
+        // ── Generic negative-action grace (any condition with durationMinutes>0) ──
         if (hasNegativeGraceDuration(node.getCondition())) {
             log.debug("⏳ [{}] Node '{}' grace check — result={} wasActive={} durationRaw={}",
                     automationName, node.getNodeId(), result, wasActive,
                     node.getCondition().getDurationMinutes());
             long nowMs = now.toInstant().toEpochMilli();
-            // For non-scheduled conditions, durationMinutes is seconds, not minutes —
-            // see hasNegativeGraceDuration(). Scheduled+interval keeps minute granularity
-            // via isIntervalWithDuration, which is mutually exclusive with this branch.
             long durationMs = node.getCondition().getDurationMinutes() * 1000L;
 
             if (result) {
-                // Condition recovered (or never failed) — clear any stale grace timer
-                // so the NEXT false transition starts its own fresh window.
                 stateStore.clearGrace(automationId, node.getNodeId());
             } else {
-                Long armedAt = stateStore.getGraceArmedAtEpochMs(automationId, node.getNodeId());
-
-                if (armedAt == null) {
-                    if (wasActive) {
-                        // First false tick after being active — start the grace clock,
-                        // and hold this tick as "true" so the negative path doesn't fire yet.
-                        long graceDurationSeconds = durationMs / 1000L; // named badly, actually seconds
-                        long ttlSeconds = graceDurationSeconds + 5L; // 5s buffer for clock jitter between ticks
-                        stateStore.armGrace(automationId, node.getNodeId(), nowMs, ttlSeconds);
-                        log.info("⏳ [{}] Node '{}' went false — arming {} milliseconds grace before negative actions",
-                                automationName, node.getNodeId(), durationMs);
-                        result = true;
-                        condResults.put(node.getNodeId(), true);
-                    }
-                    // else: wasn't active anyway — nothing to hold, let it fail normally
-                } else if (nowMs - armedAt < durationMs) {
-                    // Still inside the grace window — keep holding true.
+                GraceWindowEvaluator.GraceDecision decision =
+                        graceWindowEvaluator.evaluate(automationId, node.getNodeId(), durationMs, wasActive, nowMs);
+                if (decision.hold()) {
                     result = true;
                     condResults.put(node.getNodeId(), true);
-                } else {
-                    // Grace expired — release it, let result=false flow through to negatives.
-                    log.info("⏰ [{}] Node '{}' grace window expired — firing negative actions",
-                            automationName, node.getNodeId());
-                    stateStore.clearGrace(automationId, node.getNodeId());
                 }
             }
         }
@@ -676,8 +653,16 @@ public class AutomationEvaluator {
         }
 
         String raw = payload.get(key).toString();
-        if (!raw.matches("-?\\d+(\\.\\d+)?"))
+        if (!raw.matches("-?\\d+(\\.\\d+)?")) {
+            boolean expectsNumeric = List.of("above", "below", "equal")
+                    .contains(c.getConditionType());
+            if (expectsNumeric) {
+                log.warn("⚠️ [{}] Condition '{}' expects numeric comparison but got non-numeric "
+                                + "payload value '{}' for key '{}' — falling back to string equality",
+                        automationId, c.getNodeId(), raw, key);
+            }
             return raw.equals(c.getValue());
+        }
 
         double v = Double.parseDouble(raw);
         if (c.isExact()) return c.getValue().equals(raw);
@@ -696,17 +681,16 @@ public class AutomationEvaluator {
                                                         String automationId,
                                                         ZonedDateTime now) {
         String deviceId = c.getDeviceId();
-        Map<String, Map<String, Object>> cache = SECONDARY_CACHE.get();
-        var data = chainedPayloadResolver.resolve(deviceId, "stale".equals(c.getConditionType()), automationId);
-        cache.put(deviceId, data);
-        return data;
+        return chainedPayloadResolver.resolve(deviceId, "stale".equals(c.getConditionType()), automationId);
     }
 
 
-    private boolean evalStale(ExecutionPlan.CompiledCondition c,
-                              Map<String, Object> payload,
-                              String automationId,
-                              ZonedDateTime now) {
+    private boolean evalStale(
+            ExecutionPlan.CompiledCondition c,
+            Map<String, Object> payload,
+            String automationId,
+            ZonedDateTime now
+    ) {
         String key = c.getTriggerKey() != null && !c.getTriggerKey().isBlank()
                 ? c.getTriggerKey() : "last_seen";
         long lastSeenMs = extractLastSeenMs(payload, key);
@@ -797,25 +781,5 @@ public class AutomationEvaluator {
         return memoryPolicyStrategy.find(policy.getType()).map(m -> m.summarize(policy, memory)).orElse(null);
     }
 
-
-    // ─────────────────────────────────────────────────────────────────────
-    // HELPERS
-    // ─────────────────────────────────────────────────────────────────────
-
-    private LocalTime parseTime(String s) {
-        if (s == null || s.isBlank()) return null;
-        try {
-            return LocalTime.parse(s.trim(), DateTimeFormatter.ofPattern("HH:mm:ss"));
-        } catch (Exception e1) {
-            try {
-                return LocalTime.parse(s.trim(),
-                        new DateTimeFormatterBuilder().parseCaseInsensitive()
-                                .appendPattern("hh:mm:ss a").toFormatter(Locale.ENGLISH));
-            } catch (Exception e2) {
-                log.warn("⚠️ Unable to parse time: '{}'", s);
-                return null;
-            }
-        }
-    }
 
 }

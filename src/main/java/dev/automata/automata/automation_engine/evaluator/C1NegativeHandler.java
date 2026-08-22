@@ -27,6 +27,11 @@ public class C1NegativeHandler implements OutcomeHandler {
     }
 
     @Override
+    public boolean persistsSnapshot() {
+        return true;
+    }
+
+    @Override
     public void applyStateTransition(AutomationRuntimeState next, EvalResult result, ExecutionPlan plan) {
         next.setTopLevelState(NodeState.IDLE);
         // Pass 1: nodes walked this tick get their actual result.

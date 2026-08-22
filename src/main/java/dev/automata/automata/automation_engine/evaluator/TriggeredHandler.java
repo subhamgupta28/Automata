@@ -27,6 +27,16 @@ public class TriggeredHandler implements OutcomeHandler {
     }
 
     @Override
+    public boolean armsScheduleKeys() {
+        return true;
+    }
+
+    @Override
+    public boolean persistsSnapshot() {
+        return true;
+    }
+
+    @Override
     public void applyStateTransition(AutomationRuntimeState next, EvalResult result, ExecutionPlan plan) {
         next.setTopLevelState(NodeState.ACTIVE);
         next.setLastExecutionTime(new Date());

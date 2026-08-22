@@ -26,8 +26,24 @@ public class PlanReconciliationService {
     private final ExecutionPlanCompiler planCompiler;
     private final ReconcileLock reconcileLock;
     private final RedisTemplate<String, String> redisTemplate;
+    public static final String PLAN_INVALIDATE_CHANNEL = "automation:plan:invalidated"; // MOVED from AutomationOrchestrator
 
-    // ── SCHEDULED RECONCILER (moved verbatim from AutomationOrchestrator) ──
+    public void invalidatePlan(String automationId) {
+        evictLocalCaches(automationId);
+        redisTemplate.convertAndSend(PLAN_INVALIDATE_CHANNEL, automationId);
+        log.info("📡 Plan invalidation published for '{}'", automationId);
+    }
+
+    public void evictLocalCaches(String automationId) {
+        planCache.evict(automationId);
+    }
+
+    public void updatePlan(String automationId, ExecutionPlan plan) {
+        planCache.put(automationId, plan);
+        stateStore.writePlan(automationId, plan);
+        redisTemplate.convertAndSend(PLAN_INVALIDATE_CHANNEL, automationId);
+        log.info("📡 Plan updated and invalidation published for '{}'", automationId);
+    }
 
     @Scheduled(fixedDelay = 4 * 60 * 60 * 1_000)
     @FeatureEnabled(value = Feature.PERIODIC_AUTOMATION_SERVICE)
@@ -100,7 +116,7 @@ public class PlanReconciliationService {
         ExecutionPlan plan = planCompiler.compile(automation);
         planCache.put(automation.getId(), plan);
         stateStore.writePlan(automation.getId(), plan);
-        redisTemplate.convertAndSend(AutomationOrchestrator.PLAN_INVALIDATE_CHANNEL, automation.getId());
+        redisTemplate.convertAndSend(PLAN_INVALIDATE_CHANNEL, automation.getId());
         log.info("✅ [reconciler] '{}' recompiled — reason: {}", automation.getName(), reason);
     }
 

@@ -40,6 +40,16 @@ public class BranchTriggeredHandler implements OutcomeHandler {
     }
 
     @Override
+    public boolean armsScheduleKeys() {
+        return true;
+    }
+
+    @Override
+    public boolean persistsSnapshot() {
+        return true;
+    }
+
+    @Override
     public void dispatch(EvalResult result, ExecutionPlan plan, DispatchContext ctx) {
         List<ExecutionPlan.CompiledAction> actions =
                 result.getActionsToFire() != null && !result.getActionsToFire().isEmpty()

@@ -14,13 +14,15 @@ import java.util.Optional;
 public class RedisPayloadResolver implements PayloadResolver {
 
     private final RedisService redisService;
+    private final InMemoryCache inMemoryCache;
 
     @Override
     public Optional<Map<String, Object>> resolve(String deviceId, boolean isStaleCondition, String automationId) {
         Map<String, Object> secondary = redisService.getRecentDeviceData(deviceId);
         if (secondary != null && !secondary.isEmpty()) {
+            inMemoryCache.setValue(deviceId, secondary);
             return Optional.of(secondary);
         }
         return Optional.empty();
-    } /* redisService.getRecentDeviceData */
+    }
 }

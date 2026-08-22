@@ -24,14 +24,14 @@ import java.nio.charset.StandardCharsets;
 @RequiredArgsConstructor
 public class PlanInvalidationListener implements MessageListener {
 
-    private final AutomationOrchestrator orchestrator;
+    private final PlanReconciliationService planReconciliationService;
     private final PlanCache planCache;
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
         String automationId = new String(message.getBody(), StandardCharsets.UTF_8);
         boolean wasPresent = planCache.contains(automationId);
-        orchestrator.evictLocalCaches(automationId);   // plan cache + name cache
+        planReconciliationService.evictLocalCaches(automationId);   // plan cache + name cache
         log.info("📥 [pubsub] Evicted '{}' from local caches (was cached: {})",
                 automationId, wasPresent);
     }
