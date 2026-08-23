@@ -203,5 +203,6 @@ public class ExecutionPlan {
         int delaySeconds;
         String name;
         String conditionGroup;
+        boolean revertOnComplete;
     }
 }

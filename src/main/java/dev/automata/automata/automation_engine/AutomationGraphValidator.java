@@ -16,39 +16,32 @@ import java.util.stream.Collectors;
  * is aborted and the user receives the full list of problems. WARN-level
  * issues are returned but do not block the save.
  * <p>
- * Bug fixes (this version)
- * ─────────────────────────
- * BUG — Orphan detection (Check 4) produced false-positive "will never be
- * evaluated" warnings whenever a condition's upstream chain passed through a
- * DISABLED intermediate condition node. The edge-building loop skipped
- * disabled conditions entirely as edge SOURCES, so a chain like
- * trigger -> c1(disabled) -> c2(enabled) -> c3(enabled) lost the
- * trigger->c1 edge completely, making c2/c3 unreachable from the trigger in
- * this validator's BFS — even though ExecutionPlanCompiler's actual root
- * detection (previousNodeRef pointing only to non-ENABLED-condition nodes)
- * correctly promotes c2 to a new root and evaluates it normally. This is
- * exactly the same class of bug ExecutionPlanCompiler's own javadoc describes
- * having already fixed once for the old operator-gate model — it had crept
- * back into the validator, which reimplements topology logic independently
- * instead of sharing it with the compiler.
- * <p>
- * Fix: buildReachabilityGraph() now treats a disabled condition as
- * TRANSPARENT rather than absent — its own parent edge is rewired directly
- * to its children, so disabled nodes are bypassed rather than severing the
- * chain. This mirrors the compiler's actual semantics (a node whose only
- * upstream path runs through a disabled condition is treated as a new root,
- * not as an orphan).
- * <p>
- * Improvement — fan-out without an explicit fanoutMode is now an ERROR, not
- * an INFO. A condition node with 2+ positive children is, by construction,
- * an OR branch — and the framework's own design intent (stated by the team
- * that removed the old AND/OR gate system) is that OR branches must be
- * mutually exclusive and self-descriptive. Defaulting silently to "ALL" mode
- * is precisely the gap that allowed an unintended always-walk-both-branches
- * OR fan-out to go unnoticed in production (see "Light On" automation, where
- * both time-window branches were walked every tick because fanoutMode was
- * never set). Forcing the author to explicitly choose ALL vs FIRST_MATCH at
- * save time surfaces that decision instead of leaving it implicit.
+ * Topology semantics mirror {@link ExecutionPlanCompiler} exactly, since
+ * both independently interpret the same graph and must agree on what is
+ * reachable and what is a root:
+ * <ul>
+ *   <li>Reachability (Check 4) and cycle detection (Check 5) treat a
+ *       DISABLED condition node as transparent rather than absent — its
+ *       parent edge is rewired directly to its children, so a disabled
+ *       node is bypassed rather than severing the chain. A condition whose
+ *       only upstream path runs through a disabled node is reachable (and
+ *       is effectively a new root), matching the compiler's own root
+ *       detection (a node is a root iff none of its {@code previousNodeRef}
+ *       entries point to another ENABLED condition node).</li>
+ *   <li>Cycle detection runs over that same effective (disabled-bypassing)
+ *       graph, seeded first from the trigger and then swept over every
+ *       remaining enabled condition not yet visited, so both
+ *       trigger-reachable cycles and fully disconnected self-loops are
+ *       caught without relying on a "has no parent" pre-filter that a
+ *       cycle can defeat.</li>
+ *   <li>{@code isFanout} and its evaluation mode are always derived
+ *       server-side from topology (a node with 2+ positive children is a
+ *       fan-out) and default to {@code ALL} unless the node's
+ *       {@code fanoutMode} explicitly opts into {@code FIRST_MATCH} — this
+ *       is informational (Check 18) rather than a required field, since an
+ *       unset mode is a valid, well-defined configuration (ALL), not an
+ *       authoring omission.</li>
+ * </ul>
  * <p>
  * Checks performed
  * ─────────────────
@@ -57,7 +50,7 @@ import java.util.stream.Collectors;
  * 3.  All previousNodeRef targets exist in the graph.
  * 4.  No orphaned condition nodes (every condition has a path to the trigger,
  * bypassing disabled intermediate nodes transparently).
- * 5.  No cycles in the condition tree (DFS).
+ * 5.  No cycles in the condition tree (DFS over the effective graph).
  * 6.  Interval conditions must have intervalMinutes > 0.
  * 7.  "at" schedule conditions must have a non-blank time field.
  * 8.  "range" schedule conditions must have fromTime and toTime.
@@ -70,11 +63,14 @@ import java.util.stream.Collectors;
  * 15. Actions must reference an existing condition or trigger node.
  * 16. Actions must have a deviceId.
  * 17. Actions must have a key.
- * 18. Fan-out nodes (multiple positive children) MUST have an explicit
- * fanoutMode (ALL or FIRST_MATCH) — ERROR if unset.
- * 19. Condition nodes that have negative actions but no stateful detection
- * path warn the user that revert actions may not fire correctly.
- * 20. Coalition: if sources > 1, all must have a deviceId.
+ * 18. Fan-out nodes (multiple positive children) are reported informationally
+ * with their derived evaluation mode (ALL by default, or FIRST_MATCH if
+ * explicitly set) — an explicit but unrecognized fanoutMode is an ERROR.
+ * 19. FIRST_MATCH fan-out nodes are annotated with an informational note that
+ * negative actions on sibling branches still fire when a branch loses the
+ * "first match" position.
+ * 20. Coalition: if sources > 1, all must have a deviceId, exactly one
+ * primary source is expected, and a non-ANY mode with no window is flagged.
  */
 @Slf4j
 @Component
@@ -162,7 +158,9 @@ public class AutomationGraphValidator {
         // ── Check 4 + 5: Orphans + Cycles ─────────────────────────────────
         if (trigger != null && trigger.getNodeId() != null) {
             validateTreeStructure(conditions, trigger.getNodeId(), condById, issues);
+            validateSingleRoot(conditions, trigger.getNodeId(), issues);
         }
+        validateSharedNodes(conditions, issues);
 
         // ── Check 6–14: Per-condition field checks ─────────────────────────
         for (Automation.Condition c : conditions) {
@@ -281,7 +279,74 @@ public class AutomationGraphValidator {
         }
     }
 
+    // ── Check 21 — SINGLE-TRIGGER INVARIANT (multiple roots) ────────────────
+    //
+    // Mirrors ExecutionPlanCompiler's own rootConditionNodeIds computation.
+    // AutomationEvaluator.walkConditionTree() returns from inside its root
+    // loop unconditionally, so only rootConditionNodeIds.get(0) is ever
+    // evaluated — every other root is silently dead. This can arise even in
+    // a graph with no orphans, e.g. when a condition's only parent is a
+    // disabled node and buildReachabilityGraph() (correctly) treats it as
+    // reachable — but the compiler still promotes it to a second root.
+    private void validateSingleRoot(List<Automation.Condition> conditions,
+                                    String triggerId,
+                                    List<ValidationIssue> issues) {
+        Set<String> enabledIds = conditions.stream()
+                .filter(Automation.Condition::isEnabled)
+                .map(Automation.Condition::getNodeId)
+                .collect(Collectors.toSet());
 
+        Set<String> childIds = new HashSet<>();
+        for (Automation.Condition c : conditions) {
+            if (!c.isEnabled() || c.getPreviousNodeRef() == null) continue;
+            for (NodeRef ref : c.getPreviousNodeRef()) {
+                if (ref.getNodeId() != null && enabledIds.contains(ref.getNodeId())) {
+                    childIds.add(c.getNodeId());
+                }
+            }
+        }
+
+        List<String> roots = enabledIds.stream()
+                .filter(id -> !childIds.contains(id))
+                .toList();
+
+        if (roots.size() > 1) {
+            issues.add(new ValidationIssue(Severity.ERROR, null,
+                    "Found " + roots.size() + " root condition nodes " + roots + ". "
+                            + "Only the first will ever be evaluated — this usually means a condition's "
+                            + "only parent is a disabled node, promoting it to a second, unreachable entry "
+                            + "point. Reconnect it under the primary chain or re-enable/remove the "
+                            + "disabled parent."));
+        }
+    }
+
+    // ── Check 22 — SHARED (CONVERGING) NODES ──────────────────────────────
+    //
+    // A condition node can have more than one entry in previousNodeRef,
+    // i.e. two different parents (a diamond, not a cycle — Check 5 won't
+    // catch this). AutomationEvaluator's tree walk uses one `visited` set
+    // for the whole evaluation tick: whichever branch reaches the shared
+    // node first evaluates it, the second reference silently no-ops (empty
+    // actions, no condition result) instead of raising an error.
+    private void validateSharedNodes(List<Automation.Condition> conditions,
+                                     List<ValidationIssue> issues) {
+        Map<String, Integer> parentCount = new HashMap<>();
+        for (Automation.Condition c : conditions) {
+            if (!c.isEnabled() || c.getPreviousNodeRef() == null) continue;
+            long enabledParents = c.getPreviousNodeRef().stream()
+                    .map(NodeRef::getNodeId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .count();
+            if (enabledParents > 1) parentCount.put(c.getNodeId(), (int) enabledParents);
+        }
+
+        parentCount.forEach((nodeId, count) -> issues.add(new ValidationIssue(Severity.WARN, nodeId,
+                "Condition '" + nodeId + "' has " + count + " parents. If both branches are reached "
+                        + "in the same tick, only the first-reached path evaluates it — the second "
+                        + "reference is silently skipped (no actions, no result) rather than re-evaluated. "
+                        + "Avoid sharing a single condition node across two branches.")));
+    }
     // ─────────────────────────────────────────────────────────────────────
     // CHECK 4 + 5 — ORPHANS + CYCLES
     // ─────────────────────────────────────────────────────────────────────

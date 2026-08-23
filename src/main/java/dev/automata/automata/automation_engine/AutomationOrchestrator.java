@@ -29,27 +29,30 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Core automation orchestrator.
  *
- * <p>Bug fixes (this version)
- * ─────────────────────────
- * BUG 4 — OR fanout branch actions silently swallowed when top-level ACTIVE
- * <p>
- * dispatchResult() and computeNextState() now handle the new
- * EvalOutcome.BRANCH_TRIGGERED outcome emitted by the evaluator when an OR
- * fanout branch node transitions inactive→active while the top-level
- * automation is already ACTIVE.
- * <p>
- * Key differences vs TRIGGERED:
- * • BRANCH_TRIGGERED dispatches the branch's own per-node positiveActions,
- * NOT plan.getTopLevelPositiveActions(). The branch-level actions are
- * already in result.getActionsToFire() from the evaluator.
- * • computeNextState() does NOT reset/overwrite topLevelState — it was
- * already ACTIVE and must remain so. Only the per-node nodeStates are
- * updated (via the shared applyPerNodeActiveFlags() call).
- * • publishLog() maps BRANCH_TRIGGERED → LogStatus.TRIGGERED so the log
- * stream is unchanged for consumers.
- * • hasChanges() in EvalResult returns true for BRANCH_TRIGGERED so the
- * orchestrator's early-return guard does not suppress dispatch.
- * <p>
+ * <p>Coordinates a single automation evaluation cycle end-to-end: loads the
+ * compiled {@link ExecutionPlan}, runs pre-execution guards (snooze,
+ * timed-disable, coalition), delegates to {@link AutomationEvaluator} for
+ * pure condition evaluation, persists the resulting state via
+ * compare-and-set with retry, and dispatches the outcome's actions.
+ *
+ * <p>Outcome handling is delegated to {@link OutcomeHandlerRegistry} /
+ * {@link dev.automata.automata.automation_engine.evaluator.OutcomeHandlerRegistry},
+ * which supplies per-{@link EvalOutcome} behavior for whether the outcome
+ * has state changes, arms schedule keys, persists a snapshot, maps to a
+ * {@link AutomationLog.LogStatus}, and how it transitions runtime state and
+ * dispatches actions.
+ *
+ * <p>Handles both top-level activation (a single condition chain becoming
+ * ACTIVE) and per-branch activation within an OR fanout, via
+ * {@link EvalOutcome#BRANCH_TRIGGERED}: a branch node transitioning
+ * inactive→active while the top-level automation is already ACTIVE.
+ * BRANCH_TRIGGERED dispatches the branch's own per-node positive actions
+ * (already present in {@code result.getActionsToFire()}) rather than
+ * {@code plan.getTopLevelPositiveActions()}, updates only the affected
+ * node's entry in {@code nodeStates} without touching {@code topLevelState}
+ * (which may already be ACTIVE and must remain so), and is logged and
+ * treated identically to {@code TRIGGERED} for dispatch and change-detection
+ * purposes.
  */
 @Slf4j
 @Component

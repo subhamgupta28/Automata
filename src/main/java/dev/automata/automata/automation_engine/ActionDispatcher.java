@@ -66,8 +66,13 @@ public class ActionDispatcher {
                     new Date());
             return CompletableFuture.completedFuture(true);
         }
-
-        return buildChain(actions, payload, user, automationId, automationName, traceId, homeId)
+        // Sort strictly by getOrder() — dispatch order must not depend on how
+        // the caller assembled the list (branch actions, negative actions,
+        // informational actions may arrive pre-concatenated out of order).
+        List<ExecutionPlan.CompiledAction> orderedActions = actions.stream()
+                .sorted(Comparator.comparingInt(ExecutionPlan.CompiledAction::getOrder))
+                .toList();
+        return buildChain(orderedActions, payload, user, automationId, automationName, traceId, homeId)
                 .orTimeout(ACTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .exceptionally(ex -> {
                     Throwable cause = ex.getCause() != null ? ex.getCause() : ex;

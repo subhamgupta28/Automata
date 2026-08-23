@@ -22,50 +22,38 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Pure evaluation component — NO Redis writes, NO action dispatch.
+ * Pure evaluation component — performs no Redis writes and no action
+ * dispatch; it only computes an {@link EvalResult} from a compiled
+ * {@link ExecutionPlan}, the incoming payload, and current
+ * {@link AutomationRuntimeState}.
  *
- * <p>Bug fixes (this version)
- * ─────────────────────────
- * BUG 4 — OR fanout branch actions silently swallowed when top-level already ACTIVE
- * <p>
- * Root cause: walkConditionTree() previously routed every successful tree walk
- * through handleActivate(), which gates on state.isTopLevelActive(). When an
- * automation is already ACTIVE (because another OR branch fired earlier), any
- * subsequent OR branch that becomes true gets EvalOutcome.SKIPPED — its own
- * positiveActions are never dispatched and the EvalResult.hasChanges() == false
- * short-circuit in the orchestrator causes a full early return with zero side
- * effects.
- * <p>
- * Concrete example from the TESTING automation:
- * node_condition_22 (9:30 AM–4:30 PM) is a sibling OR branch to
- * node_condition_10 (6 PM–2 AM) under the same OR fanout at node_18.
- * If the automation was triggered via the 6 PM branch and later the
- * daytime window opens (9:30 AM), node_22 passes but handleActivate()
- * sees isTopLevelActive()==true and returns SKIPPED with no actions.
- * <p>
- * Fix: walkConditionTree() now distinguishes two cases after a successful walk:
- * <ol>
- *   <li>The walk produced branch-level positiveActions (walkResult.positiveActionsToFire
- *       is non-empty) — these belong to specific OR fanout branches. We check per-NODE
- *       active state instead of the top-level state: if any of the PASSED nodes
- *       were previously INACTIVE, those nodes have just transitioned inactive→active
- *       and their actions must fire. This produces EvalOutcome.BRANCH_TRIGGERED.
- *       If every passed node was already ACTIVE, we emit EvalOutcome.SKIPPED so
- *       the orchestrator's hasChanges() guard correctly suppresses re-dispatch.</li>
- *   <li>The walk produced NO branch-level actions (pure condition chain with only
- *       top-level actions). Behaviour is unchanged: delegate to handleActivate()
- *       which checks top-level state and returns TRIGGERED or SKIPPED as before.</li>
- * </ol>
- * EvalOutcome.BRANCH_TRIGGERED is treated identically to TRIGGERED in the
- * orchestrator's dispatch and state-compute paths, with the sole difference that
- * it does NOT touch the top-level topLevelState field (it may already be ACTIVE
- * and should remain so; the per-node nodeStates are the authoritative record).
- * <p>
- * Previously documented bug fixes (carried forward unchanged):
- * BUG 1 — Stranded descendants (see class javadoc in previous version)
- * BUG 2 — durationMinutes silently ignored (intervalNodesToArm)
- * BUG 3 — Cross-branch state pollution (conditionResults per-node flags)
- * Performance fix — SECONDARY_CACHE per-evaluation in-memory cache
+ * <p>Walks the compiled condition tree from each root, recursively
+ * evaluating AND chains (all children must pass), OR fanouts (any child may
+ * pass, with FIRST_MATCH or ALL-branch modes), and negative-branch children
+ * (children gated on their parent being false). Applies per-node memory
+ * policies (e.g. {@code EDGE_RISING}, {@code DURATION},
+ * {@code CONSECUTIVE_TICKS}), interval/duration ("runFor") holds, and a
+ * generic negative-action grace window before treating a node's raw
+ * condition result as final.
+ *
+ * <p>Distinguishes top-level activation from per-branch activation within an
+ * OR fanout. When a tree walk produces branch-level positive actions (i.e.
+ * actions attached to specific OR-fanout branches), the evaluator inspects
+ * per-node active state directly rather than the shared top-level state: if
+ * any passed node was previously inactive, that branch has just activated
+ * and its actions must fire, producing {@link EvalOutcome#BRANCH_TRIGGERED};
+ * if every passed node was already active, the result is
+ * {@link EvalOutcome#SKIPPED} so the orchestrator's change-detection
+ * correctly suppresses re-dispatch. Condition chains with only top-level
+ * actions instead go through {@link #handleActivate}, which gates on the
+ * automation's shared top-level ACTIVE state and returns
+ * {@link EvalOutcome#TRIGGERED} or {@link EvalOutcome#SKIPPED} accordingly.
+ *
+ * <p>Also resolves secondary-device payloads through a per-evaluation cache
+ * (cleared before and after each evaluation) with Redis/Mongo fallback,
+ * evaluates {@code scheduled} and {@code stale} condition types separately
+ * from payload-key comparisons, and treats missing secondary-device data as
+ * inconclusive (holding the node's previous active state) rather than false.
  */
 @Slf4j
 @Component

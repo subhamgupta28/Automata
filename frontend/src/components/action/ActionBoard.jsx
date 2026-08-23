@@ -67,6 +67,7 @@ import {
 } from "./AutomationFeatures.jsx";
 import {PlaceholderNode} from "./PlaceHolderNode.jsx";
 import {useSnackbar} from "notistack";
+import ValidationResultPanel from "../automation/ValidationResultPanel.jsx";
 
 // ─── Node palette styles ──────────────────────────────────────────────────────
 const triggerStyle = {padding: '10px', borderRadius: '5px', width: '100%', border: '2px solid #6DBF6D', cursor: 'grab'};
@@ -1019,6 +1020,7 @@ function ActionBoardDetailComponent() {
     const [automations, setAutomations] = useState([]);
     const [selectedAutomation, setSelectedAutomation] = useState({});
     const [automationDetail, setAutomationDetail] = useState({});
+    const [validationResult, setValidationResult] = useState({});
     const reactFlowWrapper = useRef(null);
     const {screenToFlowPosition} = useReactFlow();
     const [type, setType] = useDnD();
@@ -1029,6 +1031,7 @@ function ActionBoardDetailComponent() {
     const [abTestOpen, setAbTestOpen] = useState(false);
     const [versionOpen, setVersionOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [openValidate, setOpenValidate] = useState(false);
     const {enqueueSnackbar} = useSnackbar();
 
     const fetchData = async () => {
@@ -1068,11 +1071,13 @@ function ActionBoardDetailComponent() {
         return {...flow, nodes: uniqueNodes, edges: uniqueEdges, id: automationDetail.id || ''};
     }
 
-    const onValidate = useCallback(() => {
+    const onValidate = useCallback(async () => {
+        setLoading(true);
         const cleanFlow = buildAutomation(rfInstance, automationDetail);
-        validateAutomation(cleanFlow).then(res => {
-            console.log(res)
-        })
+        const res = await validateAutomation(cleanFlow);
+        setValidationResult(res);
+        setOpenValidate(true);
+        setLoading(false);
     }, [rfInstance, automationDetail])
 
     const onSave = useCallback(() => {
@@ -1415,7 +1420,9 @@ function ActionBoardDetailComponent() {
                     </Card>
                 </Box>
             </Stack>
-
+            <ValidationResultPanel open={openValidate} onClose={() => setOpenValidate(false)} result={validationResult}
+                                   loading={loading}
+                                   onValidate={() => onValidate()}/>
             <SceneManagerDialog open={sceneOpen} automation={selectedAutomation} automations={automations}
                                 onClose={() => setSceneOpen(false)}/>
             <AbTestDialog open={abTestOpen} automation={selectedAutomation} automations={automations}
