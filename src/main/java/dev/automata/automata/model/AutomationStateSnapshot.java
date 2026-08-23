@@ -1,5 +1,6 @@
 package dev.automata.automata.model;
 
+import dev.automata.automata.automation_engine.enums.NodeState;
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.ConditionMemory;
 import lombok.*;
@@ -26,8 +27,8 @@ public class AutomationStateSnapshot {
     private String id;
 
     private long version = 0;
-    private String topLevelState = "IDLE";
-    private Map<String, String> nodeStates = new HashMap<>();
+    private NodeState topLevelState = NodeState.IDLE;
+    private Map<String, NodeState> nodeStates = new HashMap<>();
     private Map<String, ConditionMemory> conditionMemories = new HashMap<>();
     private Map<String, Long> triggerMemberLastFired = new HashMap<>();
     private int sequenceProgress = 0;

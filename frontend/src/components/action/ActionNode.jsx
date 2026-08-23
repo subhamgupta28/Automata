@@ -11,7 +11,6 @@ import {
     InputLabel,
     MenuItem,
     Select,
-    Switch,
     TextField
 } from "@mui/material";
 import Typography from "@mui/material/Typography";
@@ -401,11 +400,11 @@ export const ActionNode = ({id, data, isConnectable}) => {
                             onChange={(e) => setDelaySeconds(parseInt(e.target.value) || 0)}
                             sx={{marginBottom: 2}}
                         />
-                        Revert action
-                        <Switch
-                            onChange={(e) => handleTriggerKey(e, 'revert')}
-                            checked={revert}
-                        ></Switch>
+                        {/*Revert action*/}
+                        {/*<Switch*/}
+                        {/*    onChange={(e) => handleTriggerKey(e, 'revert')}*/}
+                        {/*    checked={revert}*/}
+                        {/*></Switch>*/}
                     </div>
                 </AccordionDetails>
             </Accordion>

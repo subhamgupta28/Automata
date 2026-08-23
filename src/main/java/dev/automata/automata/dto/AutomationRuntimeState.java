@@ -1,6 +1,7 @@
 package dev.automata.automata.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import dev.automata.automata.automation_engine.enums.NodeState;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -18,7 +19,7 @@ public class AutomationRuntimeState {
     private long version = 0;
 
     // ── Top-level state ────────────────────────────────────────────────────
-    private String topLevelState = "IDLE";
+    private NodeState topLevelState = NodeState.IDLE;
     private Instant savedAt;
     /**
      * Unified per-node state map. Replaces both the old branchStates and
@@ -26,7 +27,7 @@ public class AutomationRuntimeState {
      * (stateful=true) gets tracked here.
      * nodeId → "IDLE" | "ACTIVE" | "HOLDING"
      */
-    private Map<String, String> nodeStates = new HashMap<>();
+    private Map<String, NodeState> nodeStates = new HashMap<>();
 
 
     // ── Condition memory (DURATION / CONSECUTIVE / EDGE policies) ─────────
@@ -75,7 +76,7 @@ public class AutomationRuntimeState {
     // ─────────────────────────────────────────────────────────────────────
 
     public boolean isTopLevelActive() {
-        return "ACTIVE".equals(topLevelState);
+        return NodeState.ACTIVE == topLevelState;
     }
 
 
@@ -89,17 +90,17 @@ public class AutomationRuntimeState {
      * been rewritten yet.
      */
     public boolean isNodeActive(String nodeId) {
-        String s = nodeStates.get(nodeId);
-        return ("ACTIVE".equals(s) || "HOLDING".equals(s));
+        NodeState state = nodeStates.get(nodeId);
+        return (NodeState.ACTIVE == state || NodeState.HOLDING == state);
     }
 
-    public String getNodeStateStr(String nodeId) {
-        String s = nodeStates.get(nodeId);
+    public NodeState getNodeStateStr(String nodeId) {
+        NodeState s = nodeStates.get(nodeId);
         if (s != null) return s;
-        return "IDLE";
+        return NodeState.IDLE;
     }
 
-    public void setNodeState(String nodeId, String state) {
+    public void setNodeState(String nodeId, NodeState state) {
         nodeStates.put(nodeId, state);
     }
 
@@ -107,7 +108,7 @@ public class AutomationRuntimeState {
      * Sets every node in nodeStates to IDLE in one call.
      */
     public void resetAllNodeStates() {
-        nodeStates.replaceAll((k, v) -> "IDLE");
+        nodeStates.replaceAll((k, v) -> NodeState.IDLE);
     }
 
 
@@ -170,7 +171,7 @@ public class AutomationRuntimeState {
         /**
          * nodeId → state string after last eval (replaces old branchStates field).
          */
-        private Map<String, String> nodeStates;
+        private Map<String, NodeState> nodeStates;
 
         /**
          * deviceId → epochMs of last coalition member fire.

@@ -5,6 +5,7 @@ import dev.automata.automata.repository.DeviceRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
@@ -70,6 +71,7 @@ public class DeviceMetaCache {
     /**
      * Optional periodic refresh — wire up with @Scheduled if devices get edited outside your own save paths.
      */
+    @Scheduled(fixedRate = 3600 * 2)
     public void refreshAsync() {
         CompletableFuture.runAsync(this::warmCache, taskExecutor);
     }

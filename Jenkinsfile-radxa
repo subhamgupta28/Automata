@@ -1,0 +1,193 @@
+pipeline {
+    agent none
+
+    // ─────────────────────────────────────────────
+    // Parameters — set these when triggering the build
+    // ─────────────────────────────────────────────
+    parameters {
+        string(
+            name: 'BRANCH',
+            defaultValue: 'experimental',
+            description: 'Branch to build and deploy (e.g. dev, feature/my-feature)'
+        )
+    }
+
+    environment {
+        REPO_URL       = 'https://github.com/subhamgupta28/Automata.git'
+        CONTAINER_NAME = 'automata-test'
+        SECOND_NETWORK = 'automata-net'
+        RADXA_NETWORK  = 'homelab'
+        SPRING_PROFILE = 'radxa'
+        HOST_PORT      = '8011'          // different port to avoid clashing with prod
+        CONTAINER_PORT = '8010'
+    }
+
+    stages {
+
+        // ─────────────────────────────────────────────
+        // STAGE 1: Checkout on Radxa
+        // ─────────────────────────────────────────────
+        stage('Checkout Code') {
+            agent { label 'radxa' }
+            steps {
+                git branch: "${params.BRANCH}", url: "${env.REPO_URL}"
+                stash name: 'source', includes: '**/*', excludes: '.git/**'
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // STAGE 2: Resolve Version
+        // ─────────────────────────────────────────────
+        stage('Resolve Version') {
+            agent { label 'radxa' }
+            steps {
+                unstash 'source'
+                script {
+                    def mvnVersion = sh(
+                        script: "grep -m1 '<version>' pom.xml | sed 's/.*<version>\\(.*\\)<\\/version>.*/\\1/' | tr -d '[:space:]'",
+                        returnStdout: true
+                    ).trim()
+
+                    def shortSha = sh(
+                        script: "git rev-parse --short HEAD",
+                        returnStdout: true
+                    ).trim()
+
+                    def safeBranch = params.BRANCH
+                        .replaceAll('origin/', '')
+                        .replaceAll('[^a-zA-Z0-9_.-]', '-')
+
+                    // e.g. automata:1.0.0-dev-ab3f91c-radxa-test
+                    env.IMAGE_TAG  = "${mvnVersion}-${safeBranch}-${shortSha}-radxa-test"
+                    env.FULL_IMAGE = "automata:${env.IMAGE_TAG}"
+
+                    echo "Branch   : ${params.BRANCH}"
+                    echo "Image tag: ${env.IMAGE_TAG}"
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // STAGE 3: Build React UI on Radxa
+        // ─────────────────────────────────────────────
+        stage('Build UI') {
+            agent { label 'radxa' }
+            tools { nodejs 'NodeJs25' }
+            steps {
+                unstash 'source'
+                dir('frontend') {
+                    sh 'npm install'
+                    sh 'npm run build || true'
+                    sh 'test -f ../src/main/resources/static/index.html && echo "UI build verified"'
+                }
+                stash name: 'source-with-ui', includes: '**/*', excludes: '.git/**'
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // STAGE 4: Build JAR on Radxa
+        // ─────────────────────────────────────────────
+        stage('Build JAR') {
+            agent { label 'radxa' }
+            steps {
+                unstash 'source-with-ui'
+                sh 'mvn clean package -DskipTests'
+                sh 'cp target/*.jar target/app.jar'
+                stash name: 'build-output', includes: 'target/*.jar, Dockerfile'
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // STAGE 5: Deploy Test Container on Radxa
+        // ─────────────────────────────────────────────
+        stage('Deploy → Radxa (Test)') {
+            agent { label 'radxa' }
+            steps {
+                unstash 'build-output'
+                sh 'ls -la target/'
+                sh 'docker build -t ${FULL_IMAGE} .'
+
+                sh '''
+                    docker network ls | grep -w ${SECOND_NETWORK} \
+                        || docker network create ${SECOND_NETWORK}
+
+                    docker ps   -q -f name=${CONTAINER_NAME} | xargs -r docker stop
+                    docker ps -a -q -f name=${CONTAINER_NAME} | xargs -r docker rm
+                '''
+
+                withCredentials([
+                    string(credentialsId: 'spotify-client-id',    variable: 'SPOTIFY_CLIENT_ID'),
+                    string(credentialsId: 'spotify-client-secret', variable: 'SPOTIFY_CLIENT_SECRET')
+                ]) {
+                    sh '''
+                        docker run -d --name ${CONTAINER_NAME} \
+                            --restart unless-stopped \
+                            --network ${SECOND_NETWORK} \
+                            --add-host=host.docker.internal:host-gateway \
+                            --health-cmd="wget -qO- http://localhost:${CONTAINER_PORT}/actuator/health || exit 1" \
+                            --health-interval=30s --health-timeout=5s --health-retries=3 \
+                            -e SPRING_PROFILES_ACTIVE=${SPRING_PROFILE} \
+                            -e SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID}" \
+                            -e SPOTIFY_CLIENT_SECRET="${SPOTIFY_CLIENT_SECRET}" \
+                            -l automata.version="${IMAGE_TAG}" \
+                            -l automata.branch="${BRANCH}" \
+                            -l automata.env="test" \
+                            -p ${HOST_PORT}:${CONTAINER_PORT} \
+                            ${FULL_IMAGE}
+                    '''
+                }
+
+                sh 'docker network connect ${RADXA_NETWORK} ${CONTAINER_NAME}'
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // STAGE 6: Smoke Test
+        // ─────────────────────────────────────────────
+        stage('Smoke Test') {
+            agent { label 'radxa' }
+            steps {
+                sh '''
+                    echo "Waiting for container to become healthy..."
+                    for i in $(seq 1 12); do
+                        STATUS=$(docker inspect --format="{{.State.Health.Status}}" ${CONTAINER_NAME} 2>/dev/null || echo "unknown")
+                        echo "  attempt $i — status: $STATUS"
+                        if [ "$STATUS" = "healthy" ]; then
+                            echo "Container is healthy ✅"
+                            exit 0
+                        fi
+                        sleep 10
+                    done
+                    echo "Container did not become healthy in time ❌"
+                    docker logs ${CONTAINER_NAME} --tail 80
+                    exit 1
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Radxa test build deployed successfully!"
+            echo "   Branch : ${params.BRANCH}"
+            echo "   Image  : ${env.FULL_IMAGE}"
+            echo "   Port   : ${env.HOST_PORT}"
+        }
+        failure {
+            echo "❌ Radxa test build failed — check stage logs above."
+            node('radxa') {
+                sh 'docker logs ${CONTAINER_NAME} --tail 100 || true'
+            }
+        }
+        unstable {
+            echo '⚠️ Build unstable — UI build may have warnings.'
+        }
+        cleanup {
+            node('radxa') {
+                // Optional: uncomment to auto-prune dangling images after each run
+                // sh 'docker image prune -f'
+                echo "Pipeline cleanup complete."
+            }
+        }
+    }
+}

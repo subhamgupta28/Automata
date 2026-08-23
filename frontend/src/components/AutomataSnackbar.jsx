@@ -26,7 +26,8 @@ const AutomataSnackbar = React.forwardRef(({
                                                variant = "info",
                                                onDisable,
                                                onSnooze,
-                                               automationId
+                                               automationId,
+                                               timestamp
                                            }, ref) => {
     const {closeSnackbar} = useSnackbar();
     const cfg = SEVERITY[variant] ?? SEVERITY.info;
@@ -36,12 +37,12 @@ const AutomataSnackbar = React.forwardRef(({
             ref={ref}
             sx={{
                 display: "flex",
-                alignItems: "flex-start",
-                gap: "12px",
+                flexDirection: 'column',
+                // gap: "12px",
                 backgroundColor: "#1e1e1e",
                 border: "1px solid #2a2a2a",
                 borderRadius: "10px",
-                p: "14px 16px",
+                p: "12px 14px",
                 minWidth: 320,
                 maxWidth: 400,
                 position: "relative",
@@ -54,78 +55,90 @@ const AutomataSnackbar = React.forwardRef(({
                     background: cfg.color,
                     borderRadius: "10px 0 0 10px",
                 },
-            }}
-        >
-            {/* Icon badge */}
+            }}>
+            <Typography style={{
+                fontSize: 10
+            }}>
+                {timestamp}
+            </Typography>
             <Box
                 sx={{
-                    width: 30, height: 30,
-                    borderRadius: "7px",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0,
-                    backgroundColor: `${cfg.color}1f`,
-                    color: cfg.color,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "12px",
                 }}
             >
-                <Icon sx={{fontSize: 16}}/>
+                {/* Icon badge */}
+                {/*<Box*/}
+                {/*    sx={{*/}
+                {/*        width: 30, height: 30,*/}
+                {/*        borderRadius: "7px",*/}
+                {/*        display: "flex", alignItems: "center", justifyContent: "center",*/}
+                {/*        flexShrink: 0,*/}
+                {/*        backgroundColor: `${cfg.color}1f`,*/}
+                {/*        color: cfg.color,*/}
+                {/*    }}*/}
+                {/*>*/}
+                {/*    <Icon sx={{fontSize: 16}}/>*/}
+                {/*</Box>*/}
+
+                {/* Body */}
+                <Box sx={{flex: 1, minWidth: 0}}>
+                    <Typography sx={{fontSize: 13, fontWeight: 500, color: "#fff", mb: "2px"}}>
+                        {header ?? cfg.label}
+                    </Typography>
+                    <Typography sx={{fontSize: 12, color: "#b0b0b0", lineHeight: 1.5}}>
+                        {message}
+                    </Typography>
+
+                    {variant === "automation" && (
+                        <Box sx={{display: "flex", gap: "8px", mt: "10px"}}>
+                            <Button
+                                size="small"
+                                onClick={() => {
+                                    onDisable?.(automationId);
+                                    closeSnackbar(id);
+                                }}
+                                sx={{
+                                    fontSize: 11, fontWeight: 500,
+                                    px: "10px", py: "3px",
+                                    backgroundColor: "#b13b3b", color: "#161616",
+                                    border: "none",
+                                    "&:hover": {backgroundColor: "#b13b3b"},
+                                }}
+                            >
+                                Disable
+                            </Button>
+                            <Button
+                                size="small"
+                                onClick={() => {
+                                    onSnooze?.(automationId);
+                                    closeSnackbar(id);
+                                }}
+                                sx={{
+                                    fontSize: 11, fontWeight: 500,
+                                    px: "10px", py: "3px",
+                                    backgroundColor: "#2a2a2a", color: "#e0e0e0",
+                                    border: "1px solid #444",
+                                    "&:hover": {backgroundColor: "#333"},
+                                }}
+                            >
+                                Snooze 1 hr
+                            </Button>
+                        </Box>
+                    )}
+                </Box>
+
+                {/* Close */}
+                <IconButton
+                    size="small"
+                    onClick={() => closeSnackbar(id)}
+                    aria-label="Dismiss"
+                    sx={{color: "#555", flexShrink: 0, "&:hover": {color: "#b0b0b0", backgroundColor: "#2a2a2a"}}}
+                >
+                    <CloseIcon sx={{fontSize: 16}}/>
+                </IconButton>
             </Box>
-
-            {/* Body */}
-            <Box sx={{flex: 1, minWidth: 0}}>
-                <Typography sx={{fontSize: 13, fontWeight: 500, color: "#fff", mb: "2px"}}>
-                    {header ?? cfg.label}
-                </Typography>
-                <Typography sx={{fontSize: 12, color: "#b0b0b0", lineHeight: 1.5}}>
-                    {message}
-                </Typography>
-
-                {variant === "automation" && (
-                    <Box sx={{display: "flex", gap: "8px", mt: "10px"}}>
-                        <Button
-                            size="small"
-                            onClick={() => {
-                                onDisable?.(automationId);
-                                closeSnackbar(id);
-                            }}
-                            sx={{
-                                fontSize: 11, fontWeight: 500,
-                                px: "10px", py: "3px",
-                                backgroundColor: "#b13b3b", color: "#161616",
-                                border: "none",
-                                "&:hover": {backgroundColor: "#b13b3b"},
-                            }}
-                        >
-                            Disable
-                        </Button>
-                        <Button
-                            size="small"
-                            onClick={() => {
-                                onSnooze?.(automationId);
-                                closeSnackbar(id);
-                            }}
-                            sx={{
-                                fontSize: 11, fontWeight: 500,
-                                px: "10px", py: "3px",
-                                backgroundColor: "#2a2a2a", color: "#e0e0e0",
-                                border: "1px solid #444",
-                                "&:hover": {backgroundColor: "#333"},
-                            }}
-                        >
-                            Snooze 1 hr
-                        </Button>
-                    </Box>
-                )}
-            </Box>
-
-            {/* Close */}
-            <IconButton
-                size="small"
-                onClick={() => closeSnackbar(id)}
-                aria-label="Dismiss"
-                sx={{color: "#555", flexShrink: 0, "&:hover": {color: "#b0b0b0", backgroundColor: "#2a2a2a"}}}
-            >
-                <CloseIcon sx={{fontSize: 16}}/>
-            </IconButton>
         </Box>
     );
 });

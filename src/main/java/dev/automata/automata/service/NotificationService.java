@@ -17,7 +17,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Date;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -31,26 +33,29 @@ public class NotificationService {
     private RestTemplate restTemplate;
     private static final String SUCCESS = "success";
     private static final String TITLE_AUTOMATA = "Automata";
-
+    private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
+    private static final DateTimeFormatter dateTimeFormat = DateTimeFormatter.ofPattern("dd MMM HH:mm a");
     @Value("${app.notification.ntfy.url}")
     private String NTFY_URL;
 
     public void sendAlert(String message, String severity) {
+        ZonedDateTime now = ZonedDateTime.now(IST);
         Notification notification = Notification.builder()
                 .message(message)
                 .severity(severity)
-                .timestamp(new Date())
+                .timestamp(now.format(dateTimeFormat))
                 .build();
         messagingTemplate.convertAndSend("/topic/alert", notification);
     }
 
     public void sendNotification(String message, String severity, String header, String homeId, String... automationIds) {
+        ZonedDateTime now = ZonedDateTime.now(IST);
         Notification notification = Notification.builder()
                 .message(message)
                 .severity(severity)
                 .automationId(automationIds.length != 0 ? automationIds[0] : "")
                 .header(header)
-                .timestamp(new Date())
+                .timestamp(now.format(dateTimeFormat))
                 .build();
         log.info("Notification sent: message={} severity={} homeId={}", message, severity, homeId);
         if ("high".equals(severity))
@@ -109,10 +114,11 @@ public class NotificationService {
 
     @Deprecated(since = "29th July, 2026", forRemoval = true)
     public void sendNotification(String message, String severity, String homeId) {
+        ZonedDateTime now = ZonedDateTime.now(IST);
         Notification notification = Notification.builder()
                 .message(message)
                 .severity(severity)
-                .timestamp(new Date())
+                .timestamp(now.format(dateTimeFormat))
                 .build();
 
         log.info("Notification sent: message= {} home id= {}", message, homeId);

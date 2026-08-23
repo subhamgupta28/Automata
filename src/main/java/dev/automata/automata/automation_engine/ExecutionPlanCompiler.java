@@ -1,5 +1,6 @@
 package dev.automata.automata.automation_engine;
 
+import dev.automata.automata.automation_engine.helpers.ActionResolver;
 import dev.automata.automata.cache.DeviceMetaCache;
 import dev.automata.automata.dto.NodeRef;
 import dev.automata.automata.model.Automation;
@@ -15,30 +16,35 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Compiles a raw Automation into an ExecutionPlan.
- * <p>
- * Bug fix (this version)
- * ──────────────────────
- * Root node detection was broken for automations saved with the old
- * operator model. A condition is a root if its previousNodeRef points
- * ONLY to non-condition nodes (trigger, operator, or nothing). The old
- * code used a child-set derived only from condition→condition edges, so
- * any condition that was a gate (previousNodeRef → operator node) was
- * not in the child-set and was incorrectly treated as a root. The
- * evaluator then started a second walk from it in the rootConditionNodeIds
- * loop, but the condition had no connection to the primary tree walk, so
- * it evaluated independently and produced duplicate / out-of-context results
- * for the nodes that were reachable from it, while the nodes reachable only
- * from the first root were reported as "unevaluated".
- * <p>
- * Fix: a condition is a root if and only if NONE of its previousNodeRef
- * entries point to another ENABLED condition node. This correctly handles:
- * - New model: conditions whose parent is the trigger node (root ✓)
- * - Old gate model: conditions whose parent was an operator node (not root,
- * now wired as a child of whatever the operator fed — or treated as a
- * standalone child if the operator is gone)
- * - Disconnected conditions: no previousNodeRef at all (root ✓, will be
- * walked independently and likely produce a warn via observability)
+ * Compiles a raw {@link Automation} into an {@link ExecutionPlan}.
+ *
+ * <p>Builds the condition tree from each condition's {@code previousNodeRef}
+ * edges, splitting positive- and negative-handle children into separate
+ * adjacency maps. A condition is a root node if and only if none of its
+ * {@code previousNodeRef} entries point to another enabled condition node —
+ * this correctly classifies conditions parented directly by the trigger,
+ * conditions parented by an (old-model) operator node, and disconnected
+ * conditions, all as roots, while a condition parented by another condition
+ * is not.
+ *
+ * <p>Propagates "statefulness" (whether a node tracks {@code wasActive} for
+ * edge detection) down each branch via BFS: a node is effectively stateful
+ * if it or any ancestor in its trigger→…→node chain fires negative actions.
+ * A root with no negative actions of its own but with a stateful descendant
+ * is subsequently promoted to stateful, since it is still the entry-point
+ * gate whose {@code wasActive} state downstream negative actions depend on.
+ *
+ * <p>Also identifies "leaf action nodes" — terminal nodes with no positive
+ * children that carry their own positive actions — and, for automations
+ * running in {@link FiringMode#ON_STATE_CHANGE}, auto-injects an
+ * {@code EDGE_RISING} {@link ConditionMemoryPolicy} on those nodes so they
+ * fire once per false→true transition rather than every tick, unless an
+ * explicit per-node memory policy has already been set.
+ *
+ * <p>Compiles per-node action lists, an OR-fanout mode (FIRST_MATCH vs. ALL,
+ * driven by an explicit authoring flag rather than topology), top-level
+ * aggregated positive/negative action lists, and an optional
+ * {@link TriggerCoalition} for automations with multiple trigger sources.
  */
 @Slf4j
 @Component
@@ -46,6 +52,7 @@ import java.util.stream.Collectors;
 public class ExecutionPlanCompiler {
 
     private final DeviceMetaCache deviceMetaCache;
+    private final ActionResolver actionResolver;
 
     // ─────────────────────────────────────────────────────────────────────
     // ENTRY POINT
@@ -111,7 +118,7 @@ public class ExecutionPlanCompiler {
             List<ExecutionPlan.CompiledAction> posActions =
                     compileActionsForNode(actions, nodeId, "positive");
             List<ExecutionPlan.CompiledAction> negActions =
-                    deduplicateActions(compileActionsForNode(actions, nodeId, "negative"));
+                    actionResolver.resolveExact((compileActionsForNode(actions, nodeId, "negative")));
 
             posActionsByNode.put(nodeId, posActions);
             negActionsByNode.put(nodeId, negActions);
@@ -297,7 +304,7 @@ public class ExecutionPlanCompiler {
                         .collect(Collectors.toList());
 
         List<ExecutionPlan.CompiledAction> topLevelNegative =
-                deduplicateActions(
+                actionResolver.resolveExact(
                         nodeMap.values().stream()
                                 .filter(n -> n.getNegativeActions() != null)
                                 .flatMap(n -> n.getNegativeActions().stream())
@@ -405,49 +412,33 @@ public class ExecutionPlanCompiler {
     // ACTION COMPILATION
     // ─────────────────────────────────────────────────────────────────────
 
+    private List<ExecutionPlan.CompiledAction> compileStatelessActions(List<Automation.Action> actions, String group) {
+        return buildActionList(actions, group, a -> "none".equalsIgnoreCase(a.getConditionGroup()));
+    }
+
+    private List<ExecutionPlan.CompiledAction> compileByGroup(List<Automation.Action> actions, String group) {
+        return buildActionList(actions, group, a -> group.equalsIgnoreCase(a.getConditionGroup()));
+    }
+
     private List<ExecutionPlan.CompiledAction> compileActionsForNode(
             List<Automation.Action> actions, String nodeId, String group) {
-        return actions.stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> {
-                    if (a.getPreviousNodeRef() == null) return false;
-                    return a.getPreviousNodeRef().stream().anyMatch(ref -> {
-                        if (!nodeId.equals(ref.getNodeId())) return false;
-                        String handle = ref.getHandle() != null ? ref.getHandle() : "";
-                        if (handle.contains("cond-positive"))
-                            return "positive".equals(group);
-                        if (handle.contains("cond-negative"))
-                            return "negative".equals(group);
-                        // Fallback: use conditionGroup field for legacy actions
-                        return group.equalsIgnoreCase(a.getConditionGroup());
-                    });
-                })
-                .sorted(Comparator
-                        .comparingInt((Automation.Action a) ->
-                                a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE)
-                        .thenComparing(Automation.Action::getNodeId))
-                .map(a -> compileAction(a, group))
-                .collect(Collectors.toList());
+        return buildActionList(actions, group, a -> {
+            if (a.getPreviousNodeRef() == null) return false;
+            return a.getPreviousNodeRef().stream().anyMatch(ref -> {
+                if (!nodeId.equals(ref.getNodeId())) return false;
+                String handle = ref.getHandle() != null ? ref.getHandle() : "";
+                if (handle.contains("cond-positive")) return "positive".equals(group);
+                if (handle.contains("cond-negative")) return "negative".equals(group);
+                return group.equalsIgnoreCase(a.getConditionGroup());
+            });
+        });
     }
 
-    private List<ExecutionPlan.CompiledAction> compileByGroup(
-            List<Automation.Action> actions, String group) {
+    private List<ExecutionPlan.CompiledAction> buildActionList(
+            List<Automation.Action> actions, String group, java.util.function.Predicate<Automation.Action> filter) {
         return actions.stream()
                 .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> group.equalsIgnoreCase(a.getConditionGroup()))
-                .sorted(Comparator
-                        .comparingInt((Automation.Action a) ->
-                                a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE)
-                        .thenComparing(Automation.Action::getNodeId))
-                .map(a -> compileAction(a, group))
-                .collect(Collectors.toList());
-    }
-
-    private List<ExecutionPlan.CompiledAction> compileStatelessActions(
-            List<Automation.Action> actions, String group) {
-        return actions.stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(a -> "none".equalsIgnoreCase(a.getConditionGroup()))
+                .filter(filter)
                 .sorted(Comparator
                         .comparingInt((Automation.Action a) ->
                                 a.getOrder() != 0 ? a.getOrder() : Integer.MAX_VALUE)
@@ -467,6 +458,7 @@ public class ExecutionPlanCompiler {
                 .name(a.getName())
                 .deviceType(resolveDeviceType(a.getDeviceId()))
                 .conditionGroup(group)
+                .revertOnComplete(a.getRevert())
                 .build();
     }
 
@@ -505,19 +497,6 @@ public class ExecutionPlanCompiler {
                 .intervalMinutes(c.getIntervalMinutes())
                 .durationMinutes(c.getDurationMinutes())
                 .build();
-    }
-
-
-    // ─────────────────────────────────────────────────────────────────────
-    // DEDUPLICATION
-    // ─────────────────────────────────────────────────────────────────────
-
-    private List<ExecutionPlan.CompiledAction> deduplicateActions(
-            List<ExecutionPlan.CompiledAction> actions) {
-        Set<String> seen = new LinkedHashSet<>();
-        return actions.stream()
-                .filter(a -> seen.add(a.getDeviceId() + "|" + a.getKey() + "|" + a.getData()))
-                .collect(Collectors.toList());
     }
 
 

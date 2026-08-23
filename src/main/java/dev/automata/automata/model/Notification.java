@@ -7,7 +7,6 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
-import java.util.Date;
 
 @Document(collection = "notifications")
 @Getter
@@ -24,7 +23,7 @@ public class Notification {
     private String severity;   // "info" | "success" | "warning" | "error" | "automation"
     private String header;     // new — maps to snackbar title
     @Indexed
-    private Date timestamp;
+    private String timestamp;
     @Indexed
     @LastModifiedDate
     private Instant updateDate;

@@ -1,6 +1,8 @@
 package dev.automata.automata.automation_engine;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.automata.automata.automation_engine.enums.EvalOutcome;
+import dev.automata.automata.automation_engine.enums.NodeState;
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.ConditionMemory;
 import lombok.Builder;
@@ -55,7 +57,7 @@ public class AutomationLivePublisher {
     // ─────────────────────────────────────────────────────────────────────
 
     public void publish(ExecutionPlan plan,
-                        AutomationEvaluator.EvalResult result,
+                        EvalResult result,
                         AutomationRuntimeState nextState,
                         Map<String, Object> triggerPayload) {
         if (plan == null || result == null) return;
@@ -131,7 +133,7 @@ public class AutomationLivePublisher {
      * orphan, or one isolated by a cycle) remains correctly flagged.
      */
     private LiveEvalEvent buildFullEvent(ExecutionPlan plan,
-                                         AutomationEvaluator.EvalResult result,
+                                         EvalResult result,
                                          AutomationRuntimeState nextState,
                                          Map<String, Object> triggerPayload) {
 
@@ -139,7 +141,7 @@ public class AutomationLivePublisher {
                 ? result.getConditionResults() : Map.of();
         Map<String, ConditionMemory> memUpdates = result.getMemoryUpdates() != null
                 ? result.getMemoryUpdates() : Map.of();
-        Map<String, String> nodeStateMap = nextState != null
+        Map<String, NodeState> nodeStateMap = nextState != null
                 ? nextState.getNodeStates() : Map.of();
 
         Set<String> staticallyReachable = computeStaticallyReachableNodeIds(plan);
@@ -179,8 +181,8 @@ public class AutomationLivePublisher {
                     evalWarnings.add("Node '" + nodeId + "' is in plan but missing from conditionTree");
                 }
 
-                String nodeState = nodeStateMap.getOrDefault(nodeId, "IDLE");
-                boolean isActive = "ACTIVE".equals(nodeState) || "HOLDING".equals(nodeState);
+                NodeState nodeState = nodeStateMap.getOrDefault(nodeId, NodeState.IDLE);
+                boolean isActive = nodeState == NodeState.ACTIVE || nodeState == NodeState.HOLDING;
 
                 // Fan-out role
                 String fanoutRole = getFanoutRole(n);
@@ -243,8 +245,8 @@ public class AutomationLivePublisher {
 
         // Detect positive actions in plan that were not fired
         if (plan.getConditionTree() != null
-                && (result.getOutcome() == AutomationEvaluator.EvalOutcome.TRIGGERED
-                || result.getOutcome() == AutomationEvaluator.EvalOutcome.BRANCH_TRIGGERED)) {
+                && (result.getOutcome() == EvalOutcome.TRIGGERED
+                || result.getOutcome() == EvalOutcome.BRANCH_TRIGGERED)) {
             Set<String> fired = new HashSet<>(firedActionNodeIds);
             for (ExecutionPlan.CompiledConditionNode n : plan.getConditionTree()) {
                 if (n.getPositiveActions() == null) continue;
@@ -330,8 +332,7 @@ public class AutomationLivePublisher {
         return fanoutRole;
     }
 
-    private LiveEvalSummary buildSummary(ExecutionPlan plan,
-                                         AutomationEvaluator.EvalResult result) {
+    private LiveEvalSummary buildSummary(ExecutionPlan plan, EvalResult result) {
         return LiveEvalSummary.builder()
                 .type("SUMMARY")
                 .automationId(plan.getAutomationId())
@@ -417,7 +418,7 @@ public class AutomationLivePublisher {
         };
     }
 
-    private boolean isBroadcastWorthy(AutomationEvaluator.EvalOutcome outcome) {
+    private boolean isBroadcastWorthy(EvalOutcome outcome) {
         return switch (outcome) {
             case TRIGGERED, C1_NEGATIVE, STATELESS_FIRE, FALLBACK, BRANCH_TRIGGERED -> true;
             case SKIPPED, NOT_MET -> false;
@@ -448,12 +449,12 @@ public class AutomationLivePublisher {
         /**
          * Top-level IDLE / ACTIVE state of the automation.
          */
-        String topLevelState;
+        NodeState topLevelState;
 
         /**
          * Full nodeId → "IDLE"/"ACTIVE"/"HOLDING" map from AutomationRuntimeState.
          */
-        Map<String, String> nodeStates;
+        Map<String, NodeState> nodeStates;
 
         /**
          * Raw trigger payload that caused this evaluation.
@@ -518,7 +519,7 @@ public class AutomationLivePublisher {
         /**
          * Current state from AutomationRuntimeState.nodeStates.
          */
-        String nodeState;
+        NodeState nodeState;
 
         /**
          * Convenience alias: nodeState is ACTIVE or HOLDING.

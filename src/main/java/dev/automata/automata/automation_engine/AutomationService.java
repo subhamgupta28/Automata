@@ -11,7 +11,6 @@ import dev.automata.automata.modules.Wled;
 import dev.automata.automata.repository.AutomationDetailRepository;
 import dev.automata.automata.repository.AutomationRepository;
 import dev.automata.automata.repository.DeviceRepository;
-import dev.automata.automata.service.FeatureService;
 import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.NotificationService;
 import dev.automata.automata.service.RedisService;
@@ -61,11 +60,9 @@ public class AutomationService {
     private final ExecutionPlanCompiler planCompiler;
     private final AutomationOrchestrator orchestrator;
     private final AutomationStateStore stateStore;
-    private final AutomationLogStream logStream;
     private final ActionDispatcher dispatcher;
     private final ActionDeliveryTracker deliveryTracker;
     private final PlanCache planCache;
-    private final FeatureService featureService;
     private final ScheduledAutomationManager scheduledAutomationManager;
     private final MainService mainService;
     private final NotificationService notificationService;
@@ -75,6 +72,7 @@ public class AutomationService {
     private final RedisService redisService;
     private final ObjectMapper objectMapper;
     private final AutomationGraphValidator graphValidator;
+    private final PlanReconciliationService planReconciliationService;
 
     private static final String TOPIC_ACTION = "action/";
 
@@ -104,7 +102,7 @@ public class AutomationService {
             a.setIsEnabled(enabled);
             automationRepository.save(a);
             notificationService.sendNotification("Automation updated", "success", "Automation", a.getHomeId());
-            orchestrator.invalidatePlan(id);
+            planReconciliationService.invalidatePlan(id);
         });
         return "success";
     }
@@ -460,7 +458,7 @@ public class AutomationService {
         ExecutionPlan plan = null;
         try {
             plan = planCompiler.compile(saved);
-            orchestrator.updatePlan(saved.getId(), plan);
+            planReconciliationService.updatePlan(saved.getId(), plan);
             log.info("✅ ExecutionPlan compiled for '{}'", saved.getName());
         } catch (Exception e) {
             log.error("❌ Plan compilation failed for '{}': {}", saved.getName(), e.getMessage(), e);
@@ -558,7 +556,7 @@ public class AutomationService {
             scheduledAutomationManager.cancel(id);
             automationRepository.deleteById(id);
             automationDetailRepository.deleteById(id);
-            orchestrator.invalidatePlan(id);
+            planReconciliationService.invalidatePlan(id);
 
             log.info("🗑️ Automation '{}' (id={}) deleted by '{}'",
                     automation.getName(), id, user);
@@ -606,7 +604,7 @@ public class AutomationService {
 
         try {
             ExecutionPlan plan = planCompiler.compile(saved);
-            orchestrator.updatePlan(saved.getId(), plan);
+            planReconciliationService.updatePlan(saved.getId(), plan);
         } catch (Exception e) {
             log.warn("Plan compilation failed for copy '{}': {}", saved.getName(), e.getMessage());
         }

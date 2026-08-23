@@ -1,6 +1,7 @@
 package dev.automata.automata.controller;
 
 import dev.automata.automata.automation_engine.*;
+import dev.automata.automata.automation_engine.enums.NodeState;
 import dev.automata.automata.dto.AutomationRuntimeState;
 import dev.automata.automata.dto.ConditionMemory;
 import lombok.Builder;
@@ -121,7 +122,7 @@ public class AutomationInspectionController {
             }
             case "FORCE_ACTIVE" -> {
                 AutomationRuntimeState next = AutomationRuntimeState.idle();
-                next.setTopLevelState("ACTIVE");
+                next.setTopLevelState(NodeState.ACTIVE);
 //                if (plan.getConditionTree() != null)
 //                    plan.getConditionTree().stream()
 //                            .filter(ExecutionPlan.CompiledConditionNode::isStateful)
@@ -377,7 +378,7 @@ public class AutomationInspectionController {
         String automationName;
         int schemaVersion;
         Instant compiledAt;
-        String topLevelState;
+        NodeState topLevelState;
         boolean isTopLevelActive;
         boolean hasBranches;
         boolean hasCoalition;

@@ -35,7 +35,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
         coalitionMode: 'ANY',
         coalitionWindowSeconds: 60,
         sources: [],        // NEW: [{ deviceId, keys: [string], role: 'primary'|'secondary' }]
-        firingMode: "ON_STATE_CHANGE",
+        firingMode: "EVERY_TICK",
         minResendIntervalSeconds: 300
     };
 

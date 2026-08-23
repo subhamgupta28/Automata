@@ -156,7 +156,7 @@ public class AutomationController {
             @RequestBody AutomationDetail detail,
             @RequestHeader("X-Home-Id") String homeId) {
         var result = automationService.validateBeforeSave(detail, homeId);
-        HttpStatus status = result.hasErrors() ? HttpStatus.UNPROCESSABLE_ENTITY : HttpStatus.OK;
+        HttpStatus status = result.hasErrors() ? HttpStatus.UNPROCESSABLE_CONTENT : HttpStatus.OK;
         return ResponseEntity.status(status).body(result);
     }
 
