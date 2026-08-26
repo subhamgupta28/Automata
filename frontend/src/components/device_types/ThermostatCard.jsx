@@ -1,10 +1,9 @@
 import React, {useEffect, useState} from "react";
 import {Box, CardContent, IconButton, Typography,} from "@mui/material";
-import HomeIcon from "@mui/icons-material/Home";
+import AirIcon from '@mui/icons-material/Air';
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import {sendAction} from "../../services/apis.jsx";
-import OpacityIcon from "@mui/icons-material/Opacity";
 
 export default function ThermostatCard({device, messages}) {
     const [temp, setTemp] = useState(21.0);
@@ -58,38 +57,19 @@ export default function ThermostatCard({device, messages}) {
     return (
         <div
             style={{
-                // width: 220,
+                minWidth: 220,
                 borderRadius: '8px',
-                boxShadow: 2,
             }}
         >
             <CardContent>
                 {/* Header */}
-                <Box display="flex" alignItems="center" gap={1} mb={1}>
-                    <HomeIcon sx={{color: "orange"}}/>
+                <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
+                    <AirIcon/>
                     <Typography fontWeight={600}>{data.room}</Typography>
+                    <Typography fontSize={12} fontWeight={200} color="#8a8a8e">
+                        {data.currentTemp} °C · {data.humidity}%
+                    </Typography>
                 </Box>
-
-                {/* Mode + current temp */}
-                <div style={{
-                    display: 'flex', justifyContent: 'center',
-                    alignItems: 'center', marginBottom: '10px'
-                }}>
-                    <Typography
-                        variant="body2"
-
-                    >
-                        {data.mode} · {data.currentTemp} °C ·
-                    </Typography>
-                    <OpacityIcon fontSize="12" style={{marginLeft: '10px'}}/>
-
-                    <Typography
-                        variant="body2"
-                    >
-                        {data.humidity}%
-                    </Typography>
-                </div>
-
                 {/* Temperature control */}
                 <Box
                     display="flex"

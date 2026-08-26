@@ -64,7 +64,8 @@ export const EnergyBatteryChartNode = React.memo(({id, data, isConnectable, sele
             border: `1px solid ${C.border}`,
             backgroundColor: 'rgb(0 0 0 / 0%)',
             minHeight: height, height: '100%', minWidth: width, padding: '10px', borderRadius: '12px',
-            boxShadow: 'none'
+            boxShadow: 'rgb(35 35 35) 0px 0px 96px 6px inset',
+            backdropFilter: 'blur(4px)',
         }}>
             <div className="card-glow"/>
             <div style={{
@@ -103,7 +104,7 @@ export const EnergyBatteryChartNode = React.memo(({id, data, isConnectable, sele
             <Box style={{display: 'flex', justifyContent: 'center'}}>
                 {series.length > 0 && labels.length > 0 && series.every(s => s.data && s.data.length === labels.length) && (
                     <BarChart
-                        height="200"
+                        height="170"
                         series={withOptions(series)}
                         xAxis={[{
                             scaleType: 'band',
