@@ -90,19 +90,10 @@ const Wled = ({device, messages, lastData}) => {
             {switchButtons.map((s) => (
                 <div className="nodrag">
                     <LightBulbCard onClick={handleClick} key={s.key} data={s} lastOnline={device.lastOnline}
-                                   value={liveData?.[s.key]} percent={liveData?.bright}
+                                   value={liveData?.[s.key]} percent={liveData?.bright} sliderData={sliderData}
                                    name={device.name} deviceId={device.id} type={device.type}/>
                     <div style={{marginLeft: '32px', marginRight: '22px'}}>
-                        {sliderData.map((s) => (
-                            <CustomSlider
-                                key={s.key}
-                                value={liveData?.[s.key]}
-                                deviceId={device.id}
-                                type={device.type}
-                                data={s}
-                                displayName={s.displayName}
-                            />
-                        ))}
+
                         {/*<CustomSlider*/}
                         {/*    key={slider?.key}*/}
                         {/*    value={liveData?.[slider?.key]}*/}

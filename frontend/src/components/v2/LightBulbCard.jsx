@@ -2,8 +2,9 @@ import * as React from "react";
 import {Box, IconButton, Typography} from "@mui/material";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import {getLastData, sendAction} from "../../services/apis.jsx";
+import {CustomSlider} from "../charts/CustomSlider.jsx";
 
-export default function LightBulbCard({value, name, type, deviceId, data, lastOnline, onClick, percent}) {
+export default function LightBulbCard({value, name, type, deviceId, data, lastOnline, onClick, percent, sliderData}) {
     const [isOn, setIsOn] = React.useState(Boolean(value));
     const [bright, setBright] = React.useState(percent);
 
@@ -47,18 +48,18 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
 
             style={{
                 margin: '6px',
-                width: "100%",
                 borderRadius: "8px",
                 padding: "8px 6px",
                 boxShadow: "0px 1px 4px rgba(0,0,0,0.12)"
             }}
         >
-            <Box display="flex" alignItems="center" gap={2}>
+            <Box display="flex" gap={2}>
                 <IconButton
                     onClick={send}
                     sx={{
                         width: 48,
                         height: 48,
+                        marginTop: 0.6,
                         borderRadius: "50%",
                         backgroundColor: isOn ? "#FFC107" : "#E0E0E0",
                         "&:hover": {
@@ -73,16 +74,26 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
                     />
                 </IconButton>
 
-                <Box onClick={onClick}>
-                    <Typography fontWeight={600} fontSize="16px">
+                <Box style={{width: "120px",}}>
+                    <Typography onClick={onClick} fontWeight={600} fontSize="16px">
                         {name}
                     </Typography>
-                    <Typography
-                        fontSize="14px"
-                        color={isOn ? "text.primary" : "text.secondary"}
-                    >
-                        {isOn ? `${parseInt(((bright / 255) * 100).toString())}%` : "Off"}
-                    </Typography>
+                    {sliderData.map((s) => (
+                        <CustomSlider
+                            key={s.key}
+                            value={17}
+                            deviceId={deviceId}
+                            type={type}
+                            data={s}
+                            displayName={s.displayName}
+                        />
+                    ))}
+                    {/*<Typography*/}
+                    {/*    fontSize="14px"*/}
+                    {/*    color={isOn ? "text.primary" : "text.secondary"}*/}
+                    {/*>*/}
+                    {/*    {isOn ? `${parseInt(((bright / 255) * 100).toString())}%` : "Off"}*/}
+                    {/*</Typography>*/}
                     {/*<Typography variant="body2" color="text.secondary">*/}
                     {/*    {dayjs(lastOnline).fromNow()}*/}
                     {/*</Typography>*/}

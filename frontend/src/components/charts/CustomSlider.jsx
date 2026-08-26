@@ -6,8 +6,8 @@ import {styled} from "@mui/material/styles";
 
 const CSlider = styled(Slider)({
     color: 'primary', // Blue color like Home Assistant slider
-    height: 12, // Adjust the height of the slider bar
-    borderRadius: 10,
+    height: 10, // Adjust the height of the slider bar
+    borderRadius: 6,
     padding: '5px 0',
     // marginBottom: 1,
     '& .MuiSlider-rail': {
@@ -20,7 +20,8 @@ const CSlider = styled(Slider)({
         backgroundColor: '#ffffff', // Use the blue color for the active track
     },
     '& .MuiSlider-markLabel': {
-        top: 20
+        top: 20,
+        fontSize: 12
     },
     '& .MuiSlider-mark': {
         display: 'none'

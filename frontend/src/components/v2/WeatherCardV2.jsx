@@ -499,7 +499,7 @@ export function TopBar({
         ? Object.entries(ALERT_COLORS).find(([k]) => alert.toLowerCase().includes(k))?.[1] ?? "#8a8a8e"
         : null;
     return (
-        <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", px: 2.5, py: 1}}>
+        <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "flex-start", px: 1.5}}>
 
             {/* ── Left column ─────────────────────────────────────────── */}
             <Box sx={{display: "flex", flexDirection: "column", flex: 1}}>
@@ -594,27 +594,104 @@ export function TopBar({
 }
 
 // ─── StatsRow — UI unchanged ──────────────────────────────────────────────────
-export function StatsRow({items}) {
+// Minimal SVG sparkline — no deps needed
+function Sparkline({data = [], color = "#a0a0a0", height = 18}) {
+    if (!data || data.length < 2) return null;
+
+    const min = Math.min(...data);
+    const max = Math.max(...data);
+    const range = max - min || 1;
+
+    const W = 100; // viewBox units — SVG scales to fill container
+    const H = height;
+
+    const points = data.map((v, i) => {
+        const x = (i / (data.length - 1)) * W;
+        const y = H - ((v - min) / range) * H;
+        return `${x},${y}`;
+    });
+
+    const polyline = points.join(" ");
+
+    const areaPath = [
+        `M ${points[0]}`,
+        ...points.slice(1).map(p => `L ${p}`),
+        `L ${W},${H}`,
+        `L 0,${H}`,
+        "Z",
+    ].join(" ");
+
+    const gradientId = `spark-${color.replace("#", "")}-${data.length}`;
 
     return (
-        <Box sx={{display: "flex", alignItems: "center", gap: 1, px: 2.5, py: 1, overflowX: "auto"}}>
+        <svg
+            width="100%"
+            height={H}
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"   // ← stretches horizontally to fill
+            style={{display: "block", overflow: "visible"}}
+        >
+            <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity="0.45"/>
+                    <stop offset="100%" stopColor={color} stopOpacity="0.03"/>
+                </linearGradient>
+            </defs>
+            <path d={areaPath} fill={`url(#${gradientId})`}/>
+            <polyline
+                points={polyline}
+                fill="none"
+                stroke={color}
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+export function StatsRow({items}) {
+    return (
+        <Box sx={{display: "flex", alignItems: "center", gap: 1, px: 1.5, py: 0.5, overflowX: "auto"}}>
             {items.map((s, i) => (
-                <Box key={i} sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    padding: "10px 15px 5px 15px",
-                    borderRadius: "10px",
-                    // backgroundColor: C.card,
-                    border: `1px solid ${C.border}`,
-                }}>
-                    <Box sx={{display: "flex", alignItems: "center", gap: 1, whiteSpace: "nowrap"}}>
+                <Box
+                    key={i}
+                    sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        padding: "2px",
+                        borderRadius: "10px",
+                        boxShadow: "rgb(35 35 35) 0px 0px 96px 6px inset",
+                        backdropFilter: "blur(4px)",
+                        border: `1px solid ${C.border}`,
+                    }}
+                >
+                    {/* Top row: icon + label + value */}
+                    <Box sx={{
+                        display: "flex", alignItems: "center", gap: 1, whiteSpace: "nowrap",
+                        padding: "6px 24px 2px 16px",
+                    }}>
                         <Box sx={{color: C.muted}}>{s.icon}</Box>
                         <Box>
-                            <Typography sx={{color: C.muted, lineHeight: 1}}>{s.label}</Typography>
-                            <Typography variant="h6" sx={{fontWeight: 600}}>{s.value}</Typography>
+                            <Typography sx={{color: C.muted, lineHeight: 1, fontSize: "0.7rem"}}>
+                                {s.label}
+                            </Typography>
+                            <Typography variant="h6" sx={{fontWeight: 600, lineHeight: 1.2}}>
+                                {s.value}
+                            </Typography>
                         </Box>
                     </Box>
+
+                    {/* Sparkline */}
+                    {s.history && s.history.length >= 2 && (
+                        <Box>
+                            <Sparkline
+                                data={s.history}
+                                color={s.sparkColor ?? C.muted}
+                                height={22}
+                            />
+                        </Box>
+                    )}
                 </Box>
             ))}
         </Box>
@@ -737,9 +814,33 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
         if (deviceId === mainDevice) applyMainData(deviceId, allData);
         else applyOutdoorSensor(deviceId, allData);
     }, [messages, attributes, deviceIds, mainDevice]);
+    // ── History buffer: keeps last 1 hr of readings per metric ────────────────
+    // Each entry: { ts: Date.now(), value: number }
+    const HISTORY_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+    const historyRef = useRef({
+        temp: [], humid: [], aqi: [], co2: [],
+        eCo2: [], ch2o: [], tvoc: [], lux: [],
+    });
+
+    /** Append a new value and evict entries older than 1 hr */
+    function pushHistory(key, value) {
+        if (value == null) return;
+        const now = Date.now();
+        const cutoff = now - HISTORY_WINDOW_MS;
+        const buf = historyRef.current[key] ?? [];
+        buf.push({ts: now, value});
+        // drop anything outside the window
+        historyRef.current[key] = buf.filter(e => e.ts >= cutoff);
+    }
+
+    /** Return just the numeric values in chronological order */
+    function getHistory(key) {
+        return (historyRef.current[key] ?? []).map(e => e.value);
+    }
 
     function applyMainData(_, d) {
-        setLive({
+        const next = {
             time: dayjs().format("HH:mm"),
             temp: d.temp ?? 0,
             humid: d.humid ?? 0,
@@ -751,7 +852,19 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
             pm25: d.pm25 ?? 0,
             eCo2: d.co2 ?? 0,
             ch2oStatus: d.ch2oStatus ?? "",
-        });
+        };
+
+        // ── push every numeric metric into the rolling buffer ─────────────────
+        pushHistory("temp", next.temp);
+        pushHistory("humid", next.humid);
+        pushHistory("aqi", next.aqi);
+        pushHistory("co2", next.co2);
+        pushHistory("eCo2", next.eCo2);
+        pushHistory("ch2o", next.ch2o);
+        pushHistory("tvoc", next.tvoc);
+        pushHistory("lux", next.lux);
+
+        setLive(next);
     }
 
     function applyOutdoorSensor(_, d) {
@@ -794,24 +907,64 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
     const fmt = (v, suffix = "") => v != null ? `${v}${suffix}` : "—";
 
     const liveStatsItems = statsItemsFn
-        ? statsItemsFn(live, outdoor)
+        ? statsItemsFn(live, outdoor, getHistory)   // expose getHistory for custom fns too
         : [
             {
                 icon: <DeviceThermostat sx={{fontSize: 36, color: C.yellow}}/>,
                 label: "Temperature",
                 value: fmt(live.temp, " °C"),
+                history: getHistory("temp"),
+                sparkColor: C.yellow,
             },
             {
                 icon: <OpacityIcon sx={{fontSize: 36, color: C.muted}}/>,
                 label: "Humidity",
                 value: fmt(live.humid, "%"),
+                history: getHistory("humid"),
+                sparkColor: "#5ab4d6",
             },
-            {icon: <AirIcon sx={{fontSize: 36, color: C.yellow}}/>, label: "AQI", value: fmt(live.aqi),},
-            {icon: <Co2Icon sx={{fontSize: 36, color: C.muted}}/>, label: "CO₂", value: fmt(live.co2),},
-            {icon: <Co2Icon sx={{fontSize: 36, color: C.muted}}/>, label: "eCO₂", value: fmt(live.eCo2),},
-            {icon: <GasMeterIcon sx={{fontSize: 36, color: C.muted}}/>, label: "Ch2o", value: fmt(live.ch2oStatus),},
-            {icon: <ScienceIcon sx={{fontSize: 36, color: C.muted}}/>, label: "TVOC", value: fmt(live.tvoc),},
-            {icon: <Lightbulb sx={{fontSize: 36, color: C.muted}}/>, label: "Lux", value: fmt(live.lux),},
+            {
+                icon: <AirIcon sx={{fontSize: 36, color: C.yellow}}/>,
+                label: "AQI",
+                value: fmt(live.aqi),
+                history: getHistory("aqi"),
+                sparkColor: C.yellow,
+            },
+            {
+                icon: <Co2Icon sx={{fontSize: 36, color: C.muted}}/>,
+                label: "CO₂",
+                value: fmt(live.co2),
+                history: getHistory("co2"),
+                sparkColor: C.muted,
+            },
+            {
+                icon: <Co2Icon sx={{fontSize: 36, color: C.muted}}/>,
+                label: "eCO₂",
+                value: fmt(live.eCo2),
+                history: getHistory("eCo2"),
+                sparkColor: C.muted,
+            },
+            {
+                icon: <GasMeterIcon sx={{fontSize: 36, color: C.muted}}/>,
+                label: "Ch2o",
+                value: fmt(live.ch2oStatus),
+                history: getHistory("ch2o"),
+                sparkColor: C.muted,
+            },
+            {
+                icon: <ScienceIcon sx={{fontSize: 36, color: C.muted}}/>,
+                label: "TVOC",
+                value: fmt(live.tvoc),
+                history: getHistory("tvoc"),
+                sparkColor: C.muted,
+            },
+            {
+                icon: <Lightbulb sx={{fontSize: 36, color: C.muted}}/>,
+                label: "Lux",
+                value: fmt(live.lux),
+                history: getHistory("lux"),
+                sparkColor: C.yellow,
+            },
         ];
     const cardRef = useRef(null);
     useCardGlowEffect(cardRef, true);
