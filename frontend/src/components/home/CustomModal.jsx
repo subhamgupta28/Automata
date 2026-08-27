@@ -12,10 +12,11 @@ import {SwitchButton} from "../charts/SwitchButton.jsx";
 import PersonTracker from "../charts/PersonTracker.jsx";
 import Typography from "@mui/material/Typography";
 import {CustomTabPanel} from "../dashboard/AnalyticsView.jsx";
+import {DeviceLockPanel} from "../device_types/DeviceLockPanel.jsx";
 
 dayjs.extend(relativeTime);
 
-export const CustomModal = ({isOpen, onClose, devices, messages, map, version = "v1"}) => {
+export const CustomModal = ({isOpen, onClose, devices, messages, map, virtualId = "", version = "v1"}) => {
 
 
     const [value, setValue] = useState(0);
@@ -84,6 +85,11 @@ export const CustomModal = ({isOpen, onClose, devices, messages, map, version = 
                         />
                     </CustomTabPanel>
                 ))}
+                {virtualId && (
+                    <div style={{marginTop: '16px'}}>
+                        <DeviceLockPanel vid={virtualId}/>
+                    </div>
+                )}
 
             </DialogContent>
             <DialogActions>
@@ -94,8 +100,8 @@ export const CustomModal = ({isOpen, onClose, devices, messages, map, version = 
                 <Button variant="primary" onClick={onClose}>Save Changes</Button>
             </DialogActions>
         </Dialog>
-    );
-};
+    )
+}
 
 const ModelContent = ({device, onClose, messages, map, version, handleAction}) => {
     const [attrs, setAttrs] = useState(device.attributes);

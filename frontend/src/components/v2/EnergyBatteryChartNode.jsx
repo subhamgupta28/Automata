@@ -64,7 +64,7 @@ export const EnergyBatteryChartNode = React.memo(({id, data, isConnectable, sele
             border: `1px solid ${C.border}`,
             backgroundColor: 'rgb(0 0 0 / 0%)',
             minHeight: height, height: '100%', minWidth: width, padding: '10px', borderRadius: '12px',
-            boxShadow: 'rgb(35 35 35) 0px 0px 96px 6px inset',
+            boxShadow: 'rgb(35 35 35) 0px 0px 36px 6px inset',
             backdropFilter: 'blur(4px)',
         }}>
             <div className="card-glow"/>

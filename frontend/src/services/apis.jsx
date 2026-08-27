@@ -98,6 +98,24 @@ export const updateVirtualDevicePosition = async (vid, x, y, width, height) => {
     });
     return response.data;
 }
+export const getVirtualDeviceLockedState = async (vid) => {
+    const response = await api.get("virtual/locked/" + vid, {
+        headers: {
+            'Content-Type': 'application/json', // Specify the content type if necessary
+            // Add any other headers if needed, e.g., Authorization
+
+        },
+    });
+    return response.data;
+}
+export const unlockVirtualDevice = async (vid, pin) => {
+    const res = await api.post(`/virtual/unlock/${vid}`, {pin});
+    return res.data;
+};
+export const lockVirtualDevice = async (payload) => {
+    const res = await api.post(`/virtual/lock`, payload);
+    return res.data;
+};
 export const getEnergyAnalytics = async (vid, param) => {
     const response = await api.get("virtual/energyChart/" + vid + "/" + param, {
         headers: {

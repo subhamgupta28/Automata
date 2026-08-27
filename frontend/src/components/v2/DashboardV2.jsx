@@ -177,11 +177,12 @@ function DashboardDetail() {
                 {menu && (
                     <CustomModal
                         map={null}
-                        isOpen={menu}
+                        isOpen={true}
                         messages={messages}
                         onClose={() => setMenu(null)}
                         devices={menu.devices}
                         version="v2"
+                        virtualId={menu.id}
                     />
                 )}
                 {/*<ZoomSlider position="bottom-left"/>*/}

@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * In-memory cache of full Device records, following the same pattern as
@@ -71,7 +72,7 @@ public class DeviceMetaCache {
     /**
      * Optional periodic refresh — wire up with @Scheduled if devices get edited outside your own save paths.
      */
-    @Scheduled(fixedRate = 3600 * 2)
+    @Scheduled(fixedRate = 3600 * 2, timeUnit = TimeUnit.SECONDS)
     public void refreshAsync() {
         CompletableFuture.runAsync(this::warmCache, taskExecutor);
     }

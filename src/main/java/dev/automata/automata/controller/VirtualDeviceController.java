@@ -1,5 +1,7 @@
 package dev.automata.automata.controller;
 
+import dev.automata.automata.dto.UnlockRequest;
+import dev.automata.automata.dto.VirtualDeviceLockRequest;
 import dev.automata.automata.model.EnergyStat;
 import dev.automata.automata.model.Users;
 import dev.automata.automata.model.VirtualDevice;
@@ -19,6 +21,31 @@ public class VirtualDeviceController {
 
     private final VirtualDeviceService virtualDeviceService;
 
+    @GetMapping("locked/{vid}")
+    public ResponseEntity<Boolean> getVirtualDeviceLockedState(
+            @PathVariable String vid,
+            @AuthenticationPrincipal Users user,
+            @RequestHeader("X-Home-Id") String homeId
+    ) {
+        return ResponseEntity.ok(virtualDeviceService.getVirtualDeviceLockedState(vid, user, homeId));
+    }
+
+    @PostMapping("unlock/{vid}")
+    public ResponseEntity<Boolean> unlockVirtualDevice(
+            @PathVariable String vid,
+            @AuthenticationPrincipal Users user,
+            @RequestBody UnlockRequest request
+    ) {
+        return ResponseEntity.ok(virtualDeviceService.unlockVirtualDevice(vid, user, request.pin()));
+    }
+
+    @PostMapping("lock")
+    public ResponseEntity<String> lockVirtualDevice(
+            @RequestBody VirtualDeviceLockRequest deviceLockRequest,
+            @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(virtualDeviceService.lockVirtualDevice(deviceLockRequest, user));
+    }
 
     @GetMapping("device/{vid}")
     public ResponseEntity<VirtualDevice> getVirtualDevice(

@@ -30,6 +30,7 @@ public class VirtualDevice {
     private Date lastModified;
     private String tag;
     private boolean active = true;
+    private boolean locked = false;
     private String homeId;
     @Indexed
     private List<String> deviceIds;
