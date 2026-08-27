@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+    <!-- Definitions for colors used in the logo -->
+    <defs>
+        <style>
+            .green-color { fill: #FFFFFF; stroke: #FFFFFF; }
+            .dark-color { fill: #FFFFFF; stroke: #FFFFFF; }
+            .green-stroke { stroke: #FFFFFF; fill: none; }
+            .dark-stroke { stroke: #FFFFFF; fill: none; }
+        </style>
+    </defs>
+
+    <!-- Outer Broken Circle -->
+    <!-- Top/Right Green Arc -->
+    <path d="M 25,96 A 75 75 0 1 1 153 153"
+          class="green-stroke"
+          stroke-width="8"
+          stroke-linecap="round"/>
+
+    <!-- Bottom/Left Dark Arc -->
+    <path d="M 159,147 A 75 75 0 0 1 25 104"
+          class="dark-stroke"
+          stroke-width="8"
+          stroke-linecap="round"/>
+
+    <!-- House Roof -->
+    <path d="M 60,135 L 60,120 L 100,80 L 140,120 L 140,135"
+          class="dark-stroke"
+          stroke-width="8"
+          stroke-linejoin="round"
+          stroke-linecap="butt"/>
+
+    <!-- Windows (4 squares) -->
+    <g class="green-color" stroke="none">
+        <rect x="89" y="120" width="9" height="9" rx="1"/>
+        <rect x="102" y="120" width="9" height="9" rx="1"/>
+        <rect x="89" y="133" width="9" height="9" rx="1"/>
+        <rect x="102" y="133" width="9" height="9" rx="1"/>
+    </g>
+
+    <!-- Wi-Fi Signal -->
+    <circle cx="132" cy="98" r="3.5" class="green-color" stroke="none"/>
+    <path d="M 132,86 A 12 12 0 0 1 144 98"
+          class="green-stroke"
+          stroke-width="4"
+          stroke-linecap="round"/>
+    <path d="M 132,76 A 22 22 0 0 1 154 98"
+          class="green-stroke"
+          stroke-width="4"
+          stroke-linecap="round"/>
+
+    <!-- Leaves Base -->
+    <g stroke="none">
+        <!-- Left Leaf -->
+        <path d="M 98,172 C 60,174 50,158 63,152 C 78,148 95,160 98,172 Z" fill="#FFFFFF"/>
+        <!-- Left Leaf Vein -->
+        <path d="M 95,168 Q 75,162 65,156" stroke="#ffffff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+        <!-- Right Leaf (slightly larger, overlaps left) -->
+        <path d="M 100,174 C 145,176 155,150 142,142 C 125,138 105,155 100,174 Z" fill="#FFFFFF"/>
+        <!-- Right Leaf Vein -->
+        <path d="M 103,170 Q 125,162 138,148" stroke="#ffffff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    </g>
+</svg>

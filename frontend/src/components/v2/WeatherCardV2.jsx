@@ -415,8 +415,9 @@ function ForecastStrip({days = []}) {
                             px: 1.8,
                             py: 0.8,
                             borderRadius: "10px",
-                            backgroundColor: C.card,
-                            border: `1px solid ${C.border}`,
+                            boxShadow: "rgb(30 30 30) 0px 0px 16px 6px inset",
+                            // backgroundColor: C.card,
+                            // border: `1px solid ${C.border}`,
                             minWidth: 52,
                         }}
                     >
@@ -629,7 +630,7 @@ function Sparkline({data = [], color = "#a0a0a0", height = 18}) {
             height={H}
             viewBox={`0 0 ${W} ${H}`}
             preserveAspectRatio="none"   // ← stretches horizontally to fill
-            style={{display: "block", overflow: "visible"}}
+            style={{display: "block", overflow: "hidden", borderRadius: "0px 0px 6px 6px"}}
         >
             <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -659,17 +660,18 @@ export function StatsRow({items}) {
                     sx={{
                         display: "flex",
                         flexDirection: "column",
-                        padding: "2px",
-                        borderRadius: "10px",
-                        boxShadow: "rgb(35 35 35) 0px 0px 96px 6px inset",
-                        backdropFilter: "blur(4px)",
-                        border: `1px solid ${C.border}`,
+                        // padding: "2px",
+                        borderRadius: "6px",
+                        minWidth: "140px",
+                        boxShadow: "rgb(30 30 30) 0px 0px 16px 6px inset",
+                        // backdropFilter: "blur(4px)",
+                        // border: `1px solid ${C.border}`,
                     }}
                 >
                     {/* Top row: icon + label + value */}
                     <Box sx={{
                         display: "flex", alignItems: "center", gap: 1, whiteSpace: "nowrap",
-                        padding: "6px 24px 2px 16px",
+                        padding: "6px 24px 0px 16px",
                     }}>
                         <Box sx={{color: C.muted}}>{s.icon}</Box>
                         <Box>
@@ -683,8 +685,11 @@ export function StatsRow({items}) {
                     </Box>
 
                     {/* Sparkline */}
-                    {s.history && s.history.length >= 2 && (
-                        <Box>
+                    {s.history && s.history.length >= 10 && (
+                        <Box style={{
+                            borderRadius: "12px",
+                        }}>
+
                             <Sparkline
                                 data={s.history}
                                 color={s.sparkColor ?? C.muted}
@@ -814,16 +819,16 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
         if (deviceId === mainDevice) applyMainData(deviceId, allData);
         else applyOutdoorSensor(deviceId, allData);
     }, [messages, attributes, deviceIds, mainDevice]);
-    // ── History buffer: keeps last 1 hr of readings per metric ────────────────
+    // ── History buffer: keeps last 2o min of readings per metric ────────────────
     // Each entry: { ts: Date.now(), value: number }
-    const HISTORY_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+    const HISTORY_WINDOW_MS = 20 * 60 * 1000; // 20min
 
     const historyRef = useRef({
         temp: [], humid: [], aqi: [], co2: [],
         eCo2: [], ch2o: [], tvoc: [], lux: [],
     });
 
-    /** Append a new value and evict entries older than 1 hr */
+    /** Append a new value and evict entries older than 20 min */
     function pushHistory(key, value) {
         if (value == null) return;
         const now = Date.now();
@@ -933,28 +938,28 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
             {
                 icon: <Co2Icon sx={{fontSize: 36, color: C.muted}}/>,
                 label: "CO₂",
-                value: fmt(live.co2),
+                value: fmt(live.co2, " ppm"),
                 history: getHistory("co2"),
                 sparkColor: C.muted,
             },
             {
                 icon: <Co2Icon sx={{fontSize: 36, color: C.muted}}/>,
                 label: "eCO₂",
-                value: fmt(live.eCo2),
+                value: fmt(live.eCo2, " ppm"),
                 history: getHistory("eCo2"),
                 sparkColor: C.muted,
             },
             {
                 icon: <GasMeterIcon sx={{fontSize: 36, color: C.muted}}/>,
                 label: "Ch2o",
-                value: fmt(live.ch2oStatus),
+                value: fmt(live.ch2o, " ppb"),
                 history: getHistory("ch2o"),
                 sparkColor: C.muted,
             },
             {
                 icon: <ScienceIcon sx={{fontSize: 36, color: C.muted}}/>,
                 label: "TVOC",
-                value: fmt(live.tvoc),
+                value: fmt(live.tvoc, " mg/m³"),
                 history: getHistory("tvoc"),
                 sparkColor: C.muted,
             },
@@ -980,7 +985,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
                 width,
                 // backdropFilter: 'blur(4px)',
                 height,
-                p: 0,
+                pt: 1.4,
             }}
         >
             <div className="card-glow"/>

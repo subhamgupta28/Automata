@@ -66,7 +66,7 @@ export const EnergyConsumptionCarouselNode = React.memo(({id, data, isConnectabl
             minWidth: width,
             padding: '10px',
             borderRadius: '12px',
-            boxShadow: 'rgb(35 35 35) 0px 0px 96px 6px inset',
+            boxShadow: 'rgb(35 35 35) 0px 0px 36px 6px inset',
             backdropFilter: 'blur(4px)',
         }}>
             {/*<NodeResizer*/}

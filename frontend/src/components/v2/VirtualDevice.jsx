@@ -13,6 +13,8 @@ import {MapView} from "../charts/MapView.jsx";
 import {C} from "./WeatherCardV2.jsx";
 import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
 import RadarRoomView from "../device_types/RadarRoomView.jsx";
+import ProtectedView from "./ProtectedView.jsx";
+import {getVirtualDeviceLockedState, unlockVirtualDevice} from "../../services/apis.jsx";
 
 export const combineAttributes = (attributesByDevice) => {
     const map = new Map();
@@ -61,11 +63,40 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
         x,
         y,
     } = data.value;
-
     const showGlow = false;
+    const [isLocked, setLocked] = useState(false);
     const glowColor = '#ff0000';
     const cardRef = useRef(null);
-    useCardGlowEffect(cardRef, true, glowColor);
+    useCardGlowEffect(cardRef, false, glowColor);
+    const [unlockError, setUnlockError] = useState('');
+    const [unlocking, setUnlocking] = useState(false);
+
+// replaces the commented-out block
+    useEffect(() => {
+        let cancelled = false;
+        getVirtualDeviceLockedState(id)
+            .then(locked => {
+                if (!cancelled) setLocked(locked);
+            })
+            .catch(e => console.error("Failed to fetch lock state for", id, e));
+        return () => {
+            cancelled = true;
+        };
+    }, [id]);
+
+    const handleUnlock = async (pin) => {
+        setUnlocking(true);
+        setUnlockError('');
+        try {
+            await unlockVirtualDevice(id, pin);
+            setLocked(false);
+        } catch (e) {
+            setUnlockError(e?.response?.status === 401 ? 'Incorrect PIN' : 'Unable to unlock device');
+        } finally {
+            setUnlocking(false);
+        }
+    };
+
 
     // console.log("att", combineAttributes(attributes))
     useEffect(() => {
@@ -127,6 +158,12 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
 
     const handleOpenModal = () => setIsModalOpen(true);
     const handleCloseModal = () => setIsModalOpen(false);
+    if (isLocked)
+        return (
+            <div style={{minHeight: height, height: '100%', minWidth: width}}>
+                <ProtectedView onUnlock={handleUnlock} error={unlockError} loading={unlocking}/>
+            </div>
+        )
     return (
         <>
             {/*<NodeResizer*/}
@@ -135,7 +172,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
             {/*    width={width}*/}
             {/*    minHeight={height}*/}
             {/*/>*/}
-
+            {/*<ProtectedView/>*/}
 
             <Card
                 ref={cardRef}
@@ -144,7 +181,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                 }`}
                 variant="elevated" style={{
                 background: 'transparent',
-                boxShadow: 'rgb(30 30 30) 0px 0px 86px 10px inset',
+                boxShadow: 'rgb(30 30 30) 0px 0px 36px 10px inset',
                 border: `1px solid ${C.border}`,
                 backdropFilter: 'blur(4px)',
                 backgroundColor: 'rgb(0 0 0 / 20%)',
@@ -152,35 +189,6 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                 borderRadius: '10px', padding: '0px',
             }}>
                 <div className="card-glow"/>
-                {/*<div*/}
-                {/*    style={{*/}
-                {/*        // padding: '0px', width: '100%', height: '100%',*/}
-                {/*        // paddingRight: '6px',*/}
-                {/*        // borderRadius: '12px 12px 0px 0px',*/}
-                {/*        // background: 'transparent',*/}
-                {/*        marginRight: '4px',*/}
-                {/*        alignItems: 'center',*/}
-                {/*        display: 'flex',*/}
-                {/*        justifyContent: 'space-between'*/}
-                {/*    }}>*/}
-                {/*    <Typography*/}
-                {/*        variant="caption"*/}
-                {/*        style={{*/}
-                {/*            display: 'flex',*/}
-                {/*            alignItems: 'center',*/}
-                {/*            justifyContent: 'space-between',*/}
-                {/*            marginLeft: '18px',*/}
-                {/*            // fontWeight: 'bold',*/}
-                {/*            // fontSize: '18px',*/}
-                {/*            paddingTop: '8px'*/}
-                {/*        }}*/}
-                {/*    >*/}
-                {/*        {name}*/}
-                {/*    </Typography>*/}
-                {/*    <IconButton onClick={handleOpenModal} style={{marginLeft: '8px'}} size="small">*/}
-                {/*        <SettingsIcon style={{fontSize: '14px'}}/>*/}
-                {/*    </IconButton>*/}
-                {/*</div>*/}
                 <div
                     style={{
                         width: '100%',
@@ -240,6 +248,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                             messages={messages}
                             onClose={handleCloseModal}
                             devices={deviceList}
+                            virtualId={id}
                             version="v2"
                         />
                     )}

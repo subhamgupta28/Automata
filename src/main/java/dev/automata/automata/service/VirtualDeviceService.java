@@ -3,21 +3,23 @@ package dev.automata.automata.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.DeviceTrendDTO;
 import dev.automata.automata.dto.TimeSeriesTrendDTO;
+import dev.automata.automata.dto.VirtualDeviceLockRequest;
 import dev.automata.automata.model.*;
-import dev.automata.automata.repository.DataRepository;
-import dev.automata.automata.repository.DeviceRepository;
-import dev.automata.automata.repository.EnergyStatRepository;
-import dev.automata.automata.repository.VirtualDeviceRepository;
+import dev.automata.automata.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.http.HttpStatus;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -25,11 +27,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class VirtualDeviceService {
@@ -41,6 +45,8 @@ public class VirtualDeviceService {
     private final MongoTemplate mongoTemplate;
     private final EnergyStatRepository energyStatRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final VirtualDeviceAccessRepository virtualDeviceAccessRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public VirtualDevice getVirtualDevice(String vid, Users user, String homeId) {
         return virtualDeviceRepository.findByIdAndHomeId(vid, homeId).orElse(null);
@@ -532,6 +538,60 @@ public class VirtualDeviceService {
             return "success";
         }
 
+        return "error";
+    }
+
+    public Boolean getVirtualDeviceLockedState(String vid, Users user, String homeId) {
+        var access = virtualDeviceAccessRepository.findByVid(vid);
+        if (access == null) {
+            return false;
+        }
+        return access.getUnlockedUntil() == null || Instant.now().isBefore(access.getUnlockedUntil());
+    }
+
+    public boolean unlockVirtualDevice(String vid, Users user, String password) {
+        var access = virtualDeviceAccessRepository.findByVidAndUserId(vid, user.getId());
+        if (access == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Device is not protected");
+        }
+        log.info("unlockVirtualDevice {} {}", password, access.getPassword());
+        if (!passwordEncoder.matches(password, access.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Incorrect PIN");
+        }
+
+        Instant unlockedUntil = access.isPermanentUnlock()
+                ? Instant.now().plus(36500, ChronoUnit.DAYS) // effectively forever
+                : Instant.now().plus(access.getUnlockDurationMinutes(), ChronoUnit.MINUTES);
+
+        access.setUnlockedUntil(unlockedUntil);
+        virtualDeviceAccessRepository.save(access);
+        log.info("unlockVirtualDevice {}", unlockedUntil);
+        return true;
+    }
+
+    // small, symmetric addition so the user can re-lock manually instead of waiting it out
+    public String lockVirtualDevice(VirtualDeviceLockRequest deviceLockRequest, Users user) {
+        var access = virtualDeviceAccessRepository.findByVidAndUserId(deviceLockRequest.getVid(), user.getId());
+        Instant unlockedUntil = deviceLockRequest.isPermanentUnlock()
+                ? Instant.now().plus(36500, ChronoUnit.DAYS) // effectively forever
+                : Instant.now().plus(deviceLockRequest.getUnlockDurationMinutes(), ChronoUnit.MINUTES);
+        var acc = VirtualDeviceAccess.builder()
+                .userId(user.getId())
+                .grantedAt(Instant.now())
+                .locked(true)
+                .permanentUnlock(deviceLockRequest.isPermanentUnlock())
+                .unlockDurationMinutes(deviceLockRequest.getUnlockDurationMinutes())
+                .unlockedUntil(unlockedUntil)
+                .vid(deviceLockRequest.getVid())
+                .password(passwordEncoder.encode(deviceLockRequest.getPassword())).build();
+        if (access == null) {
+            virtualDeviceAccessRepository.save(acc);
+            return "Device is locked";
+        } else if (!getVirtualDeviceLockedState(deviceLockRequest.getVid(), user, "")) {
+            acc.setId(access.getId());
+            virtualDeviceAccessRepository.save(acc);
+            return "Device lock updated";
+        }
         return "error";
     }
 
