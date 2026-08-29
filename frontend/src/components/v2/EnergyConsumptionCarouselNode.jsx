@@ -15,7 +15,6 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import {CustomModal} from "../home/CustomModal.jsx";
 import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import '../../App.css'
-import {C} from "./WeatherCardV2.jsx";
 
 export const EnergyConsumptionCarouselNode = React.memo(({id, data, isConnectable, selected}) => {
     const {devices} = useCachedDevices();
@@ -59,14 +58,14 @@ export const EnergyConsumptionCarouselNode = React.memo(({id, data, isConnectabl
             className="card-glow-container"
             variant="elevated" style={{
             background: 'transparent',
-            border: `1px solid ${C.border}`,
+            // border: `1px solid ${C.border}`,
             backgroundColor: 'rgb(0 0 0 / 0%)',
             minHeight: height,
             height: '100%',
             minWidth: width,
             padding: '10px',
             borderRadius: '12px',
-            boxShadow: 'rgb(35 35 35) 0px 0px 36px 6px inset',
+            boxShadow: 'rgb(30 30 30) 0px 0px 36px 6px inset',
             backdropFilter: 'blur(4px)',
         }}>
             {/*<NodeResizer*/}

@@ -10,7 +10,6 @@ import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import '../../App.css'
 import {MapView} from "../charts/MapView.jsx";
-import {C} from "./WeatherCardV2.jsx";
 import SpotifyPlayer from "../integrations/SpotifyPlayer.jsx";
 import RadarRoomView from "../device_types/RadarRoomView.jsx";
 import ProtectedView from "./ProtectedView.jsx";
@@ -179,15 +178,16 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                 className={`card-glow-container ${
                     showGlow ? 'glow-active' : ''
                 }`}
-                variant="elevated" style={{
-                background: 'transparent',
-                boxShadow: 'rgb(30 30 30) 0px 0px 36px 10px inset',
-                border: `1px solid ${C.border}`,
-                backdropFilter: 'blur(4px)',
-                backgroundColor: 'rgb(0 0 0 / 20%)',
-                minHeight: height, height: '100%', minWidth: width,
-                borderRadius: '10px', padding: '0px',
-            }}>
+                variant="elevated"
+                style={{
+                    background: 'transparent',
+                    boxShadow: 'rgb(30 30 30) 0px 0px 36px 10px inset',
+                    // border: `1px solid ${C.border}`,
+                    backdropFilter: 'blur(4px)',
+                    backgroundColor: 'rgb(0 0 0 / 20%)',
+                    minHeight: height, height: '100%', minWidth: width,
+                    borderRadius: '10px', padding: '0px',
+                }}>
                 <div className="card-glow"/>
                 <div
                     style={{

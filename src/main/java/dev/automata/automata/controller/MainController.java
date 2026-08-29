@@ -1,15 +1,13 @@
 package dev.automata.automata.controller;
 
 
-import dev.automata.automata.dto.ChartDataDto;
-import dev.automata.automata.dto.DataDto;
-import dev.automata.automata.dto.DeviceLoginRequest;
-import dev.automata.automata.dto.RegisterDevice;
+import dev.automata.automata.dto.*;
 import dev.automata.automata.model.AttributeType;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Status;
 import dev.automata.automata.model.Users;
 import dev.automata.automata.service.AnalyticsService;
+import dev.automata.automata.service.AnalyticsServiceV2;
 import dev.automata.automata.service.MainService;
 import dev.automata.automata.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +33,7 @@ public class MainController {
     private final SimpMessagingTemplate messagingTemplate;
     private final MainService mainService;
     private final AnalyticsService analyticsService;
+    private final AnalyticsServiceV2 analyticsServiceV2;
     private final NotificationService notificationService;
 
 //    private final KafkaTemplate<String, String> kafkaTemplate;
@@ -66,6 +65,25 @@ public class MainController {
     public ResponseEntity<?> saveWiFiList(@RequestBody Map<String, String> body, @AuthenticationPrincipal Users user) {
 
         return ResponseEntity.ok(mainService.saveWiFiList(body));
+    }
+
+    /**
+     * V2 analytics: time-travel, flexible granularity, typed sensor summaries.
+     * <p>
+     * Query params:
+     * range       = hour | 6h | day | week | month | 3month | year | custom
+     * from        = ISO-8601 instant (required when range=custom)
+     * to          = ISO-8601 instant (required when range=custom)
+     * granularity = auto | 5min | 30min | 1h | 6h | 1d
+     */
+    @GetMapping("analyticsV2/{deviceId}")
+    public ResponseEntity<SensorSummaryDto> getAnalyticsV2(
+            @RequestHeader("X-Home-Id") String homeId,
+            @PathVariable String deviceId,
+            @ModelAttribute AnalyticsQueryRequest req,
+            @AuthenticationPrincipal Users user
+    ) {
+        return ResponseEntity.ok(analyticsServiceV2.query(deviceId, req));
     }
 
     @GetMapping("chart/{deviceId}/{attribute}")

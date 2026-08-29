@@ -38,7 +38,6 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import isEmpty from "../../utils/Helper.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
 import {Dashboard, GridView, TrendingUp} from "@mui/icons-material";
-import AppIcon from "../../../public/icons/animated.svg"
 import AutomationLiveInspector from "../automation/AutomationInspector.jsx";
 import {ConfigurationView} from "../dashboard/ConfigurationView.jsx";
 import Recordings from "../integrations/AutomataRecordings.jsx";
@@ -46,7 +45,8 @@ import {Bot, Disc3Icon, Map, StoreIcon} from "lucide-react";
 import {MapDevices} from "../device_types/MapDevices.jsx";
 import HomeManagement from "../home/HomeManagement.jsx";
 import LoadingScreen from "../../utils/LoadingScreen.jsx";
-import AutomataSnackbar from "../AutomataSnackbar.jsx"; // Import the new component
+import AutomataSnackbar from "../AutomataSnackbar.jsx";
+import MenuIcon from '@mui/icons-material/Menu';
 
 // Lazy-load heavy route components
 const DeviceNodes = lazy(() => import("../home/DeviceNodes.jsx"));
@@ -377,16 +377,18 @@ export default function SideDrawer() {
 
             {!isEmpty(user) && (
                 <Drawer
-                    variant="permanent"
+                    variant="elevated"
                     open={open}
                     elevation={4}
                     style={{
-                        backdropFilter: 'blur(7px)',
+                        backdropFilter: 'blur(2px)',
                         background: 'transparent',
                         position: 'relative',
+                        boxShadow: "rgb(30 30 30) 0px 0px 16px 6px inset",
                         zIndex: 10,
                         margin: '10px',
-                        borderRadius: '10px'
+                        borderRadius: '14px',
+                        borderWidth: '2px',
                     }}
                 >
                     <Box sx={{display: 'flex', flexDirection: 'column', height: '100%'}}>
@@ -395,7 +397,7 @@ export default function SideDrawer() {
                             <IconButton onClick={handleDrawerClose}>
                                 {open
                                     ? <ChevronLeftIcon/>
-                                    : <img src={AppIcon} alt="home" style={{height: '36px'}}/>
+                                    : <MenuIcon/>
                                 }
                             </IconButton>
                         </DrawerHeader>

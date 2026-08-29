@@ -661,10 +661,10 @@ export function StatsRow({items}) {
                         display: "flex",
                         flexDirection: "column",
                         // padding: "2px",
-                        borderRadius: "6px",
+                        borderRadius: "10px",
                         minWidth: "140px",
                         boxShadow: "rgb(30 30 30) 0px 0px 16px 6px inset",
-                        // backdropFilter: "blur(4px)",
+                        backdropFilter: "blur(2px)",
                         // border: `1px solid ${C.border}`,
                     }}
                 >
@@ -693,7 +693,7 @@ export function StatsRow({items}) {
                             <Sparkline
                                 data={s.history}
                                 color={s.sparkColor ?? C.muted}
-                                height={22}
+                                height={26}
                             />
                         </Box>
                     )}
@@ -983,6 +983,8 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
                 backgroundColor: 'rgb(0 0 0 / 0%)',
                 borderRadius: '10px',
                 width,
+                boxShadow: "rgb(25 25 25) 0px 0px 16px 6px inset",
+                backdropFilter: "blur(2px)",
                 // backdropFilter: 'blur(4px)',
                 height,
                 pt: 1.4,

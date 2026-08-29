@@ -5,7 +5,6 @@ import Typography from "@mui/material/Typography";
 import {getEnergyAnalytics} from "../../services/apis.jsx";
 import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import '../../App.css'
-import {C} from "./WeatherCardV2.jsx";
 import {BarChart} from "@mui/x-charts/BarChart";
 
 function valueFormatter(v) {
@@ -61,10 +60,10 @@ export const EnergyBatteryChartNode = React.memo(({id, data, isConnectable, sele
             className="card-glow-container"
             variant="elevated" style={{
             background: 'transparent',
-            border: `1px solid ${C.border}`,
+            // border: `1px solid ${C.border}`,
             backgroundColor: 'rgb(0 0 0 / 0%)',
             minHeight: height, height: '100%', minWidth: width, padding: '10px', borderRadius: '12px',
-            boxShadow: 'rgb(35 35 35) 0px 0px 36px 6px inset',
+            boxShadow: 'rgb(30 30 30) 0px 0px 36px 6px inset',
             backdropFilter: 'blur(4px)',
         }}>
             <div className="card-glow"/>
