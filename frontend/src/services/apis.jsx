@@ -1009,3 +1009,14 @@ export const toggleFeature = (id) =>
 
 export const deleteFeature = (id) =>
     api.delete(`/feature/${id}`).then(r => r.data);
+
+// ── Add this to the bottom of frontend/src/services/apis.jsx ──────────────────
+export const getAnalyticsV2 = async (deviceId, params = {}) => {
+    const query = new URLSearchParams();
+    if (params.range) query.set("range", params.range);
+    if (params.from) query.set("from", params.from);
+    if (params.to) query.set("to", params.to);
+    if (params.granularity) query.set("granularity", params.granularity);
+    const response = await api.get(`main/analyticsV2/${deviceId}?${query.toString()}`);
+    return response.data;
+};
