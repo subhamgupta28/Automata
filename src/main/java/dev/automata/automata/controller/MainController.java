@@ -337,6 +337,6 @@ public class MainController {
             @RequestHeader("X-Home-Id") String homeId,
             @AuthenticationPrincipal Users user
     ) {
-        return ResponseEntity.ok(mainService.updateAttribute(deviceId, attribute, isShow));
+        return ResponseEntity.ok(mainService.updateAttribute(deviceId, attribute, isShow, homeId));
     }
 }
