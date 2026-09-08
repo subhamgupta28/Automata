@@ -609,11 +609,12 @@ public class MainService {
         return "N";
     }
 
-    public Object updateAttribute(String deviceId, String attribute, String isShow) {
+    public Object updateAttribute(String deviceId, String attribute, String isShow, String homeId) {
         var dashboardOptional = deviceDashboardRepository.findByDeviceId(deviceId);
         var cond = Boolean.parseBoolean(isShow);
         if (dashboardOptional.isPresent()) {
             var dashboard = dashboardOptional.get();
+            dashboard.setHomeId(homeId);
             switch (attribute) {
                 case "analytics" -> dashboard.setAnalytics(cond);
                 case "showCharts" -> dashboard.setShowCharts(cond);
@@ -624,6 +625,7 @@ public class MainService {
             var dashboard = Dashboard.builder()
                     .showInDashboard(cond)
                     .deviceId(deviceId)
+                    .homeId(homeId)
                     .x(10)
                     .y(20)
                     .showCharts(false)
