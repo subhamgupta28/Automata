@@ -2,7 +2,6 @@ package dev.automata.automata.service;
 
 import dev.automata.automata.dto.*;
 import dev.automata.automata.model.*;
-import dev.automata.automata.modules.SystemMetrics;
 import dev.automata.automata.repository.*;
 import dev.automata.automata.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -710,13 +709,6 @@ public class MainService {
 //        return null;
     }
 
-    public Map<String, Object> getServerCreds() {
-        var res = SystemMetrics.getNgrokDetails();
-        if (res.containsKey("msg"))
-            return Map.of("MQTT_HOST", "raspberry.local", "MQTT_PORT", "1883");
-        else
-            return res;
-    }
 
     public String setStatusOfDeviceByMacAddress(String address, Status status) {
         var devices = deviceRepository.findAllByMacAddr(address);

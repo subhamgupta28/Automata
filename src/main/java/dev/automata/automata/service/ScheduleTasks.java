@@ -11,17 +11,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import oshi.SystemInfo;
-import oshi.hardware.CentralProcessor;
-import oshi.hardware.GlobalMemory;
-import oshi.hardware.HardwareAbstractionLayer;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
 import java.util.Date;
 
 @Slf4j
@@ -102,21 +97,6 @@ public class ScheduleTasks {
     }
 
     //    @Scheduled(fixedRate = 30000)
-    public void getSystemInfo() {
-        SystemInfo systemInfo = new SystemInfo();
-        HardwareAbstractionLayer hal = systemInfo.getHardware();
 
-        // Get processor information
-        CentralProcessor processor = hal.getProcessor();
-        System.err.println("Current Frequency: " + Arrays.toString(processor.getCurrentFreq()));
-        System.err.println("Processor: " + processor.getProcessorIdentifier().getName());
-        System.err.println("Logical Processors: " + processor.getLogicalProcessorCount());
-        System.err.println("Physical Processors: " + processor.getPhysicalProcessorCount());
-
-        // Get memory information
-        GlobalMemory memory = hal.getMemory();
-        System.err.println("Total Memory: " + memory.getTotal() / (1024 * 1024) + " MB");
-        System.err.println("Available Memory: " + memory.getAvailable() / (1024 * 1024) + " MB");
-    }
 
 }

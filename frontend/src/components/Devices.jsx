@@ -208,6 +208,12 @@ function DevicesComponent() {
                                                                     </TableCell>
                                                                     <TableCell>{device.macAddr}</TableCell>
                                                                 </TableRow>
+                                                                <TableRow>
+                                                                    <TableCell sx={{fontWeight: 600}}>
+                                                                        Registered Node
+                                                                    </TableCell>
+                                                                    <TableCell>{device.originNode}</TableCell>
+                                                                </TableRow>
 
                                                                 <TableRow>
                                                                     <TableCell sx={{fontWeight: 600}}>
