@@ -51,10 +51,6 @@ public class MainController {
         return ResponseEntity.ok("ok");
     }
 
-    @PostMapping("serverCreds")
-    public ResponseEntity<?> getServerCreds(@AuthenticationPrincipal Users user) {
-        return ResponseEntity.ok(mainService.getServerCreds());
-    }
 
     @PostMapping("wifiList")
     public ResponseEntity<?> getWiFiList(@AuthenticationPrincipal Users user) {

@@ -983,7 +983,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
                 backgroundColor: 'rgb(0 0 0 / 0%)',
                 borderRadius: '10px',
                 width,
-                boxShadow: "rgb(25 25 25) 0px 0px 16px 6px inset",
+                // boxShadow: "rgb(25 25 25) 0px 0px 16px 6px inset",
                 backdropFilter: "blur(2px)",
                 // backdropFilter: 'blur(4px)',
                 height,

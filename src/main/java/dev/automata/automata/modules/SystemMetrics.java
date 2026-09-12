@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.automata.automata.dto.RegisterDevice;
 import dev.automata.automata.model.Attribute;
 import dev.automata.automata.model.Status;
+import dev.automata.automata.service.HomeRoutingService;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,14 +16,14 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import oshi.SystemInfo;
-import oshi.hardware.CentralProcessor;
-import oshi.hardware.GlobalMemory;
 
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -30,8 +31,12 @@ import java.util.*;
 public class SystemMetrics {
 
     private final MainService mainService;
-    private static String deviceId = "";
+    private final NodeExporterClient nodeExporterClient;
     private final SimpMessagingTemplate messagingTemplate;
+    private final HomeRoutingService homeRoutingService;
+
+    private static String deviceId = "";
+
     @Value("${application.env}")
     private String env;
 
@@ -49,6 +54,7 @@ public class SystemMetrics {
             hostAddr = localhost.getHostAddress();
         }
         log.info("HostName: {}, HostAddr: {}", hostName, hostAddr);
+
         var device = RegisterDevice.builder()
                 .name(hostName)
                 .sleep(false)
@@ -118,32 +124,32 @@ public class SystemMetrics {
                                         .visible(true)
                                         .build(),
                                 Attribute.builder()
-                                        .key("fan_speed")
-                                        .displayName("Fan Speed")
+                                        .key("diskUsagePercent")
+                                        .displayName("Disk Usage")
+                                        .type("DATA|MAIN")
+                                        .units("")
+                                        .extras(new HashMap<>())
+                                        .visible(true)
+                                        .build(),
+                                Attribute.builder()
+                                        .key("diskTotal")
+                                        .displayName("Disk Total")
                                         .type("DATA|AUX")
                                         .units("")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
                                 Attribute.builder()
-                                        .key("battery_percent")
-                                        .displayName("SOC")
+                                        .key("diskFree")
+                                        .displayName("Disk Free")
                                         .type("DATA|AUX")
-                                        .units("%")
+                                        .units("")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
                                 Attribute.builder()
-                                        .key("power")
-                                        .displayName("Power")
-                                        .type("DATA|AUX")
-                                        .units("mW")
-                                        .extras(new HashMap<>())
-                                        .visible(true)
-                                        .build(),
-                                Attribute.builder()
-                                        .key("time_remaining")
-                                        .displayName("Time Left")
+                                        .key("gpu_temp")
+                                        .displayName("GPU Temp")
                                         .type("DATA|AUX")
                                         .units("")
                                         .extras(new HashMap<>())
@@ -166,13 +172,23 @@ public class SystemMetrics {
                                         .visible(true)
                                         .build(),
                                 Attribute.builder()
-                                        .key("alert")
-                                        .displayName("Alert")
-                                        .type("ACTION|IN")
-                                        .units("")
-                                        .extras(new HashMap<>())
-                                        .visible(true)
-                                        .build()
+                                        .key("alert").displayName("Alert").type("ACTION|IN")
+                                        .units("").extras(new HashMap<>()).visible(true).build(),
+                                Attribute.builder()
+                                        .key("nvme_temp").displayName("NVMe Temp")
+                                        .type("DATA|AUX").units("").extras(new HashMap<>()).visible(true).build(),
+                                Attribute.builder()
+                                        .key("nvme_wear").displayName("NVMe Wear")
+                                        .type("DATA|AUX").units("").extras(new HashMap<>()).visible(true).build(),
+                                Attribute.builder()
+                                        .key("nvme_warning").displayName("NVMe Status")
+                                        .type("DATA|MAIN").units("").extras(new HashMap<>()).visible(true).build(),
+                                Attribute.builder()
+                                        .key("nvme_unsafe_shutdowns").displayName("Unsafe Shutdowns")
+                                        .type("DATA|AUX").units("").extras(new HashMap<>()).visible(true).build(),
+                                Attribute.builder()
+                                        .key("nvme_media_errors").displayName("Media Errors")
+                                        .type("DATA|AUX").units("").extras(new HashMap<>()).visible(true).build()
                         )
                 )
                 .build();
@@ -180,24 +196,19 @@ public class SystemMetrics {
         mainService.registerDevice(device);
     }
 
-
     public static Map<String, Object> getNgrokDetails() {
         try {
             var map = new HashMap<String, Object>();
             String response = new RestTemplate().getForObject("http://host.docker.internal:4040/api/tunnels", String.class);
-
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(response);
             log.info(response);
             for (JsonNode tunnel : root.get("tunnels")) {
                 String publicUrl = tunnel.get("public_url").asText();
                 log.info("Ngrok Public URL: {}", publicUrl);
-                // Parse host and port from URL
                 URI uri = new URI(publicUrl);
                 String host = uri.getHost();
                 int port = uri.getPort();
-
-                // Put values in map
                 map.put("MQTT_HOST", host);
                 map.put("MQTT_PORT", port);
             }
@@ -210,7 +221,6 @@ public class SystemMetrics {
 
     @Scheduled(fixedRate = 360000)
     public void save() {
-
         var data = getData();
         if (data != null) {
             mainService.saveData(deviceId, data);
@@ -223,132 +233,39 @@ public class SystemMetrics {
 
     private void shutdownSystem() {
         try {
-
-
+            // implement if needed
         } catch (Exception e) {
             log.error("SystemMetrics: shutdownSystem", e);
         }
-
-    }
-
-    private final SystemInfo systemInfo = new SystemInfo();
-
-
-    public long getTotalMemory() {
-        GlobalMemory memory = systemInfo.getHardware().getMemory();
-        return memory.getTotal();
-    }
-
-    public long getAvailableMemory() {
-        GlobalMemory memory = systemInfo.getHardware().getMemory();
-        return memory.getAvailable();
-    }
-
-    public String getMemoryUsagePercent() {
-        GlobalMemory memory = systemInfo.getHardware().getMemory();
-        double percent = 100.0 * (memory.getTotal() - memory.getAvailable()) / memory.getTotal();
-        return formatPercent(percent);
-    }
-
-    public String formatBytes(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        int exp = (int) (Math.log(bytes) / Math.log(1024));
-        String pre = "KMGTPE".charAt(exp - 1) + "i";
-        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
-    }
-
-    public String formatPercent(double value) {
-        return String.format("%.2f%%", value);
-    }
-
-    public String getUptimeHuman() {
-        long uptimeSec = systemInfo.getOperatingSystem().getSystemUptime();
-        long hours = uptimeSec / 3600;
-        long minutes = (uptimeSec % 3600) / 60;
-        return hours + "h " + minutes + "m";
-    }
-
-    public String getCpuUsagePercent() {
-        CentralProcessor processor = systemInfo.getHardware().getProcessor();
-        long[] prevTicks = processor.getSystemCpuLoadTicks();
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException ignored) {
-        }
-        long[] ticks = processor.getSystemCpuLoadTicks();
-        double cpu = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100;
-        return formatPercent(cpu);
     }
 
     private HashMap<String, Object> getData() {
         try {
+            var data = new HashMap<String, Object>(nodeExporterClient.collectMetrics());
 
-            var cpuFreq = getCpuUsagePercent();
-
-            var data = new HashMap<String, Object>();
-            data.put("totalMemory", formatBytes(getTotalMemory()));
-            data.put("memoryUsagePercent", getMemoryUsagePercent());
-            data.put("uptime", getUptimeHuman());
-            data.put("availableMemory", formatBytes(getAvailableMemory()));
-            data.put("cpuFreq", cpuFreq);
             data.put("device_id", deviceId);
             data.put("last_seen", new Date());
-            data.put("host", systemInfo.getOperatingSystem().getNetworkParams().getHostName());
-            data.put("cpu_temp", systemInfo.getHardware().getSensors().getCpuTemperature());
+            data.put("host", InetAddress.getLocalHost().getHostName());
 
-            var fans = systemInfo.getHardware().getSensors().getFanSpeeds();
-            if (fans != null && fans.length > 0) {
-                data.put("fan_speed", fans[0]);
-            }
-
-//            System.out.println(Arrays.toString(systemInfo.getHardware().getSensors().getFanSpeeds()));
-            var power = systemInfo.getHardware().getPowerSources();
-            if (power != null && !power.isEmpty()) {
-                data.put("battery_percent", power.getFirst().getRemainingCapacityPercent());
-                data.put("power", power.getFirst().getPowerUsageRate());
-                data.put("time_remaining", power.getFirst().getTimeRemainingEstimated());
-            }
-
-//            System.err.println(systemInfo.getHardware().getPowerSources());
-            //[Name: System Battery, Device Name: Primary,
-            // RemainingCapacityPercent: 100.0%, Time Remaining: Unknown, Time Remaining Instant: Unknown,
-            // Power Usage Rate: 0.0mW, Voltage: 13.16V, Amperage: 0.0mA,
-            // Power OnLine: true, Charging: false, Discharging: false,
-            // Capacity Units: MWH, Current Capacity: 82194, Max Capacity: 82194, Design Capacity: 83028,
-            // Cycle Count: 4, Chemistry: LION, Manufacture Date: unknown, Manufacturer: HP,
-            // SerialNumber: SerialNumber, Temperature: unknown]
-//            System.err.println(data);
             return data;
         } catch (Exception e) {
-//            System.err.println("System Metrics Exception: "+e);
+            log.error("SystemMetrics: getData failed", e);
         }
         return null;
     }
 
-//    @Scheduled(fixedRate = 1000 * 30)// every 5 mins
-//    private void healthCheck() {
-//        try{
-//            restTemplate = new RestTemplate();
-//            var res = restTemplate.getForObject("http://raspberry.local:8010/api/v1/main/healthCheck", String.class);
-
-    /// /            System.err.println("Health Check: "+res);
-//        }catch (Exception e){
-//            System.err.println(e);
-//        }
-//    }
     @Scheduled(fixedRate = 10000)
     public void getInfo() {
-        if (env.equals("prod") || env.equals("radxa")) {
+        if (!env.equals("dev")) {
             var data = getData();
             if (data != null) {
                 var map = new HashMap<String, Object>();
                 map.put("deviceId", deviceId);
                 map.put("data", data);
-                messagingTemplate.convertAndSend("/topic/data", Optional.of(map));
+                homeRoutingService.routeToHome(deviceId, "data", map);
             }
         }
     }
-
 
     @EventListener
     public void handleApplicationReadyEvent(ApplicationReadyEvent event) {
@@ -360,6 +277,5 @@ public class SystemMetrics {
         } else {
             deviceId = device.getId();
         }
-
     }
 }

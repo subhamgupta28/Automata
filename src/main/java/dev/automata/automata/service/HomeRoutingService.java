@@ -3,6 +3,7 @@ package dev.automata.automata.service;
 import dev.automata.automata.cache.DeviceHomeCache;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,8 @@ public class HomeRoutingService {
 
     private final DeviceHomeCache deviceHomeCache;
     private final SimpMessagingTemplate ws;
+    @Value("${application.node-id}")
+    private String nodeId;
 
     public void routeToHome(String deviceId, String subTopic, Map<String, Object> payload) {
         String homeId = deviceHomeCache.getHomeId(deviceId);
@@ -28,6 +31,7 @@ public class HomeRoutingService {
         // instead of wrapping in a new Map.of() every call
         payload.put("deviceId", deviceId);
         payload.put("homeId", homeId);
+        payload.put("nodeId", nodeId);
 
         ws.convertAndSend("/topic/home/" + homeId + "/" + subTopic, Optional.of(payload));
     }
