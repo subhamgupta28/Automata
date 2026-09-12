@@ -91,6 +91,7 @@ pipeline {
                     environment {
                         SPRING_PROFILE = 'prod'
                         FULL_IMAGE     = "automata:${IMAGE_TAG}-rpi"
+                        HOSTNAME = 'rpi5'
                     }
                     steps {
                         unstash 'build-output'
@@ -113,6 +114,7 @@ pipeline {
                         ]) {
                             sh '''
                                 docker run -d --name ${CONTAINER_NAME} \
+                                    --hostname ${HOSTNAME} \
                                     --restart unless-stopped \
                                     --network ${NETWORK_NAME} \
                                     --add-host=host.docker.internal:host-gateway \
@@ -137,6 +139,7 @@ pipeline {
                     environment {
                         SPRING_PROFILE = 'radxa'
                         FULL_IMAGE     = "automata:${IMAGE_TAG}-radxa"
+                        HOSTNAME = 'cubie_a7s'
                     }
                     steps {
                         unstash 'build-output'
@@ -157,6 +160,7 @@ pipeline {
                         ]) {
                             sh '''
                                 docker run -d --name ${CONTAINER_NAME} \
+                                    --hostname ${HOSTNAME} \
                                     --restart unless-stopped \
                                     --network ${SECOND_NETWORK} \
                                     --add-host=host.docker.internal:host-gateway \
