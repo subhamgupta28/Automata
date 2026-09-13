@@ -254,17 +254,17 @@ public class SystemMetrics {
         return null;
     }
 
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 4000)
     public void getInfo() {
-        if (!env.equals("dev")) {
-            var data = getData();
-            if (data != null) {
-                var map = new HashMap<String, Object>();
-                map.put("deviceId", deviceId);
-                map.put("data", data);
-                homeRoutingService.routeToHome(deviceId, "data", map);
-            }
+//        if (!env.equals("dev")) {
+        var data = getData();
+        if (data != null) {
+            var map = new HashMap<String, Object>();
+            map.put("deviceId", deviceId);
+            map.put("data", data);
+            homeRoutingService.routeToHome(deviceId, "data", map);
         }
+//        }
     }
 
     @EventListener
