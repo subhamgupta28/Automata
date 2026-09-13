@@ -12,7 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -32,8 +33,9 @@ public class SystemMetrics {
 
     private final MainService mainService;
     private final NodeExporterClient nodeExporterClient;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final MessageChannel mqttOutboundChannel;
     private final HomeRoutingService homeRoutingService;
+    private final ObjectMapper objectMapper;
 
     private static String deviceId = "";
 
@@ -261,8 +263,17 @@ public class SystemMetrics {
         if (data != null) {
             var map = new HashMap<String, Object>();
             map.put("deviceId", deviceId);
+            data.put("device_id", deviceId);
             map.put("data", data);
             homeRoutingService.routeToHome(deviceId, "data", map);
+            try {
+                String json = objectMapper.writeValueAsString(data);
+                mqttOutboundChannel.send(MessageBuilder.withPayload(json)
+                        .setHeader("mqtt_topic", "sendLiveData").build());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
         }
 //        }
     }

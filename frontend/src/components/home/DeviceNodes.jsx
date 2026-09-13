@@ -14,7 +14,7 @@ import {getMainNodePos, rebootAllDevices} from "../../services/apis.jsx";
 // import useWebSocket from "../../services/useWebSocket.jsx";
 import {AnimatedSVGEdge} from "./AnimatedSVGEdge.jsx";
 import {AlertNode, Device, MainNode} from "./Nodes.jsx";
-import {createEdges, createNodes} from "./EdgeNode.jsx";
+import {createNodes} from "./EdgeNode.jsx";
 import {Backdrop, Button} from "@mui/material";
 import NodeInspector from "./NodeInspector.jsx";
 import {ZoomSlider} from "./ZoomSlider.jsx";
@@ -83,7 +83,7 @@ const DeviceNodesComponent = () => {
                 // const devices = await getDashboardDevices();
                 const dev = devices.filter((d) => d.showInDashboard === true);
                 setNodes(createNodes(dev, [], pos.x, pos.y));
-                setEdges(createEdges(dev, []));
+                // setEdges(createEdges(dev, []));
                 setOpenBackdrop(loading);
             } catch (err) {
                 setOpenBackdrop(loading);

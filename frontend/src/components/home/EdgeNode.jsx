@@ -112,5 +112,5 @@ export const createNodes = (devices, charts, initX, initY) => {
         data: {value: {numOfDevices: devices.length, chartNodes: chartNodes.length, devices}},
     };
 
-    return [mainNode, ...deviceNodes, ...chartNodes]; // Include main node with device nodes
+    return [...deviceNodes, ...chartNodes]; // Include main node with device nodes
 };
