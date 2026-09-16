@@ -123,19 +123,31 @@ public class MqttService {
 
     @ServiceActivator(inputChannel = "wledChannel")
     public void handleWled(Message<?> message) {
+        String topic = (String) message.getHeaders().get("mqtt_receivedTopic");
+//        log.info("WLED message on topic [{}]", topic);
 
-        String deviceName = (String) message.getHeaders().get("device");
-        String rawPayload = message.getPayload().toString();
-        if (deviceName == null) {
+        if (topic == null || !topic.startsWith("automata-wled/")) {
+            log.warn("handleWled received unexpected topic: {}", topic);
             return;
         }
+
+        // "automata-wled/" is 14 characters
+        String deviceName = topic.substring(14);
+        if (deviceName.isEmpty()) {
+            log.warn("handleWled: topic has no device segment: {}", topic);
+            return;
+        }
+
+        String rawPayload = message.getPayload().toString(); // raw XML — untouched
+
         if (deviceName.endsWith("/v")) {
-            deviceName = deviceName.replace("/v", "");
-            deviceName = deviceName.replaceAll("/", "");
+            deviceName = deviceName.replace("/v", "").replaceAll("/", "");
             var device = mainService.getDeviceByCategory(deviceName);
 
-            if (device == null)
+            if (device == null) {
+                log.warn("handleWled: no device found for category [{}]", deviceName);
                 return;
+            }
 
             var wled = new Wled(null, device);
 
@@ -148,7 +160,7 @@ public class MqttService {
             payload.put("data", data);
             homeRoutingService.routeToHome(device.getId(), "data", payload);
             deliveryTracker.confirmWled(device.getId(), deviceName);
-            log.info("WLED Response for [{}] data: [{}]", device.getName(), response);
+            log.info("WLED processed for [{}]: {}", device.getName(), response);
         }
     }
 }

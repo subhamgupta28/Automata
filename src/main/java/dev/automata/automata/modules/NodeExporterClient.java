@@ -53,49 +53,49 @@ public class NodeExporterClient {
                 // ── CPU Temperature ───────────────────────────────────────────
                 // Radxa: big cores (primary)
                 if (line.startsWith("node_thermal_zone_temp{type=\"cpub_thermal_zone\"")) {
-                    result.put("cpu_temp", String.format("%.1f°C", parseValue(line)));
-                    result.put("cpu_temp_big", String.format("%.1f°C", parseValue(line)));
+                    result.put("cpu_temp", String.format("%.1f", parseValue(line)));
+                    result.put("cpu_temp_big", String.format("%.1f", parseValue(line)));
                 }
                 // Radxa: little cores
                 if (line.startsWith("node_thermal_zone_temp{type=\"cpul_thermal_zone\"")) {
-                    result.put("cpu_temp_little", String.format("%.1f°C", parseValue(line)));
+                    result.put("cpu_temp_little", String.format("%.1f", parseValue(line)));
                 }
                 // RPi5: single CPU thermal zone
                 if (line.startsWith("node_thermal_zone_temp{type=\"cpu-thermal\"")) {
-                    result.put("cpu_temp", String.format("%.1f°C", parseValue(line)));
+                    result.put("cpu_temp", String.format("%.1f", parseValue(line)));
                 }
 
                 // ── Other Thermal Zones (Radxa) ───────────────────────────────
                 if (line.startsWith("node_thermal_zone_temp{type=\"gpu_thermal_zone\"")) {
-                    result.put("gpu_temp", String.format("%.1f°C", parseValue(line)));
+                    result.put("gpu_temp", String.format("%.1f", parseValue(line)));
                 }
                 if (line.startsWith("node_thermal_zone_temp{type=\"ddr_thermal_zone\"")) {
-                    result.put("ddr_temp", String.format("%.1f°C", parseValue(line)));
+                    result.put("ddr_temp", String.format("%.1f", parseValue(line)));
                 }
                 if (line.startsWith("node_thermal_zone_temp{type=\"skin_zone\"")) {
-                    result.put("board_temp", String.format("%.1f°C", parseValue(line)));
+                    result.put("board_temp", String.format("%.1f", parseValue(line)));
                 }
 
                 // ── hwmon Temps ───────────────────────────────────────────────
                 // RPi5: NVMe temp exposed directly via hwmon
                 if (line.startsWith("node_hwmon_temp_celsius{chip=\"nvme_nvme0\",sensor=\"temp1\"")) {
-                    result.put("nvme_temp", String.format("%.1f°C", parseValue(line)));
+                    result.put("nvme_temp", String.format("%.1f", parseValue(line)));
                 }
                 // RPi5: ADC/board temp
                 if (line.startsWith("node_hwmon_temp_celsius{chip=\"1000120000_pcie_1f000c8000_adc\"")) {
-                    result.put("board_temp", String.format("%.1f°C", parseValue(line)));
+                    result.put("board_temp", String.format("%.1f", parseValue(line)));
                 }
 
                 // ── NVMe SMART (from textfile collector script) ───────────────
                 if (line.startsWith("nvme_temperature_celsius ")) {
                     // Only set if not already set by hwmon (RPi5 has it via hwmon)
-                    result.putIfAbsent("nvme_temp", String.format("%.0f°C", parseValue(line)));
+                    result.putIfAbsent("nvme_temp", String.format("%.0f", parseValue(line)));
                 }
                 if (line.startsWith("nvme_available_spare_percent ")) {
-                    result.put("nvme_spare", (int) parseValue(line) + "%");
+                    result.put("nvme_spare", (int) parseValue(line));
                 }
                 if (line.startsWith("nvme_percentage_used ")) {
-                    result.put("nvme_wear", (int) parseValue(line) + "%");
+                    result.put("nvme_wear", (int) parseValue(line));
                 }
                 if (line.startsWith("nvme_critical_warning ")) {
                     result.put("nvme_warning", parseValue(line) == 0 ? "OK" : "⚠ WARNING");
@@ -178,13 +178,13 @@ public class NodeExporterClient {
 
             // CPU frequency average across all cores
             if (cpuFreqCount > 0) {
-                result.put("cpuFreq", String.format("%.0f MHz", (cpuFreqSum / cpuFreqCount) / 1_000_000));
+                result.put("cpuFreq", String.format("%.0f", (cpuFreqSum / cpuFreqCount) / 1_000_000));
             }
 
             // Memory usage percent
             if (memTotalBytes > 0 && memAvailableBytes > 0) {
                 double usedPct = 100.0 * (memTotalBytes - memAvailableBytes) / memTotalBytes;
-                result.put("memoryUsagePercent", String.format("%.2f%%", usedPct));
+                result.put("memoryUsagePercent", String.format("%.2f", usedPct));
                 result.put("usedMemory", formatBytes(memTotalBytes - memAvailableBytes));
             }
 
@@ -192,14 +192,14 @@ public class NodeExporterClient {
             if (diskTotalBytes > 0 && diskFreeBytes > 0) {
                 long usedBytes = diskTotalBytes - diskFreeBytes;
                 double usedPct = 100.0 * usedBytes / diskTotalBytes;
-                result.put("diskUsagePercent", String.format("%.2f%%", usedPct));
+                result.put("diskUsagePercent", String.format("%.2f", usedPct));
                 result.put("diskUsed", formatBytes(usedBytes));
             }
 
             // CPU usage percent
             if (cpuTotalTotal > 0) {
                 double usagePct = 100.0 * (1.0 - cpuIdleTotal / cpuTotalTotal);
-                result.put("cpuUsagePercent", String.format("%.2f%%", usagePct));
+                result.put("cpuUsagePercent", String.format("%.2f", usagePct));
             }
 
             log.debug("NodeExporterClient: collected {} metrics", result.size());
@@ -231,11 +231,10 @@ public class NodeExporterClient {
         return 0.0;
     }
 
-    private String formatBytes(long bytes) {
-        if (bytes <= 0) return "0 B";
-        if (bytes < 1024) return bytes + " B";
+    private Long formatBytes(long bytes) {
+        if (bytes <= 0) return 0L;
+        if (bytes < 1024) return bytes;
         int exp = (int) (Math.log(bytes) / Math.log(1024));
-        String pre = "KMGTPE".charAt(exp - 1) + "i";
-        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
+        return (long) (bytes / Math.pow(1024, exp));
     }
 }

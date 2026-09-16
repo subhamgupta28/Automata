@@ -218,7 +218,7 @@ const EnvChartPanel = memo(function EnvChartPanel({summary, chartType}) {
         }),
         color: ENV_COLORS[k.toLowerCase()] ?? CHART_COLORS[i % CHART_COLORS.length],
         showMark: false,
-        area: chartType === "line",
+        ...(chartType === "line" ? {area: true} : {}),
     }));
 
     const ChartComp = chartType === "line" ? LineChart : BarChart;

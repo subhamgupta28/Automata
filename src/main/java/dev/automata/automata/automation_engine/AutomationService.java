@@ -347,7 +347,7 @@ public class AutomationService {
                         && "stale".equals(n.getCondition().getConditionType()));
     }
 
-    @Scheduled(fixedRate = 65_000)
+    @Scheduled(fixedRate = 15_000)
     public void pollWledState() {
         mainService.getAllDevice().stream()
                 .filter(d -> "WLED".equals(d.getType()))

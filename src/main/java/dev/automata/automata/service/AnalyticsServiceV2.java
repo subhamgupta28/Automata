@@ -10,6 +10,7 @@ import dev.automata.automata.repository.DataRepository;
 import dev.automata.automata.repository.DeviceChartsRepository;
 import dev.automata.automata.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
+import org.bson.Document;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
@@ -151,12 +152,13 @@ public class AnalyticsServiceV2 {
             Instant to,
             String granularity) {
 
+        // ── Match ──────────────────────────────────────────────
         MatchOperation match = match(
                 Criteria.where("deviceId").is(deviceId)
                         .and("updateDate").gte(Date.from(from)).lte(Date.from(to))
         );
 
-        // Bucket by granularity using $dateTrunc
+        // ── Granularity → unit / binSize / dateFormat ──────────
         int binSize;
         String unit;
         String dateFormat;
@@ -188,26 +190,34 @@ public class AnalyticsServiceV2 {
             }
         }
 
-        // Stage 1 – project numeric fields + dateTrunc slot
-        ProjectionOperation project1 = project()
-                .andExpression("{ $dateTrunc: { date: \"$updateDate\", unit: \"" + unit
-                        + "\", binSize: " + binSize + ", timezone: \"Asia/Kolkata\" } }")
-                .as("slot");
+        // ── Stage 1: $project — dateTrunc slot + numeric cast ──
+        Document projectDoc = new Document();
+        projectDoc.put("slot", new Document("$dateTrunc", new Document()
+                .append("date", "$updateDate")
+                .append("unit", unit)
+                .append("binSize", binSize)
+                .append("timezone", "Asia/Kolkata")));
 
         for (Attribute attr : attrs) {
-            project1 = project1
-                    .andExpression("{ $convert: { input: \"$data." + attr.getKey()
-                            + "\", to: \"double\", onError: null, onNull: null } }")
-                    .as(attr.getKey());
+            projectDoc.put(attr.getKey(), new Document("$convert", new Document()
+                    .append("input", "$data." + attr.getKey())
+                    .append("to", "double")
+                    .append("onError", null)
+                    .append("onNull", null)));
         }
 
-        // Stage 2 – group by slot, compute avg per attribute
+        AggregationOperation project1Stage = ctx -> new Document("$project", projectDoc);
+
+        // ── Stage 2: $group — avg per attribute ───────────────
         GroupOperation group = group("slot");
         for (Attribute attr : attrs) {
             group = group.avg(attr.getKey()).as(attr.getKey());
         }
 
-        // Stage 3 – reformat slot → dateDay string, round values
+        // ── Stage 3: $sort — on _id (the slot) before renaming
+        SortOperation sortOp = sort(Sort.by("_id"));
+
+        // ── Stage 4: $project — slot → dateDay string + round ─
         ProjectionOperation project2 = project()
                 .andExpression("{ $dateToString: { format: \"" + dateFormat
                         + "\", date: \"$_id\", timezone: \"Asia/Kolkata\" } }")
@@ -219,12 +229,13 @@ public class AnalyticsServiceV2 {
                     .as(attr.getKey());
         }
 
+        // ── Assemble & run ─────────────────────────────────────
         Aggregation agg = newAggregation(
                 match,
-                project1,
-                group,
-                project2,
-                sort(Sort.by("dateDay"))
+                project1Stage,   // raw $project with $dateTrunc
+                group,           // $group by slot
+                sortOp,          // $sort by _id before dateDay exists
+                project2         // $project renames _id → dateDay
         );
 
         return mongoTemplate.aggregate(agg, "data", Object.class)
@@ -349,6 +360,11 @@ public class AnalyticsServiceV2 {
                 .map(a -> a.getKey().toLowerCase())
                 .collect(Collectors.toSet());
 
+        // System monitor — check before ENERGY since "percent" would false-positive
+        if (keys.stream().anyMatch(k -> k.contains("cpu") || k.contains("memory")
+                || k.contains("disk") || k.contains("nvme") || k.contains("uptime"))) {
+            return "SYSTEM";
+        }
         // Energy / battery
         if (keys.stream().anyMatch(k -> k.contains("wh") || k.contains("energy")
                 || k.contains("power") || k.contains("current") || k.contains("voltage")
@@ -428,9 +444,22 @@ public class AnalyticsServiceV2 {
     private List<Attribute> getVisibleAttributes(String deviceId) {
         var charts = deviceChartsRepository.findByDeviceId(deviceId);
         var allAttrs = attributeRepository.findByDeviceId(deviceId);
+
+        // If chart config exists, filter by it
+        if (!charts.isEmpty()) {
+            return allAttrs.stream()
+                    .filter(a -> charts.stream()
+                            .anyMatch(c -> c.getAttributeKey().equals(a.getKey()) && c.isShowChart()))
+                    .collect(Collectors.toList());
+        }
+
+        // Fallback: show all numeric DATA attributes (exclude ACTION, INFO, AUX status strings)
         return allAttrs.stream()
-                .filter(a -> charts.stream()
-                        .anyMatch(c -> c.getAttributeKey().equals(a.getKey()) && c.isShowChart()))
+                .filter(a -> a.getType() != null
+                        && a.getType().startsWith("DATA")
+                        && !a.getType().contains("AUX")
+                        && !a.getType().contains("INFO")
+                        && a.getVisible())
                 .collect(Collectors.toList());
     }
 
