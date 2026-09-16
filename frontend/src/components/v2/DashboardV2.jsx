@@ -23,12 +23,14 @@ import {CustomModal} from "../home/CustomModal.jsx";
 import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {EnergyConsumptionCarouselNode} from "./EnergyConsumptionCarouselNode.jsx";
 import {EnergyBatteryChartNode} from "./EnergyBatteryChartNode.jsx";
+import {BatteryCardNode} from "./BatteryCard.jsx";
 
 
 const nodeTypes = {
     virtualDeviceNode: VirtualDevice,
     weatherNode: WeatherCardV2,
     energyNodeCarousel: EnergyConsumptionCarouselNode,
+    batteryCardNode: BatteryCardNode,
     energyNodeChart: EnergyBatteryChartNode,
     // energyChildNode: EnergyChildNode
 };
@@ -49,6 +51,9 @@ const createNodes = (virtualDevices) => {
                 break;
             case "Weather":
                 type = "weatherNode";
+                break;
+            case "BatteryCardNode":
+                type = "batteryCardNode";
                 break;
             default:
                 type = "virtualDeviceNode";

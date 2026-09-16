@@ -34,8 +34,6 @@ public class MqttConfig {
 
     @Value("${application.mqtt.url}")
     private String brokerUrl;
-    @Value("${application.mqtt.url_public}")
-    private String brokerUrlPublic;
     @Value("${application.mqtt.user}")
     private String user;
     @Value("${application.mqtt.password}")
@@ -51,12 +49,11 @@ public class MqttConfig {
     private final String topicAckAction = "ackAction";
     private final String topicSys = "broker/status/#";
     private final String wledDeviceTopic = "automata-wled/#";
-    private final String wledGroupTopic = "automata-wled/all";
 
     private final MessageChannel mqttErrorChannel;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MQTT CLIENT FACTORIES
+    // MQTT CLIENT FACTORY
     // ─────────────────────────────────────────────────────────────────────────
 
     private MqttPahoClientFactory createMqttClient(String url) {
@@ -78,32 +75,10 @@ public class MqttConfig {
         return createMqttClient(brokerUrl);
     }
 
-    @Bean
-    public MqttPahoClientFactory mqttClientFactoryPublic() {
-        return createMqttClient(brokerUrlPublic);
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
-    // ISOLATED EXECUTORS — one per channel group
-    //
-    // Why isolated?  All channels previously shared one 10-thread pool.
-    // A burst on sendLiveData or action would exhaust the pool and cause
-    // RejectedExecutionException on sysData → crash the Paho callback
-    // thread → "Lost connection: MqttException".
-    //
-    // CallerRunsPolicy on every executor: if the pool is full, the calling
-    // thread (Paho callback) runs the task itself.  This creates backpressure
-    // without ever throwing RejectedExecutionException and losing the connection.
+    // EXECUTORS
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * High-frequency sensor readings — needs the most threads.
-     * sendData + sendLiveData both use this.
-     */
-    /**
-     * Shared helper — CallerRunsPolicy is applied to every executor.
-     * This is the key change: rejection becomes backpressure, not an exception.
-     */
     private ThreadPoolTaskExecutor buildExecutor(
             String prefix, int core, int max, int queueCapacity) {
         ThreadPoolTaskExecutor ex = new ThreadPoolTaskExecutor();
@@ -117,31 +92,24 @@ public class MqttConfig {
         return ex;
     }
 
-// Pi 5 tuned — total max threads across all pools: ~24
-// Generous queues absorb bursts without needing more threads
-
     @Bean
     @Primary
     public ThreadPoolTaskExecutor taskExecutor() {
-        // sendLiveData + sendData — highest frequency but mostly I/O wait
         return buildExecutor("live-data-", 2, 6, 500);
     }
 
     @Bean
     public ThreadPoolTaskExecutor actionExecutor() {
-        // action commands — moderate, latency matters more than throughput
         return buildExecutor("action-", 2, 4, 100);
     }
 
     @Bean
     public ThreadPoolTaskExecutor ackActionExecutor() {
-        // action commands — moderate, latency matters more than throughput
         return buildExecutor("ack-action-", 2, 4, 100);
     }
 
     @Bean
     public ThreadPoolTaskExecutor wledExecutor() {
-        // LED commands — bursty but short-lived
         return buildExecutor("wled-", 1, 3, 50);
     }
 
@@ -152,13 +120,11 @@ public class MqttConfig {
 
     @Bean
     public ThreadPoolTaskExecutor sysDataExecutor() {
-        // broker/status events — very rare, 1 thread is plenty
         return buildExecutor("sys-data-", 1, 1, 20);
     }
 
-
     // ─────────────────────────────────────────────────────────────────────────
-    // CHANNELS — each wired to its own dedicated executor
+    // CHANNELS
     // ─────────────────────────────────────────────────────────────────────────
 
     @Bean
@@ -186,65 +152,54 @@ public class MqttConfig {
         return new ExecutorChannel(ackActionExecutor());
     }
 
+    /**
+     * Receives raw XML strings from automata-wled/# topics.
+     * The SafeJsonTransformer is deliberately NOT applied here.
+     */
     @Bean
     public ExecutorChannel wledChannel() {
         return new ExecutorChannel(wledExecutor());
     }
 
-    /**
-     * sysData now has its own tiny executor.
-     * Broker status noise is completely isolated from all other channels.
-     */
     @Bean
     public ExecutorChannel sysData() {
         return new ExecutorChannel(sysDataExecutor());
     }
 
+    @Bean
+    public org.springframework.integration.channel.DirectChannel mqttJsonPipelineChannel() {
+        return new org.springframework.integration.channel.DirectChannel();
+    }
     // ─────────────────────────────────────────────────────────────────────────
-    // INBOUND ADAPTERS
+    // INBOUND ADAPTER
+    // Note: wledDeviceTopic is NOW included so the single adapter receives
+    // all topics. wledFlow is REMOVED — it was a second subscriber on the
+    // same adapter bean, causing every message to be processed twice.
     // ─────────────────────────────────────────────────────────────────────────
 
     @Bean
     public MqttPahoMessageDrivenChannelAdapter inbound() {
-        String inboundClientId = "springboot-sub-";
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter(
-                        inboundClientId + env,
+                        "springboot-sub-" + env,
                         mqttClientFactory(),
                         topicSendLiveData,
                         topicSendData,
                         topicAction,
                         topicDefault,
-                        topicAckAction
-//                        topicSys
+                        topicAckAction,
+                        wledDeviceTopic       // ← ADDED: automata-wled/#
+                        // topicSys           // uncomment when needed
                 );
         adapter.setCompletionTimeout(5000);
         adapter.setConverter(new DefaultPahoMessageConverter());
         adapter.setQos(1);
-        // Errors go to errorChannel — never propagate back to Paho callback thread
-        adapter.setErrorChannel(mqttErrorChannel);
-        return adapter;
-    }
-
-    @Bean
-    public MqttPahoMessageDrivenChannelAdapter publicInbound() {
-        String publicSubClientId = "springboot-pub-sub-";
-        MqttPahoMessageDrivenChannelAdapter adapter =
-                new MqttPahoMessageDrivenChannelAdapter(
-                        publicSubClientId + env,
-                        mqttClientFactoryPublic(),
-                        wledDeviceTopic,
-                        wledGroupTopic
-                );
-        adapter.setConverter(new DefaultPahoMessageConverter());
-        adapter.setQos(1);
-//        adapter.setOutputChannel(mqttInputChannel());
         adapter.setErrorChannel(mqttErrorChannel);
         return adapter;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // OUTBOUND HANDLERS
+    // OUTBOUND
     // ─────────────────────────────────────────────────────────────────────────
 
     @Bean
@@ -255,60 +210,73 @@ public class MqttConfig {
     @Bean
     @ServiceActivator(inputChannel = "mqttOutboundChannel")
     public MessageHandler mqttOutbound() {
-        String outboundClientId = "springboot-pub-";
         MqttPahoMessageHandler handler =
-                new MqttPahoMessageHandler(outboundClientId + env, mqttClientFactory());
+                new MqttPahoMessageHandler("springboot-pub-" + env, mqttClientFactory());
         handler.setAsync(true);
         handler.setDefaultTopic(wledDeviceTopic);
         return handler;
     }
 
-    @Bean
-    @ServiceActivator(inputChannel = "mqttOutboundChannel")
-    public MessageHandler mqttOutboundPublic() {
-        String publicPubClientId = "springboot-pub-pub-";
-        MqttPahoMessageHandler handler =
-                new MqttPahoMessageHandler(publicPubClientId + env, mqttClientFactoryPublic());
-        handler.setAsync(true);
-        handler.setDefaultTopic(topicDefault);
-        return handler;
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // ERROR HANDLER
+    // ─────────────────────────────────────────────────────────────────────────
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ERROR CHANNEL — prevents any handler exception from reaching Paho
-    // ─────────────────────────────────────────────────────────────────────────
     @ServiceActivator(inputChannel = "mqttErrorChannel")
     public void mqttErrorHandler(Message<?> message) {
-
         Throwable cause = null;
-
         if (message.getPayload() instanceof MessagingException me) {
             cause = me.getCause() != null ? me.getCause() : me;
         } else if (message.getPayload() instanceof Throwable t) {
             cause = t;
         }
-
-        log.error(
-                "MQTT pipeline error: {}",
-                cause != null ? cause.getMessage() : message.getPayload()
-        );
+        log.error("MQTT pipeline error: {}",
+                cause != null ? cause.getMessage() : message.getPayload());
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // INTEGRATION FLOWS
+    //
+    // The key fix is the ordering:
+    //   1. Route FIRST on mqtt_receivedTopic header (header is always present)
+    //   2. WLED messages go to wledChannel immediately — raw XML preserved
+    //   3. All other messages go to an intermediate "mqttJsonPipeline" channel
+    //   4. mqttJsonPipeline applies SafeJsonTransformer, then routes to the
+    //      correct per-topic channel
+    //
+    // This replaces the old single flow that transformed before routing, which
+    // corrupted XML payloads. wledFlow is gone entirely.
     // ─────────────────────────────────────────────────────────────────────────
 
     @Bean
     public IntegrationFlow mqttInFlow() {
         return IntegrationFlow.from(inbound())
+                // Step 1: branch WLED off immediately — before any transformation
+                .route(Message.class,
+                        m -> {
+                            String topic = (String) m.getHeaders().get("mqtt_receivedTopic");
+                            return (topic != null && topic.startsWith("automata-wled/"))
+                                    ? "wledChannel"
+                                    : "mqttJsonPipelineChannel";
+                        }
+                        // JSON  → transform pipeline
+                )
+                .get();
+    }
+
+    /**
+     * All non-WLED messages land here, get JSON-transformed, then are routed
+     * to their per-topic handler channels.
+     */
+    @Bean
+    public IntegrationFlow mqttJsonPipeline() {
+        return IntegrationFlow.from(mqttJsonPipelineChannel())
                 .transform(safeJsonTransformer)
                 .route(Message.class,
                         m -> {
                             String topic = (String) m.getHeaders().get("mqtt_receivedTopic");
                             if (topic == null) return "mqttInputChannel";
                             if (topic.startsWith("broker/status/")) return "sysData";
-                            if (topic.startsWith("automata-wled/")) return "mqttInputChannel";
-                            return topic;
+                            return topic; // topic name == channel name for all remaining cases
                         },
                         mapping -> mapping
                                 .channelMapping(topicSendLiveData, "sendLiveData")
@@ -321,22 +289,7 @@ public class MqttConfig {
                 .get();
     }
 
-    @Bean
-    public IntegrationFlow wledFlow() {
-        return IntegrationFlow.from(publicInbound())
-                .enrichHeaders(h -> h.headerFunction(
-                        "device",
-                        m -> {
-                            String topic = (String) m.getHeaders().get("mqtt_receivedTopic");
-                            // "automata-wled/" is 14 chars, not 13
-                            if (topic != null && topic.startsWith("automata-wled/")) {
-                                String devicePart = topic.substring(14); // e.g. "some-device-id" or "all"
-                                return devicePart.isEmpty() ? null : devicePart;
-                            }
-                            return null;
-                        }
-                ))
-                .channel("wledChannel")
-                .get();
-    }
+    // wledFlow is DELETED.
+    // It was a second subscriber on inbound() that fired for every topic,
+    // not just automata-wled/#, causing all messages to be double-processed.
 }

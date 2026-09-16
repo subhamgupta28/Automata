@@ -89,7 +89,7 @@ public class SystemMetrics {
                                         .key("cpuFreq")
                                         .displayName("CPU Freq")
                                         .type("DATA|MAIN")
-                                        .units("")
+                                        .units("MHz")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
@@ -97,7 +97,7 @@ public class SystemMetrics {
                                         .key("memoryUsagePercent")
                                         .displayName("Used Memory")
                                         .type("DATA|MAIN")
-                                        .units("")
+                                        .units("%")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
@@ -121,7 +121,7 @@ public class SystemMetrics {
                                         .key("cpu_temp")
                                         .displayName("Cpu Temp")
                                         .type("DATA|MAIN")
-                                        .units("")
+                                        .units("°C")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
@@ -129,7 +129,7 @@ public class SystemMetrics {
                                         .key("diskUsagePercent")
                                         .displayName("Disk Usage")
                                         .type("DATA|MAIN")
-                                        .units("")
+                                        .units("%")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
@@ -153,7 +153,7 @@ public class SystemMetrics {
                                         .key("gpu_temp")
                                         .displayName("GPU Temp")
                                         .type("DATA|AUX")
-                                        .units("")
+                                        .units("%")
                                         .extras(new HashMap<>())
                                         .visible(true)
                                         .build(),
@@ -178,7 +178,7 @@ public class SystemMetrics {
                                         .units("").extras(new HashMap<>()).visible(true).build(),
                                 Attribute.builder()
                                         .key("nvme_temp").displayName("NVMe Temp")
-                                        .type("DATA|AUX").units("").extras(new HashMap<>()).visible(true).build(),
+                                        .type("DATA|AUX").units("°C").extras(new HashMap<>()).visible(true).build(),
                                 Attribute.builder()
                                         .key("nvme_wear").displayName("NVMe Wear")
                                         .type("DATA|AUX").units("").extras(new HashMap<>()).visible(true).build(),

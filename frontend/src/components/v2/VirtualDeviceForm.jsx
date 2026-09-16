@@ -201,6 +201,7 @@ const DashboardEditor = ({change, existingDevice}) => {
                     variant='outlined'>
                     <MenuItem key={'Weather'} value={'Weather'}>Weather</MenuItem>
                     <MenuItem key={'EnergyCarousel'} value={'EnergyCarousel'}> Energy Carousel</MenuItem>
+                    <MenuItem key={'BatteryCardNode'} value={'BatteryCardNode'}> Battery Card</MenuItem>
                     <MenuItem key={'EnergyChart'} value={'EnergyChart'}> Energy Chart</MenuItem>
                     <MenuItem key={'Sensors'} value={'Sensors'}> Sensors </MenuItem>
                     <MenuItem key={'Lights'} value={'Lights'}> Lights </MenuItem>

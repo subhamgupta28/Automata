@@ -108,7 +108,7 @@ const ModelContent = ({device, onClose, messages, map, version, handleAction}) =
     const [liveData, setLiveData] = useState({});
     const [showCharts, setShowCharts] = useState(device.showCharts);
     const switchBtn = device.attributes.filter((t) => t.type.startsWith("ACTION|MENU|BTN"));
-    const sliderData = device.attributes.filter((t) => t.type === "ACTION|MENU|SLIDER");
+    const sliderData = device.attributes.filter((t) => t.type === "ACTION|MENU|SLIDER" || t.type === "ACTION|SLIDER");
     const radarData = device.attributes.filter((t) => t.type === "DATA|RADAR");
     const switchButtons = device.attributes.filter((t) => t.type === "ACTION|MENU|SWITCH");
     const deviceInfo = device.attributes.filter((t) => t.type === "DATA|INFO");
