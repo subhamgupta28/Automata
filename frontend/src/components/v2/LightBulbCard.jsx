@@ -4,7 +4,18 @@ import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import {getLastData, sendAction} from "../../services/apis.jsx";
 import {CustomSlider} from "../charts/CustomSlider.jsx";
 
-export default function LightBulbCard({value, name, type, deviceId, data, lastOnline, onClick, percent, sliderData}) {
+export default function LightBulbCard({
+                                          value,
+                                          name,
+                                          type,
+                                          deviceId,
+                                          data,
+                                          lastOnline,
+                                          onClick,
+                                          percent,
+                                          sliderData,
+                                          mode = "extended"
+                                      }) {
     const [isOn, setIsOn] = React.useState(Boolean(value));
     const [bright, setBright] = React.useState(percent);
 
@@ -49,17 +60,17 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
             style={{
                 margin: '6px',
                 borderRadius: "8px",
-                padding: "8px 6px",
+                padding: "6px 6px",
+
                 boxShadow: "0px 1px 4px rgba(0,0,0,0.12)"
             }}
         >
-            <Box display="flex" gap={2}>
+            <Box display="flex" gap={2} mb={1}>
                 <IconButton
                     onClick={send}
                     sx={{
-                        width: 48,
-                        height: 48,
-                        marginTop: 0.6,
+                        width: 46,
+                        height: 46,
                         borderRadius: "50%",
                         backgroundColor: isOn ? "#FFC107" : "#E0E0E0",
                         "&:hover": {
@@ -78,28 +89,25 @@ export default function LightBulbCard({value, name, type, deviceId, data, lastOn
                     <Typography onClick={onClick} fontWeight={600} fontSize="16px">
                         {name}
                     </Typography>
-                    {sliderData.map((s) => (
-                        <CustomSlider
-                            key={s.key}
-                            value={17}
-                            deviceId={deviceId}
-                            type={type}
-                            data={s}
-                            displayName={s.displayName}
-                        />
-                    ))}
-                    {/*<Typography*/}
-                    {/*    fontSize="14px"*/}
-                    {/*    color={isOn ? "text.primary" : "text.secondary"}*/}
-                    {/*>*/}
-                    {/*    {isOn ? `${parseInt(((bright / 255) * 100).toString())}%` : "Off"}*/}
-                    {/*</Typography>*/}
-                    {/*<Typography variant="body2" color="text.secondary">*/}
-                    {/*    {dayjs(lastOnline).fromNow()}*/}
-                    {/*</Typography>*/}
+                    <Typography variant="body2" color="text.secondary">
+                        {bright}
+                    </Typography>
                 </Box>
 
             </Box>
+            {
+                mode === "extended" &&
+                (sliderData.map((s) => (
+                    <CustomSlider
+                        key={s.key}
+                        value={bright}
+                        deviceId={deviceId}
+                        type={type}
+                        data={s}
+                        displayName={s.displayName}
+                    />
+                )))
+            }
 
         </div>
     );

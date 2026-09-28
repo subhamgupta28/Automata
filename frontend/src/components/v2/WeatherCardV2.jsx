@@ -653,16 +653,16 @@ function Sparkline({data = [], color = "#a0a0a0", height = 18}) {
 
 export function StatsRow({items}) {
     return (
-        <Box sx={{display: "flex", alignItems: "center", gap: 1, px: 1.5, py: 0.5, overflowX: "auto"}}>
+        <Box sx={{display: "flex", alignItems: "center", gap: 1, px: 1.0, py: 0.5, overflowX: "auto"}}>
             {items.map((s, i) => (
                 <Box
                     key={i}
                     sx={{
                         display: "flex",
                         flexDirection: "column",
-                        // padding: "2px",
-                        borderRadius: "10px",
-                        minWidth: "140px",
+                        paddingTop: "6px",
+                        borderRadius: "8px",
+                        // minWidth: "160px",
                         boxShadow: "rgb(30 30 30) 0px 0px 16px 6px inset",
                         backdropFilter: "blur(2px)",
                         // border: `1px solid ${C.border}`,
@@ -675,10 +675,10 @@ export function StatsRow({items}) {
                     }}>
                         <Box sx={{color: C.muted}}>{s.icon}</Box>
                         <Box>
-                            <Typography sx={{color: C.muted, lineHeight: 1, fontSize: "0.7rem"}}>
+                            <Typography sx={{color: C.muted, lineHeight: 1, fontSize: "1rem"}}>
                                 {s.label}
                             </Typography>
-                            <Typography variant="h6" sx={{fontWeight: 600, lineHeight: 1.2}}>
+                            <Typography variant="subtitle1" sx={{fontWeight: 600}}>
                                 {s.value}
                             </Typography>
                         </Box>

@@ -302,7 +302,16 @@ const SingleBatteryCard = React.memo(({deviceId, vid, name, messages}) => {
                 // paddingRight: "6px"
             }}>
                 <BatteryBar batteryPercent={Math.round(animPercent)} color={meta.color} status={stats.status}/>
-
+                {/*<BatteryModuleCard*/}
+                {/*    name={name}*/}
+                {/*    capacityWh={stats.totalWhTrend}*/}
+                {/*    status={stats.status}*/}
+                {/*    soc={animPercent}*/}
+                {/*    temp={live.temp ? live.temp : 0}*/}
+                {/*    voltage={live.busVoltage}*/}
+                {/*    cycles={100}*/}
+                {/*    soh={99}*/}
+                {/*/>*/}
                 <Box sx={{flex: 1, display: "flex", flexDirection: "column", gap: "4px"}}>
                     <Box sx={{display: "flex", alignItems: "baseline", gap: "2px"}}>
                         <Typography sx={{fontSize: 20, fontWeight: 700, color: meta.color, lineHeight: 1}}>
@@ -376,7 +385,7 @@ export const BatteryCardNode = React.memo(({id, data, isConnectable, selected}) 
                     height: "100%",
                     minWidth: width,
                     borderRadius: "12px",
-                    boxShadow: "rgb(30 30 30) 0px 0px 36px 6px inset",
+                    boxShadow: "rgb(25 25 25) 0px 0px 36px 6px inset",
                     backdropFilter: "blur(4px)",
                     position: "relative",
                     overflow: "hidden",
