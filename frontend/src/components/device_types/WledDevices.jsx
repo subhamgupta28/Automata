@@ -91,7 +91,7 @@ const Wled = ({device, messages, lastData}) => {
                 <div className="nodrag">
                     <LightBulbCard onClick={handleClick} key={s.key} data={s} lastOnline={device.lastOnline}
                                    value={liveData?.[s.key]} percent={liveData?.bright} sliderData={sliderData}
-                                   name={device.name} deviceId={device.id} type={device.type}/>
+                                   name={device.name} deviceId={device.id} type={device.type} mode={"compact"}/>
                     <div style={{marginLeft: '32px', marginRight: '22px'}}>
 
                         {/*<CustomSlider*/}

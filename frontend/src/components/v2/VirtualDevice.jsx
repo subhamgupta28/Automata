@@ -165,12 +165,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
         )
     return (
         <>
-            {/*<NodeResizer*/}
-            {/*    color="#ff0000"*/}
-            {/*    isVisible={selected}*/}
-            {/*    width={width}*/}
-            {/*    minHeight={height}*/}
-            {/*/>*/}
+
             {/*<ProtectedView/>*/}
 
             <Card
@@ -181,10 +176,10 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                 variant="elevated"
                 style={{
                     background: 'transparent',
-                    boxShadow: 'rgb(30 30 30) 0px 0px 36px 10px inset',
+                    boxShadow: 'rgb(25 25 25) 0px 0px 36px 10px inset',
                     // border: `1px solid ${C.border}`,
                     backdropFilter: 'blur(4px)',
-                    backgroundColor: 'rgb(0 0 0 / 20%)',
+                    backgroundColor: 'rgb(0 0 0 / 10%)',
                     minHeight: height, height: '100%', minWidth: width,
                     borderRadius: '10px', padding: '0px',
                 }}>
@@ -255,6 +250,12 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
 
                 </div>
             </Card>
+            {/*<NodeResizer*/}
+            {/*    color="#ff0000"*/}
+            {/*    isVisible={selected}*/}
+            {/*    width={width}*/}
+            {/*    minHeight={height}*/}
+            {/*/>*/}
         </>
     )
 });
