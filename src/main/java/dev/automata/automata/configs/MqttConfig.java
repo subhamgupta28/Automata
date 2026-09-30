@@ -250,17 +250,16 @@ public class MqttConfig {
     @Bean
     public IntegrationFlow mqttInFlow() {
         return IntegrationFlow.from(inbound())
-                // Step 1: branch WLED off immediately — before any transformation
                 .route(Message.class,
-                        m -> {
-                            String topic = (String) m.getHeaders().get("mqtt_receivedTopic");
-                            return (topic != null && topic.startsWith("automata-wled/"))
-                                    ? "wledChannel"
-                                    : "mqttJsonPipelineChannel";
-                        }
-                        // JSON  → transform pipeline
-                )
+                        m -> isWledTopic((String) m.getHeaders().get("mqtt_receivedTopic"))
+                                ? "wledChannel"
+                                : "mqttJsonPipelineChannel")
                 .get();
+    }
+
+    private static boolean isWledTopic(String topic) {
+        return topic != null
+                && (topic.equals("automata-wled") || topic.startsWith("automata-wled/"));
     }
 
     /**
@@ -276,7 +275,7 @@ public class MqttConfig {
                             String topic = (String) m.getHeaders().get("mqtt_receivedTopic");
                             if (topic == null) return "mqttInputChannel";
                             if (topic.startsWith("broker/status/")) return "sysData";
-                            return topic; // topic name == channel name for all remaining cases
+                            return topic;
                         },
                         mapping -> mapping
                                 .channelMapping(topicSendLiveData, "sendLiveData")
@@ -285,7 +284,8 @@ public class MqttConfig {
                                 .channelMapping(topicAction, "action")
                                 .channelMapping(topicAckAction, "ackAction")
                                 .channelMapping("sysData", "sysData")
-                )
+                                .resolutionRequired(false)
+                                .defaultOutputChannel("nullChannel"))
                 .get();
     }
 

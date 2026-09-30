@@ -147,7 +147,8 @@ public class AutomationService {
             req.put(key, value);
             req.put("direct", true);
             req.put("deviceId", id);
-            deviceRepository.findByIdAndHomeId(id, homeId)
+            log.info("KNOB req [{}] payload [{}] homeId {}", req, payload, homeId);
+            deviceRepository.findById(id)
                     .ifPresent(d -> handleAction(id, req, d.getType(), user, homeId));
             return "success";
         }
