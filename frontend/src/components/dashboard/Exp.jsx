@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
-import {Box, Paper, Slider, Typography} from '@mui/material';
-import {BatteryCharging, RotateCcw, Sliders, Thermometer} from 'lucide-react';
+import {Box, Typography} from '@mui/material';
+import {Thermometer} from 'lucide-react';
+import LiquidLevelCard from "./LiquidLevelCard.jsx";
 
 const STATUS_CONFIGS = {
     DISCHARGING: {
@@ -286,211 +287,22 @@ export default function Exp() {
     };
 
     return (
-        <Box
-            sx={{
-                minHeight: '100vh',
-                backgroundColor: '#0c0d0f',
-                backgroundImage: 'radial-gradient(ellipse at 50% 10%, rgba(0, 213, 255, 0.04) 0%, transparent 60%)',
-                color: '#e5e7eb',
-                p: {xs: 2, md: 5},
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-                fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-            }}
-        >
-            {/* Top Banner / Breadcrumb */}
-            <Box sx={{textAlign: 'center', maxWidth: 640}}>
-                <Typography
-                    variant="h6"
-                    sx={{
-                        fontWeight: 700,
-                        color: '#f8fafc',
-                        letterSpacing: '-0.02em',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 1
-                    }}
-                >
-                    <BatteryCharging className="text-cyan-400" size={22}/>
-                    BMS Telemetry Interface
-                </Typography>
-                <Typography variant="body2" sx={{color: '#6b7280', mt: 0.5}}>
-                    Pixel-accurate React & MUI replica of the Energy Storage Battery Module
-                </Typography>
-            </Box>
+        <Box sx={{
+            margin: "100px"
+        }}>
 
-            {/* Exact UI Component Preview */}
-            <Box sx={{width: '100%', maxWidth: 580}}>
-                <BatteryModuleCard
-                    name="Module Gamma (Expansion 2)"
-                    capacityKWh={5.0}
-                    role="Slave"
-                    status={status}
-                    soc={soc}
-                    temp={temp}
-                    voltage={voltage}
-                    cycles={cycles}
-                    soh={soh}
-                    onDelete={() => setShowNotification(true)}
-                />
+            <LiquidLevelCard
+                width={140}
+                height={200}
+                level={5}
+                threshold={20}
+                title="Battery"
+                subtitleTop="Discharging"
+                subtitleBottom="Live 320 W"
+                footerLeft="Today 1,240 Wh"
+                footerRight="Updated 2 min ago"
+            />
 
-                {showNotification && (
-                    <Box
-                        sx={{
-                            mt: 2,
-                            p: 1.5,
-                            borderRadius: 2,
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                            color: '#f87171',
-                            fontSize: '0.8rem',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                        }}
-                    >
-                        <span>Module deletion action triggered</span>
-                        <button
-                            onClick={() => setShowNotification(false)}
-                            className="text-xs text-neutral-400 hover:text-white underline cursor-pointer"
-                        >
-                            Dismiss
-                        </button>
-                    </Box>
-                )}
-            </Box>
-
-            {/* Interactive Telemetry Tuning Station */}
-            <Paper
-                elevation={0}
-                sx={{
-                    width: '100%',
-                    maxWidth: 580,
-                    backgroundColor: '#141618',
-                    border: '1px solid rgba(255, 255, 255, 0.06)',
-                    borderRadius: 3,
-                    p: 3
-                }}
-            >
-                <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5}}>
-                    <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-                        <Sliders size={18} className="text-cyan-400"/>
-                        <Typography variant="subtitle2" sx={{fontWeight: 600, color: '#f3f4f6'}}>
-                            Live Telemetry Simulator
-                        </Typography>
-                    </Box>
-                    <button
-                        onClick={resetToImageDefaults}
-                        className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer bg-cyan-950/40 px-2 py-1 rounded border border-cyan-800/50"
-                    >
-                        <RotateCcw size={12}/> Reset to Original Photo
-                    </button>
-                </Box>
-
-                {/* State of Charge (SoC) Slider */}
-                <Box sx={{mb: 2.5}}>
-                    <Box sx={{display: 'flex', justifyContent: 'space-between', mb: 0.5}}>
-                        <Typography variant="caption" sx={{color: '#9ca3af', fontWeight: 500}}>
-                            State of Charge (SoC)
-                        </Typography>
-                        <Typography variant="caption" sx={{color: '#10b981', fontWeight: 700, fontFamily: 'monospace'}}>
-                            {soc}% ({((soc / 100) * 5.0).toFixed(2)} / 5.0 kWh)
-                        </Typography>
-                    </Box>
-                    <Slider
-                        value={soc}
-                        min={0}
-                        max={100}
-                        onChange={(_, val) => setSoc(val)}
-                        sx={{
-                            color: '#10b981',
-                            height: 5,
-                            '& .MuiSlider-thumb': {
-                                width: 14,
-                                height: 14,
-                                backgroundColor: '#26e8bd',
-                                boxShadow: '0 0 8px #26e8bd',
-                                '&:hover, &.Mui-focusVisible': {
-                                    boxShadow: '0 0 0 8px rgba(38, 232, 189, 0.16)'
-                                }
-                            },
-                            '& .MuiSlider-rail': {
-                                backgroundColor: '#2d333b'
-                            }
-                        }}
-                    />
-                </Box>
-
-                {/* Operating Status Selector */}
-                <Box sx={{mb: 2.5}}>
-                    <Typography variant="caption" sx={{color: '#9ca3af', fontWeight: 500, display: 'block', mb: 1}}>
-                        Module Status
-                    </Typography>
-                    <Box sx={{display: 'flex', gap: 1}}>
-                        {['DISCHARGING', 'CHARGING', 'IDLE'].map((st) => (
-                            <button
-                                key={st}
-                                onClick={() => setStatus(st)}
-                                style={{
-                                    flex: 1,
-                                    padding: '6px 12px',
-                                    borderRadius: '6px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    border: status === st ? `1px solid ${STATUS_CONFIGS[st].color}` : '1px solid #2d333b',
-                                    backgroundColor: status === st ? STATUS_CONFIGS[st].bgColor : '#1c1f24',
-                                    color: status === st ? STATUS_CONFIGS[st].color : '#9ca3af',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                {st}
-                            </button>
-                        ))}
-                    </Box>
-                </Box>
-
-                {/* Dual adjustments for Temp and Voltage */}
-                <Box sx={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2}}>
-                    {/* Temperature */}
-                    <Box>
-                        <Box sx={{display: 'flex', justifyContent: 'space-between', mb: 0.5}}>
-                            <Typography variant="caption" sx={{color: '#9ca3af'}}>
-                                Temp: {temp}°C
-                            </Typography>
-                        </Box>
-                        <Slider
-                            value={temp}
-                            min={10}
-                            max={65}
-                            step={0.1}
-                            onChange={(_, val) => setTemp(val)}
-                            sx={{color: '#00d5ff', height: 4}}
-                        />
-                    </Box>
-
-                    {/* Voltage */}
-                    <Box>
-                        <Box sx={{display: 'flex', justifyContent: 'space-between', mb: 0.5}}>
-                            <Typography variant="caption" sx={{color: '#9ca3af'}}>
-                                Voltage: {voltage} V
-                            </Typography>
-                        </Box>
-                        <Slider
-                            value={voltage}
-                            min={42.0}
-                            max={58.4}
-                            step={0.1}
-                            onChange={(_, val) => setVoltage(val)}
-                            sx={{color: '#00d5ff', height: 4}}
-                        />
-                    </Box>
-                </Box>
-            </Paper>
         </Box>
     );
 }
