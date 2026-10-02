@@ -14,6 +14,7 @@ import {useAnimatedNumber} from "../../utils/Helper.jsx";
 import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import {CustomModal} from "../home/CustomModal.jsx";
 import "../../App.css";
+import LiquidLevelCard from "../dashboard/LiquidLevelCard.jsx";
 
 // ─── Status helper ─────────────────────────────────────────────────────────────
 
@@ -150,10 +151,10 @@ function Trend({prevValue, value, unit}) {
     return (
         <Box display="flex" alignItems="center" gap={0.3}>
             {positive
-                ? <ArrowUpwardIcon sx={{fontSize: 12, color: "success.main"}}/>
-                : <ArrowDownwardIcon sx={{fontSize: 12, color: "error.main"}}/>
+                ? <ArrowUpwardIcon sx={{fontSize: 11, color: "success.main"}}/>
+                : <ArrowDownwardIcon sx={{fontSize: 11, color: "error.main"}}/>
             }
-            <Typography sx={{fontSize: 10, color: positive ? "success.main" : "error.main"}}>
+            <Typography sx={{fontSize: 9, color: positive ? "success.main" : "error.main"}}>
                 {absDiff.toFixed(1)}{unit} ({pct}%)
             </Typography>
         </Box>
@@ -166,12 +167,12 @@ function MiniStat({label, value = 0, trend, unit}) {
     const animated = useAnimatedNumber(value);
     return (
         <>
-            <Typography sx={{fontSize: 11, color: "text.secondary"}}>{label}</Typography>
-            <Box style={{display: "flex", flexDirection: "row", alignItems: "center"}}>
-                <Typography sx={{fontSize: 11, fontWeight: 600, lineHeight: 1}}>
+            <Typography sx={{fontSize: 10, color: "text.secondary"}}>{label}</Typography>
+            <Box style={{display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center"}}>
+                <Typography sx={{fontSize: 10, fontWeight: 600, lineHeight: 1}}>
                     {animated.toFixed(1)}
                     <Typography component="span"
-                                sx={{fontSize: 9, color: "text.secondary", marginRight: "4px"}}> {unit}</Typography>
+                                sx={{fontSize: 9, color: "text.secondary", marginRight: "2px"}}> {unit}</Typography>
                 </Typography>
                 <Trend prevValue={trend} value={value} unit={unit}/>
 
@@ -239,100 +240,34 @@ const SingleBatteryCard = React.memo(({deviceId, vid, name, messages}) => {
     const isCharging = stats.status === "CHARGING";
 
     const primaryVal = isCharging ? (stats.chargeTotalWh ?? stats.totalWh) : stats.totalWh;
-    const primaryLabel = isCharging ? "Charged today:" : "Used today:";
+    const primaryLabel = isCharging ? "Charged today" : "Energy used";
     const peakVal = isCharging ? (stats.chargePeakWh ?? stats.peakWh) : stats.peakWh;
 
     return (
         <Box sx={{
-            flex: 1,
+            // flex: 1,
             minWidth: 0,
             height: "100%",
             display: "flex",
             flexDirection: "column",
-            gap: "5px",
-            p: "14px",
+            // gap: "5px",
+            p: "10px",
             // Divider between cards — left border on 2nd and 3rd
             overflow: "hidden",
         }}>
 
-            {/* Row 1 — device name + status badge */}
-            <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0}}>
-                <Typography sx={{fontSize: 11, fontWeight: 700, lineHeight: 1, color: "primary.main"}}>
-                    {name}
-                </Typography>
-                <Box sx={{
-                    display: "flex", alignItems: "center", gap: "3px",
-                    px: "6px", py: "1px",
-                }}>
-                    <Typography sx={{fontSize: 9, fontWeight: 600, color: meta.color, letterSpacing: 0.3}}>
-                        {meta.label}
-                    </Typography>
-                </Box>
-            </Box>
-
-            {/* Row 2 — live power subtitle (mirrors ConsumptionCard's status line) */}
-            <Box style={{display: "flex", flexDirection: "row"}}>
-                <Typography
-                    variant="caption"
-                    sx={{
-                        fontSize: 10,
-                        flexShrink: 0,
-                    }}
-                >
-                    Power:
-                </Typography>
-                <Typography variant="caption" sx={{
-                    fontSize: 10,
-                    flexShrink: 0,
-                    marginLeft: "6px",
-                    color: stats.status === "CHARGING" ? "success.main" : "error.main"
-                }}>
-                    {live.power}
-                </Typography>
-            </Box>
-
-
-            {/* Row 3 — battery icon + percent + bar + mini-stats */}
-            <Box sx={{
-                display: "flex",
-                gap: "8px",
-                alignItems: "center",
-                flexShrink: 0,
-                // paddingLeft: "6px",
-                // paddingRight: "6px"
-            }}>
-                <BatteryBar batteryPercent={Math.round(animPercent)} color={meta.color} status={stats.status}/>
-                {/*<BatteryModuleCard*/}
-                {/*    name={name}*/}
-                {/*    capacityWh={stats.totalWhTrend}*/}
-                {/*    status={stats.status}*/}
-                {/*    soc={animPercent}*/}
-                {/*    temp={live.temp ? live.temp : 0}*/}
-                {/*    voltage={live.busVoltage}*/}
-                {/*    cycles={100}*/}
-                {/*    soh={99}*/}
-                {/*/>*/}
-                <Box sx={{flex: 1, display: "flex", flexDirection: "column", gap: "4px"}}>
-                    <Box sx={{display: "flex", alignItems: "baseline", gap: "2px"}}>
-                        <Typography sx={{fontSize: 20, fontWeight: 700, color: meta.color, lineHeight: 1}}>
-                            {Math.round(animPercent)}
-                        </Typography>
-                        <Typography sx={{fontSize: 10, color: "text.secondary"}}>%</Typography>
-                        {/*<Trend prevValue={stats.percentTrend} value={stats.percent} unit="%"/>*/}
-                    </Box>
-                </Box>
-
-            </Box>
-            <MiniStat label={primaryLabel} value={primaryVal} trend={stats.totalWhTrend} unit="Wh"/>
-            {/* Row 4 — sparkline (flex grows to fill) */}
-            {stats.history?.length > 1 && (
-                <Box sx={{flex: "1 1 auto", minHeight: 0}}>
-                    <Sparkline history={stats.history} color={meta.color}/>
-                    <Typography sx={{fontSize: 8, color: "text.disabled", textAlign: "right"}}>
-                        last 8h
-                    </Typography>
-                </Box>
-            )}
+            <LiquidLevelCard
+                width={130}
+                height={180}
+                level={Math.round(animPercent)}
+                threshold={30}
+                title={name}
+                subtitleTop={stats.status}
+                subtitleBottom={"Power: " + live.power}
+                FooterComp={
+                    <MiniStat label={primaryLabel} value={primaryVal} trend={stats.totalWhTrend} unit="Wh"/>
+                }
+            />
         </Box>
     );
 });
@@ -385,13 +320,13 @@ export const BatteryCardNode = React.memo(({id, data, isConnectable, selected}) 
                     height: "100%",
                     minWidth: width,
                     borderRadius: "12px",
-                    boxShadow: "rgb(25 25 25) 0px 0px 36px 6px inset",
+                    boxShadow: "rgb(30 30 30) 0px 0px 36px 6px inset",
                     backdropFilter: "blur(4px)",
                     position: "relative",
                     overflow: "hidden",
                     display: "flex",
                     flexDirection: "column",
-                    paddingBottom: "12px"
+                    // paddingBottom: "12px"
                 }}
             >
                 <div className="card-glow"/>
@@ -399,14 +334,14 @@ export const BatteryCardNode = React.memo(({id, data, isConnectable, selected}) 
                 {/* Node header — name + settings gear, same layout as carousel node */}
                 <Box sx={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
-                    px: "10px", pt: "8px", pb: "4px",
+                    px: "15px", pt: "6px",
                     flexShrink: 0,
                 }}>
                     <Typography sx={{fontWeight: "bold", fontSize: "12px"}}>
                         {name}
                     </Typography>
                     <IconButton onClick={() => setIsModalOpen(true)} size="small">
-                        <SettingsIcon style={{fontSize: 16}}/>
+                        <SettingsIcon style={{fontSize: 12}}/>
                     </IconButton>
                 </Box>
 
