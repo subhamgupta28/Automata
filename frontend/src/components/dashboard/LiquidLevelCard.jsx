@@ -232,10 +232,11 @@ export default function LiquidLevelCard({
                 height,
                 overflow: "hidden",
                 borderRadius: 3,
-                border: 1,
-                borderColor: critical ? "rgb(255 0 0 / 0.3)" : "rgb(18 18 18 / 0.3)",
+                // border: 1,
+                background: "transparent",
+                // borderColor: critical ? "rgb(255 0 0 / 0.3)" : "rgb(20 40 20 / 0.1)",
                 transition: "border-color .4s",
-                boxShadow: "rgb(30 30 30) 0px 0px 36px 6px inset",
+                boxShadow: critical ? "rgb(200 20 20) 0px 0px 26px 6px inset" : "rgb(20 40 20) 0px 0px 26px 6px inset",
             }}
             role="meter"
             variant="elevated"
@@ -323,7 +324,7 @@ export default function LiquidLevelCard({
                     padding: "4px",
                     height: 50,
                     // py: 2.25,
-                    borderRadius: "0 0 3 3",
+                    borderRadius: "0px 0px 12px 12px",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
