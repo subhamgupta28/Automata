@@ -292,8 +292,8 @@ export default function Exp() {
         }}>
 
             <LiquidLevelCard
-                width={140}
-                height={200}
+                width={100}
+                height={220}
                 level={5}
                 threshold={20}
                 title="Battery"
