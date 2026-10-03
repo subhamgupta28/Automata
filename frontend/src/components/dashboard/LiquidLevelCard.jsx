@@ -1,5 +1,5 @@
 import React, {useEffect, useRef} from "react";
-import {Box, Card, Typography} from "@mui/material";
+import {Box, Card, Chip, Typography} from "@mui/material";
 
 /**
  * LiquidLevelCard
@@ -26,7 +26,7 @@ import {Box, Card, Typography} from "@mui/material";
 const SIZE = 140; // default for both width and height
 
 const PALETTE = {
-    normal: {top: [20, 60, 20], bottom: [15, 60, 15]},
+    normal: {top: [100, 100, 100], bottom: [80, 80, 80]},
     critical: {top: [255, 120, 110], bottom: [150, 15, 25]},
 };
 
@@ -236,7 +236,7 @@ export default function LiquidLevelCard({
                 background: "transparent",
                 // borderColor: critical ? "rgb(255 0 0 / 0.3)" : "rgb(20 40 20 / 0.1)",
                 transition: "border-color .4s",
-                boxShadow: critical ? "rgb(200 20 20) 0px 0px 26px 6px inset" : "rgb(20 40 20) 0px 0px 26px 6px inset",
+                boxShadow: critical ? "rgb(200 20 20) 0px 0px 26px 6px inset" : "rgb(40 40 40) 0px 0px 26px 6px inset",
             }}
             role="meter"
             variant="elevated"
@@ -266,8 +266,12 @@ export default function LiquidLevelCard({
 
             {/* Top subtitle */}
             {subtitleTop && (
-                <Typography
+                <Chip
+                    size="small"
                     noWrap
+                    label={subtitleTop}
+                    variant="outlined"
+                    color={subtitleTop.startsWith("DISCHARGE") ? "success" : "info"}
                     sx={{
                         position: "absolute",
                         top: 6,
@@ -275,14 +279,13 @@ export default function LiquidLevelCard({
                         right: 8,
                         textAlign: "center",
                         fontSize: 11,
-                        lineHeight: 1.3,
+                        // lineHeight: 1.3,
                         color: "#fff",
-                        textShadow: "0 1px 3px rgba(0,0,0,.5)",
+                        // textShadow: "0 1px 3px rgba(0,0,0,.5)",
                         pointerEvents: "none",
                     }}
                 >
-                    {subtitleTop}
-                </Typography>
+                </Chip>
             )}
 
             {/* Title overlay */}
@@ -322,14 +325,15 @@ export default function LiquidLevelCard({
                     right: 0,
                     bottom: 0,
                     padding: "4px",
-                    height: 50,
+                    // height: 50,
                     // py: 2.25,
                     borderRadius: "0px 0px 12px 12px",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: "rgba(0,0,0,.35)",
+                    boxShadow: "rgba(0,0,0,.3) 0px 0px 26px 6px",
+                    backgroundColor: "rgba(0,0,0,.2)",
                     backdropFilter: "blur(2px)",
                 }}
             >

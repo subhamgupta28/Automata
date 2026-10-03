@@ -176,7 +176,7 @@ export const VirtualDevice = React.memo(({id, data, isConnectable, selected}) =>
                 variant="elevated"
                 style={{
                     background: 'transparent',
-                    boxShadow: 'rgb(25 25 25) 0px 0px 36px 10px inset',
+                    boxShadow: 'rgb(30 30 30) 0px 0px 36px 10px inset',
                     // border: `1px solid ${C.border}`,
                     backdropFilter: 'blur(4px)',
                     backgroundColor: 'rgb(0 0 0 / 10%)',
