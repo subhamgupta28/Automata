@@ -167,16 +167,18 @@ function MiniStat({label, value = 0, trend, unit}) {
     const animated = useAnimatedNumber(value);
     return (
         <>
-            <Typography sx={{fontSize: 10, color: "text.secondary"}}>{label}</Typography>
-            <Box style={{display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center"}}>
-                <Typography sx={{fontSize: 10, fontWeight: 600, lineHeight: 1}}>
+            <Box
+                style={{display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3}}>
+                <Typography sx={{fontSize: 11, fontWeight: 400,}}>{label}</Typography>
+                <Typography sx={{fontSize: 11, fontWeight: 600, lineHeight: 1}}>
                     {animated.toFixed(1)}
                     <Typography component="span"
-                                sx={{fontSize: 9, color: "text.secondary", marginRight: "2px"}}> {unit}</Typography>
+                                sx={{fontSize: 10, fontWeight: 400, marginRight: "2px"}}> {unit}</Typography>
                 </Typography>
-                <Trend prevValue={trend} value={value} unit={unit}/>
+
 
             </Box>
+            <Trend prevValue={trend} value={value} unit={unit}/>
         </>
 
     );
@@ -240,7 +242,7 @@ const SingleBatteryCard = React.memo(({deviceId, vid, name, messages}) => {
     const isCharging = stats.status === "CHARGING";
 
     const primaryVal = isCharging ? (stats.chargeTotalWh ?? stats.totalWh) : stats.totalWh;
-    const primaryLabel = isCharging ? "Charged today" : "Energy used";
+    const primaryLabel = isCharging ? "Charged today:" : "Energy used:";
     const peakVal = isCharging ? (stats.chargePeakWh ?? stats.peakWh) : stats.peakWh;
 
     return (
@@ -258,12 +260,12 @@ const SingleBatteryCard = React.memo(({deviceId, vid, name, messages}) => {
 
             <LiquidLevelCard
                 width={130}
-                height={180}
+                height={210}
                 level={Math.round(animPercent)}
                 threshold={30}
                 title={name}
                 subtitleTop={stats.status}
-                subtitleBottom={"Power: " + live.power}
+                subtitleBottom={"Power: " + live.power + " W"}
                 FooterComp={
                     <MiniStat label={primaryLabel} value={primaryVal} trend={stats.totalWhTrend} unit="Wh"/>
                 }
