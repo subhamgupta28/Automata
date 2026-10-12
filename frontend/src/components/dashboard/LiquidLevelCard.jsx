@@ -26,8 +26,8 @@ import {Box, Card, Chip, Typography} from "@mui/material";
 const SIZE = 140; // default for both width and height
 
 const PALETTE = {
-    normal: {top: [100, 100, 100], bottom: [80, 80, 80]},
-    critical: {top: [255, 120, 110], bottom: [150, 15, 25]},
+    normal: {top: [180, 180, 180], bottom: [140, 140, 140]},
+    critical: {top: [255, 120, 110], bottom: [150, 15, 15]},
 };
 
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
@@ -44,6 +44,8 @@ export default function LiquidLevelCard({
                                             subtitleBottom = "",
                                             footerLeft = "",
                                             footerRight = "",
+                                            totalWh = "",
+                                            usedWh = "",
                                             FooterComp
                                         }) {
     const value = Math.min(100, Math.max(0, Number(level) || 0));
@@ -251,18 +253,18 @@ export default function LiquidLevelCard({
             />
 
             {/* Threshold marker */}
-            <Box
-                sx={{
-                    position: "absolute",
-                    left: 0,
-                    right: 0,
-                    bottom: `${threshold}%`,
-                    borderTop: "1px dashed",
-                    borderColor: "error.main",
-                    opacity: 0.6,
-                    pointerEvents: "none",
-                }}
-            />
+            {/*<Box*/}
+            {/*    sx={{*/}
+            {/*        position: "absolute",*/}
+            {/*        left: 0,*/}
+            {/*        right: 0,*/}
+            {/*        bottom: `${threshold}%`,*/}
+            {/*        borderTop: "1px dashed",*/}
+            {/*        borderColor: "error.main",*/}
+            {/*        opacity: 0.6,*/}
+            {/*        pointerEvents: "none",*/}
+            {/*    }}*/}
+            {/*/>*/}
 
             {/* Top subtitle */}
             {subtitleTop && (
@@ -307,7 +309,7 @@ export default function LiquidLevelCard({
                     {title}
                 </Typography>
                 <Typography
-                    variant="h5"
+                    variant="h6"
                     sx={{fontWeight: 700, lineHeight: 1.1, color: "#fff", textShadow: "0 1px 4px rgba(0,0,0,.55)"}}
                 >
                     {Math.round(value)}%
@@ -334,9 +336,40 @@ export default function LiquidLevelCard({
                     justifyContent: "center",
                     boxShadow: "rgba(0,0,0,.3) 0px 0px 26px 6px",
                     backgroundColor: "rgba(0,0,0,.2)",
-                    backdropFilter: "blur(2px)",
+                    // backdropFilter: "blur(7px)",
                 }}
             >
+                {totalWh && (
+                    <Typography
+                        noWrap
+                        sx={{
+                            textAlign: "center",
+                            fontSize: 8,
+                            lineHeight: 1.3,
+                            color: "#fff",
+                            textShadow: "0 1px 3px rgba(0,0,0,.5)",
+                            pointerEvents: "none",
+                        }}
+                    >
+                        Total (Wh): {totalWh}
+                    </Typography>
+                )}
+                {usedWh && (
+                    <Typography
+                        noWrap
+                        sx={{
+                            textAlign: "center",
+                            fontSize: 8,
+                            lineHeight: 1.3,
+                            color: "#fff",
+                            textShadow: "0 1px 3px rgba(0,0,0,.5)",
+                            pointerEvents: "none",
+                            marginBottom: "6px"
+                        }}
+                    >
+                        Used (Wh): {usedWh}
+                    </Typography>
+                )}
                 {subtitleBottom && (
                     <Typography
                         noWrap
