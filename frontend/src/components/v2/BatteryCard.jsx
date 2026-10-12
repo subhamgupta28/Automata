@@ -199,7 +199,7 @@ function TelemetryChip({label, value}) {
 // One card per deviceId. Owns its own stats + live state,
 // wired identically to ConsumptionCard in the carousel.
 
-const SingleBatteryCard = React.memo(({deviceId, vid, name, messages}) => {
+const SingleBatteryCard = React.memo(({deviceId, vid, name, messages, attributes}) => {
     const [stats, setStats] = useState({
         percent: 0, status: "DISCHARGING",
         totalWh: 0, totalWhTrend: 0,
@@ -264,6 +264,8 @@ const SingleBatteryCard = React.memo(({deviceId, vid, name, messages}) => {
                 level={Math.round(animPercent)}
                 threshold={30}
                 title={name}
+                totalWh={attributes?.filter(k => k.key === "energyInfo")[0]?.units}
+                usedWh={live.totalEnergy}
                 subtitleTop={stats.status}
                 subtitleBottom={"Power: " + live.power + " W"}
                 FooterComp={
@@ -349,14 +351,15 @@ export const BatteryCardNode = React.memo(({id, data, isConnectable, selected}) 
 
                 {/* Three battery cards side-by-side */}
                 <Box sx={{display: "flex", flex: 1, minHeight: 0, overflow: "hidden"}}>
-                    {deviceIds.map((deviceId) => {
-                        const deviceName = devices?.find(d => d.id === deviceId)?.name ?? deviceId;
+                    {deviceList?.map((device) => {
+                        // const deviceName = devices?.find(d => d.id === deviceId)?.name ?? deviceId;
                         return (
                             <SingleBatteryCard
-                                key={deviceId}
-                                deviceId={deviceId}
+                                key={device.id}
+                                deviceId={device.id}
                                 vid={id}
-                                name={deviceName}
+                                attributes={device.attributes}
+                                name={device.name}
                                 messages={messages}
                             />
                         );
