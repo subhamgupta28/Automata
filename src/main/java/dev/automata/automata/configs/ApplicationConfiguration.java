@@ -41,11 +41,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ApplicationConfiguration {
     private final UsersRepository userRepository;
 
+    /**
+     * Runs every automation evaluation (event-driven + the 5 s / 10 s ticks). The work is I/O bound (Redis/Mongo),
+     * so it needs real parallelism: with the old core=2 / max=4 / queue=50, a ThreadPoolExecutor only starts threads
+     * 3–4 once 50 tasks are already queued, and CallerRunsPolicy then runs overflow on the ingestion/scheduler thread.
+     * core == max gives immediate parallelism; idle threads are reclaimed. Tune with the properties below.
+     */
     @Bean("automationExecutor")
-    public Executor automationExecutor() {
-        return new ThreadPoolExecutor(
-                2, 4, 30L, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<>(50),
+    public Executor automationExecutor(
+            @Value("${automata.executor.automation.threads:8}") int threads,
+            @Value("${automata.executor.automation.queue:500}") int queue) {
+        ThreadPoolExecutor pool = new ThreadPoolExecutor(
+                threads, threads, 30L, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(queue),
                 new ThreadFactory() {
                     private final AtomicInteger count = new AtomicInteger();
 
@@ -55,6 +63,8 @@ public class ApplicationConfiguration {
                 },
                 new ThreadPoolExecutor.CallerRunsPolicy()
         );
+        pool.allowCoreThreadTimeOut(true);
+        return pool;
     }
 
     @Bean("actionDispatchExecutor")

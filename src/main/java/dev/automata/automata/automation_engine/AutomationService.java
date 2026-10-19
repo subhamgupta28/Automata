@@ -290,7 +290,7 @@ public class AutomationService {
         return;
     }
 
-    @Scheduled(fixedRate = 5_000)
+    @Scheduled(fixedRate = 2_000)
     @FeatureEnabled(value = Feature.PERIODIC_AUTOMATION_SERVICE)
     public void triggerPeriodicAutomations() {
         automationRepository.findEnabledForExecution().stream()
@@ -350,8 +350,7 @@ public class AutomationService {
 
     @Scheduled(fixedRate = 15_000)
     public void pollWledState() {
-        mainService.getAllDevice().stream()
-                .filter(d -> "WLED".equals(d.getType()))
+        deviceRepository.findAllByType("WLED").stream()   // was: load EVERY device, then filter in memory
                 .forEach(d -> new Wled(mqttOutboundChannel, d).publishForInfo(d.getId()));
     }
 

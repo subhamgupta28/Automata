@@ -30,7 +30,7 @@ public class HomeAuthzService {
 
     public HomeAccess requireAccess(String homeId, String userId) {
         String key = cacheKey(homeId, userId);
-        log.info("Checking home access for homeId [{}] and userId [{}]", homeId, userId);
+        log.debug("Checking home access for homeId [{}] and userId [{}]", homeId, userId);
         // Check Redis first
         Object cachedObject = redisTemplate.opsForValue().get(key);
         if (cachedObject != null) {
@@ -41,7 +41,7 @@ public class HomeAuthzService {
         // Miss — hit MongoDB
         HomeAccess access = homeAccessRepo.findByHomeIdAndUserId(homeId, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied or home not found"));
-        log.info("Checking home access for homeId [{}] and userId [{}], not cached in redis, check DB [{}]", homeId, userId, access);
+        log.debug("Home access for homeId [{}] and userId [{}] not cached in redis, loaded from DB [{}]", homeId, userId, access);
         // Cache for 10 minutes
         redisTemplate.opsForValue().set(key, access, Duration.ofMinutes(10));
         return access;

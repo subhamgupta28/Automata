@@ -26,6 +26,7 @@ public class Users implements UserDetails {
     private String firstName;
     private String lastName;
     private String password;
+    @Indexed   // looked up on EVERY authenticated request (UserDetailsService)
     private String email;
     private Instant timestamp;
     private Role role;

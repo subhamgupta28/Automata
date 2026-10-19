@@ -41,7 +41,7 @@ const SUGGESTIONS = {
 };
 
 // Leaf types never get a follow-on placeholder
-const LEAF_TYPES = new Set(['action', 'valueReader']);
+const LEAF_TYPES = new Set(['action']);
 
 // The outgoing source handle for each real node type (used to connect → next placeholder)
 const OUT_HANDLE = (type, nodeId) => ({
@@ -166,7 +166,7 @@ export const PlaceholderNode = ({id, data, isConnectable}) => {
             id: newId,
             type: chosenType,
             position: pos,
-            data: {value: {isNewNode: true, name: chosenType}},
+            data: {},
         };
 
         // ── 2. Optionally build the next placeholder ──────────────────────────

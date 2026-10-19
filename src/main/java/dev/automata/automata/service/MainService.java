@@ -304,14 +304,13 @@ public class MainService {
         var attributes = attributeRepository.findAllByDeviceId(deviceId);
         var attributeMap = attributes.stream()
                 .collect(Collectors.toMap(Attribute::getKey, Function.identity()));
-        System.err.println(attributeMap);
-        System.err.println(device);
-        System.err.println(attributes.size());
         var rootDto = new ArrayList<RootDto>();
-        dataRepository.findAllByDeviceId(deviceId).forEach(d -> {
+        // Bounded: the full history is unbounded (no TTL) — return the latest 500, oldest first as before.
+        var recent = new ArrayList<>(dataRepository.findTop500ByDeviceIdOrderByTimestampDesc(deviceId));
+        java.util.Collections.reverse(recent);
+        recent.forEach(d -> {
             var values = new ArrayList<ValueDto>();
             d.getData().forEach((k, v) -> {
-                System.out.println(k);
                 var attribute = attributeMap.get(k);
                 if (attribute != null) {
                     var valueDto = ValueDto.builder()
@@ -368,7 +367,8 @@ public class MainService {
     public List<Device> getAllDeviceUi(String homeId, Users user) {
         authzService.requireAccess(homeId, user.getId());
         var devices = deviceRepository.findAllByHomeId(homeId);
-        var chartAttr = dashboardChartsRepository.findAll();
+        var chartAttr = chartKeys(dashboardChartsRepository.findByDeviceIdIn(
+                devices.stream().map(Device::getId).toList()));
         var dashboardDevice = deviceDashboardRepository.findAllByHomeId(homeId);
         var dashboardMap = dashboardDevice.stream().collect(Collectors.toMap(Dashboard::getDeviceId, Function.identity()));
 
@@ -392,12 +392,18 @@ public class MainService {
         return deviceRepository.findAll();
     }
 
-    private void getDeviceAttributes(List<DeviceCharts> chartAttr, ArrayList<Device> deviceList, Device device) {
+    /** "deviceId|attributeKey" for every chart row, so attribute visibility is an O(1) lookup. */
+    private static Set<String> chartKeys(List<DeviceCharts> rows) {
+        Set<String> keys = new HashSet<>();
+        rows.forEach(c -> keys.add(c.getDeviceId() + "|" + c.getAttributeKey()));
+        return keys;
+    }
+
+    private void getDeviceAttributes(Set<String> chartAttr, ArrayList<Device> deviceList, Device device) {
         var newAttrs = new ArrayList<Attribute>();
         var attributes = device.getAttributes();
         attributes.forEach(a -> {
-            var at = chartAttr.stream().filter(c -> c.getDeviceId().equals(device.getId()) && c.getAttributeKey().equals(a.getKey())).findFirst();
-            a.setVisible(at.isPresent());
+            a.setVisible(chartAttr.contains(device.getId() + "|" + a.getKey()));
             newAttrs.add(a);
         });
         device.setAttributes(newAttrs);
@@ -414,7 +420,7 @@ public class MainService {
         var dashboardMap = dashboardDevice.stream().collect(Collectors.toMap(Dashboard::getDeviceId, Function.identity()));
 
         var deviceList = new ArrayList<Device>();
-        var chartAttr = dashboardChartsRepository.findByShowChartTrueAndDeviceIdIn(deviceIds);
+        var chartAttr = chartKeys(dashboardChartsRepository.findByShowChartTrueAndDeviceIdIn(deviceIds));
 
         devices.forEach(device -> {
             var dashboard = dashboardMap.get(device.getId());

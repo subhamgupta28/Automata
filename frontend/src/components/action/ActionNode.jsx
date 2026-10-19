@@ -44,8 +44,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
         nodeId: id
     };
     const [selectedDevice, setSelectedDevice] = useState({id: actionData.deviceId, name: ''});
-    const {devices, loading, error} = useCachedDevices();
-    const [name, setName] = useState(actionData.name);
+    const {devices} = useCachedDevices();
     const [valueOptions, setValueOptions] = useState(["op1", "op2"]);
     const actionKeys = selectedDevice.attributes && selectedDevice.attributes.filter(f => f.type.toString().startsWith("ACTION"));
     const [value, setValue] = useState(actionData.data);
@@ -78,7 +77,6 @@ export const ActionNode = ({id, data, isConnectable}) => {
     useEffect(() => {
         const ad = data.actionData;
         if (ad) {
-            setName(ad.name);
             setValue(ad.data);
             setKey(ad.key);
             setOrder(ad.order || 1);
@@ -93,7 +91,7 @@ export const ActionNode = ({id, data, isConnectable}) => {
                 setSelectedDevice(devices[0]);
             }
         }
-    }, [data.value, devices, data.actionData])
+    }, [devices, data.actionData])
     const handleTriggerKey = (e, select) => {
         if (select === 'name') {
             // setName(e.target.value);
@@ -185,9 +183,8 @@ export const ActionNode = ({id, data, isConnectable}) => {
     }
 
     const selectDevice = (e) => {
-        const {name, value} = e.target;
+        const {value} = e.target;
         let dev = devices.filter((d) => d.id === value)[0];
-        setName(() => selectedDevice.name);
         setSelectedDevice(dev);
     }
 

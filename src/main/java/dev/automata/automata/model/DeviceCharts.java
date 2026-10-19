@@ -19,9 +19,11 @@ public class DeviceCharts {
 
     @Id
     private String id;
+    @Indexed
     private String deviceId;
     private boolean showChart;
     private String attributeKey;
+    @Indexed
     private String homeId;
     @Indexed
     @LastModifiedDate

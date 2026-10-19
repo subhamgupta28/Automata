@@ -9,7 +9,6 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Component;
 
@@ -37,9 +36,6 @@ public class ScheduledAutomationManager {
     // ScheduledFuture, but range/solar registration can produce 2+ jobs per
     // automation — the old single-value map silently dropped all but one).
     private final Map<String, List<ScheduledFuture<?>>> scheduledJobs = new ConcurrentHashMap<>();
-
-    // FIX 3: interval (seconds) for the mixed data+schedule periodic re-check tick.
-    private static final long MIXED_AUTOMATION_TICK_MS = 15_000L;
 
     // ── Startup: register all schedule-only automations ──────────────────
 
@@ -255,53 +251,9 @@ public class ScheduledAutomationManager {
     }
 
 
-    // ── FIX 3: periodic re-check for MIXED data+schedule automations ──────
-    //
-    // hasOnlyScheduledConditions() only registers pure-schedule automations
-    // above (init()/register()). An automation like "Light On" — a DURATION
-    // distance gate feeding three scheduled leaf branches — is neither pure
-    // schedule (fails hasOnlyScheduledConditions, the gate is data-driven)
-    // nor purely data-driven (hasAnyScheduledConditions is true). Without a
-    // periodic tick, its internal schedule windows (e.g. node_condition_16
-    // closing at 01:40 AM) only get re-evaluated whenever the distance sensor
-    // happens to publish a new reading — which could be minutes or hours
-    // late relative to the actual window boundary.
-    //
-    // This tick finds exactly that middle category and re-fires them on a
-    // short fixed interval using the existing PeriodicCheckEvent path, with
-    // the automation's last known trigger-device payload (so DURATION/edge
-    // memory isn't disturbed by a synthetic empty payload).
-
-    @Scheduled(fixedRate = MIXED_AUTOMATION_TICK_MS)
-    public void tickMixedAutomations() {
-        List<Automation> mixed = automationRepository.findAll().stream()
-                .filter(a -> Boolean.TRUE.equals(a.getIsEnabled()))
-                .filter(this::isMixedDataAndSchedule)
-                .toList();
-
-        if (mixed.isEmpty()) return;
-
-        for (Automation automation : mixed) {
-            try {
-                fireAutomation(automation, "periodic-mixed-tick");
-            } catch (Exception e) {
-                log.error("❌ [mixed-tick] Failed for '{}': {}",
-                        automation.getName(), e.getMessage(), e);
-            }
-        }
-        log.debug("⏱️ [mixed-tick] Re-checked {} mixed data+schedule automation(s)", mixed.size());
-    }
-
-    /**
-     * True if the automation has at least one scheduled condition AND at
-     * least one non-scheduled (data-driven) condition somewhere in its tree —
-     * i.e. it falls in the gap between hasOnlyScheduledConditions() (pure
-     * schedule, handled by cron jobs above) and isPurelyDataDriven() (handled
-     * by live device events only).
-     */
-    private boolean isMixedDataAndSchedule(Automation a) {
-        return hasAnyScheduledConditions(a) && !hasOnlyScheduledConditions(a);
-    }
+    // (The 15 s "mixed automation tick" was removed: it published PeriodicCheckEvent, which has no listener,
+    //  after loading every automation with findAll(). AutomationService.triggerPeriodicAutomations() (5 s)
+    //  already evaluates anything with scheduled conditions, mixed ones included.)
 
 
     // ── Execution ─────────────────────────────────────────────────────────

@@ -1,4 +1,10 @@
-import {Handle, Position, useNodeConnections, useNodes, useReactFlow} from "@xyflow/react";
+import {
+    Handle,
+    Position,
+    useNodeConnections,
+    useNodes,
+    useReactFlow,
+} from "@xyflow/react";
 import React, {useEffect, useState} from "react";
 import dayjs from "dayjs";
 import {
@@ -10,12 +16,12 @@ import {
     InputLabel,
     MenuItem,
     Select,
-    TextField
+    TextField,
 } from "@mui/material";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
-import {DesktopTimePicker, LocalizationProvider, TimePicker} from "@mui/x-date-pickers";
+import {LocalizationProvider, TimePicker} from "@mui/x-date-pickers";
 import {AdapterDayjs} from "@mui/x-date-pickers/AdapterDayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import ListItemText from "@mui/material/ListItemText";
@@ -38,14 +44,12 @@ const conditionStyle = {
 export const ConditionNode = ({id, data, isConnectable}) => {
     const conditionData = data.conditionData || {
         condition: 'equal',
-        valueType: 'numeric', // time
         below: '0',
         above: '0',
-        value: '0', // numeric or time based on valueType
+        value: '0',
         triggerKey: '',
         time: '2:20:05 AM',
         isExact: true,
-        type: 'state',
         scheduleType: 'at',
         fromTime: '2:20:05 AM',
         toTime: '2:20:05 AM',
@@ -77,7 +81,6 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     const [below, setBelow] = useState(conditionData.below);
     const [isRange, setIsRange] = useState(conditionData.isExact);
     const [conditionValue, setConditionValue] = useState(conditionData.value);
-    const [valueType, setValueType] = useState(conditionData.valueType);
     const [solarType, setSolarType] = useState(conditionData.solarType);
     const [intervalMinutes, setIntervalMinutes] = useState(conditionData.intervalMinutes);
     const [offsetMinutes, setOffsetMinutes] = useState(conditionData.offsetMinutes);
@@ -102,7 +105,6 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     const [time, setTime] = useState(
         conditionData.time ? dayjs(conditionData.time, "hh:mm:ss A") : dayjs()
     );
-    const [type, setType] = useState(conditionData.type);
 
     const connections = useNodeConnections({handleType: 'target'});
     const nodes = useNodes();
@@ -112,21 +114,6 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         setNodes(nodes => nodes.filter(node => node.id !== nodeId));
         setEdges(eds => eds.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
     };
-
-    // ── Derive available attributes for the triggerKey dropdown ──────────
-    // If condition has its own deviceId → show that device's attributes
-    // Otherwise → show primary trigger device's attributes (existing behaviour)
-    const availableAttributes = React.useMemo(() => {
-        if (conditionDeviceId && devices) {
-            const dev = devices.find(d => d.id === conditionDeviceId);
-            return dev?.attributes || [];
-        }
-        // Fall back to primary trigger device attributes
-        const triggerDev = triggerData?.deviceId && devices
-            ? devices.find(d => d.id === triggerData.deviceId)
-            : null;
-        return triggerDev?.attributes || [];
-    }, [conditionDeviceId, triggerData?.deviceId, devices]);
 
     // ── Secondary devices available in the trigger node ───────────────────
     const secondaryDevices = React.useMemo(() => {
@@ -145,7 +132,6 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         if (cd.triggerKey !== triggerKey) setTriggerKey(cd.triggerKey);
         if (cd.isExact !== isRange) setIsRange(cd.isExact);
         if (cd.value !== conditionValue) setConditionValue(cd.value);
-        if (cd.type !== type) setType(cd.type);
         if (cd.fanoutMode !== fanoutMode) setFanoutMode(cd.fanoutMode);
         if ((cd.deviceId || '') !== conditionDeviceId) setConditionDeviceId(cd.deviceId || '');
         const newTime = dayjs(cd.time, "hh:mm:ss A");
@@ -162,7 +148,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
     useEffect(() => {
         const td = conditionNodes.length > 0 && conditionNodes[0].data.triggerData
             ? conditionNodes[0].data.triggerData
-            : {keys: [], value: '', name: '', deviceId: '', type: '', sources: []};
+            : {keys: [], sources: []};
         if (condition === 'stale') {
             // stale conditions always read the last_seen field
             setTriggerKey('last_seen');
@@ -184,7 +170,6 @@ export const ConditionNode = ({id, data, isConnectable}) => {
         }
 
         setTriggerData(td);
-        setType(td.type);
     }, [conditionNodes, id, conditionDeviceId, condition]);
 
     // When condition device changes, reset triggerKey
@@ -199,25 +184,13 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             handle: conn.sourceHandle
         }));
 
-        let belowVal = below;
-        let aboveVal = above;
-        let equalVal = conditionValue;
-
-        if (valueType === 'time') {
-            belowVal = toTime.format("hh:mm:ss A");
-            aboveVal = fromTime.format("hh:mm:ss A");
-            equalVal = time.format("hh:mm:ss A");
-        }
-
         const newData = {
             nodeId: id,
             condition,
             triggerKey,
-            valueType,
-            below: belowVal,
-            above: aboveVal,
-            type,
-            value: equalVal,
+            below,
+            above,
+            value: conditionValue,
             isExact: isRange,
             time: time.format("hh:mm:ss A"),
             scheduleType: scheduleType !== undefined ? scheduleType : '',
@@ -242,7 +215,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             updateNodeData(id, {conditionData: newData});
         }
     }, [
-        condition, conditionValue, below, above, isRange, time, type,
+        condition, conditionValue, below, above, isRange, time,
         triggerKey, scheduleType, fromTime, toTime, days, solarType,
         offsetMinutes, intervalMinutes, durationMinutes, connections,
         conditionDeviceId,
@@ -253,7 +226,6 @@ export const ConditionNode = ({id, data, isConnectable}) => {
 
     const handleChange = (e, select) => {
         let value = e?.target?.value ?? e;
-        console.log("value", e)
         if (select === 'value') {
             setConditionValue(value);
         } else if (select === 'condition') {
@@ -263,8 +235,7 @@ export const ConditionNode = ({id, data, isConnectable}) => {
             setAbove(value);
         } else if (select === 'below') {
             setBelow(value);
-        } else if (select === 'valueType') setValueType(value);
-        else if (select === 'time') {
+        } else if (select === 'time') {
             if (e && e.isValid()) setTime(e);
         }
     };
@@ -312,7 +283,6 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 isConnectable={isConnectable}
             />
 
-
             <div style={{display: 'flex', justifyContent: 'center', gap: '6px', margin: '4px', alignItems: 'center'}}>
                 <Chip size="small" color="primary" label={"Condition"}/>
                 <Chip size="small" label={"Duration: " + durationMinutes}/>
@@ -335,196 +305,170 @@ export const ConditionNode = ({id, data, isConnectable}) => {
                 </AccordionSummary>
 
                 <AccordionDetails>
-                    {type === 'time' ? (
-                        <div style={{marginTop: '18px'}}>
-                            <Typography variant="body2" sx={{margin: 1}}>
-                                Run automation at specific time of the day
-                            </Typography>
-                            <LocalizationProvider dateAdapter={AdapterDayjs}>
-                                <DesktopTimePicker format="hh:mm:ss A" value={time}
-                                                   onChange={(e) => handleChange(e, 'time')}/>
-                            </LocalizationProvider>
-                        </div>
-                    ) : (
-                        <div style={{marginBottom: '18px'}}>
-                            {/*<FormControl fullWidth className='nodrag' sx={{mb: 2, mt: 2}}>*/}
-                            {/*    <InputLabel>Value Type</InputLabel>*/}
-                            {/*    <Select*/}
-                            {/*        value={valueType}*/}
-                            {/*        size='small'*/}
-                            {/*        label="Value Type"*/}
-                            {/*        onChange={(e) => handleChange(e, 'valueType')}*/}
-                            {/*        variant='outlined'*/}
-                            {/*    >*/}
-                            {/*        <MenuItem value={'numeric'}>Numeric</MenuItem>*/}
-                            {/*        <MenuItem value={'time'}>Time Based</MenuItem>*/}
-                            {/*    </Select>*/}
-                            {/*</FormControl>*/}
-                            <FormControl fullWidth className='nodrag' sx={{mb: 2, mt: 2}}>
-                                <InputLabel>Condition</InputLabel>
-                                <Select
-                                    value={condition}
-                                    size='small'
-                                    label="Condition"
-                                    onChange={(e) => handleChange(e, 'condition')}
-                                    variant='outlined'
-                                >
-                                    <MenuItem value={'equal'}>equal to</MenuItem>
-                                    <MenuItem value={'range'}>between</MenuItem>
-                                    <MenuItem value={'above'}>above</MenuItem>
-                                    <MenuItem value={'below'}>below</MenuItem>
-                                    <MenuItem value={'scheduled'}>Scheduled</MenuItem>
-                                    <MenuItem value={'stale'}>Device offline / stale</MenuItem>
-                                </Select>
-                            </FormControl>
+                    <div style={{marginBottom: '18px'}}>
+                        <FormControl fullWidth className='nodrag' sx={{mb: 2, mt: 2}}>
+                            <InputLabel>Condition</InputLabel>
+                            <Select
+                                value={condition}
+                                size='small'
+                                label="Condition"
+                                onChange={(e) => handleChange(e, 'condition')}
+                                variant='outlined'
+                            >
+                                <MenuItem value={'equal'}>equal to</MenuItem>
+                                <MenuItem value={'range'}>between</MenuItem>
+                                <MenuItem value={'above'}>above</MenuItem>
+                                <MenuItem value={'below'}>below</MenuItem>
+                                <MenuItem value={'scheduled'}>Scheduled</MenuItem>
+                                <MenuItem value={'stale'}>Device offline / stale</MenuItem>
+                            </Select>
+                        </FormControl>
 
-                            {isScheduled ? (
-                                <div>
-                                    <FormControl className='nodrag' fullWidth size="small" sx={{mb: 2}}>
-                                        <InputLabel>Schedule Type</InputLabel>
-                                        <Select
-                                            variant="outlined"
-                                            value={scheduleType}
-                                            label="Schedule Type"
-                                            onChange={(e) => setScheduleType(e.target.value)}
-                                        >
-                                            <MenuItem value="at">At specific time</MenuItem>
-                                            <MenuItem value="range">Between time range</MenuItem>
-                                            <MenuItem value="solar">Sun-based</MenuItem>
-                                            <MenuItem value="interval">Repeat every</MenuItem>
-                                        </Select>
-                                    </FormControl>
+                        {isScheduled ? (
+                            <div>
+                                <FormControl className='nodrag' fullWidth size="small" sx={{mb: 2}}>
+                                    <InputLabel>Schedule Type</InputLabel>
+                                    <Select
+                                        variant="outlined"
+                                        value={scheduleType}
+                                        label="Schedule Type"
+                                        onChange={(e) => setScheduleType(e.target.value)}
+                                    >
+                                        <MenuItem value="at">At specific time</MenuItem>
+                                        <MenuItem value="range">Between time range</MenuItem>
+                                        <MenuItem value="solar">Sun-based</MenuItem>
+                                        <MenuItem value="interval">Repeat every</MenuItem>
+                                    </Select>
+                                </FormControl>
 
-                                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                                        {scheduleType === 'at' && (
-                                            <TimePicker label="Time" value={time}
-                                                        onChange={(e) => e?.isValid() && setTime(e)}/>
-                                        )}
-                                        {scheduleType === 'range' && (
-                                            <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                                                <TimePicker label="From" value={fromTime}
-                                                            onChange={(e) => e?.isValid() && setFromTime(e)}/>
-                                                <TimePicker label="To" value={toTime}
-                                                            onChange={(e) => e?.isValid() && setToTime(e)}/>
-                                            </div>
-                                        )}
-                                    </LocalizationProvider>
-
-                                    {scheduleType === 'solar' && (
-                                        <div>
-                                            <FormControl className='nodrag' fullWidth size="small" sx={{mb: 2}}>
-                                                <InputLabel>Event</InputLabel>
-                                                <Select variant="outlined" value={solarType} label="Event"
-                                                        onChange={(e) => setSolarType(e.target.value)}>
-                                                    <MenuItem value="sunrise">Sunrise</MenuItem>
-                                                    <MenuItem value="sunset">Sunset</MenuItem>
-                                                </Select>
-                                            </FormControl>
-                                            <TextField size="small" label="Offset (minutes)" type="number"
-                                                       value={offsetMinutes}
-                                                       onChange={(e) => setOffsetMinutes(Number(e.target.value))}
-                                                       helperText="Negative = before event"/>
+                                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                    {scheduleType === 'at' && (
+                                        <TimePicker label="Time" value={time}
+                                                    onChange={(e) => e?.isValid() && setTime(e)}/>
+                                    )}
+                                    {scheduleType === 'range' && (
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+                                            <TimePicker label="From" value={fromTime}
+                                                        onChange={(e) => e?.isValid() && setFromTime(e)}/>
+                                            <TimePicker label="To" value={toTime}
+                                                        onChange={(e) => e?.isValid() && setToTime(e)}/>
                                         </div>
                                     )}
+                                </LocalizationProvider>
 
-                                    {scheduleType === 'interval' && (
-                                        <>
-                                            <TextField size="small" label="Run every (minutes)" type="number"
-                                                       value={intervalMinutes}
-                                                       onChange={(e) => setIntervalMinutes(Number(e.target.value))}/>
-                                            <TextField size="small" label="Run for (minutes)" type="number"
-                                                       value={durationMinutes}
-                                                       onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                                                       sx={{mt: 2}}/>
-                                        </>
-                                    )}
-
-
-                                    <FormControl className='nodrag' fullWidth size="small" sx={{mt: 2}}>
-                                        <InputLabel>Days</InputLabel>
-                                        <Select variant="outlined" multiple label="Days" value={days}
-                                                onChange={handleDaysChange}
-                                                renderValue={(selected) => selected.join(', ')}>
-                                            {['Everyday', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                                                <MenuItem key={day} value={day}>
-                                                    <Checkbox checked={days.indexOf(day) > -1}/>
-                                                    <ListItemText primary={day}/>
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                    </FormControl>
-                                </div>
-                            ) : (
-                                <div>
-                                    {/* ── Device override picker ────────────────────────────
-                                        Only shown when the trigger has secondary devices.
-                                        Lets user say "read 'lux' from the light sensor,
-                                        not from the primary knock device."
-                                    ─────────────────────────────────────────────────────── */}
-                                    {hasSecondaryDevices && (
-                                        <FormControl fullWidth size="small" className='nodrag' sx={{mb: 2}}>
-                                            <InputLabel>Read data from</InputLabel>
-                                            <Select
-                                                variant="outlined"
-                                                value={conditionDeviceId}
-                                                label="Read data from"
-                                                onChange={(e) => handleConditionDeviceChange(e.target.value)}
-                                            >
-                                                <MenuItem value="">
-                                                    <em>Primary device (default)</em>
-                                                </MenuItem>
-                                                {secondaryDevices.map(s => {
-                                                    const dev = devices?.find(d => d.id === s.deviceId);
-                                                    return dev ? (
-                                                        <MenuItem key={dev.id} value={dev.id}>
-                                                            {dev.name}
-                                                        </MenuItem>
-                                                    ) : null;
-                                                })}
+                                {scheduleType === 'solar' && (
+                                    <div>
+                                        <FormControl className='nodrag' fullWidth size="small" sx={{mb: 2}}>
+                                            <InputLabel>Event</InputLabel>
+                                            <Select variant="outlined" value={solarType} label="Event"
+                                                    onChange={(e) => setSolarType(e.target.value)}>
+                                                <MenuItem value="sunrise">Sunrise</MenuItem>
+                                                <MenuItem value="sunset">Sunset</MenuItem>
                                             </Select>
                                         </FormControl>
+                                        <TextField size="small" label="Offset (minutes)" type="number"
+                                                   value={offsetMinutes}
+                                                   onChange={(e) => setOffsetMinutes(Number(e.target.value))}
+                                                   helperText="Negative = before event"/>
+                                    </div>
+                                )}
+
+                                {scheduleType === 'interval' && (
+                                    <>
+                                        <TextField size="small" label="Run every (minutes)" type="number"
+                                                   value={intervalMinutes}
+                                                   onChange={(e) => setIntervalMinutes(Number(e.target.value))}/>
+                                        <TextField size="small" label="Run for (minutes)" type="number"
+                                                   value={durationMinutes}
+                                                   onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                                                   sx={{mt: 2}}/>
+                                    </>
+                                )}
+
+                                <FormControl className='nodrag' fullWidth size="small" sx={{mt: 2}}>
+                                    <InputLabel>Days</InputLabel>
+                                    <Select variant="outlined" multiple label="Days" value={days}
+                                            onChange={handleDaysChange}
+                                            renderValue={(selected) => selected.join(', ')}>
+                                        {['Everyday', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                                            <MenuItem key={day} value={day}>
+                                                <Checkbox checked={days.indexOf(day) > -1}/>
+                                                <ListItemText primary={day}/>
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </div>
+                        ) : (
+                            <div>
+                                {/* ── Device override picker ────────────────────────────
+                                    Only shown when the trigger has secondary devices.
+                                    Lets user say "read 'lux' from the light sensor,
+                                    not from the primary knock device."
+                                ─────────────────────────────────────────────────────── */}
+                                {hasSecondaryDevices && (
+                                    <FormControl fullWidth size="small" className='nodrag' sx={{mb: 2}}>
+                                        <InputLabel>Read data from</InputLabel>
+                                        <Select
+                                            variant="outlined"
+                                            value={conditionDeviceId}
+                                            label="Read data from"
+                                            onChange={(e) => handleConditionDeviceChange(e.target.value)}
+                                        >
+                                            <MenuItem value="">
+                                                <em>Primary device (default)</em>
+                                            </MenuItem>
+                                            {secondaryDevices.map(s => {
+                                                const dev = devices?.find(d => d.id === s.deviceId);
+                                                return dev ? (
+                                                    <MenuItem key={dev.id} value={dev.id}>
+                                                        {dev.name}
+                                                    </MenuItem>
+                                                ) : null;
+                                            })}
+                                        </Select>
+                                    </FormControl>
+                                )}
+
+                                <LocalizationProvider dateAdapter={AdapterDayjs}>
+
+                                    {/* ── Value inputs ─────────────────────────────────── */}
+                                    {condition === 'stale' ? (
+                                        <TextField
+                                            size='small'
+                                            label="Offline threshold (minutes)"
+                                            type="number"
+                                            fullWidth
+                                            value={conditionValue}
+                                            onChange={(e) => handleChange(e, 'value')}
+                                            helperText="Fire if no data received for longer than this"
+                                            inputProps={{min: 1}}
+                                        />
+                                    ) : (isRange || condition === 'above' || condition === 'below') ? (
+                                        <TextField size='small' label="Value" fullWidth
+                                                   value={conditionValue}
+                                                   onChange={(e) => handleChange(e, 'value')}/>
+                                    ) : (
+                                        <div style={{display: 'flex', gap: '10px'}}>
+                                            <TextField size='small' label="Below" fullWidth value={below}
+                                                       onChange={(e) => handleChange(e, 'below')}
+                                                       sx={{mb: 2}}/>
+                                            <TextField size='small' label="Above" fullWidth value={above}
+                                                       onChange={(e) => handleChange(e, 'above')}/>
+                                        </div>
                                     )}
-
-                                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-
-                                        {/* ── Value inputs ─────────────────────────────────── */}
-                                        {condition === 'stale' ? (
-                                            <TextField
-                                                size='small'
-                                                label="Offline threshold (minutes)"
-                                                type="number"
-                                                fullWidth
-                                                value={conditionValue}
-                                                onChange={(e) => handleChange(e, 'value')}
-                                                helperText="Fire if no data received for longer than this"
-                                                inputProps={{min: 1}}
-                                            />
-                                        ) : (isRange || condition === 'above' || condition === 'below') ? (
-                                            <TextField size='small' label="Value" fullWidth
-                                                       value={conditionValue}
-                                                       onChange={(e) => handleChange(e, 'value')}/>
-                                        ) : (
-                                            <div style={{display: 'flex', gap: '10px'}}>
-                                                <TextField size='small' label="Below" fullWidth value={below}
-                                                           onChange={(e) => handleChange(e, 'below')}
-                                                           sx={{mb: 2}}/>
-                                                <TextField size='small' label="Above" fullWidth value={above}
-                                                           onChange={(e) => handleChange(e, 'above')}/>
-                                            </div>
-                                        )}
-                                    </LocalizationProvider>
-                                    <TextField
-                                        size="small" fullWidth type="number"
-                                        label="Wait before turning off (seconds)"
-                                        value={durationMinutes}
-                                        onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                                        helperText="Grace period after this condition goes false before negative actions fire. Stays as-is if it becomes true again within this window. 0 = fire immediately."
-                                        sx={{mt: 2}}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                </LocalizationProvider>
+                                <TextField
+                                    size="small" fullWidth type="number"
+                                    label="Wait before turning off (seconds)"
+                                    value={durationMinutes}
+                                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                                    helperText="Grace period after this condition goes false before negative actions fire. Stays as-is if it becomes true again within this window. 0 = fire immediately."
+                                    sx={{mt: 2}}
+                                />
+                            </div>
+                        )}
+                    </div>
                     {/* Memory Policy — shown for non-scheduled conditions only */}
                     {!isScheduled && (
                         <div>

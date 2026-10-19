@@ -5,7 +5,11 @@ import dev.automata.automata.repository.RecordingBucketRepository;
 import dev.automata.automata.repository.RecordingSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -32,6 +36,14 @@ public class RecordingSessionService {
     private final RecordingBucketRepository bucketRepository;
     private final RecordingBufferService bufferService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final MongoTemplate mongoTemplate;
+
+    /**
+     * Devices that some PENDING/ACTIVE session watches via its start condition — the same predicate as
+     * {@code findPendingOrActiveByConditionDevice}. Lets evaluateConditions() skip its Mongo query for the
+     * (overwhelmingly common) case of a device nothing is watching. null until first loaded.
+     */
+    private volatile Set<String> watchedDevices;
 
     // ──────────────────────────────────────────────────────────────
     // CRUD / MANUAL TRIGGER
@@ -62,6 +74,7 @@ public class RecordingSessionService {
                 .build();
 
         session = sessionRepository.save(session);
+        refreshWatchedDevices();   // new watcher takes effect immediately on this node
         log.info("📋 [recording] Session '{}' created (type={}, devices={})",
                 session.getId(), type, deviceIds);
 
@@ -180,6 +193,14 @@ public class RecordingSessionService {
      * @param payload  raw MQTT payload
      */
     public void evaluateConditions(String deviceId, Map<String, Object> payload) {
+        Set<String> watched = watchedDevices;
+        if (watched == null) {
+            refreshWatchedDevices();
+            watched = watchedDevices;
+        }
+        // Definitely unwatched → nothing to evaluate. A stale entry only costs the original query below.
+        if (watched != null && !watched.contains(deviceId)) return;
+
         List<RecordingSession> candidates =
                 sessionRepository.findPendingOrActiveByConditionDevice(deviceId);
 
@@ -209,6 +230,20 @@ public class RecordingSessionService {
                 log.error("❌ [recording] Condition eval error for session '{}': {}",
                         session.getId(), e.getMessage());
             }
+        }
+    }
+
+    /** Rebuilds the watched-device set; also runs every 5 s so other nodes' changes are picked up. */
+    @Scheduled(fixedDelay = 5_000)
+    public void refreshWatchedDevices() {
+        try {
+            Query q = Query.query(Criteria.where("status").in("PENDING", "ACTIVE")
+                    .and("startCondition.deviceId").exists(true));
+            watchedDevices = new HashSet<>(mongoTemplate.findDistinct(
+                    q, "startCondition.deviceId", RecordingSession.class, String.class));
+        } catch (Exception e) {
+            log.warn("[recording] could not refresh watched devices — falling back to per-message query: {}", e.getMessage());
+            watchedDevices = null;   // null ⇒ evaluateConditions() keeps the original behaviour
         }
     }
 

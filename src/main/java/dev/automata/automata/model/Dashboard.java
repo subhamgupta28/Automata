@@ -21,12 +21,14 @@ public class Dashboard {
     @Id
     private String id;
 
+    @Indexed
     private String deviceId;
     private double x;
     private double y;
     private boolean showCharts;
     private boolean analytics;
     private boolean showInDashboard;
+    @Indexed
     private String homeId;
     @Indexed
     @LastModifiedDate

@@ -7,9 +7,18 @@ import {
     ReactFlow,
     useEdgesState,
     useNodesState,
-    useReactFlow
+    useReactFlow,
 } from "@xyflow/react";
-import React, {createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState} from "react";
+import React, {
+    createContext,
+    memo,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import {
     disableAutomation,
     getActions,
@@ -49,21 +58,16 @@ import {
     Typography,
 } from "@mui/material";
 import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemText from "@mui/material/ListItemText";
+
 import CustomEdge from "./CustomEdge.jsx";
 import '@xyflow/react/dist/style.css';
 import {TriggerNode} from "./TriggerNode.jsx";
 import {ActionNode} from "./ActionNode.jsx";
 import {ConditionNode} from "./ConditionNode.jsx";
-import {ValueReaderNode} from "./ValueReaderNode.jsx";
-import {And, Or} from "./Conditions.jsx";
 import {
-    AbTestDialog,
     AutomationListItemWithActions,
     AutomationPanelButtons,
-    SceneManagerDialog,
-    VersionHistoryDialog
+    VersionHistoryDialog,
 } from "./AutomationFeatures.jsx";
 import {PlaceholderNode} from "./PlaceHolderNode.jsx";
 import {useSnackbar} from "notistack";
@@ -465,60 +469,14 @@ function evalCondition(cond, payload, wasActive, simMin, simDay) {
 
 function runEvaluate(automation, payload, wasActive, simMin, simDay) {
     const ctx = {};
-    const operatorIds = new Set((automation.operators || []).map(o => o.nodeId));
-    const triggerConds = [], gateConds = [];
+    const conds = (automation.conditions || []).filter(c => c.enabled);
 
-    (automation.conditions || []).forEach(c => {
-        if (!c.enabled) return;
-        const isGate = c.previousNodeRef?.some(r => operatorIds.has(r.nodeId));
-        isGate ? gateConds.push(c) : triggerConds.push(c);
-    });
-
-    triggerConds.forEach(c => {
+    conds.forEach(c => {
         const {result, detail} = evalCondition(c, payload, wasActive, simMin, simDay);
-        ctx[c.nodeId] = {id: c.nodeId, result, detail, contributors: new Set([c.nodeId]), type: 'condition', cond: c};
+        ctx[c.nodeId] = {id: c.nodeId, result, detail, type: 'condition', cond: c};
     });
 
-    (automation.operators || []).forEach(op => {
-        const inputs = (op.previousNodeRef || []).map(r => ctx[r.nodeId]).filter(Boolean);
-        let result, contributors = new Set();
-        if (op.logicType === 'OR') {
-            result = inputs.some(n => n.result);
-            inputs.filter(n => n.result).forEach(n => n.contributors.forEach(c => contributors.add(c)));
-        } else {
-            result = inputs.every(n => n.result);
-            inputs.forEach(n => n.contributors.forEach(c => contributors.add(c)));
-        }
-        const sum = inputs.map(n => `${n.id.split('_').pop()}=${n.result}`).join(', ');
-        ctx[op.nodeId] = {
-            id: op.nodeId,
-            result,
-            contributors,
-            type: 'operator',
-            op,
-            detail: `${op.logicType}([${sum}]) → ${result ? 'TRUE' : 'FALSE'}`
-        };
-    });
-
-    gateConds.forEach(c => {
-        const parentTrue = (c.previousNodeRef || []).some(r => ctx[r.nodeId]?.result);
-        const {result: cr, detail} = evalCondition(c, payload, wasActive, simMin, simDay);
-        const result = parentTrue && cr;
-        ctx[c.nodeId] = {
-            id: c.nodeId, result,
-            detail: parentTrue ? detail : `⛔ gate blocked — ${detail}`,
-            contributors: new Set([c.nodeId]), type: 'gate', cond: c, durationMinutes: c.durationMinutes || 0,
-        };
-    });
-
-    const ops = automation.operators || [];
-    let root = null;
-    if (ops.length > 0) {
-        const refIds = new Set(ops.flatMap(o => (o.previousNodeRef || []).map(r => r.nodeId)).filter(i => operatorIds.has(i)));
-        root = ctx[(ops.find(o => !refIds.has(o.nodeId)) || ops[ops.length - 1]).nodeId];
-    } else if (triggerConds.length > 0) {
-        root = ctx[triggerConds[0].nodeId];
-    }
+    const root = conds.length > 0 ? ctx[conds[0].nodeId] : null;
 
     const trueNodes = new Set(Object.values(ctx).filter(n => n.result).map(n => n.id));
     const falseNodes = new Set(Object.values(ctx).filter(n => !n.result).map(n => n.id));
@@ -555,14 +513,11 @@ const VERDICT_META = {
     NOT_MET: {icon: '💤', color: '#444', label: 'NOT MET', stateMsg: 'state unchanged'},
 };
 
-const NODE_TYPE_COLOR = {condition: T.blue, operator: T.orange, gate: T.yellow};
 
 // Node trace row
 function NodeRow({node}) {
-    const tc = NODE_TYPE_COLOR[node.type] || T.blue;
-    const typeLabel = node.type === 'gate'
-        ? `GATE${node.durationMinutes > 0 ? ` (${node.durationMinutes}m)` : ''}`
-        : node.type.toUpperCase();
+    const tc = T.blue;
+    const typeLabel = node.type.toUpperCase();
 
     return (
         <Box sx={{
@@ -998,21 +953,6 @@ function TestHarnessDialog({open, automation, onClose}) {
 }
 
 // ─── Automation List Item ─────────────────────────────────────────────────────
-function AutomationListItem({a, onOpen}) {
-    return (
-        <ListItem variant="outlined" component={Card} key={a.id}
-                  style={{
-                      padding: '6px', marginTop: '8px', background: 'transparent',
-                      backdropFilter: 'blur(6px)', borderColor: '#ffffff', backgroundColor: 'rgb(255 255 255 / 8%)'
-                  }}>
-            <ListItemText style={{flex: 1}}>{a.name}</ListItemText>
-            <Chip size="small" variant="outlined" color={a.isEnabled ? 'primary' : 'error'}
-                  label={a.isEnabled ? 'Enabled' : 'Disabled'} style={{marginRight: '4px'}}/>
-            <Button size="small" onClick={() => onOpen(a)}>Open</Button>
-        </ListItem>
-    );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 function ActionBoardDetailComponent() {
     const [nodes, setNodes] = useNodesState([]);
@@ -1027,8 +967,6 @@ function ActionBoardDetailComponent() {
     const [rfInstance, setRfInstance] = useState(null);
     const [snoozeOpen, setSnoozeOpen] = useState(false);
     const [testOpen, setTestOpen] = useState(false);
-    const [sceneOpen, setSceneOpen] = useState(false);
-    const [abTestOpen, setAbTestOpen] = useState(false);
     const [versionOpen, setVersionOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [openValidate, setOpenValidate] = useState(false);
@@ -1049,11 +987,6 @@ function ActionBoardDetailComponent() {
         if (!rfInstance) return;
         const flow = rfInstance.toObject();
 
-        const realNodes = flow.nodes.filter(n => n.type !== 'placeholder');
-        const realNodeIds = new Set(realNodes.map(n => n.id));
-        const realEdges = flow.edges.filter(
-            e => realNodeIds.has(e.source) && realNodeIds.has(e.target)
-        );
         const seenN = new Set();
         const uniqueNodes = flow.nodes.filter(n => {
             if (seenN.has(n.id)) return false;
@@ -1096,7 +1029,6 @@ function ActionBoardDetailComponent() {
 
                 setLoading(false);
             });
-        // localStorage.setItem('flow', JSON.stringify(cleanFlow));
     }, [rfInstance, automationDetail]);
 
     const handleDisableAutomation = async (e) => await disableAutomation(selectedAutomation.id, e.target.checked);
@@ -1111,28 +1043,23 @@ function ActionBoardDetailComponent() {
         const position = screenToFlowPosition({x: e.clientX, y: e.clientY});
         const newId = getId(type);
 
-        // Determine which source handle to use for the outgoing placeholder edge
+        // Source handle for the outgoing placeholder edge. Actions are leaves, so they have none.
         const sourceHandleForType = {
             trigger: `rootNode:triggerNode:${newId}`,
             condition: `out:cond-positive:${newId}`,   // positive branch by default
-            and: `out:and-positive:${newId}`,
-            or: `out:or-positive:${newId}`,
         };
 
         const outHandle = sourceHandleForType[type];
-
-        // Node types that don't get a placeholder (leaf nodes or special cases)
-        const LEAF_TYPES = new Set(['action', 'valueReader']);
 
         const realNode = {
             id: newId,
             type,
             position,
-            data: {value: {isNewNode: true, name: type}},
+            data: {},
         };
 
-        if (LEAF_TYPES.has(type) || !outHandle) {
-            // Just add the real node, no placeholder
+        if (!outHandle) {
+            // Leaf node (action): just add it, no placeholder
             setNodes(nds => [...nds, realNode]);
             return;
         }
@@ -1211,16 +1138,6 @@ function ActionBoardDetailComponent() {
 
     const onNodesChange = useCallback(c => setNodes(nds => applyNodeChanges(c, nds)), [setNodes]);
     const onEdgesChange = useCallback(c => setEdges(eds => applyEdgeChanges(c, eds)), [setEdges]);
-    // const onConnect = useCallback(conn => {
-    //     setEdges(eds => eds.filter(e => e.target !== conn.target));
-    //     const isNeg = conn.sourceHandle?.includes('cond-negative');
-    //     setEdges(eds => addEdge({
-    //         ...conn,
-    //         type: 'custom-edge',
-    //         animated: false,
-    //         data: {color: isNeg ? '#f44336' : '#4caf50'}
-    //     }, eds));
-    // }, [setEdges]);
     const onConnect = useCallback((conn) => {
         const isNeg = conn.sourceHandle?.includes('cond-negative');
 
@@ -1270,9 +1187,6 @@ function ActionBoardDetailComponent() {
                             trigger: TriggerNode,
                             action: ActionNode,
                             condition: ConditionNode,
-                            valueReader: ValueReaderNode,
-                            and: And,
-                            or: Or,
                             placeholder: PlaceholderNode,
                         }}
                     >
@@ -1319,17 +1233,10 @@ function ActionBoardDetailComponent() {
                                     </Button>
                                 </Tooltip>
 
-                                <AutomationPanelButtons hasSelected={hasSelected}
-                                                        selectedAutomation={selectedAutomation}
-                                                        onScene={() => setSceneOpen(prev => !prev)}
-                                                        onAbTest={() => setAbTestOpen(prev => !prev)}
-                                                        onTest={() => setTestOpen((prev) => !prev)}
-                                                        onVersion={() => setVersionOpen((prev) => !prev)}
-                                />
+                                <AutomationPanelButtons onVersion={() => setVersionOpen((prev) => !prev)}/>
                             </Panel>
                         )}
                         <Controls orientation="horizontal" position="top-left"/>
-                        {/*{hasSelected && (*/}
                         <Panel position="bottom-right" style={{marginBottom: '20px'}}>
 
                             <Button
@@ -1338,7 +1245,6 @@ function ActionBoardDetailComponent() {
                                 loading={loading}
                                 loadingIndicator="Saving…"
                                 variant="outlined"
-                                // loadingPosition="end"
                                 style={{marginLeft: '10px', width: '120px'}}
                             >
                                 Save
@@ -1346,20 +1252,14 @@ function ActionBoardDetailComponent() {
                             <Button
                                 size="small"
                                 onClick={onValidate}
-                                // loading={loading}
-                                // loadingIndicator="Saving…"
                                 variant="outlined"
-                                // loadingPosition="end"
                                 style={{marginLeft: '10px', width: '120px'}}
                             >
                                 Validate
                             </Button>
-                            {/*<Button size="small" variant="outlined" onClick={onSave}*/}
-                            {/*        style={{marginLeft: '10px'}}>Save</Button>*/}
                             <Button size="small" variant="outlined" onClick={clearBoard}
                                     style={{marginLeft: '10px'}}>Clear</Button>
                         </Panel>
-
 
                     </ReactFlow>
                 </Box>
@@ -1423,10 +1323,6 @@ function ActionBoardDetailComponent() {
             <ValidationResultPanel open={openValidate} onClose={() => setOpenValidate(false)} result={validationResult}
                                    loading={loading}
                                    onValidate={() => onValidate()}/>
-            <SceneManagerDialog open={sceneOpen} automation={selectedAutomation} automations={automations}
-                                onClose={() => setSceneOpen(false)}/>
-            <AbTestDialog open={abTestOpen} automation={selectedAutomation} automations={automations}
-                          onClose={() => setAbTestOpen(false)}/>
             <VersionHistoryDialog open={versionOpen} automation={selectedAutomation}
                                   onClose={() => setVersionOpen(false)} onRollback={() => {
                 openAutomation(selectedAutomation);

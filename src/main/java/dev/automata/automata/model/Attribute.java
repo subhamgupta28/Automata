@@ -27,6 +27,7 @@ public class Attribute {
     private Boolean visible = true;
     private String type;
     private Map<String, Object> extras;
+    @Indexed
     private String deviceId;
     @Indexed
     @LastModifiedDate

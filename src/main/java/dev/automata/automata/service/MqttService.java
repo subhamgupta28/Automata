@@ -54,19 +54,17 @@ public class MqttService {
 
     @ServiceActivator(inputChannel = "ackAction")
     public void ackAction(Map<String, Object> payload) {
-        System.err.println("📡 Ack Action: " + payload);
-        System.err.println("got action message: " + payload);
+        log.debug("📡 Ack Action: {}", payload);
         String deviceId = payload.get("device_id").toString();
         if (deviceId.isEmpty() || deviceId.equals("null")) {
-            System.err.println("Device Id not found");
+            log.error("ackAction: device id not found");
         }
         actionService.ackAction(deviceId, payload);
     }
 
     @ServiceActivator(inputChannel = "action")
     public void action(Map<String, Object> payload) {
-        log.info("📡 Action: {}", payload);
-        log.info("got action message: {}", payload);
+        log.debug("📡 Action: {}", payload);
         String deviceId = payload.getOrDefault("device_id", "").toString();
         if (deviceId.equals("null") || deviceId.isBlank()) {
             log.error("Device Id not found");
