@@ -24,6 +24,7 @@ public class Device {
     @Id
     private String id;
     private String name;
+    @Indexed
     private String type;
     private String category;
     private String host;
@@ -32,6 +33,7 @@ public class Device {
     private Boolean reboot;
     private Boolean sleep;
     private String accessUrl;
+    @Indexed
     private String macAddr;
     private Date lastOnline;
     private Date lastRegistered;
@@ -43,6 +45,7 @@ public class Device {
     private double y;
     private List<Attribute> attributes = new ArrayList<>();
     private String createdBy;
+    @Indexed
     private String homeId;
     private String mqttTopic;
     private String deviceSecretHash;

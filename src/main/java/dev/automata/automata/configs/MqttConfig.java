@@ -40,6 +40,11 @@ public class MqttConfig {
     private String password;
     @Value("${application.env}")
     private String env;
+    // Live-data ingestion pool (shared by sendData + sendLiveData). core == max so threads exist before the queue fills.
+    @Value("${automata.executor.live-data.threads:4}")
+    private int liveDataThreads;
+    @Value("${automata.executor.live-data.queue:1000}")
+    private int liveDataQueue;
 
     private final String clientId = "springboot-client-" + env + "-" + UUID.randomUUID();
     private final String topicDefault = "status";
@@ -86,6 +91,7 @@ public class MqttConfig {
         ex.setMaxPoolSize(max);
         ex.setQueueCapacity(queueCapacity);
         ex.setKeepAliveSeconds(30);
+        ex.setAllowCoreThreadTimeOut(true);
         ex.setThreadNamePrefix(prefix);
         ex.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         ex.initialize();
@@ -95,7 +101,7 @@ public class MqttConfig {
     @Bean
     @Primary
     public ThreadPoolTaskExecutor taskExecutor() {
-        return buildExecutor("live-data-", 2, 6, 500);
+        return buildExecutor("live-data-", liveDataThreads, liveDataThreads, liveDataQueue);
     }
 
     @Bean

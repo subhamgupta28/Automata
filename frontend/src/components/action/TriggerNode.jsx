@@ -29,9 +29,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
     const initialTriggerData = data.triggerData || {
         name: '',
         deviceId: '',
-        type: 'state',
         keys: [],
-        priority: 5,
         coalitionMode: 'ANY',
         coalitionWindowSeconds: 60,
         sources: [],        // NEW: [{ deviceId, keys: [string], role: 'primary'|'secondary' }]
@@ -40,12 +38,10 @@ export const TriggerNode = ({id, data, isConnectable}) => {
     };
 
     const {updateNodeData, setEdges, setNodes} = useReactFlow();
-    const {devices, loading} = useCachedDevices();
+    const {devices} = useCachedDevices();
 
     const [triggerKeys, setTriggerKeys] = useState(initialTriggerData.keys || []);
     const [name, setName] = useState(initialTriggerData.name);
-    const [type, setType] = useState(initialTriggerData.type);
-    const [priority, setPriority] = useState(initialTriggerData.priority || 5);
     const [selectedDevice, setSelectedDevice] = useState({id: initialTriggerData.deviceId, name: ''});
     const [coalitionMode, setCoalitionMode] = useState(
         initialTriggerData.coalitionMode
@@ -92,7 +88,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
             })
             .map(node => {
                 const existing = triggerKeys.find(tk => tk.conditionId === node.id);
-                return existing || {conditionId: node.id, key: '', value: ''};
+                return existing || {conditionId: node.id, key: ''};
             });
 
         if (JSON.stringify(updated) !== JSON.stringify(triggerKeys)) {
@@ -119,20 +115,13 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                 }))
         ];
 
-        // subscriberDeviceIds = primary only (secondary is fetched on demand from Redis)
-        const subscriberDeviceIds = [selectedDevice?.id].filter(Boolean);
-
         const newData = {
             triggerData: {
                 deviceId: selectedDevice?.id || '',
-                type,
                 name,
                 keys: triggerKeys,
-                priority,
                 nodeId: id,
-                rootNode: true,
                 sources,
-                subscriberDeviceIds,
                 coalitionMode,                    // NEW
                 coalitionWindowSeconds,
                 firingMode,
@@ -147,7 +136,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
         }
     }, [
         selectedDevice?.id, triggerKeys, name,
-        type, priority, secondaryDevices, coalitionMode,
+        secondaryDevices, coalitionMode,
         coalitionWindowSeconds, firingMode, minResendIntervalSeconds
     ]);
 
@@ -160,11 +149,6 @@ export const TriggerNode = ({id, data, isConnectable}) => {
         const updated = [...triggerKeys];
         updated[index][field] = value;
         setTriggerKeys(updated);
-    };
-
-    const handleTypeChange = (e) => {
-        setType(e.target.value);
-        setTriggerKeys([]);
     };
 
     // Secondary device handlers
@@ -199,9 +183,7 @@ export const TriggerNode = ({id, data, isConnectable}) => {
 
     return (
         <Card style={{...triggerStyle, padding: '10px'}}>
-            <Chip color="primary" variant="body1" fontWeight="bold" sx={{marginLeft: 1}} label="Trigger / Start">
-
-            </Chip>
+            <Chip color="primary" sx={{marginLeft: 1}} label="Trigger / Start"/>
             <IconButton onClick={() => deleteNode(id)} style={{position: 'absolute', top: '0', right: '0'}}>
                 <DeleteIcon/>
             </IconButton>
@@ -216,248 +198,204 @@ export const TriggerNode = ({id, data, isConnectable}) => {
                 sx={{marginBottom: 2, marginTop: 3}}
             />
 
-            <FormControl fullWidth className='nodrag' sx={{marginBottom: 2}}>
-                <InputLabel>Type</InputLabel>
-                <Select
-                    value={type}
-                    size='small'
-                    label="Type"
-                    onChange={handleTypeChange}
-                    variant='outlined'
-                >
-                    <MenuItem value={'state'}>State Change</MenuItem>
-                    <MenuItem value={'periodic'}>Periodic</MenuItem>
-                    <MenuItem value={'time'}>Specific Time</MenuItem>
-                </Select>
-            </FormControl>
+            <div>
+                {/* ── Primary Device ── */}
+                <Typography color="text.secondary" sx={{ml: 1}}>
+                    Primary Device
+                </Typography>
+                <FormControl fullWidth sx={{mt: 1, mb: 2}} className='nodrag'>
+                    <InputLabel>Trigger Device</InputLabel>
+                    <Select
+                        variant='outlined'
+                        size='small'
+                        value={selectedDevice?.id || ''}
+                        label="Trigger Device"
+                        onChange={selectTriggerDevice}
+                    >
+                        {devices && devices.map(device => (
+                            <MenuItem key={device.id} value={device.id}>
+                                {device.name}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
 
-            {type === 'time' && (
-                <div>
-                    <Typography variant="body2" sx={{margin: 1}}>
-                        Value to be used in condition
-                    </Typography>
-                    {triggerKeys.map((tk, idx) => (
-                        <TextField
-                            key={idx}
-                            size='small'
-                            label={`Value #${idx + 1}`}
-                            fullWidth
-                            value={tk.value}
-                            onChange={(e) => handleTriggerKeyChange(idx, 'value', e.target.value)}
-                            sx={{marginBottom: 2}}
-                        />
-                    ))}
-                </div>
-            )}
+                {triggerKeys.map((tk, idx) => (
+                    <React.Fragment key={idx}>
+                        <FormControl className='nodrag' fullWidth sx={{mt: 1, mb: 1}}>
+                            <InputLabel>Key #{idx + 1}</InputLabel>
+                            <Select
+                                variant='outlined'
+                                size='small'
+                                value={tk.key}
+                                label={`Key #${idx + 1}`}
+                                onChange={(e) => handleTriggerKeyChange(idx, 'key', e.target.value)}
+                            >
+                                {selectedDevice?.attributes?.map(attr => (
+                                    <MenuItem key={attr.id} value={attr.key}>
+                                        {attr.displayName}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </React.Fragment>
+                ))}
 
-            {type === 'state' && (
-                <div>
-                    {/* ── Primary Device ── */}
-                    <Typography color="text.secondary" sx={{ml: 1}}>
-                        Primary Device
-                    </Typography>
-                    <FormControl fullWidth sx={{mt: 1, mb: 2}} className='nodrag'>
-                        <InputLabel>Trigger Device</InputLabel>
-                        <Select
-                            variant='outlined'
-                            size='small'
-                            value={selectedDevice?.id || ''}
-                            label="Trigger Device"
-                            onChange={selectTriggerDevice}
-                        >
-                            {devices && devices.map(device => (
-                                <MenuItem key={device.id} value={device.id}>
-                                    {device.name}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-
-                    {triggerKeys.map((tk, idx) => (
-                        <React.Fragment key={idx}>
-                            <FormControl className='nodrag' fullWidth sx={{mt: 1, mb: 1}}>
-                                <InputLabel>Key #{idx + 1}</InputLabel>
-                                <Select
-                                    variant='outlined'
-                                    size='small'
-                                    value={tk.key}
-                                    label={`Key #${idx + 1}`}
-                                    onChange={(e) => handleTriggerKeyChange(idx, 'key', e.target.value)}
-                                >
-                                    {selectedDevice?.attributes?.map(attr => (
-                                        <MenuItem key={attr.id} value={attr.key}>
-                                            {attr.displayName}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </React.Fragment>
-                    ))}
-
-                    {/* ── Secondary Devices ── */}
-                    {secondaryDevices.length > 0 && (
-                        <>
-                            <Divider sx={{my: 1.5}}/>
+                {/* ── Secondary Devices ── */}
+                {secondaryDevices.length > 0 && (
+                    <>
+                        <Divider sx={{my: 1.5}}/>
 
 
-                            {secondaryDevices.map((sd, idx) => (
-                                <div key={idx} style={{
-                                    marginTop: 8,
+                        {secondaryDevices.map((sd, idx) => (
+                            <div key={idx} style={{
+                                marginTop: 8,
+                            }}>
+
+                                <div style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                                 }}>
+                                    <Typography color="text.secondary" sx={{ml: 0.5}}>
+                                        Secondary Devices {idx + 1}
+                                    </Typography>
+                                    <IconButton
+                                        style={{
+                                            color: "red"
+                                        }}
+                                        size="small"
 
-                                    <div style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                                    }}>
-                                        <Typography color="text.secondary" sx={{ml: 0.5}}>
-                                            Secondary Devices {idx + 1}
-                                        </Typography>
-                                        <IconButton
-                                            style={{
-                                                color: "red"
-                                            }}
-                                            size="small"
+                                        onClick={() => removeSecondaryDevice(idx)}
+                                    >
+                                        <RemoveCircleOutlineIcon fontSize="small"/>
+                                    </IconButton>
+                                </div>
+                                <FormControl fullWidth size='small' sx={{mb: 1}} className='nodrag'>
+                                    <InputLabel>Device</InputLabel>
+                                    <Select
+                                        variant='outlined'
+                                        value={sd.deviceId}
+                                        label="Device"
+                                        onChange={(e) => updateSecondaryDevice(idx, 'deviceId', e.target.value)}
+                                    >
+                                        {devices && devices
+                                            .filter(d => d.id !== selectedDevice?.id)
+                                            .map(device => (
+                                                <MenuItem key={device.id} value={device.id}>
+                                                    {device.name}
+                                                </MenuItem>
+                                            ))}
+                                    </Select>
+                                </FormControl>
 
-                                            onClick={() => removeSecondaryDevice(idx)}
-                                        >
-                                            <RemoveCircleOutlineIcon fontSize="small"/>
-                                        </IconButton>
-                                    </div>
-                                    <FormControl fullWidth size='small' sx={{mb: 1}} className='nodrag'>
-                                        <InputLabel>Device</InputLabel>
+                                {sd.deviceId && (
+                                    <FormControl fullWidth size='small' className='nodrag'>
+                                        <InputLabel>Watch Key (optional)</InputLabel>
                                         <Select
                                             variant='outlined'
-                                            value={sd.deviceId}
-                                            label="Device"
-                                            onChange={(e) => updateSecondaryDevice(idx, 'deviceId', e.target.value)}
+                                            value={sd.key}
+                                            label="Watch Key (optional)"
+                                            onChange={(e) => updateSecondaryDevice(idx, 'key', e.target.value)}
                                         >
-                                            {devices && devices
-                                                .filter(d => d.id !== selectedDevice?.id)
-                                                .map(device => (
-                                                    <MenuItem key={device.id} value={device.id}>
-                                                        {device.name}
-                                                    </MenuItem>
-                                                ))}
+                                            <MenuItem value="">
+                                                <em>Any / fetched by condition</em>
+                                            </MenuItem>
+                                            {getDeviceAttributes(sd.deviceId).map(attr => (
+                                                <MenuItem key={attr.id} value={attr.key}>
+                                                    {attr.displayName}
+                                                </MenuItem>
+                                            ))}
                                         </Select>
                                     </FormControl>
+                                )}
+                            </div>
+                        ))}
+                    </>
+                )}
 
-                                    {sd.deviceId && (
-                                        <FormControl fullWidth size='small' className='nodrag'>
-                                            <InputLabel>Watch Key (optional)</InputLabel>
-                                            <Select
-                                                variant='outlined'
-                                                value={sd.key}
-                                                label="Watch Key (optional)"
-                                                onChange={(e) => updateSecondaryDevice(idx, 'key', e.target.value)}
-                                            >
-                                                <MenuItem value="">
-                                                    <em>Any / fetched by condition</em>
-                                                </MenuItem>
-                                                {getDeviceAttributes(sd.deviceId).map(attr => (
-                                                    <MenuItem key={attr.id} value={attr.key}>
-                                                        {attr.displayName}
-                                                    </MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
-                                    )}
-                                </div>
-                            ))}
-                        </>
-                    )}
+                {/* Add secondary device button */}
+                <Button
+                    style={{
+                        marginTop: 18,
+                    }}
+                    variant="outlined"
+                    onClick={addSecondaryDevice}
+                    className="nodrag"
+                >
+                    <Typography>Add device</Typography>
+                </Button>
+                {/* Only show coalition config when there are secondary devices */}
+                {secondaryDevices.length > 0 && (
+                    <>
+                        <FormControl fullWidth size="small" className='nodrag' sx={{mt: 2, mb: 1}}>
+                            <InputLabel>Coalition Mode</InputLabel>
+                            <Select
+                                variant="outlined"
+                                value={coalitionMode}
+                                label="Coalition Mode"
+                                onChange={(e) => setCoalitionMode(e.target.value)}
+                            >
+                                <MenuItem value="ANY">Any device fires (OR)</MenuItem>
+                                <MenuItem value="ALL">All devices must fire within window (AND)</MenuItem>
+                                <MenuItem value="SEQUENCE">Devices must fire in order</MenuItem>
+                            </Select>
+                        </FormControl>
 
-                    {/* Add secondary device button */}
-                    <Button
-                        style={{
-                            marginTop: 18,
-                        }}
+                        {(coalitionMode === 'ALL' || coalitionMode === 'SEQUENCE') && (
+                            <TextField
+                                size="small"
+                                fullWidth
+                                label="Window (seconds)"
+                                type="number"
+                                value={coalitionWindowSeconds}
+                                onChange={(e) => setCoalitionWindowSeconds(Number(e.target.value))}
+                                helperText={
+                                    coalitionMode === 'ALL'
+                                        ? 'All devices must fire within this window'
+                                        : 'Each device must fire within this seconds of the previous'
+                                }
+                                sx={{mb: 2}}
+                            />
+                        )}
+
+                        {/* For SEQUENCE: show numbered order of secondary devices */}
+                        {coalitionMode === 'SEQUENCE' && (
+                            <Typography variant="caption" color="text.secondary" sx={{ml: 1}}>
+                                Sequence order: Primary (1st), then secondary devices in listed order
+                            </Typography>
+                        )}
+                    </>
+                )}
+                <FormControl fullWidth size="small" className='nodrag' sx={{mt: 2, mb: 1}}>
+                    <InputLabel>Firing Mode</InputLabel>
+                    <Select
                         variant="outlined"
-                        onClick={addSecondaryDevice}
-                        className="nodrag"
+                        value={firingMode}
+                        label="Firing Mode"
+                        onChange={(e) => setFiringMode(e.target.value)}
                     >
-                        <Typography>Add device</Typography>
-                    </Button>
-                    {/* Only show coalition config when there are secondary devices */}
-                    {secondaryDevices.length > 0 && (
-                        <>
-                            <FormControl fullWidth size="small" className='nodrag' sx={{mt: 2, mb: 1}}>
-                                <InputLabel>Coalition Mode</InputLabel>
-                                <Select
-                                    variant="outlined"
-                                    value={coalitionMode}
-                                    label="Coalition Mode"
-                                    onChange={(e) => setCoalitionMode(e.target.value)}
-                                >
-                                    <MenuItem value="ANY">Any device fires (OR)</MenuItem>
-                                    <MenuItem value="ALL">All devices must fire within window (AND)</MenuItem>
-                                    <MenuItem value="SEQUENCE">Devices must fire in order</MenuItem>
-                                </Select>
-                            </FormControl>
-
-                            {(coalitionMode === 'ALL' || coalitionMode === 'SEQUENCE') && (
-                                <TextField
-                                    size="small"
-                                    fullWidth
-                                    label="Window (seconds)"
-                                    type="number"
-                                    value={coalitionWindowSeconds}
-                                    onChange={(e) => setCoalitionWindowSeconds(Number(e.target.value))}
-                                    helperText={
-                                        coalitionMode === 'ALL'
-                                            ? 'All devices must fire within this window'
-                                            : 'Each device must fire within this seconds of the previous'
-                                    }
-                                    sx={{mb: 2}}
-                                />
-                            )}
-
-                            {/* For SEQUENCE: show numbered order of secondary devices */}
-                            {coalitionMode === 'SEQUENCE' && (
-                                <Typography variant="caption" color="text.secondary" sx={{ml: 1}}>
-                                    Sequence order: Primary (1st), then secondary devices in listed order
-                                </Typography>
-                            )}
-                        </>
-                    )}
-                    <FormControl fullWidth size="small" className='nodrag' sx={{mt: 2, mb: 1}}>
-                        <InputLabel>Firing Mode</InputLabel>
-                        <Select
-                            variant="outlined"
-                            value={firingMode}
-                            label="Firing Mode"
-                            onChange={(e) => setFiringMode(e.target.value)}
-                        >
-                            <MenuItem value="ON_STATE_CHANGE">When state changes</MenuItem>
-                            <MenuItem value="EVERY_TICK">Fire every time with a gap in between while the condition is
-                                true</MenuItem>
-                        </Select>
-                    </FormControl>
-                    {firingMode === "EVERY_TICK" && (
-                        <TextField
-                            size='small'
-                            label="Resend Gap (mins)"
-                            type="number"
-                            fullWidth
-                            name="Resend Gap"
-                            value={minResendIntervalSeconds}
-                            inputProps={{
-                                min: 0,
-                                max: 5000,
-                                step: 1
-                            }}
-                            onChange={(e) => setMinResendIntervalSeconds(parseInt(e.target.value) || 1)}
-                            sx={{marginBottom: 1}}
-                        />
-                    )}
-                    {/*<NumberSpinner*/}
-                    {/*    label="Priority"*/}
-                    {/*    min={0}*/}
-                    {/*    max={10}*/}
-                    {/*    value={priority}*/}
-                    {/*    size="small"*/}
-                    {/*    onChange={setPriority}*/}
-                    {/*/>*/}
-                </div>
-            )}
+                        <MenuItem value="ON_STATE_CHANGE">When state changes</MenuItem>
+                        <MenuItem value="EVERY_TICK">Fire every time with a gap in between while the condition is
+                            true</MenuItem>
+                    </Select>
+                </FormControl>
+                {firingMode === "EVERY_TICK" && (
+                    <TextField
+                        size='small'
+                        label="Resend Gap (mins)"
+                        type="number"
+                        fullWidth
+                        name="Resend Gap"
+                        value={minResendIntervalSeconds}
+                        inputProps={{
+                            min: 0,
+                            max: 5000,
+                            step: 1
+                        }}
+                        onChange={(e) => setMinResendIntervalSeconds(parseInt(e.target.value) || 1)}
+                        sx={{marginBottom: 1}}
+                    />
+                )}
+            </div>
 
             <Handle
                 style={{width: '28px', height: '28px', background: '#6DBF6D'}}

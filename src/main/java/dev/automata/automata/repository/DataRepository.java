@@ -14,6 +14,8 @@ public interface DataRepository extends MongoRepository<Data, String> {
 
     List<Data> findAllByDeviceId(String deviceId);
 
+    List<Data> findTop500ByDeviceIdOrderByTimestampDesc(String deviceId);
+
     @Nullable
     Data getFirstByDeviceIdOrderByTimestampDesc(String deviceId);
 
