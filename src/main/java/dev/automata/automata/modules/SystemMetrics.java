@@ -271,7 +271,7 @@ public class SystemMetrics {
                 mqttOutboundChannel.send(MessageBuilder.withPayload(json)
                         .setHeader("mqtt_topic", "sendLiveData").build());
             } catch (Exception e) {
-                throw new RuntimeException(e);
+//                throw new RuntimeException(e);
             }
 
         }

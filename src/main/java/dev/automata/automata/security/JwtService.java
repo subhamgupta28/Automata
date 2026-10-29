@@ -3,6 +3,7 @@ package dev.automata.automata.security;
 import dev.automata.automata.model.Device;
 import dev.automata.automata.model.Users;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -26,6 +27,26 @@ public class JwtService {
     private long jwtExpiration;
     @Value("${application.security.jwt.refresh-token.expiration}")
     private long refreshExpiration;
+
+    /**
+     * The signing key and the parser built from it. Both are immutable and thread-safe, so they are built once
+     * instead of on every verification (previously: Base64-decode + new key + new parser, three times per request).
+     * Held in one record behind a volatile so another thread can never observe a key without its parser.
+     */
+    private record Crypto(SecretKey key, JwtParser parser) {
+    }
+
+    private volatile Crypto crypto;
+
+    private Crypto crypto() {
+        Crypto c = crypto;
+        if (c == null) {   // benign race: two threads may both build it; the results are identical
+            SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey));
+            c = new Crypto(key, Jwts.parser().verifyWith(key).build());
+            crypto = c;
+        }
+        return c;
+    }
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -98,29 +119,29 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        return isTokenValid(parseClaims(token), userDetails);
     }
 
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+    /**
+     * Verifies the signature and expiry once and returns the claims. Callers that need several claims, or both the
+     * subject and the validity check, should parse once and reuse this instead of calling extract*() repeatedly.
+     */
+    public Claims parseClaims(String token) {
+        return extractAllClaims(token);
     }
 
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+    public boolean isTokenValid(Claims claims, UserDetails userDetails) {
+        return claims.getSubject() != null
+                && claims.getSubject().equals(userDetails.getUsername())
+                && claims.getExpiration() != null
+                && !claims.getExpiration().before(new Date());
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts
-                .parser()
-                .verifyWith(getSignInKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        return crypto().parser().parseSignedClaims(token).getPayload();
     }
 
     private SecretKey getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
-        return Keys.hmacShaKeyFor(keyBytes);
+        return crypto().key();
     }
 }

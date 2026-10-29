@@ -58,14 +58,16 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
-        authenticationManager.authenticate(
+        var authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
                         request.getPassword()
                 )
         );
-        var user = repository.findByEmail(request.getEmail())
-                .orElseThrow();
+        // The provider already loaded this user to check the password — reuse it instead of a second findByEmail.
+        Users user = authentication.getPrincipal() instanceof Users loaded
+                ? loaded
+                : repository.findByEmail(request.getEmail()).orElseThrow();
         
         // Log successful login
         try {

@@ -39,4 +39,13 @@ public class Data {
     @Indexed
     @LastModifiedDate
     private Instant updateDate;
+
+    /**
+     * When MongoDB's TTL monitor may delete this reading (TTL index with expireAfter=0: the document goes away once
+     * this instant passes). null = keep forever; readings written before TTL was introduced have no value here.
+     * A dedicated field is used because {@code updateDate} already carries a plain index, and MongoDB refuses a
+     * TTL index on the same key (index options conflict). Retention: {@code automata.data.retention-days}.
+     */
+    @Indexed(expireAfter = "0s")
+    private Instant expireAt;
 }

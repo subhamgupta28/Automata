@@ -40,7 +40,7 @@ public class MqttService {
         }
         payload.put("last_seen", System.currentTimeMillis());
         if (payload.size() > 1)
-            mainService.saveData(deviceId, payload);
+            mainService.saveDataBuffered(deviceId, payload);   // batched insert (see DataWriteBuffer)
 
         var map = new HashMap<String, Object>();
         map.put("deviceId", deviceId);
