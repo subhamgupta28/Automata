@@ -1,5 +1,6 @@
 package dev.automata.automata.security;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
@@ -13,7 +14,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -25,7 +25,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
+    private final UserPrincipalCache userPrincipalCache;
 //    private final RequestInfoRepository requestInfoRepository;
 
     @Override
@@ -48,12 +48,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         try {
             jwt = authHeader.substring(7);
-            userEmail = jwtService.extractUsername(jwt);
+            Claims claims = jwtService.parseClaims(jwt);   // signature + expiry verified once (was 3 parses per request)
+            userEmail = claims.getSubject();
 //        System.err.println("userEmail: " + userEmail);
 
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-                if (jwtService.isTokenValid(jwt, userDetails)) {
+                UserDetails userDetails = this.userPrincipalCache.load(userEmail);   // cached; was a Mongo query per request
+                if (jwtService.isTokenValid(claims, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,

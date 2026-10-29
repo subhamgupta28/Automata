@@ -271,27 +271,39 @@ public class MainService {
     }
 
     // Device path -- open
-    public String saveData(String deviceId, Map<String, Object> payload) {
-//        TimeZone.setDefault(TimeZone.getTimeZone("GMT+5:30"));
-        ZoneId userZone = ZoneId.of("Asia/Kolkata");
-        var instant = Instant.now();
-        ZonedDateTime dateTime =
-                instant.atZone(userZone);
+    private static final ZoneId DATA_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final DateTimeFormatter DATA_DAY = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
+    /** Days a stored reading is kept before MongoDB's TTL monitor may delete it; 0 = keep forever. */
+    @Value("${automata.data.retention-days:400}")
+    private long dataRetentionDays;
 
-        DateTimeFormatter formatter =
-                DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private final DataWriteBuffer dataWriteBuffer;
 
-        String formattedDate = dateTime.format(formatter);
-        var data = Data.builder()
+    private Data buildData(String deviceId, Map<String, Object> payload) {
+        Instant now = Instant.now();
+        return Data.builder()
                 .deviceId(deviceId)
-                .dateTime(formattedDate)
+                .dateTime(now.atZone(DATA_ZONE).format(DATA_DAY))
                 .data(payload)
-                .updateDate(dateTime.toInstant())
-                .timestamp(dateTime.toInstant().getEpochSecond())
+                .updateDate(now)
+                .timestamp(now.getEpochSecond())
+                .expireAt(dataRetentionDays > 0 ? now.plus(dataRetentionDays, java.time.temporal.ChronoUnit.DAYS) : null)
                 .build();
-        dataRepository.save(data);
+    }
+
+    /** Synchronous insert. Use when the caller needs the reading to be durable before it continues. */
+    public String saveData(String deviceId, Map<String, Object> payload) {
+        dataRepository.save(buildData(deviceId, payload));
         return "Saved";
+    }
+
+    /**
+     * High-rate device path: the reading is queued and written in a batch within ~{@code linger-ms}.
+     * The payload is copied because the caller keeps using (and may modify) its map after this returns.
+     */
+    public void saveDataBuffered(String deviceId, Map<String, Object> payload) {
+        dataWriteBuffer.add(buildData(deviceId, new HashMap<>(payload)));
     }
 
     public Device getDevice(String deviceId) {
