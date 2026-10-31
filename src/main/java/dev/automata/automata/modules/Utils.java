@@ -38,10 +38,10 @@ public class Utils {
      *
      * @return WeatherResponse with temp, humidity, condition, windspeed, etc.
      */
-    public WeatherResponse getCurrentWeather() throws Exception {
+    public WeatherResponse getCurrentWeather(String lat, String lng) throws Exception {
         URI uri = UriComponentsBuilder.fromUriString(OPEN_METEO_URL)
-                .queryParam("latitude", LOCATION_LAT)
-                .queryParam("longitude", LOCATION_LONG)
+                .queryParam("latitude", lat)
+                .queryParam("longitude", lng)
                 .queryParam("current", String.join(",",
                         "temperature_2m",
                         "relative_humidity_2m",
@@ -110,10 +110,10 @@ public class Utils {
         );
     }
 
-    public List<ForecastDay> getForecast(int days) throws Exception {
+    public List<ForecastDay> getForecast(int days, String lat, String lng) throws Exception {
         URI uri = UriComponentsBuilder.fromUriString(OPEN_METEO_URL)
-                .queryParam("latitude", LOCATION_LAT)
-                .queryParam("longitude", LOCATION_LONG)
+                .queryParam("latitude", lat)
+                .queryParam("longitude", lng)
                 .queryParam("daily", String.join(",",
                         "weather_code",
                         "temperature_2m_max",
