@@ -25,18 +25,18 @@ public class UtilityController {
     private final Utils utils;
 
     @GetMapping("currentWeather")
-    public ResponseEntity<?> fetchOutdoorWeather() {
+    public ResponseEntity<?> fetchOutdoorWeather(@RequestParam String lat, @RequestParam String lng) {
         try {
-            return ResponseEntity.ok(utils.getCurrentWeather());
+            return ResponseEntity.ok(utils.getCurrentWeather(lat, lng));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
     @GetMapping("/forecast")
-    public ResponseEntity<List<?>> getForecast() {
+    public ResponseEntity<List<?>> getForecast(@RequestParam String lat, @RequestParam String lng) {
         try {
-            return ResponseEntity.ok(utils.getForecast(4)); // 4 = today + 3
+            return ResponseEntity.ok(utils.getForecast(4, lat, lng)); // 4 = today + 3
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
         }

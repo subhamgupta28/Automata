@@ -706,12 +706,12 @@ export const deleteAutomationSnooze = async (id) => {
     return response.data; // { success: boolean, message: string }
 };
 
-export const fetchOutdoorWeather = async () => {
-    const response = await api.get(`utils/currentWeather`);
+export const fetchOutdoorWeather = async (latitude, longitude) => {
+    const response = await api.get(`utils/currentWeather?lat=${latitude}&lng=${longitude}`);
     return response.data;
 };
-export const fetchWeatherForecast = async () => {
-    const res = await api.get(`utils/forecast`);
+export const fetchWeatherForecast = async (latitude, longitude) => {
+    const res = await api.get(`utils/forecast?lat=${latitude}&lng=${longitude}`);
     return res.data; // ForecastDay[]
 };
 // ─── Admin: Login Analytics ───────────────────────────────────────────────────

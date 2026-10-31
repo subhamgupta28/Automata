@@ -35,6 +35,8 @@ import {useCardGlowEffect} from "../../utils/useCardGlowEffect.jsx";
 import GasMeterIcon from '@mui/icons-material/GasMeter';
 import ShinyText from "../charts/ShinyText.jsx";
 import Tooltip from "@mui/material/Tooltip";
+import {useGeolocation} from "../../utils/useGeolocation.jsx";
+import {useLocationName} from "../../utils/useLocationName.jsx";
 // ─── Design tokens (unchanged) ────────────────────────────────────────────────
 export const C = {
     bg: "#111111",
@@ -471,6 +473,7 @@ export function TopBar({
                            automationSummary,
                            weatherIconBasePath = "/icons/weather/",   // ← new prop; adjust to your asset path
                            forecast = [],
+                           locationName,
                        }) {
     const hour = time ? parseInt(time.split(":")[0], 10) : new Date().getHours();
     const greeting = useMemo(() => buildGreeting(hour, userName), [hour, userName]);
@@ -529,6 +532,13 @@ export function TopBar({
                         hour={hour}
                         iconBasePath={weatherIconBasePath}
                     />
+                    <Box sx={{width: "1px", height: 46, backgroundColor: C.muted, flexShrink: 0}}/>
+                    <Typography
+                        variant="title"
+                        sx={{color: C.muted, fontSize: 12, lineHeight: 1.4, maxWidth: 40}}
+                    >
+                        {locationName}
+                    </Typography>
                     {forecast?.length > 0 && (
                         <>
                             <Box sx={{width: "1px", height: 46, backgroundColor: C.muted, flexShrink: 0}}/>
@@ -719,7 +729,8 @@ export function StatsRow({items}) {
 export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) => {
     const {messages, alertMessages} = useDeviceLiveData();
     const {devices} = useCachedDevices();
-
+    const {coords, error: geoError} = useGeolocation();
+    const locationName = useLocationName(coords);
     const [dataPoint, setDatapoint] = useState({});
     const [mainDevice, setMainDevice] = useState("");
     const [otherDevice, setOtherDevice] = useState("");
@@ -768,11 +779,13 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
 
     // ── Fetch outdoor weather on mount + on interval ───────────────────────
     useEffect(() => {
-        fetchWeatherForecast()
+        if (!coords) return;
+        const {latitude, longitude} = coords;
+        fetchWeatherForecast(latitude, longitude)
             .then(setForecast)
             .catch(() => setForecast([]));
         const fetch_ = () => {
-            fetchOutdoorWeather()
+            fetchOutdoorWeather(latitude, longitude)
                 .then(setOutdoor)
                 .catch(err => console.warn("Outdoor weather fetch failed:", err));
         };
@@ -780,7 +793,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
         fetch_();
         const id = setInterval(fetch_, weatherRefreshMs);
         return () => clearInterval(id);
-    }, [apiBase, weatherRefreshMs]);
+    }, [apiBase, weatherRefreshMs, coords]);
 
     // ── Bootstrap indoor devices ───────────────────────────────────────────
     useEffect(() => {
@@ -1020,6 +1033,7 @@ export const WeatherCardV2 = React.memo(({id, data, isConnectable, selected}) =>
                 outdoor={outdoor}
                 automationSummary={automationSummary}
                 forecast={forecast}
+                locationName={locationName}
             />
 
             <StatsRow items={liveStatsItems}/>
