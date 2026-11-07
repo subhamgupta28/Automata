@@ -546,14 +546,14 @@ export function TopBar({
                         </>
                     )}
                     {/* Thin divider */}
-                    <Box sx={{width: "1px", height: 46, backgroundColor: C.muted, flexShrink: 0}}/>
+                    {/*<Box sx={{width: "1px", height: 46, backgroundColor: C.muted, flexShrink: 0}}/>*/}
 
-                    <Typography
-                        variant="title"
-                        sx={{color: C.muted, fontSize: 12, lineHeight: 1.4, maxWidth: 400}}
-                    >
-                        {message}
-                    </Typography>
+                    {/*<Typography*/}
+                    {/*    variant="title"*/}
+                    {/*    sx={{color: C.muted, fontSize: 12, lineHeight: 1.4, maxWidth: 400}}*/}
+                    {/*>*/}
+                    {/*    {message}*/}
+                    {/*</Typography>*/}
                 </Box>
 
                 {/*/!* Alarm line (unchanged) *!/*/}
