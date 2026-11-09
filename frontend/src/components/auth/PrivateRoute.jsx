@@ -4,7 +4,7 @@ import {useAuth} from './AuthContext.jsx';
 import isEmpty from '../../utils/Helper.jsx';
 
 // Routes allowed for guest users
-const GUEST_ALLOWED_ROUTES = ['/', '/actions', '/analytics', '/dashboard', '/automation-analytics'];
+const GUEST_ALLOWED_ROUTES = ['/', '/actions', '/analytics', '/devices', '/automation-analytics'];
 
 export default function PrivateRoute({element, path, requiredRole}) {
     const {user, loading, isGuest} = useAuth();

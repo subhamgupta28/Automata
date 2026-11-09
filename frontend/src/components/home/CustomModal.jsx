@@ -1,6 +1,12 @@
 import React, {useEffect, useState} from "react";
-import {refreshDeviceById, sendAction, updateAttrCharts, updateShowCharts} from "../../services/apis.jsx";
-import {Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Tab, Tabs} from "@mui/material";
+import {
+    refreshDeviceById,
+    sendAction,
+    updateAttrCharts,
+    updateAttribute,
+    updateShowCharts
+} from "../../services/apis.jsx";
+import {Box, Button, Card, Dialog, DialogActions, DialogContent, DialogTitle, Switch, Tab, Tabs} from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
 import dayjs from "dayjs";
@@ -103,10 +109,37 @@ export const CustomModal = ({isOpen, onClose, devices, messages, map, virtualId 
     )
 }
 
+const formatLiveValue = (value) => {
+    if (value === undefined || value === null || value === '') return '—';
+    if (typeof value === 'boolean') return value ? 'On' : 'Off';
+    if (typeof value === 'number') return Number.isInteger(value) ? String(value) : String(Math.round(value * 100) / 100);
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+};
+
+const VISIBILITY_FLAGS = [
+    ['showInDashboard', 'Show in Dashboard'],
+    ['analytics', 'Analytics'],
+];
+
 const ModelContent = ({device, onClose, messages, map, version, handleAction}) => {
     const [attrs, setAttrs] = useState(device.attributes);
     const [liveData, setLiveData] = useState({});
     const [showCharts, setShowCharts] = useState(device.showCharts);
+    const [flags, setFlags] = useState({
+        showInDashboard: Boolean(device.showInDashboard),
+        analytics: Boolean(device.analytics),
+    });
+
+    const handleFlag = async (flag, checked) => {
+        setFlags((prev) => ({...prev, [flag]: checked}));
+        try {
+            await updateAttribute(device.id, flag, checked);
+            device[flag] = checked; // keep the shared device object in sync, same as handleAttrUpdate
+        } catch (err) {
+            setFlags((prev) => ({...prev, [flag]: !checked}));
+        }
+    };
     const switchBtn = device.attributes.filter((t) => t.type.startsWith("ACTION|MENU|BTN"));
     const sliderData = device.attributes.filter((t) => t.type === "ACTION|MENU|SLIDER" || t.type === "ACTION|SLIDER");
     const radarData = device.attributes.filter((t) => t.type === "DATA|RADAR");
@@ -157,13 +190,35 @@ const ModelContent = ({device, onClose, messages, map, version, handleAction}) =
                             <td><a href={"http://" + device.host + ".local"} target="_blank">{device.host}.local</a>
                             </td>
                         </tr>
+                        {device.accessUrl && (
+                            <tr>
+                                <td>Device URL</td>
+                                <td><a href={device.accessUrl} target="_blank"
+                                       rel="noopener noreferrer">{device.accessUrl}</a></td>
+                            </tr>
+                        )}
+                        <tr>
+                            <td>Status</td>
+                            <td>{device.status === 'ONLINE' ? 'Online' : 'Offline'}</td>
+                        </tr>
+                        <tr>
+                            <td>Type</td>
+                            <td>{device.type || '—'}</td>
+                        </tr>
+                        <tr>
+                            <td>Registered Node</td>
+                            <td>{device.originNode || '—'}</td>
+                        </tr>
                         <tr>
                             <td>Mac Address</td>
                             <td>{device.macAddr}</td>
                         </tr>
                         <tr>
                             <td>Update Interval</td>
-                            <td>{device.updateInterval}</td>
+                            <td>
+                                {device.updateInterval}
+                                {device.updateInterval ? ` (${device.updateInterval / 1000 / 60} min)` : ''}
+                            </td>
                         </tr>
                         <tr>
                             <td>Last Online</td>
@@ -184,6 +239,18 @@ const ModelContent = ({device, onClose, messages, map, version, handleAction}) =
                                 />
                             </td>
                         </tr>
+                        {VISIBILITY_FLAGS.map(([flag, label]) => (
+                            <tr key={flag}>
+                                <td>{label}</td>
+                                <td>
+                                    <Switch
+                                        size="small"
+                                        checked={flags[flag]}
+                                        onChange={(e) => handleFlag(flag, e.target.checked)}
+                                    />
+                                </td>
+                            </tr>
+                        ))}
                         </tbody>
                     </table>
                     <Divider style={{marginTop: '10px', marginBottom: '5px'}}></Divider>
@@ -304,6 +371,48 @@ const ModelContent = ({device, onClose, messages, map, version, handleAction}) =
                         ))}
                         </tbody>
                     </table>
+
+                    <Divider style={{marginTop: '10px', marginBottom: '5px'}}></Divider>
+                    <Typography color="primary">All Data Points</Typography>
+                    {attrs.length === 0 ? (
+                        <Typography variant="body2" style={{opacity: 0.7}}>
+                            This device has not reported any attributes.
+                        </Typography>
+                    ) : (
+                        <div style={{maxHeight: '260px', overflow: 'auto', marginTop: '6px'}}>
+                            <table style={{width: '100%'}}>
+                                <thead>
+                                <tr>
+                                    <td>Name</td>
+                                    <td>Key</td>
+                                    <td>Live Value</td>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {attrs.map((attribute) => {
+                                    const value = liveData?.[attribute.key];
+                                    return (
+                                        <tr key={attribute.id ?? attribute.key}>
+                                            <td>
+                                                {attribute.displayName}
+                                                <div style={{fontSize: '10px', opacity: 0.6}}>{attribute.type}</div>
+                                            </td>
+                                            <td style={{fontFamily: 'monospace', fontSize: '12px', opacity: 0.8}}>
+                                                {attribute.key}
+                                            </td>
+                                            <td style={{whiteSpace: 'nowrap'}}>
+                                                <Typography color="primary" fontWeight="bold" component="span">
+                                                    {formatLiveValue(value)}
+                                                    {attribute.units && value !== undefined && value !== null ? ` ${attribute.units}` : ''}
+                                                </Typography>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                 </div>
                 <div style={{width: '30%'}}>
