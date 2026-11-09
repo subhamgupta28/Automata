@@ -14,7 +14,7 @@ import Collapse from '@mui/material/Collapse';
 import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
 import Divider from '@mui/material/Divider';
-import {Link as RouterLink, NavLink, Route, Routes, useLocation} from "react-router-dom";
+import {Link as RouterLink, Navigate, NavLink, Route, Routes, useLocation} from "react-router-dom";
 import {AppCacheProvider} from "../../services/AppCacheContext.jsx";
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HomeIcon from '@mui/icons-material/Home';
@@ -37,7 +37,7 @@ import OptionsMenu from "./OptionsMenu.jsx";
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import isEmpty from "../../utils/Helper.jsx";
 import {ReactFlowProvider} from "@xyflow/react";
-import {Dashboard, GridView, TrendingUp} from "@mui/icons-material";
+import {Dashboard, TrendingUp} from "@mui/icons-material";
 import AutomationLiveInspector from "../automation/AutomationInspector.jsx";
 import {ConfigurationView} from "../dashboard/ConfigurationView.jsx";
 import Recordings from "../integrations/AutomataRecordings.jsx";
@@ -49,8 +49,7 @@ import AutomataSnackbar from "../AutomataSnackbar.jsx";
 import MenuIcon from '@mui/icons-material/Menu';
 
 // Lazy-load heavy route components
-const DeviceNodes = lazy(() => import("../home/DeviceNodes.jsx"));
-const Devices = lazy(() => import("../Devices.jsx"));
+const DevicesHub = lazy(() => import("../devices/DevicesHub.jsx"));
 const MobileView = lazy(() => import("../dashboard/MobileView.jsx"));
 const AnalyticsView = lazy(() => import("../dashboard/AnalyticsView.jsx"));
 const AutomationAnalyticsView = lazy(() => import("../automation/AutomationAnalyticsView.jsx"));
@@ -133,7 +132,6 @@ const breadcrumbNameMap = {
     '/automation-analytics': 'Automation Analytics',
     '/analytics': 'Analytics',
     '/virtual': 'Virtual Device',
-    '/dashboard': 'Dashboard',
     '/devices': 'Devices',
     '/map': 'Map',
     '/recording': 'Recording',
@@ -319,7 +317,6 @@ export default function SideDrawer() {
             headerItem: {name: 'Devices', icon: <DeveloperBoardIcon/>},
             children: [
                 {name: 'Virtual Device', url: '/virtual', icon: <Dashboard/>},
-                {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
                 {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
                 {name: 'Map', url: '/map', icon: <Map/>},
                 {name: 'Recording', url: '/recording', icon: <Disc3Icon/>},
@@ -346,7 +343,7 @@ export default function SideDrawer() {
                 {name: 'Home', url: '/', icon: <HomeIcon/>},
                 {name: 'Automations', url: '/actions', icon: <AutoAwesomeIcon/>},
                 {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
-                {name: 'Dashboard', url: '/dashboard', icon: <GridView/>},
+                {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
                 {name: 'Live Inspector', url: '/automation-analytics', icon: <TrendingUp/>},
             ]
         }
@@ -461,13 +458,13 @@ export default function SideDrawer() {
                                         <Route path="virtual"
                                                element={<PrivateRoute path="/virtual"
                                                                       element={<VirtualDeviceForm/>}/>}/>
-                                        <Route path="dashboard"
-                                               element={<PrivateRoute path="/dashboard" element={<DeviceNodes/>}/>}/>
+                                        {/* /dashboard was merged into /devices; keep old links working */}
+                                        <Route path="dashboard" element={<Navigate to="/devices" replace/>}/>
                                         <Route path="actions"
                                                element={<PrivateRoute path="/actions" element={<ActionBoard/>}/>}/>
                                         <Route path="exp" element={<PrivateRoute path="/exp" element={<Exp/>}/>}/>
                                         <Route path="devices"
-                                               element={<PrivateRoute path="/devices" element={<Devices/>}/>}/>
+                                               element={<PrivateRoute path="/devices" element={<DevicesHub/>}/>}/>
                                         <Route path="recording"
                                                element={<PrivateRoute path="/recording" element={<Recordings/>}/>}/>
                                         <Route path="map"
