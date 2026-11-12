@@ -671,10 +671,10 @@ export function StatsRow({items}) {
                         display: "flex",
                         flexDirection: "column",
                         paddingTop: "6px",
-                        borderRadius: "8px",
+                        borderRadius: "12px",
                         // minWidth: "160px",
-                        boxShadow: "rgb(30 30 30) 0px 0px 16px 6px inset",
-                        backdropFilter: "blur(2px)",
+                        boxShadow: "rgb(30 30 30) 0px 0px 20px 4px inset",
+                        // backdropFilter: "blur(2px)",
                         // border: `1px solid ${C.border}`,
                     }}
                 >
