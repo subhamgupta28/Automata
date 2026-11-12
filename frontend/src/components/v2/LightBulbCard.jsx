@@ -58,19 +58,19 @@ export default function LightBulbCard({
         <div
 
             style={{
-                margin: '6px',
+                margin: '4px',
                 borderRadius: "8px",
-                padding: "6px 6px",
+                padding: "4px 4px",
 
                 boxShadow: "0px 1px 4px rgba(0,0,0,0.12)"
             }}
         >
-            <Box display="flex" gap={2} mb={1}>
+            <Box display="flex" gap={2} alignItems="center">
                 <IconButton
                     onClick={send}
                     sx={{
-                        width: 46,
-                        height: 46,
+                        width: 36,
+                        height: 36,
                         borderRadius: "50%",
                         backgroundColor: isOn ? "#FFC107" : "#E0E0E0",
                         "&:hover": {
@@ -80,12 +80,14 @@ export default function LightBulbCard({
                 >
                     <LightbulbIcon
                         sx={{
+                            width: 16,
+                            height: 16,
                             color: isOn ? "#FFFFFF" : "#9E9E9E"
                         }}
                     />
                 </IconButton>
 
-                <Box style={{width: "120px",}}>
+                <Box>
                     <Typography onClick={onClick} fontWeight={600} fontSize="16px">
                         {name}
                     </Typography>
