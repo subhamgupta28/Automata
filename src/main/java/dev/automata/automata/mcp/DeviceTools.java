@@ -1,8 +1,8 @@
 package dev.automata.automata.mcp;
 
 import dev.automata.automata.automation_engine.AutomationService;
+import dev.automata.automata.model.Data;
 import dev.automata.automata.model.Device;
-import dev.automata.automata.model.Users;
 import dev.automata.automata.service.MainService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,11 +37,11 @@ public class DeviceTools {
     }
 
     @Tool(description = "Get the current sensor data and attribute values for a device")
-    public Map<String, Object> getDeviceData(
+    public Data getDeviceData(
             @ToolParam(description = "The unique device ID") String deviceId
     ) {
         log.info("DeviceTools: getDeviceData deviceId [{}]", deviceId);
-        return mainService.getLastData(deviceId, "", new Users());
+        return mainService.getLastFullData(deviceId);
     }
 
     /**
