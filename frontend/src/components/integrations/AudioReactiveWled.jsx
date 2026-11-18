@@ -459,7 +459,7 @@ export default function AudioReactiveWled() {
                 href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap"
                 rel="stylesheet"/>
             <div style={{
-                minHeight: "100vh",
+                minHeight: "100dvh",
                 background: "radial-gradient(ellipse 80% 50% at 50% -5%, #061020 0%, #020509 55%)",
                 color: "#e2e8f0",
                 fontFamily: "'DM Sans',sans-serif",

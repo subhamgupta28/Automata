@@ -134,7 +134,7 @@ export default function AutomationAnalyticsView() {
     return (
         <Box
             sx={{
-                minHeight: '100vh',
+                minHeight: '100dvh',
                 paddingTop: '3dvh',
                 paddingBottom: '20px',
                 color: theme.palette.text.primary,

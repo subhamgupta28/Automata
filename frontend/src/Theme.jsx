@@ -1,6 +1,6 @@
-import {createTheme} from '@mui/material/styles';
+import {createTheme, responsiveFontSizes} from '@mui/material/styles';
 
-export const darkTheme = createTheme({
+const baseDarkTheme = createTheme({
     palette: {
         mode: 'dark',
         primary: {
@@ -48,8 +48,27 @@ export const darkTheme = createTheme({
                 },
             },
         },
+        // Dialogs: keep a small gutter on phones instead of MUI's 32px margin,
+        // so forms and detail popups can use the screen width.
+        MuiDialog: {
+            styleOverrides: {
+                paper: ({ownerState, theme}) => ({
+                    ...(!ownerState?.fullScreen && {
+                        [theme.breakpoints.down('sm')]: {
+                            margin: 12,
+                            width: 'calc(100% - 24px)',
+                            maxWidth: 'calc(100% - 24px)',
+                            maxHeight: 'calc(100% - 24px)',
+                        },
+                    }),
+                }),
+            },
+        },
     },
 });
+
+// Scales h1–h6 down smoothly on small screens.
+export const darkTheme = responsiveFontSizes(baseDarkTheme);
 
 
 export const lightTheme = createTheme({

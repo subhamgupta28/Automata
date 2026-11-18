@@ -21,6 +21,7 @@ import {ZoomSlider} from "./ZoomSlider.jsx";
 import ContextMenu from "./ContextMenu.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import LoadingScreen from "../../utils/LoadingScreen.jsx";
+import {useIsMobile} from "../../utils/useIsMobile.jsx";
 
 const edgeTypes = {animatedSvg: AnimatedSVGEdge};
 const nodeTypes = {
@@ -30,6 +31,7 @@ const nodeTypes = {
 };
 
 const DeviceNodesComponent = () => {
+    const isMobile = useIsMobile();
     const [openBackdrop, setOpenBackdrop] = useState(false);
     // const {messages} = useWebSocket('/topic/data');
     const {devices, loading, error} = useCachedDevices();
@@ -166,7 +168,7 @@ const DeviceNodesComponent = () => {
                 nodeTypes={nodeTypes}
             >
 
-                <Panel position="bottom-right" style={{marginRight: '80px', display: 'flex'}}>
+                <Panel position="bottom-right" style={{marginRight: isMobile ? '8px' : '80px', marginBottom: 'calc(8px + var(--safe-bottom))', display: 'flex'}}>
                     {editUi && <NodeInspector/>}
                     {actionMenu && <div>
                         <Button variant='outlined' size='small' onClick={handleReboot}

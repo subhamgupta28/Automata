@@ -24,6 +24,7 @@ import {useDeviceLiveData} from "../../services/DeviceDataProvider.jsx";
 import {EnergyConsumptionCarouselNode} from "./EnergyConsumptionCarouselNode.jsx";
 import {EnergyBatteryChartNode} from "./EnergyBatteryChartNode.jsx";
 import {BatteryCardNode} from "./BatteryCard.jsx";
+import {useIsMobile} from "../../utils/useIsMobile.jsx";
 
 
 const nodeTypes = {
@@ -81,6 +82,7 @@ const createNodes = (virtualDevices) => {
 
 
 function DashboardDetail() {
+    const isMobile = useIsMobile();
     // const [virtualDevice, setVirtualDevice] = useState([]);
     const [rfInstance, setRfInstance] = useState(null);
     const ref = useRef(null);
@@ -168,7 +170,7 @@ function DashboardDetail() {
                 defaultViewport={defaultViewport}
                 nodeTypes={nodeTypes}
             >
-                <Panel position="bottom-right" style={{marginRight: '80px', display: 'flex'}}>
+                <Panel position="bottom-right" style={{marginRight: isMobile ? '8px' : '80px', marginBottom: 'calc(8px + var(--safe-bottom))', display: 'flex'}}>
                     {editUi && <NodeInspector dashboard={"v2"}/>}
                     <IconButton variant="outlined" size='small' color="primary" onClick={handleEdit}
                                 style={{marginLeft: '10px'}}>
