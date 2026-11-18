@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Divider from "@mui/material/Divider";
+import {useIsMobile} from "../../utils/useIsMobile.jsx";
 import {useCachedDevices} from "../../services/AppCacheContext.jsx";
 import {getVirtualDeviceList, saveVirtualDevice, updateShowVirtualDevice} from "../../services/apis.jsx";
 import ListItem from "@mui/material/ListItem";
@@ -294,6 +295,7 @@ const DashboardEditor = ({change, existingDevice}) => {
 }
 
 const VirtualDeviceForm = () => {
+    const isMobile = useIsMobile();
 
     const [virtualDeviceList, setVirtualDeviceList] = useState([]);
     const [selectedDevice, setSelectedDevice] = useState(null)
@@ -313,21 +315,22 @@ const VirtualDeviceForm = () => {
 
 
     return (
-        <Box p={3} style={{height: '100vh'}}>
+        <Box sx={{p: {xs: 1.5, md: 3}, height: {xs: 'auto', md: '100dvh'}, boxSizing: 'border-box'}}>
 
-            <Stack direction="row" style={{height: '80%', marginTop: '20px'}}
-                   divider={<Divider orientation="vertical" flexItem/>}
+            <Stack direction={{xs: 'column', md: 'row'}}
+                   sx={{height: {xs: 'auto', md: '80%'}, mt: '20px'}}
+                   divider={<Divider orientation={isMobile ? 'horizontal' : 'vertical'} flexItem/>}
                    spacing={2}>
 
-                <div style={{width: '30%'}}>
+                <Box sx={{width: {xs: '100%', md: '30%'}, minWidth: 0}}>
                     Create Virtual Device
                     <DashboardEditor change={fetch} existingDevice={selectedDevice}/>
-                </div>
-                <div style={{width: '50%'}}>
+                </Box>
+                <Box sx={{width: {xs: '100%', md: '50%'}, minWidth: 0}}>
                     <DeviceCreateForm/>
-                </div>
+                </Box>
 
-                <div style={{width: '20%'}}>
+                <Box sx={{width: {xs: '100%', md: '20%'}, minWidth: 0}}>
                     Saved Virtual Devices
                     <List>
                         {virtualDeviceList && virtualDeviceList.map((a) => (
@@ -350,7 +353,7 @@ const VirtualDeviceForm = () => {
                             </ListItem>
                         ))}
                     </List>
-                </div>
+                </Box>
             </Stack>
         </Box>
     );

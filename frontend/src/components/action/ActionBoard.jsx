@@ -70,6 +70,7 @@ import {
     VersionHistoryDialog,
 } from "./AutomationFeatures.jsx";
 import {PlaceholderNode} from "./PlaceHolderNode.jsx";
+import {useIsMobile} from "../../utils/useIsMobile.jsx";
 import {useSnackbar} from "notistack";
 import ValidationResultPanel from "../automation/ValidationResultPanel.jsx";
 
@@ -1162,12 +1163,19 @@ function ActionBoardDetailComponent() {
         e.dataTransfer.effectAllowed = 'move';
     };
     const hasSelected = Boolean(selectedAutomation?.id);
+    const isMobile = useIsMobile();
 
     return (
         <Box sx={{position: 'relative', zIndex: 0}}>
-            <Stack direction="row">
+            <Stack direction={{xs: 'column', md: 'row'}}>
                 {/* Canvas */}
-                <Box sx={{width: '75%', height: '100dvh', borderRadius: '10px', p: '10px 10px 10px 0px'}}
+                <Box sx={{
+                    width: {xs: '100%', md: '75%'},
+                    height: {xs: '70dvh', md: '100dvh'},
+                    borderRadius: '10px',
+                    p: {xs: '48px 8px 8px 8px', md: '10px 10px 10px 0px'},
+                    boxSizing: 'border-box'
+                }}
                      className="reactflow-wrapper" ref={reactFlowWrapper}>
                     <ReactFlow
                         style={{
@@ -1265,9 +1273,10 @@ function ActionBoardDetailComponent() {
                 </Box>
 
                 {/* Sidebar */}
-                <Box sx={{width: '25%', height: '100dvh'}}>
+                <Box sx={{width: {xs: '100%', md: '25%'}, height: {xs: 'auto', md: '100dvh'}}}>
                     <Card style={{
-                        height: '97dvh',
+                        height: isMobile ? 'auto' : '97dvh',
+                        minHeight: isMobile ? 320 : undefined,
                         display: 'flex',
                         flexDirection: 'column',
                         margin: '10px 10px 10px 0px',

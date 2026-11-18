@@ -127,7 +127,7 @@ export default function AdminLoginDashboard() {
 
     if (loading) {
         return (
-            <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>
+            <Box sx={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100dvh'}}>
                 <LoadingScreen/>
             </Box>
         );

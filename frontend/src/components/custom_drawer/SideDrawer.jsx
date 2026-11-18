@@ -17,6 +17,7 @@ import Divider from '@mui/material/Divider';
 import {Link as RouterLink, Navigate, NavLink, Route, Routes, useLocation} from "react-router-dom";
 import {AppCacheProvider} from "../../services/AppCacheContext.jsx";
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined';
 import HomeIcon from '@mui/icons-material/Home';
 import DeveloperBoardIcon from '@mui/icons-material/DeveloperBoard';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -47,6 +48,14 @@ import HomeManagement from "../home/HomeManagement.jsx";
 import LoadingScreen from "../../utils/LoadingScreen.jsx";
 import AutomataSnackbar from "../AutomataSnackbar.jsx";
 import MenuIcon from '@mui/icons-material/Menu';
+import CloseIcon from '@mui/icons-material/Close';
+import MuiDrawer from '@mui/material/Drawer';
+import {useIsMobile} from "../../utils/useIsMobile.jsx";
+
+// Routes that draw edge-to-edge (canvases, maps). Every other page gets top
+// padding on phones so the floating menu button never covers its content.
+const FULL_BLEED_ROUTES = ['/', '/actions', '/map', '/automation-analytics', '/presentation', '/exp', '/mob'];
+const MOBILE_MENU_BUTTON_OFFSET = 56;
 
 // Lazy-load heavy route components
 const DevicesHub = lazy(() => import("../devices/DevicesHub.jsx"));
@@ -55,7 +64,7 @@ const AnalyticsView = lazy(() => import("../dashboard/AnalyticsView.jsx"));
 const AutomationAnalyticsView = lazy(() => import("../automation/AutomationAnalyticsView.jsx"));
 const ActionBoard = lazy(() => import("../action/ActionBoard.jsx"));
 const Exp = lazy(() => import("../dashboard/Exp.jsx"));
-const Welcome = lazy(() => import("../Welcome.jsx"));
+const Welcome = lazy(() => import("../welcome/WelcomePage.jsx"));
 const SpotifyPlayer = lazy(() => import("../integrations/SpotifyPlayer.jsx"));
 const VirtualDeviceForm = lazy(() => import("../v2/VirtualDeviceForm.jsx"));
 const DashboardV2 = lazy(() => import("../v2/DashboardV2.jsx"));
@@ -128,6 +137,7 @@ const Drawer = styled(Card, {shouldForwardProp: (prop) => prop !== 'open'})(
 
 const breadcrumbNameMap = {
     '/': 'Home',
+    '/welcome': 'Overview',
     '/actions': 'Automations',
     '/automation-analytics': 'Automation Analytics',
     '/analytics': 'Analytics',
@@ -286,8 +296,15 @@ function NavGroup({group, drawerOpen, location}) {
 
 export default function SideDrawer() {
     const [open, setOpen] = React.useState(false);
+    const [mobileOpen, setMobileOpen] = React.useState(false);
     const {user, logout, isGuest} = useAuth();
     const location = useLocation();
+    const isMobile = useIsMobile();
+
+    // Close the phone menu after navigating, and when growing back to desktop width
+    React.useEffect(() => {
+        setMobileOpen(false);
+    }, [location.pathname, isMobile]);
 
     // ── Nav group definitions ──────────────────────────────────────────────
     const authGroups = [
@@ -295,6 +312,7 @@ export default function SideDrawer() {
             label: null,        // no label = flat, no collapse
             children: [
                 {name: 'Home', url: '/', icon: <HomeIcon/>},
+                {name: 'Overview', url: '/welcome', icon: <ExploreOutlinedIcon/>},
             ]
         },
         {
@@ -345,6 +363,7 @@ export default function SideDrawer() {
                 {name: 'Analytics', url: '/analytics', icon: <AssessmentIcon/>},
                 {name: 'Devices', url: '/devices', icon: <DeveloperBoardIcon/>},
                 {name: 'Live Inspector', url: '/automation-analytics', icon: <TrendingUp/>},
+                {name: 'Overview', url: '/welcome', icon: <ExploreOutlinedIcon/>},
             ]
         }
     ];
@@ -354,7 +373,7 @@ export default function SideDrawer() {
             {
                 label: null,
                 children: [
-                    {name: 'Welcome', url: '/welcome', icon: <HomeIcon/>},
+                    {name: 'Overview', url: '/welcome', icon: <ExploreOutlinedIcon/>},
                     {name: 'Sign In', url: '/signin', icon: <LoginIcon/>},
                     {name: 'Sign Up', url: '/signup', icon: <PersonAddIcon/>},
                 ]
@@ -368,11 +387,85 @@ export default function SideDrawer() {
 
     const handleDrawerClose = () => setOpen(s => !s);
 
+    const isFullBleed = FULL_BLEED_ROUTES.includes(location.pathname);
+
     return (
         <Box sx={{display: 'flex', height: '100dvh', width: '100%', background: 'transparent'}}>
             <CssBaseline/>
 
-            {!isEmpty(user) && (
+            {/* ── Phone navigation: floating button + slide-in drawer ───────── */}
+            {isMobile && !isEmpty(user) && (
+                <>
+                    <IconButton
+                        aria-label="Open navigation menu"
+                        onClick={() => setMobileOpen(true)}
+                        sx={{
+                            position: 'fixed',
+                            top: 'calc(8px + var(--safe-top))',
+                            left: 'calc(8px + var(--safe-left))',
+                            zIndex: (theme) => theme.zIndex.appBar,
+                            width: 40,
+                            height: 40,
+                            color: '#f0dc7a',
+                            backgroundColor: 'rgba(22,22,22,0.72)',
+                            backdropFilter: 'blur(6px)',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            '&:hover': {backgroundColor: 'rgba(40,40,40,0.85)'},
+                        }}
+                    >
+                        <MenuIcon/>
+                    </IconButton>
+
+                    <MuiDrawer
+                        anchor="left"
+                        open={mobileOpen}
+                        onClose={() => setMobileOpen(false)}
+                        ModalProps={{keepMounted: false}}
+                        slotProps={{
+                            paper: {
+                                sx: {
+                                    width: 'min(280px, 85vw)',
+                                    backgroundColor: 'rgba(22,22,22,0.96)',
+                                    backgroundImage: 'none',
+                                    backdropFilter: 'blur(10px)',
+                                    pt: 'var(--safe-top)',
+                                    pb: 'var(--safe-bottom)',
+                                },
+                            },
+                        }}
+                    >
+                        <Box sx={{display: 'flex', flexDirection: 'column', height: '100%'}}>
+                            <DrawerHeader sx={{justifyContent: 'space-between'}}>
+                                <Typography variant="h6" sx={{
+                                    fontFamily: 'monospace',
+                                    fontWeight: 700,
+                                    letterSpacing: '.2rem',
+                                    color: '#f0dc7a',
+                                    pl: 1
+                                }}>
+                                    Automata
+                                </Typography>
+                                <IconButton aria-label="Close navigation menu" onClick={() => setMobileOpen(false)}>
+                                    <CloseIcon/>
+                                </IconButton>
+                            </DrawerHeader>
+                            <List
+                                component="nav"
+                                disablePadding
+                                sx={{flexGrow: 1, overflowY: 'auto', overflowX: 'hidden', py: 1}}
+                            >
+                                {activeGroups.map((group, i) => (
+                                    <NavGroup key={i} group={group} drawerOpen={true} location={location}/>
+                                ))}
+                            </List>
+                            <OptionsMenu drawerOpen={true}/>
+                        </Box>
+                    </MuiDrawer>
+                </>
+            )}
+
+            {/* ── Desktop / tablet: collapsible rail ───────────────────────── */}
+            {!isMobile && !isEmpty(user) && (
                 <Drawer
                     variant="elevated"
                     open={open}
@@ -421,11 +514,25 @@ export default function SideDrawer() {
                 </Drawer>
             )}
 
-            <Box component="main" sx={{flexGrow: 1, height: '100dvh', display: 'flex', flexDirection: 'column'}}>
+            <Box component="main"
+                 sx={{flexGrow: 1, minWidth: 0, height: '100dvh', display: 'flex', flexDirection: 'column'}}>
                 {/* Breadcrumb bar */}
                 {/*{!isEmpty(user) && <AppBreadcrumbs/>}*/}
 
-                <Box sx={{flexGrow: 1, overflow: 'auto'}}>
+                <Box sx={{
+                    flexGrow: 1,
+                    minHeight: 0,
+                    overflow: 'auto',
+                    scrollbarWidth: 'none',
+                    '&::-webkit-scrollbar': {
+                        display: 'none',
+                    },
+                    // Phones: keep scrolling pages clear of the floating menu button
+                    ...(isMobile && !isEmpty(user) && !isFullBleed && {
+                        pt: `calc(${MOBILE_MENU_BUTTON_OFFSET}px + var(--safe-top))`,
+                        boxSizing: 'border-box',
+                    }),
+                }}>
                     <AppCacheProvider>
                         <ReactFlowProvider>
                             <SnackbarProvider maxSnack={3} preventDuplicate
@@ -446,7 +553,10 @@ export default function SideDrawer() {
                                         <Route path="signup" element={<SignUp/>}/>
                                         <Route path="signin" element={<SignIn/>}/>
                                         {/* Protected */}
-                                        <Route index element={<PrivateRoute path="/" element={<DashboardV2/>}/>}/>
+                                        {/* Signed-out visitors get the landing page at "/"; signed-in users get their dashboard */}
+                                        <Route index element={isEmpty(user)
+                                            ? <Welcome/>
+                                            : <PrivateRoute path="/" element={<DashboardV2/>}/>}/>
                                         <Route path="analytics"
                                                element={<PrivateRoute path="/analytics" element={<AnalyticsView/>}/>}/>
                                         <Route path="automation-analytics"

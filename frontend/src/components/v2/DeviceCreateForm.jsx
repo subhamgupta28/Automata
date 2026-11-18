@@ -13,7 +13,8 @@ import {
     TableHead,
     TableRow,
     TableCell,
-    TableBody
+    TableBody,
+    TableContainer,
 } from "@mui/material";
 import {Add, Delete} from "@mui/icons-material";
 import {useState} from "react";
@@ -160,6 +161,7 @@ export default function DeviceCreateForm() {
                         </Button>
                     </Box>
 
+                    <TableContainer sx={{overflowX: 'auto'}}>
                     <Table size="small">
                         <TableHead>
                             <TableRow>
@@ -221,6 +223,7 @@ export default function DeviceCreateForm() {
                             ))}
                         </TableBody>
                     </Table>
+                    </TableContainer>
                 </Box>
 
                 {/* Save */}

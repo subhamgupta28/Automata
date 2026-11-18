@@ -739,7 +739,7 @@ function AnalyticsViewComponent() {
 
     return (
         <Box sx={{
-            height: "100vh",
+            height: "100dvh",
             // pt: "48px",
             color: theme.palette.text.primary,
             display: "flex",

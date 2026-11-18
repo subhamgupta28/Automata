@@ -130,7 +130,7 @@ const Item = styled(Paper)(({theme}) => ({
 export function ConfigurationView() {
 
     return (
-        <div style={{padding: '18px', height: '100dvh'}}>
+        <div style={{padding: '18px', minHeight: '100dvh', boxSizing: 'border-box'}}>
 
             {/*<WiFiSettings/>*/}
             <WLEDDiscovery/>

@@ -91,7 +91,7 @@ export default function SmartHomeDashboard2() {
     return (
         <ThemeProvider theme={darkTheme}>
             <CssBaseline/>
-            <Box sx={{display: 'flex', minHeight: '100vh', bgcolor: '#08080a', p: 3, gap: 3}}>
+            <Box sx={{display: 'flex', minHeight: '100dvh', bgcolor: '#08080a', p: 3, gap: 3}}>
 
                 {/* ================= LEFT SIDEBAR ================= */}
                 <Box
